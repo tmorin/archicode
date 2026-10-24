@@ -22,7 +22,7 @@ archicode views generate -i shop_overview
 
 Output and exit codes:
 
-- A problem the author can fix is one line on the error output, `error: <sentence>`, and exit 1. **Only the first problem is reported**: there is no `validate` command yet, so fix it and run again. The sentence names the file and the key (for example ``error: `manifests/a.yaml` is not valid: unknown key `foo` (known: ...) at `content.foo` ``); a reference that does not resolve is named alone (``error: unable to find the element shop.nowhere``): write the reference of an element that exists, as `query graph` prints it.
+- A problem the author can fix is one line on the error output, `error: <sentence>`, and exit 1. **Only the first problem is reported**: there is no `validate` command yet, so fix it and run again. The sentence names the file and the key (for example ``error: `manifests/a.yaml` is not valid: unknown key `foo` (known: ...) at `content.foo` ``); a reference that does not resolve (a relationship `destination`, a `uses` entry, a hosted application) says the element that holds it, the file and the key (``error: `shop.search` has a relationship towards `shop.nowhere`, which does not exist, in `manifests/shop.search.yaml` at `relationships[0].destination` ``): write the reference of an element that exists, as `query graph` prints it.
 - A warning is `warning: <sentence>` on the error output; the exit code stays 0.
 - A usage error (an unknown option or command) is exit 2, with the usage.
 - `archicode diff --fail-on <states>` exits 3 when the comparison holds a change of one of the states (`new`, `changed`, `removed`, `moved`, `split`, `merged`, `contains-changes`, `any`), else 0: use it in a build.

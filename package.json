@@ -1,4 +1,10 @@
 {
+  "private": true,
+  "scripts": {
+    "format": "prettier --write \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/resources/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/resources/**/*.mjs\"",
+    "test:unit": "node --test \"src/test/javascript/**/*.test.js\""
+  },
   "dependencies": {
     "prettier": "^3.9.9",
     "prettier-plugin-java": "^2.11.0"

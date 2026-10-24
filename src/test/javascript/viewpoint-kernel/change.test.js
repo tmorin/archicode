@@ -45,7 +45,11 @@ const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : 
 function unionElements(union, layer) {
   return union.elements
     .filter((e) => e.layer === layer)
-    .map((e) => Object.assign({}, e, { relationships: union.relationships.filter((r) => r.layer === layer && r.from === e.reference) }));
+    .map((e) =>
+      Object.assign({}, e, {
+        relationships: union.relationships.filter((r) => r.layer === layer && r.from === e.reference)
+      })
+    );
 }
 
 /** The application layer of the fixture, as the editor sends it to the kernel, with the properties a comparison reads. */
@@ -59,9 +63,22 @@ function changedApplication(base) {
   const find = (ref) => target.find((e) => e.reference === ref);
   // removed: the session store, and the one relationship that reached it
   target.splice(target.indexOf(find('shop.web.session')), 1);
-  find('shop.web.api').relationships = find('shop.web.api').relationships.filter((r) => r.destination !== 'shop.web.session');
+  find('shop.web.api').relationships = find('shop.web.api').relationships.filter(
+    (r) => r.destination !== 'shop.web.session'
+  );
   // new: a cache next to the catalog's database, which it reads
-  target.push({ reference: 'shop.catalog.cache', parent: true, kind: 'container', name: 'Cache', description: null, qualifiers: ['Redis'], tags: {}, applications: [], uses: [], relationships: [{ destination: 'shop.catalog.db', label: 'reads', qualifiers: [], tags: {} }] });
+  target.push({
+    reference: 'shop.catalog.cache',
+    parent: true,
+    kind: 'container',
+    name: 'Cache',
+    description: null,
+    qualifiers: ['Redis'],
+    tags: {},
+    applications: [],
+    uses: [],
+    relationships: [{ destination: 'shop.catalog.db', label: 'reads', qualifiers: [], tags: {} }]
+  });
   // changed: a name
   find('shop.payments').name = 'Payments, renamed';
   return target;
@@ -72,7 +89,10 @@ async function pair() {
   const kernel = await loadEmbeddedKernel();
   const base = fixtureLayer(sandbox, state, 'application');
   const technology = fixtureLayer(sandbox, state, 'technology');
-  const union = kernel.compare({ base: { application: base, technology }, target: { application: changedApplication(base), technology } });
+  const union = kernel.compare({
+    base: { application: base, technology },
+    target: { application: changedApplication(base), technology }
+  });
   assert.equal(union.error, undefined);
   return { sandbox, state, kernel, base, technology, union };
 }
@@ -91,8 +111,16 @@ test('a view of the fixture whose input says nothing of change carries none of t
         views++;
         assert.doesNotMatch(plainCall, /"change"|"context"|"natures"|contains-changes/, viewpoint + ' ' + ref);
         assert.match(plainCall, /^\{"version":5,/);
-        assert.equal(kernel.rawCompute(Object.assign({}, plain(input), { only_changes: false })), plainCall, viewpoint + ' ' + ref + ' with only_changes: false');
-        assert.equal(kernel.rawCompute(Object.assign({}, plain(input), { only_changes: null })), plainCall, 'null is not given');
+        assert.equal(
+          kernel.rawCompute(Object.assign({}, plain(input), { only_changes: false })),
+          plainCall,
+          viewpoint + ' ' + ref + ' with only_changes: false'
+        );
+        assert.equal(
+          kernel.rawCompute(Object.assign({}, plain(input), { only_changes: null })),
+          plainCall,
+          'null is not given'
+        );
       }
     }
   }
@@ -101,17 +129,38 @@ test('a view of the fixture whose input says nothing of change carries none of t
 
 test('the union that compare gives is drawn by compute: every item and link says what changed, a removed element is there under its parent', async () => {
   const { kernel, union } = await pair();
-  assert.deepEqual(union.counts.elements, { new: 1, changed: 2, removed: 1, wording_only: 0 }, JSON.stringify(union.counts));
-  const out = kernel.compute({ viewpoint: 'deep', layer: 'application', focal: 'shop', default_synthetic_label: 'uses', elements: unionElements(union, 'application') });
+  assert.deepEqual(
+    union.counts.elements,
+    { new: 1, changed: 2, removed: 1, wording_only: 0 },
+    JSON.stringify(union.counts)
+  );
+  const out = kernel.compute({
+    viewpoint: 'deep',
+    layer: 'application',
+    focal: 'shop',
+    default_synthetic_label: 'uses',
+    elements: unionElements(union, 'application')
+  });
   assert.equal(out.error, undefined);
   assert.equal(out.version, 5);
   const item = (id) => out.items.find((i) => i.id === id);
-  assert.deepEqual(['shop.web.session', 'shop.catalog.cache', 'shop.web.api', 'shop.payments'].map((id) => item(id).change), ['removed', 'new', 'changed', 'changed']);
+  assert.deepEqual(
+    ['shop.web.session', 'shop.catalog.cache', 'shop.web.api', 'shop.payments'].map((id) => item(id).change),
+    ['removed', 'new', 'changed', 'changed']
+  );
   assert.equal(item('shop.web.session').parent, 'shop.web', 'the removed container is still under its parent');
   assert.equal(item('shop.web.frontend').change, 'none');
-  assert.equal(out.items.every((i) => typeof i.change === 'string'), true, 'in a comparison every item says');
+  assert.equal(
+    out.items.every((i) => typeof i.change === 'string'),
+    true,
+    'in a comparison every item says'
+  );
   const link = (from, to) => out.links.find((l) => l.from === from && l.to === to);
-  assert.equal(link('shop.web.api', 'shop.web.session').change, 'removed', 'the relationship only the base had is drawn');
+  assert.equal(
+    link('shop.web.api', 'shop.web.session').change,
+    'removed',
+    'the relationship only the base had is drawn'
+  );
   assert.equal(link('shop.catalog.cache', 'shop.catalog.db').change, 'new');
   assert.equal(link('shop.web.frontend', 'shop.web.api').change, 'none');
   assert.ok(item('shop.web.api').natures.includes('relationships-removed'));
@@ -126,33 +175,65 @@ test('the union that compare gives is drawn by compute: every item and link says
 
 test('a link that groups relationships adds up what they did, and the folded view of a pair is the same bytes twice', async () => {
   const { kernel, union } = await pair();
-  const input = { viewpoint: 'deep', layer: 'application', focal: 'shop.web', default_synthetic_label: 'uses', elements: unionElements(union, 'application'), collapsed: ['shop.web.api', 'shop.web.edge'] };
+  const input = {
+    viewpoint: 'deep',
+    layer: 'application',
+    focal: 'shop.web',
+    default_synthetic_label: 'uses',
+    elements: unionElements(union, 'application'),
+    collapsed: ['shop.web.api', 'shop.web.edge']
+  };
   const out = kernel.compute(input);
   assert.equal(out.error, undefined);
   const grouped = out.links.filter((l) => l.synthetic);
   assert.ok(grouped.length > 0);
   const sessionLink = out.links.find((l) => l.relationships.some((r) => r.destination === 'shop.web.session'));
   assert.ok(sessionLink, 'the removed relationship is in a link');
-  assert.equal(sessionLink.change, sessionLink.relationships.every((r) => r.change === 'removed') ? 'removed' : 'changed');
+  assert.equal(
+    sessionLink.change,
+    sessionLink.relationships.every((r) => r.change === 'removed') ? 'removed' : 'changed'
+  );
   for (const l of out.links) {
     const changes = new Set(l.relationships.map((r) => r.change || 'none'));
-    const expected = changes.size === 1 && changes.has('new') ? 'new' : changes.size === 1 && changes.has('removed') ? 'removed' : changes.size === 1 && changes.has('none') ? 'none' : 'changed';
+    const expected =
+      changes.size === 1 && changes.has('new')
+        ? 'new'
+        : changes.size === 1 && changes.has('removed')
+          ? 'removed'
+          : changes.size === 1 && changes.has('none')
+            ? 'none'
+            : 'changed';
     assert.equal(l.change, expected, l.from + ' -> ' + l.to + ' ' + Array.from(changes));
   }
   assert.equal(kernel.rawCompute(input), kernel.rawCompute(JSON.parse(JSON.stringify(input))), 'twice');
-  const reversed = Object.assign({}, input, { elements: input.elements.slice().reverse().map((e) => Object.assign({}, e, { relationships: e.relationships.slice().reverse() })) });
+  const reversed = Object.assign({}, input, {
+    elements: input.elements
+      .slice()
+      .reverse()
+      .map((e) => Object.assign({}, e, { relationships: e.relationships.slice().reverse() }))
+  });
   assert.equal(kernel.rawCompute(reversed), kernel.rawCompute(input), 'whatever the order of the elements');
 });
 
 test('only_changes keeps the changes, the ends of changed links and what encloses them, and says which items are only context', async () => {
   const { kernel, union } = await pair();
-  const out = kernel.compute({ viewpoint: 'deep', layer: 'application', focal: 'shop', default_synthetic_label: 'uses', elements: unionElements(union, 'application'), only_changes: true });
+  const out = kernel.compute({
+    viewpoint: 'deep',
+    layer: 'application',
+    focal: 'shop',
+    default_synthetic_label: 'uses',
+    elements: unionElements(union, 'application'),
+    only_changes: true
+  });
   assert.equal(out.error, undefined);
   const ids = out.items.map((i) => i.id);
-  for (const id of ['shop.web.session', 'shop.catalog.cache', 'shop.web.api', 'shop.payments']) assert.ok(ids.includes(id), id + ' changed');
+  for (const id of ['shop.web.session', 'shop.catalog.cache', 'shop.web.api', 'shop.payments'])
+    assert.ok(ids.includes(id), id + ' changed');
   const context = (id) => out.items.find((i) => i.id === id).context === true;
-  for (const id of ['shop', 'shop.web', 'shop.catalog', 'shop.catalog.db']) assert.equal(context(id), true, id + ' is context');
-  for (const id of ['shop.web.session', 'shop.catalog.cache', 'shop.web.api', 'shop.payments']) assert.equal(context(id), false, id + ' is a change');
+  for (const id of ['shop', 'shop.web', 'shop.catalog', 'shop.catalog.db'])
+    assert.equal(context(id), true, id + ' is context');
+  for (const id of ['shop.web.session', 'shop.catalog.cache', 'shop.web.api', 'shop.payments'])
+    assert.equal(context(id), false, id + ' is a change');
   assert.ok(!ids.includes('shop.web.frontend'), 'an unchanged box that no changed link reaches is left out');
   assert.ok(out.links.length > 0 && out.links.every((l) => l.change !== 'none'), 'every link that stays changed');
 });
@@ -161,16 +242,29 @@ test('a facet reads change like any field, through the JSONPath the kernel alrea
   const { kernel, union } = await pair();
   const facet = (jsonPath) => ({ name: 'f', actions: [{ operator: 'REMOVE', json_path: jsonPath }] });
   const elements = unionElements(union, 'application');
-  const draw = (extra) => kernel.compute(Object.assign({ viewpoint: 'deep', layer: 'application', focal: 'shop', default_synthetic_label: 'uses', elements }, extra));
+  const draw = (extra) =>
+    kernel.compute(
+      Object.assign(
+        { viewpoint: 'deep', layer: 'application', focal: 'shop', default_synthetic_label: 'uses', elements },
+        extra
+      )
+    );
   const all = draw({});
   const without = draw({ facet: facet("$..relationships[?(@.change=='removed')]") });
   assert.equal(without.error, undefined);
   assert.ok(all.links.some((l) => l.change === 'removed'));
-  assert.ok(without.links.every((l) => l.change !== 'removed'), 'the removed relationships are gone');
+  assert.ok(
+    without.links.every((l) => l.change !== 'removed'),
+    'the removed relationships are gone'
+  );
   assert.equal(without.links.length, all.links.filter((l) => l.change !== 'removed').length);
   const onlyNew = draw({ only_changes: true, facet: facet("$..relationships[?(@.change!='new')]") });
   assert.equal(onlyNew.error, undefined);
-  assert.deepEqual(onlyNew.links.map((l) => l.change), ['new'], 'the facet runs first, only_changes keeps what is left');
+  assert.deepEqual(
+    onlyNew.links.map((l) => l.change),
+    ['new'],
+    'the facet runs first, only_changes keeps what is left'
+  );
 });
 
 test('hide_unlinked and only_changes work together on the technology layer', async () => {
@@ -185,7 +279,14 @@ test('hide_unlinked and only_changes work together on the technology layer', asy
   const union = kernel.compare({ base: { application, technology }, target: { application, technology: moved } });
   assert.equal(union.error, undefined);
   assert.deepEqual(union.counts.elements, { new: 0, changed: 2, removed: 0, wording_only: 0 });
-  const input = { viewpoint: 'deep', layer: 'technology', focal: 'prod', default_synthetic_label: 'uses', elements: unionElements(union, 'technology'), app_elements: unionElements(union, 'application') };
+  const input = {
+    viewpoint: 'deep',
+    layer: 'technology',
+    focal: 'prod',
+    default_synthetic_label: 'uses',
+    elements: unionElements(union, 'technology'),
+    app_elements: unionElements(union, 'application')
+  };
   const full = kernel.compute(input);
   const changes = kernel.compute(Object.assign({}, input, { only_changes: true }));
   const flow = kernel.compute(Object.assign({}, input, { only_changes: true, hide_unlinked: true }));
@@ -193,12 +294,15 @@ test('hide_unlinked and only_changes work together on the technology layer', asy
   assert.ok(changes.items.length < full.items.length);
   assert.ok(flow.items.length <= changes.items.length);
   for (const out of [changes, flow]) {
-    assert.ok(out.items.find((i) => i.id === 'prod'), 'the focal item stays');
+    assert.ok(
+      out.items.find((i) => i.id === 'prod'),
+      'the focal item stays'
+    );
     assert.ok(out.items.some((i) => i.id === 'prod.cluster.data.svc' && i.change === 'changed' && i.context !== true));
   }
 });
 
-test('the computed state wins over the stereotypes the author wrote, in the editor\'s own look', async () => {
+test("the computed state wins over the stereotypes the author wrote, in the editor's own look", async () => {
   const { sandbox, state } = await openFixture();
   const kernel = await loadEmbeddedKernel();
   state.workspace.styles = {
@@ -212,10 +316,31 @@ test('the computed state wins over the stereotypes the author wrote, in the edit
   };
   const el = (reference, extra = {}) => Object.assign({ reference, parent: false, relationships: [] }, extra);
   const union = kernel.compare({
-    base: { application: [el('a'), el('c', { tags: { 'rendering-stereotypes': 'external' } }), el('d', { tags: { 'rendering-stereotypes': 'external' } })] },
-    target: { application: [el('a'), el('b', { tags: { 'rendering-stereotypes': 'changed external' } }), el('c', { tags: { 'rendering-stereotypes': 'new external' }, name: 'C' }), el('grp', { parent: true }), el('grp.x')] }
+    base: {
+      application: [
+        el('a'),
+        el('c', { tags: { 'rendering-stereotypes': 'external' } }),
+        el('d', { tags: { 'rendering-stereotypes': 'external' } })
+      ]
+    },
+    target: {
+      application: [
+        el('a'),
+        el('b', { tags: { 'rendering-stereotypes': 'changed external' } }),
+        el('c', { tags: { 'rendering-stereotypes': 'new external' }, name: 'C' }),
+        el('grp', { parent: true }),
+        el('grp.x')
+      ]
+    }
   });
-  const out = kernel.compute({ viewpoint: 'map', layer: 'application', focal: '', default_synthetic_label: 'uses', elements: unionElements(union, 'application'), opened: ['grp'] });
+  const out = kernel.compute({
+    viewpoint: 'map',
+    layer: 'application',
+    focal: '',
+    default_synthetic_label: 'uses',
+    elements: unionElements(union, 'application'),
+    opened: ['grp']
+  });
   const stereotypes = (id) => plain(out.items.find((i) => i.id === id).stereotypes);
   const look = (id) => plain(sandbox.stereotypeLookOf(stereotypes(id)));
   // new, with a hand-written `changed`: the list ends with `new`, so `new` has the last word on the fill
@@ -223,8 +348,16 @@ test('the computed state wins over the stereotypes the author wrote, in the edit
   assert.equal(look('b').vars['--st-fill'], '#daf2e6', 'the fill of `new`');
   assert.equal(look('b').vars['--st-stroke'], '#2a6a4b');
   // changed, with a hand-written `new` before it: `changed` is last, so it wins
-  assert.deepEqual(stereotypes('c'), ['new', 'external', 'changed'], 'the author\'s `new` stays where it is; the computed state is last');
-  assert.equal(look('c').vars['--st-fill'], '#faecdd', 'the fill of `changed`, though `new` and `external` come before it');
+  assert.deepEqual(
+    stereotypes('c'),
+    ['new', 'external', 'changed'],
+    "the author's `new` stays where it is; the computed state is last"
+  );
+  assert.equal(
+    look('c').vars['--st-fill'],
+    '#faecdd',
+    'the fill of `changed`, though `new` and `external` come before it'
+  );
   assert.equal(look('c').vars['--st-stroke'], '#a2501c');
   assert.deepEqual(stereotypes('d'), ['external', 'removed']);
   assert.equal(look('d').vars['--st-fill'], '#f3dcdc');
@@ -236,8 +369,16 @@ test('the computed state wins over the stereotypes the author wrote, in the edit
 test('the marker of a container that did not change is a style of its own, which tells it from changed without colour', async () => {
   const { sandbox, state } = await openFixture();
   const { kernel, union } = await pair();
-  state.workspace.styles = { 'by-tags': { changed: { 'background-color': '#FAECDD' }, 'contains-changes': { 'line-style': 2 } } };
-  const out = kernel.compute({ viewpoint: 'deep', layer: 'application', focal: 'shop', default_synthetic_label: 'uses', elements: unionElements(union, 'application') });
+  state.workspace.styles = {
+    'by-tags': { changed: { 'background-color': '#FAECDD' }, 'contains-changes': { 'line-style': 2 } }
+  };
+  const out = kernel.compute({
+    viewpoint: 'deep',
+    layer: 'application',
+    focal: 'shop',
+    default_synthetic_label: 'uses',
+    elements: unionElements(union, 'application')
+  });
   const marked = plain(sandbox.stereotypeLookOf(out.items.find((i) => i.id === 'shop.web').stereotypes));
   const changed = plain(sandbox.stereotypeLookOf(out.items.find((i) => i.id === 'shop.web.api').stereotypes));
   assert.deepEqual(marked.styled, ['contains-changes']);

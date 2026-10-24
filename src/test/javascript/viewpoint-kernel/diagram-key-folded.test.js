@@ -17,23 +17,47 @@ const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 
 const COUNTS = {
-  new: { boxes: 2, links: 1 }, changed: { boxes: 1, links: 0 }, removed: { boxes: 3, links: 2 }, 'contains-changes': { boxes: 1 },
-  moved: { boxes: 0 }, split: { boxes: 0 }, merged: { boxes: 0 }
+  new: { boxes: 2, links: 1 },
+  changed: { boxes: 1, links: 0 },
+  removed: { boxes: 3, links: 2 },
+  'contains-changes': { boxes: 1 },
+  moved: { boxes: 0 },
+  split: { boxes: 0 },
+  merged: { boxes: 0 }
 };
-const keyHtml = (sandbox) => sandbox.diagramComparisonLegendHtml({ target: { id: 'to-be', name: 'To be' }, base: { id: 'as-is', name: 'As is' }, layers: true }, COUNTS);
+const keyHtml = (sandbox) =>
+  sandbox.diagramComparisonLegendHtml(
+    { target: { id: 'to-be', name: 'To be' }, base: { id: 'as-is', name: 'As is' }, layers: true },
+    COUNTS
+  );
 
 /** The key as a page would have it: the button and the group, with the attributes `syncDiagramKey` sets. */
 function giveKey(sandbox) {
   const attributes = { 'aria-expanded': 'false' };
   const classes = new Set(['dg-legend-compare']);
   const properties = {};
-  const button = { getAttribute: (name) => attributes[name], setAttribute: (name, value) => { attributes[name] = value; } };
+  const button = {
+    getAttribute: (name) => attributes[name],
+    setAttribute: (name, value) => {
+      attributes[name] = value;
+    }
+  };
   const holder = { clientHeight: 600 };
   const key = {
-    classList: { toggle: (name, on) => { if (on) classes.add(name); else classes.delete(name); }, contains: (name) => classes.has(name) },
+    classList: {
+      toggle: (name, on) => {
+        if (on) classes.add(name);
+        else classes.delete(name);
+      },
+      contains: (name) => classes.has(name)
+    },
     querySelector: (selector) => (selector === '[data-action="toggle-diagram-key"]' ? button : null),
     closest: (selector) => (selector === '.diagram-status' ? { parentElement: holder } : null),
-    style: { setProperty: (name, value) => { properties[name] = value; } }
+    style: {
+      setProperty: (name, value) => {
+        properties[name] = value;
+      }
+    }
   };
   const doc = sandbox.document;
   const original = doc.getElementById;
@@ -45,11 +69,16 @@ test('the key is a folded row with a Key button that says what it opens', async 
   const sandbox = createApp({});
   await sandbox.loadViewpointKernel(); // the words of the states come from the kernel
   const html = keyHtml(sandbox);
-  assert.match(html, /<button type="button" class="dg-legend-toggle" data-action="toggle-diagram-key" aria-expanded="false" aria-controls="diagram-key" title="[^"]*">Key<\/button>/);
+  assert.match(
+    html,
+    /<button type="button" class="dg-legend-toggle" data-action="toggle-diagram-key" aria-expanded="false" aria-controls="diagram-key" title="[^"]*">Key<\/button>/
+  );
   assert.match(html, /id="diagram-key"/, 'aria-controls names the key');
   // every state keeps its sample, its glyph, its word and its count in the entry, whatever the state of the key is; the sentence and the note are there, hidden by the folded row
   for (const state of ['new', 'changed', 'removed', 'contains-changes']) {
-    const entry = html.split('<span class="dg-legend-state"').find((chunk) => chunk.startsWith(' data-state="' + state + '"'));
+    const entry = html
+      .split('<span class="dg-legend-state"')
+      .find((chunk) => chunk.startsWith(' data-state="' + state + '"'));
     assert.ok(entry, state);
     assert.match(entry, /<svg/);
     assert.match(entry, /class="dg-glyph"/);
@@ -60,9 +89,15 @@ test('the key is a folded row with a Key button that says what it opens', async 
 });
 
 test('the rules of the page: folded hides the sentences and the note, open is capped and scrolls, a narrow screen keeps one row', () => {
-  assert.match(CSS, /\.dg-legend-compare:not\(\.dg-key-open\) \.dg-legend-how, [^{]*\.dg-legend-note[^{]*\{ display: none; \}/);
+  assert.match(
+    CSS,
+    /\.dg-legend-compare:not\(\.dg-key-open\) \.dg-legend-how, [^{]*\.dg-legend-note[^{]*\{ display: none; \}/
+  );
   assert.match(CSS, /\.dg-legend-compare\.dg-key-open \{ max-height: var\(--dg-key-max, 30vh\); overflow-y: auto; \}/);
-  assert.match(CSS, /@media \(max-width: 700px\) \{ \.dg-legend-compare:not\(\.dg-key-open\) \{ flex-wrap: nowrap; overflow-x: auto;/);
+  assert.match(
+    CSS,
+    /@media \(max-width: 700px\) \{ \.dg-legend-compare:not\(\.dg-key-open\) \{ flex-wrap: nowrap; overflow-x: auto;/
+  );
   assert.match(CSS, /\.dg-legend-toggle\[aria-expanded="true"\]/);
 });
 
@@ -70,8 +105,17 @@ test('the Key button opens and folds the key in place, and says so with aria-exp
   const sandbox = createApp({});
   const page = giveKey(sandbox);
   assert.equal(run(sandbox, 'diagramKeyOpen'), false, 'folded by default');
-  const target = { getAttribute: (name) => (name === 'data-action' ? 'toggle-diagram-key' : null), closest: () => null };
-  const click = () => sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  const target = {
+    getAttribute: (name) => (name === 'data-action' ? 'toggle-diagram-key' : null),
+    closest: () => null
+  };
+  const click = () =>
+    sandbox.handleAppClick({
+      target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+      preventDefault() {},
+      stopPropagation() {},
+      detail: 1
+    });
   const version = run(sandbox, 'modelVersion');
   click();
   assert.equal(run(sandbox, 'diagramKeyOpen'), true);
@@ -91,7 +135,8 @@ test('the choice is kept when the diagram is drawn again, and is not in the addr
   run(sandbox, 'syncDiagramKey()'); // what `showDiagramScene` does after it puts the same markup back
   assert.equal(page.attributes['aria-expanded'], 'true');
   assert.equal(page.classes.has('dg-key-open'), true);
-  const source = (name) => HTML.slice(HTML.indexOf('function ' + name + '('), HTML.indexOf('\n}\n', HTML.indexOf('function ' + name + '(')));
+  const source = (name) =>
+    HTML.slice(HTML.indexOf('function ' + name + '('), HTML.indexOf('\n}\n', HTML.indexOf('function ' + name + '(')));
   for (const name of ['diagramCacheKey', 'syncHashFromState', 'diagramComparisonLegendHtml']) {
     assert.doesNotMatch(source(name), /diagramKeyOpen/, name + ' does not know it');
   }

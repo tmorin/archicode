@@ -31,7 +31,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build, ORDER, VIEWS, ENTRIES, ENTRY_FOLDER, E, Plateau, WORKSPACE_SETTINGS, WORKSPACE_STYLES, COMPARISONS, NOTABLE, VARIANTS, MERGES, DOCUMENT } from './description.mjs';
+import {
+  build,
+  ORDER,
+  VIEWS,
+  ENTRIES,
+  ENTRY_FOLDER,
+  E,
+  Plateau,
+  WORKSPACE_SETTINGS,
+  WORKSPACE_STYLES,
+  COMPARISONS,
+  NOTABLE,
+  VARIANTS,
+  MERGES,
+  DOCUMENT
+} from './description.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -63,7 +78,9 @@ class State {
     return this.el.get(key(layer, ref));
   }
   subtree(layer, ref) {
-    return [...this.el.keys()].filter((k) => keyLayer(k) === layer && (keyRef(k) === ref || keyRef(k).startsWith(ref + '.')));
+    return [...this.el.keys()].filter(
+      (k) => keyLayer(k) === layer && (keyRef(k) === ref || keyRef(k).startsWith(ref + '.'))
+    );
   }
 }
 
@@ -85,7 +102,8 @@ function resolve(parentState, plateau) {
   // a parent has to exist when a manifest is loaded
   for (const e of plateau.manifests) {
     const p = parentOf(e.ref);
-    if (p && !st.has(e.layer, p)) throw new FixtureError(`${plateau.id}: the parent of ${e.ref} does not exist when its manifest is read`);
+    if (p && !st.has(e.layer, p))
+      throw new FixtureError(`${plateau.id}: the parent of ${e.ref} does not exist when its manifest is read`);
   }
 
   const removeRefs = (layer, refs) => {
@@ -109,28 +127,35 @@ function resolve(parentState, plateau) {
     if (o === 'REMOVE') {
       removeRefs(layer, st.subtree(layer, tgt).map(keyRef));
     } else if (o === 'MERGE_WHERE') {
-      const hits = [...st.el].filter(([k, e]) => keyLayer(k) === 'application' && e.q.includes(op.qualifier)).map(([, e]) => e);
-      if (op.expect !== undefined && op.expect !== hits.length) throw new FixtureError(`${where} expects ${op.expect} matches and found ${hits.length}`);
+      const hits = [...st.el]
+        .filter(([k, e]) => keyLayer(k) === 'application' && e.q.includes(op.qualifier))
+        .map(([, e]) => e);
+      if (op.expect !== undefined && op.expect !== hits.length)
+        throw new FixtureError(`${where} expects ${op.expect} matches and found ${hits.length}`);
       op.expect = hits.length; // the guard written in layered/ is the count found here: N12 below holds the number the document says (12)
       if (!hits.length) throw new FixtureError(`${where} matched nothing`);
       for (const e of hits) Object.assign(e.tags, op.value); // MERGE: the keys of the value are set, the other tags stay
     } else if (o === 'SET') {
       const e = st.get(layer, tgt);
       const { field: f, value: v } = op;
-      if (f === 'id' || f === 'parent' || f === 'elements') throw new FixtureError(`${where}: a patch never changes the ${f} of an element`);
+      if (f === 'id' || f === 'parent' || f === 'elements')
+        throw new FixtureError(`${where}: a patch never changes the ${f} of an element`);
       if (f === 'name') e.name = v;
       else if (f === 'description') e.desc = v;
       else if (f === 'qualifiers') e.q = [...v];
-      else if (f === 'tags') e.tags = { ...v }; // SET replaces the field (A4); MERGE is the operator that keeps the other tags
+      else if (f === 'tags')
+        e.tags = { ...v }; // SET replaces the field (A4); MERGE is the operator that keeps the other tags
       else if (f === 'applications') e.apps = [...v];
       else throw new FixtureError('field ' + f);
     } else if (o === 'ADD_REL') {
       const r = op.rel;
-      if (!st.has(layer, r[0])) throw new FixtureError(`${where}: relationship from ${tgt} to ${r[0]} has no destination`);
+      if (!st.has(layer, r[0]))
+        throw new FixtureError(`${where}: relationship from ${tgt} to ${r[0]} has no destination`);
       st.get(layer, tgt).rels.push({ dest: r[0], label: r[1], q: [...(r[2] || [])] });
     } else if (o === 'SET_REL') {
       const hit = st.get(layer, tgt).rels.filter((r) => r.dest === op.dest && r.label === op.label);
-      if (hit.length !== 1) throw new FixtureError(`${where}: relationship ${tgt} -> ${op.dest} "${op.label}" matched ${hit.length}`);
+      if (hit.length !== 1)
+        throw new FixtureError(`${where}: relationship ${tgt} -> ${op.dest} "${op.label}" matched ${hit.length}`);
       hit[0].label = op.new_label;
     } else if (o === 'ADD_APP') {
       for (const a of op.values) {
@@ -151,8 +176,17 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function props(e, rewrite) {
   const tags = {};
   for (const k of Object.keys(e.tags).sort()) if (!k.startsWith('rendering-')) tags[k] = e.tags[k];
-  const fix = (layer, xs) => sorted(new Set(xs.map((x) => (rewrite ? rewrite(layer, x) : x)).filter((x) => x !== null)));
-  return { kind: e.kind, name: e.name, description: norm(e.desc), qualifiers: sorted(new Set(e.q)), tags, applications: fix('application', e.apps), uses: fix('technology', e.uses) };
+  const fix = (layer, xs) =>
+    sorted(new Set(xs.map((x) => (rewrite ? rewrite(layer, x) : x)).filter((x) => x !== null)));
+  return {
+    kind: e.kind,
+    name: e.name,
+    description: norm(e.desc),
+    qualifiers: sorted(new Set(e.q)),
+    tags,
+    applications: fix('application', e.apps),
+    uses: fix('technology', e.uses)
+  };
 }
 
 function effectiveReplaces(chain, ids) {
@@ -284,7 +318,11 @@ function counts(c) {
     else if (s === 'changed' || s === 'label-changed') r.changed++;
     else if (s === 'removed') r.removed++;
   }
-  return { elements: { new: e.new, changed: e.changed, removed: e.removed }, replacing: { moved: e.moved, split: e.split, merged: e.merged }, relationships: r };
+  return {
+    elements: { new: e.new, changed: e.changed, removed: e.removed },
+    replacing: { moved: e.moved, split: e.split, merged: e.merged },
+    relationships: r
+  };
 }
 
 /** What a layered engine would have to say about a resolved plateau: references that lead nowhere. */
@@ -296,7 +334,8 @@ function validate(st, pid) {
     const p = parentOf(ref);
     if (p && !st.has(layer, p)) errs.push(`${pid}: ${ref} has no parent ${p}`);
     for (const r of e.rels) if (!st.has(layer, r.dest)) errs.push(`${pid}: dangling reference ${ref} -> ${r.dest}`);
-    for (const a of e.apps) if (!st.has('application', a)) errs.push(`${pid}: node ${ref} lists missing application ${a}`);
+    for (const a of e.apps)
+      if (!st.has('application', a)) errs.push(`${pid}: node ${ref} lists missing application ${a}`);
     for (const u of e.uses) if (!st.has('technology', u)) errs.push(`${pid}: ${ref} uses missing ${u}`);
     if (layer === 'technology' && e.kind === 'node' && !p) errs.push(`${pid}: node ${ref} has no environment`);
   }
@@ -306,7 +345,11 @@ function validate(st, pid) {
     const env = keyRef(k).split('.')[0];
     for (const a of e.apps) hosted.set(env + '|' + a, [...(hosted.get(env + '|' + a) || []), keyRef(k)]);
   }
-  for (const [ea, nodes] of hosted) if (nodes.length > 1) errs.push(`${pid}: ${ea.split('|')[1]} is hosted by ${nodes.length} nodes of ${ea.split('|')[0]}: ${nodes.join(', ')}`);
+  for (const [ea, nodes] of hosted)
+    if (nodes.length > 1)
+      errs.push(
+        `${pid}: ${ea.split('|')[1]} is hosted by ${nodes.length} nodes of ${ea.split('|')[0]}: ${nodes.join(', ')}`
+      );
   return errs;
 }
 
@@ -340,7 +383,14 @@ const KINDS = ['person', 'system', 'container', 'component', 'node', 'environmen
 /** json.dumps of the Python model: ", " and ": " as separators. */
 function pyJson(v) {
   if (Array.isArray(v)) return '[' + v.map(pyJson).join(', ') + ']';
-  if (v && typeof v === 'object') return '{' + Object.entries(v).map(([k, x]) => q(k) + ': ' + pyJson(x)).join(', ') + '}';
+  if (v && typeof v === 'object')
+    return (
+      '{' +
+      Object.entries(v)
+        .map(([k, x]) => q(k) + ': ' + pyJson(x))
+        .join(', ') +
+      '}'
+    );
   return JSON.stringify(v);
 }
 
@@ -399,22 +449,54 @@ function manifestText(t, headerExtra) {
 function opYaml(op) {
   const o = op.operator;
   let items;
-  if (o === 'REMOVE') items = [['operator', 'REMOVE'], ['target', q(op.target)], ...(op.layer === 'technology' ? [['layer', 'technology']] : [])];
+  if (o === 'REMOVE')
+    items = [
+      ['operator', 'REMOVE'],
+      ['target', q(op.target)],
+      ...(op.layer === 'technology' ? [['layer', 'technology']] : [])
+    ];
   else if (o === 'SET') {
-    items = [['operator', 'SET'], ['target', q(op.target)]];
+    items = [
+      ['operator', 'SET'],
+      ['target', q(op.target)]
+    ];
     if (op.layer === 'technology') items.push(['layer', 'technology']);
     items.push(['field', op.field], ['value', pyJson(op.value)]);
   } else if (o === 'SET_REL') {
-    items = [['operator', 'SET'], ['target', q(op.target)], ['field', 'relationships'], ['where', `{destination: ${q(op.dest)}, label: ${q(op.label)}}`], ['value', `{label: ${q(op.new_label)}}`]];
+    items = [
+      ['operator', 'SET'],
+      ['target', q(op.target)],
+      ['field', 'relationships'],
+      ['where', `{destination: ${q(op.dest)}, label: ${q(op.label)}}`],
+      ['value', `{label: ${q(op.new_label)}}`]
+    ];
   } else if (o === 'ADD_REL') {
     const r = op.rel;
-    const v = `{destination: ${q(r[0])}, label: ${q(r[1])}` + (r[2] && r[2].length ? `, qualifiers: ${flow(r[2])}` : '') + '}';
-    items = [['operator', 'ADD'], ['target', q(op.target)], ['field', 'relationships'], ['value', v]];
+    const v =
+      `{destination: ${q(r[0])}, label: ${q(r[1])}` + (r[2] && r[2].length ? `, qualifiers: ${flow(r[2])}` : '') + '}';
+    items = [
+      ['operator', 'ADD'],
+      ['target', q(op.target)],
+      ['field', 'relationships'],
+      ['value', v]
+    ];
   } else if (o === 'ADD_APP') {
-    items = [['operator', 'ADD'], ['target', q(op.target)], ['layer', 'technology'], ['field', 'applications'], ['value', flow(op.values)]];
+    items = [
+      ['operator', 'ADD'],
+      ['target', q(op.target)],
+      ['layer', 'technology'],
+      ['field', 'applications'],
+      ['value', flow(op.values)]
+    ];
   } else if (o === 'MERGE_WHERE') {
     // the bulk edit: the elements that carry a qualifier get a tag. SET would replace their tags; MERGE keeps the ones they have (A4)
-    items = [['operator', 'MERGE'], ['json-path', q(`$.application..elements[?(@.qualifiers[?(@ == '${op.qualifier}')])]`)], ['field', op.field], ['value', pyJson(op.value)], ['expect', String(op.expect)]];
+    items = [
+      ['operator', 'MERGE'],
+      ['json-path', q(`$.application..elements[?(@.qualifiers[?(@ == '${op.qualifier}')])]`)],
+      ['field', op.field],
+      ['value', pyJson(op.value)],
+      ['expect', String(op.expect)]
+    ];
   } else throw new Error('operator ' + o);
   const out = [];
   if (op.comment) out.push('  # ' + op.comment);
@@ -429,7 +511,12 @@ function plateauText(pl) {
   if (pl.parent && pl.parent !== 'baseline') body.push('  override: ' + q(pl.parent));
   if (pl.patches.length) {
     body.push('  patches:');
-    for (const op of pl.patches) body.push(...opYaml(op).split('\n').map((l) => '  ' + l));
+    for (const op of pl.patches)
+      body.push(
+        ...opYaml(op)
+          .split('\n')
+          .map((l) => '  ' + l)
+      );
   }
   return [...head, ...body].join('\n') + '\n';
 }
@@ -506,20 +593,41 @@ function viewIn(v, S, pid) {
   if (v.viewpoint !== 'map') {
     const element = v.properties.element;
     if (has(element)) return { drawn: true, file, warnings: [], leftOut: [] };
-    return { drawn: false, file: null, warnings: [`skip \`${v.id}\`: it names \`${element}\`, which the plateau \`${pid}\` does not have`], leftOut: [] };
+    return {
+      drawn: false,
+      file: null,
+      warnings: [`skip \`${v.id}\`: it names \`${element}\`, which the plateau \`${pid}\` does not have`],
+      leftOut: []
+    };
   }
   const pinned = v.properties.pinned || [];
-  const missing = sortedUnique(['pinned', 'opened', 'hidden'].flatMap((k) => (v.properties[k] || []).filter((r) => !has(r))));
+  const missing = sortedUnique(
+    ['pinned', 'opened', 'hidden'].flatMap((k) => (v.properties[k] || []).filter((r) => !has(r)))
+  );
   if (!missing.length) return { drawn: true, file, warnings: [], leftOut: [] };
   if (pinned.length && pinned.every((r) => missing.includes(r))) {
-    return { drawn: false, file: null, warnings: [`skip \`${v.id}\`: it is pinned on ${names(sortedUnique(pinned))}, which the plateau \`${pid}\` does not have`], leftOut: [] };
+    return {
+      drawn: false,
+      file: null,
+      warnings: [
+        `skip \`${v.id}\`: it is pinned on ${names(sortedUnique(pinned))}, which the plateau \`${pid}\` does not have`
+      ],
+      leftOut: []
+    };
   }
-  return { drawn: true, file, warnings: [`the view \`${v.id}\` is drawn without ${names(missing)}, which the plateau \`${pid}\` does not have`], leftOut: missing };
+  return {
+    drawn: true,
+    file,
+    warnings: [`the view \`${v.id}\` is drawn without ${names(missing)}, which the plateau \`${pid}\` does not have`],
+    leftOut: missing
+  };
 }
 
 /** The references a view names, with their layer. */
 function viewNames(v) {
-  return ['element', 'pinned', 'opened', 'hidden'].flatMap((k) => (Array.isArray(v.properties[k]) ? v.properties[k] : v.properties[k] === undefined ? [] : [v.properties[k]]));
+  return ['element', 'pinned', 'opened', 'hidden'].flatMap((k) =>
+    Array.isArray(v.properties[k]) ? v.properties[k] : v.properties[k] === undefined ? [] : [v.properties[k]]
+  );
 }
 
 /**
@@ -530,7 +638,8 @@ function entryFacts(P, S) {
   const problems = [];
   const views = ENTRIES.filter((e) => e.kind === 'view');
   const stories = ENTRIES.filter((e) => e.kind === 'story');
-  const declaredAnywhere = (layer, ref) => ORDER.some((pid) => P[pid].manifests.some((m) => m.layer === layer && m.ref === ref));
+  const declaredAnywhere = (layer, ref) =>
+    ORDER.some((pid) => P[pid].manifests.some((m) => m.layer === layer && m.ref === ref));
   const ids = new Set();
   for (const e of ENTRIES) {
     if (ids.has(e.kind + e.id)) problems.push(`the ${e.kind} ${e.id} is declared twice`);
@@ -538,10 +647,19 @@ function entryFacts(P, S) {
   }
   const viewById = new Map(views.map((v) => [v.id, v]));
   const viewFacts = views.map((v) => {
-    for (const n of viewNames(v)) if (!declaredAnywhere(v.layer, n)) problems.push(`the view ${v.id} names ${n}, which no plateau declares`);
+    for (const n of viewNames(v))
+      if (!declaredAnywhere(v.layer, n)) problems.push(`the view ${v.id} names ${n}, which no plateau declares`);
     const plateaus = {};
     for (const pid of ORDER) plateaus[pid] = viewIn(v, S, pid);
-    return { id: v.id, file: entryFile(v), viewpoint: v.viewpoint, layer: v.layer, names: viewNames(v), pinned: v.properties.pinned || [], plateaus };
+    return {
+      id: v.id,
+      file: entryFile(v),
+      viewpoint: v.viewpoint,
+      layer: v.layer,
+      names: viewNames(v),
+      pinned: v.properties.pinned || [],
+      plateaus
+    };
   });
   const storyFacts = stories.map((st) => ({
     id: st.id,
@@ -553,9 +671,13 @@ function entryFacts(P, S) {
         view = viewById.get(step.view);
         if (!view) problems.push(`${where} names the view ${step.view}, which is not declared`);
       }
-      for (const key of ['at', 'against']) if (step[key] !== undefined && !ORDER.includes(step[key])) problems.push(`${where} says ${key}: ${step[key]}, which is not a plateau`);
+      for (const key of ['at', 'against'])
+        if (step[key] !== undefined && !ORDER.includes(step[key]))
+          problems.push(`${where} says ${key}: ${step[key]}, which is not a plateau`);
       if (step.at !== undefined && step.at === step.against) problems.push(`${where} compares a plateau with itself`);
-      if (view) for (const n of viewNames(view)) if (!declaredAnywhere(view.layer, n)) problems.push(`${where} names ${n}, which no plateau declares`);
+      if (view)
+        for (const n of viewNames(view))
+          if (!declaredAnywhere(view.layer, n)) problems.push(`${where} names ${n}, which no plateau declares`);
       // a step is told at the plateau it says, else at the plateau drawn: for each plateau that can be drawn, can the step be drawn?
       const drawableAt = (pid) => (view ? viewIn(view, S, pid).drawn : false);
       const told = {};
@@ -567,7 +689,12 @@ function entryFacts(P, S) {
         at: step.at ?? null,
         against: step.against ?? null,
         // `diff --plateau <at> --against <against>` is the comparison; with no `at` it is the plateau drawn, so the command depends on the reader
-        comparison: step.against === undefined ? null : step.at === undefined ? `diff --plateau <the plateau drawn> --against ${step.against}` : `diff --plateau ${step.at} --against ${step.against}`,
+        comparison:
+          step.against === undefined
+            ? null
+            : step.at === undefined
+              ? `diff --plateau <the plateau drawn> --against ${step.against}`
+              : `diff --plateau ${step.at} --against ${step.against}`,
         drawnWhenPlateauDrawnIs: told
       };
     })
@@ -577,24 +704,70 @@ function entryFacts(P, S) {
     if (!cond) problems.push(`the fixture does not hold ${what}`);
   };
   const declarers = (v) => ORDER.filter((pid) => viewIn(v, S, pid).drawn);
-  some(views.some((v) => declarers(v).length === ORDER.length), 'a view that every plateau can draw');
-  some(views.some((v) => v.viewpoint !== 'map' && declarers(v).length === 1), 'a view that names an element one plateau alone declares');
-  some(views.some((v) => v.viewpoint !== 'map' && declarers(v).length > 0 && declarers(v).length < ORDER.length), 'a view that some plateau cannot draw');
-  some(views.some((v) => v.viewpoint === 'map' && v.layer === 'technology'), 'a saved map of the technology layer');
-  some(views.some((v) => v.viewpoint === 'map' && v.layer === 'application'), 'a saved map of the application layer');
-  some(views.some((v) => v.viewpoint === 'map' && ORDER.some((pid) => viewIn(v, S, pid).drawn && viewIn(v, S, pid).leftOut.length)), 'a map that leaves out an entry the plateau lacks');
-  some(views.some((v) => v.viewpoint === 'map' && ORDER.some((pid) => !viewIn(v, S, pid).drawn)), 'a map that a plateau cannot draw');
-  some(stories.some((st) => st.steps.some((x) => (x.at === 'saas' && x.against === 'baseline') || (x.at === 'inhouse' && x.against === 'saas'))), 'a story with a step told at a plateau of the fork');
-  some(stories.some((st) => st.steps.some((x) => x.at === 'inhouse' && x.against === 'saas')), 'a step that compares the two plateaus of the fork (they do not stack)');
-  some(stories.some((st) => st.steps.some((x) => x.at === 'marketplace' && x.against === 'baseline')), 'a step compared with a plateau further up the chain');
-  some(stories.some((st) => st.steps.some((x) => x.at === undefined && x.against !== undefined)), 'a step with `against` and no `at`');
-  some(stories.some((st) => st.steps.every((x) => x.at === undefined && x.against === undefined)), 'a story whose steps name no plateau');
+  some(
+    views.some((v) => declarers(v).length === ORDER.length),
+    'a view that every plateau can draw'
+  );
+  some(
+    views.some((v) => v.viewpoint !== 'map' && declarers(v).length === 1),
+    'a view that names an element one plateau alone declares'
+  );
+  some(
+    views.some((v) => v.viewpoint !== 'map' && declarers(v).length > 0 && declarers(v).length < ORDER.length),
+    'a view that some plateau cannot draw'
+  );
+  some(
+    views.some((v) => v.viewpoint === 'map' && v.layer === 'technology'),
+    'a saved map of the technology layer'
+  );
+  some(
+    views.some((v) => v.viewpoint === 'map' && v.layer === 'application'),
+    'a saved map of the application layer'
+  );
+  some(
+    views.some(
+      (v) => v.viewpoint === 'map' && ORDER.some((pid) => viewIn(v, S, pid).drawn && viewIn(v, S, pid).leftOut.length)
+    ),
+    'a map that leaves out an entry the plateau lacks'
+  );
+  some(
+    views.some((v) => v.viewpoint === 'map' && ORDER.some((pid) => !viewIn(v, S, pid).drawn)),
+    'a map that a plateau cannot draw'
+  );
+  some(
+    stories.some((st) =>
+      st.steps.some(
+        (x) => (x.at === 'saas' && x.against === 'baseline') || (x.at === 'inhouse' && x.against === 'saas')
+      )
+    ),
+    'a story with a step told at a plateau of the fork'
+  );
+  some(
+    stories.some((st) => st.steps.some((x) => x.at === 'inhouse' && x.against === 'saas')),
+    'a step that compares the two plateaus of the fork (they do not stack)'
+  );
+  some(
+    stories.some((st) => st.steps.some((x) => x.at === 'marketplace' && x.against === 'baseline')),
+    'a step compared with a plateau further up the chain'
+  );
+  some(
+    stories.some((st) => st.steps.some((x) => x.at === undefined && x.against !== undefined)),
+    'a step with `against` and no `at`'
+  );
+  some(
+    stories.some((st) => st.steps.every((x) => x.at === undefined && x.against === undefined)),
+    'a story whose steps name no plateau'
+  );
   // a story whose steps name no plateau can be drawn in every plateau: it is the same story whatever plateau is drawn
   for (const st of storyFacts) {
     const own = st.steps.every((x) => x.at === null && x.against === null);
     for (const x of st.steps) {
       if (own) {
-        for (const pid of ORDER) if (!x.drawnWhenPlateauDrawnIs[pid]) problems.push(`the story ${st.id}, which names no plateau, cannot draw step ${x.number} when ${pid} is drawn`);
+        for (const pid of ORDER)
+          if (!x.drawnWhenPlateauDrawnIs[pid])
+            problems.push(
+              `the story ${st.id}, which names no plateau, cannot draw step ${x.number} when ${pid} is drawn`
+            );
       } else if (x.at !== null && !x.drawnWhenPlateauDrawnIs[x.at]) {
         problems.push(`the story ${st.id} step ${x.number} is told at ${x.at}, which cannot draw what it names`);
       }
@@ -626,7 +799,10 @@ function writeLayered(P) {
     for (const file of new Set(pl.manifests.map((e) => e.file))) {
       const t = layeredTree(pl, file);
       const parent = parentOf(t.e.ref);
-      const extra = [...(pid === 'baseline' ? [] : [`  plateau: ${q(pl.id)}`]), ...(parent ? [`  parent: ${q(parent)}`] : [])];
+      const extra = [
+        ...(pid === 'baseline' ? [] : [`  plateau: ${q(pl.id)}`]),
+        ...(parent ? [`  parent: ${q(parent)}`] : [])
+      ];
       files.set(file, manifestText(t, extra));
     }
   }
@@ -741,7 +917,11 @@ function parseYaml(source) {
       if (!m) throw new Error('YAML: cannot read ' + JSON.stringify(lines[pos].text));
       pos++;
       if (m[2] !== undefined) out[m[1]] = scalar(m[2]);
-      else if (pos < lines.length && (lines[pos].indent > indent || (lines[pos].indent === indent && lines[pos].text.startsWith('- ')))) out[m[1]] = block(lines[pos].indent);
+      else if (
+        pos < lines.length &&
+        (lines[pos].indent > indent || (lines[pos].indent === indent && lines[pos].text.startsWith('- ')))
+      )
+        out[m[1]] = block(lines[pos].indent);
       else out[m[1]] = null;
     }
     return out;
@@ -749,7 +929,14 @@ function parseYaml(source) {
   return lines.length ? block(lines[0].indent) : {};
 }
 
-const LAYER_OF = { person: 'application', system: 'application', container: 'application', component: 'application', node: 'technology', environment: 'technology' };
+const LAYER_OF = {
+  person: 'application',
+  system: 'application',
+  container: 'application',
+  component: 'application',
+  node: 'technology',
+  environment: 'technology'
+};
 
 /** The elements of a parsed manifest, flat, in document order. */
 function flatten(doc, file) {
@@ -782,10 +969,23 @@ function opFromYaml(p) {
     const m = /@ == '([^']+)'/.exec(p['json-path']);
     return { operator: 'MERGE_WHERE', qualifier: m[1], field: p.field, value: p.value, expect: p.expect };
   }
-  if (p.operator === 'SET' && p.where) return { operator: 'SET_REL', target: p.target, dest: p.where.destination, label: p.where.label, new_label: p.value.label };
+  if (p.operator === 'SET' && p.where)
+    return {
+      operator: 'SET_REL',
+      target: p.target,
+      dest: p.where.destination,
+      label: p.where.label,
+      new_label: p.value.label
+    };
   if (p.operator === 'SET') return { operator: 'SET', target: p.target, field: p.field, value: p.value, ...layer };
-  if (p.operator === 'ADD' && p.field === 'relationships') return { operator: 'ADD_REL', target: p.target, rel: [p.value.destination, p.value.label, p.value.qualifiers || []] };
-  if (p.operator === 'ADD' && p.field === 'applications') return { operator: 'ADD_APP', target: p.target, values: p.value, layer: 'technology' };
+  if (p.operator === 'ADD' && p.field === 'relationships')
+    return {
+      operator: 'ADD_REL',
+      target: p.target,
+      rel: [p.value.destination, p.value.label, p.value.qualifiers || []]
+    };
+  if (p.operator === 'ADD' && p.field === 'applications')
+    return { operator: 'ADD_APP', target: p.target, values: p.value, layer: 'technology' };
   throw new Error('patch not understood: ' + JSON.stringify(p));
 }
 
@@ -822,14 +1022,16 @@ function readLayered(dir) {
     const kind = doc.header.kind.split('/').at(-1);
     if (kind === 'view' || kind === 'story') {
       // a view and a story belong to no plateau: no `plateau:` header, and the folder is the one no plateau owns
-      if (doc.header.plateau !== undefined) throw new Error(`${f}: a ${kind} belongs to no plateau and says ${doc.header.plateau}`);
+      if (doc.header.plateau !== undefined)
+        throw new Error(`${f}: a ${kind} belongs to no plateau and says ${doc.header.plateau}`);
       entries.push({ file: f, kind, content: doc.content });
       continue;
     }
     const folder = f.split('/')[0];
     const owner = plateaus[doc.header.plateau || 'baseline'];
     if (!owner) throw new Error(`${f}: names the plateau ${doc.header.plateau}, which has no plateau.yaml`);
-    if (owner.folder !== folder) throw new Error(`${f}: names the plateau ${owner.id}, which is the folder ${owner.folder}`);
+    if (owner.folder !== folder)
+      throw new Error(`${f}: names the plateau ${owner.id}, which is the folder ${owner.folder}`);
     for (const e of flatten(doc, dir.split('/').at(-1) + '/' + f)) owner.manifests.push(e);
   }
   return { plateaus, entries };
@@ -844,8 +1046,10 @@ function diffPlateau(pid, resolved, model) {
   const problems = [];
   const a = new Set(resolved.el.keys());
   const b = new Set(model.el.keys());
-  for (const k of a) if (!b.has(k)) problems.push(`${pid}: ${keyRef(k)} is in the resolution of the files and not in the model`);
-  for (const k of b) if (!a.has(k)) problems.push(`${pid}: ${keyRef(k)} is in the model and not in the resolution of the files`);
+  for (const k of a)
+    if (!b.has(k)) problems.push(`${pid}: ${keyRef(k)} is in the resolution of the files and not in the model`);
+  for (const k of b)
+    if (!a.has(k)) problems.push(`${pid}: ${keyRef(k)} is in the model and not in the resolution of the files`);
   for (const k of a) {
     if (!b.has(k)) continue;
     const x = face(resolved.el.get(k), resolved.history[pid].get(k) || []);
@@ -894,7 +1098,9 @@ function writeRunToday(variants) {
     }
     const cells = lines[at[0]].slice(2, -2).split(' | ');
     if (cells.length !== 4) {
-      fail(`the row of ${v.id} in the document has ${cells.length} cells, the table has four (id, change, expected, run today)`);
+      fail(
+        `the row of ${v.id} in the document has ${cells.length} cells, the table has four (id, change, expected, run today)`
+      );
       continue;
     }
     cells[3] = v.runToday;
@@ -907,7 +1113,9 @@ function writeRunToday(variants) {
 
 function main() {
   if (process.argv.length > 2) {
-    console.error('usage: node generate.mjs (it takes no argument: it writes layered/, variants/ and expected/ next to itself)');
+    console.error(
+      'usage: node generate.mjs (it takes no argument: it writes layered/, variants/ and expected/ next to itself)'
+    );
     process.exit(2);
   }
   const P = build();
@@ -930,7 +1138,9 @@ function main() {
       views: VIEWS[pid]
     };
     const want = DOCUMENT.sizes[pid];
-    for (const f of Object.keys(want)) if (f !== 'views' && sizes[pid][f] !== want[f]) fail(`${pid}: ${f} is ${sizes[pid][f]}, the document says ${want[f]}`);
+    for (const f of Object.keys(want))
+      if (f !== 'views' && sizes[pid][f] !== want[f])
+        fail(`${pid}: ${f} is ${sizes[pid][f]}, the document says ${want[f]}`);
   }
 
   // ---- comparisons
@@ -938,7 +1148,10 @@ function main() {
   const changes = {};
   const results = {};
   for (const c of COMPARISONS) {
-    const r = compare(c.chain.map((id) => S[id]), c.chain);
+    const r = compare(
+      c.chain.map((id) => S[id]),
+      c.chain
+    );
     results[c.id] = r;
     const n = counts(r);
     comparisons.push({
@@ -951,19 +1164,38 @@ function main() {
       verified: c.source === 'tool' ? 'archicode diff' : 'model only',
       command: c.command, // null for P6, which only a tool that reads the last step's `replaces` alone would print: the tool has one answer for that question, listed under P4 (composed)
       // the warnings the tool prints for a `replaces` that names something the compared plateau does not have (the `replaces` of the layers between two plateaus are composed, P4)
-      ignoredReplaces: c.ignored ?? (c.source === 'tool' ? ignoredReplaces(S[c.chain[0]], S[c.chain.at(-1)], c.chain.at(-1)) : null),
+      ignoredReplaces:
+        c.ignored ?? (c.source === 'tool' ? ignoredReplaces(S[c.chain[0]], S[c.chain.at(-1)], c.chain.at(-1)) : null),
       note: c.note || null
     });
     const want = DOCUMENT.comparisons[c.id];
-    if (!same(want, [n.elements.new, n.elements.changed, n.elements.removed, n.replacing.moved, n.replacing.split, n.replacing.merged, n.relationships.new, n.relationships.changed, n.relationships.removed])) {
+    if (
+      !same(want, [
+        n.elements.new,
+        n.elements.changed,
+        n.elements.removed,
+        n.replacing.moved,
+        n.replacing.split,
+        n.replacing.merged,
+        n.relationships.new,
+        n.relationships.changed,
+        n.relationships.removed
+      ])
+    ) {
       fail(`${c.id}: the model gives ${JSON.stringify(n)}, the document says ${JSON.stringify(want)}`);
     }
     changes[c.id] = {
-      elements: [...r.states].filter(([, s]) => s !== 'none').map(([k, s]) => ({ layer: keyLayer(k), ref: keyRef(k), state: s })).sort((x, y) => (x.layer + '|' + x.ref).localeCompare(y.layer + '|' + y.ref)),
-      relationships: [...r.relState].filter(([, s]) => s !== 'none').map(([k, s]) => {
-        const [layer, source, destination, label] = JSON.parse(k);
-        return { layer, source, destination, label, state: s };
-      }).sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)))
+      elements: [...r.states]
+        .filter(([, s]) => s !== 'none')
+        .map(([k, s]) => ({ layer: keyLayer(k), ref: keyRef(k), state: s }))
+        .sort((x, y) => (x.layer + '|' + x.ref).localeCompare(y.layer + '|' + y.ref)),
+      relationships: [...r.relState]
+        .filter(([, s]) => s !== 'none')
+        .map(([k, s]) => {
+          const [layer, source, destination, label] = JSON.parse(k);
+          return { layer, source, destination, label, state: s };
+        })
+        .sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)))
     };
   }
 
@@ -971,8 +1203,13 @@ function main() {
   for (const n of NOTABLE) {
     for (const c of n.checks) {
       const r = results[c.in];
-      const got = c.relationship ? r.relState.get(JSON.stringify(['application', ...c.relationship])) : r.states.get(key(c.layer, c.ref));
-      if (got !== c.state) fail(`${n.id}: in ${c.in} ${c.relationship ? c.relationship.join(' -> ') : c.ref} is ${got}, expected ${c.state}`);
+      const got = c.relationship
+        ? r.relState.get(JSON.stringify(['application', ...c.relationship]))
+        : r.states.get(key(c.layer, c.ref));
+      if (got !== c.state)
+        fail(
+          `${n.id}: in ${c.in} ${c.relationship ? c.relationship.join(' -> ') : c.ref} is ${got}, expected ${c.state}`
+        );
     }
   }
   // N12 reads: five elements are changed by the bulk edit and nothing else
@@ -983,8 +1220,15 @@ function main() {
     const edit = P.marketplace.patches.find((op) => op.operator === 'MERGE_WHERE');
     if (edit.expect !== 12) fail(`N12: the bulk edit matched ${edit.expect}, the guard says 12`);
     if (tagged.length !== 12) fail(`N12: ${tagged.length} elements carry the tag, expected 12`);
-    const alone = changedByEdit.filter((k) => !P.marketplace.patches.some((op) => op.target === keyRef(k)) && !P.marketplace.patches.some((op) => op.rel && op.target === keyRef(k)));
-    if (alone.length !== 5) fail(`N12: ${alone.length} elements are changed by the bulk edit and nothing else, expected 5 (${alone.map(keyRef).join(', ')})`);
+    const alone = changedByEdit.filter(
+      (k) =>
+        !P.marketplace.patches.some((op) => op.target === keyRef(k)) &&
+        !P.marketplace.patches.some((op) => op.rel && op.target === keyRef(k))
+    );
+    if (alone.length !== 5)
+      fail(
+        `N12: ${alone.length} elements are changed by the bulk edit and nothing else, expected 5 (${alone.map(keyRef).join(', ')})`
+      );
   }
 
   // ---- renditions
@@ -1021,7 +1265,10 @@ function main() {
     }
     resolvedSizes[pid] = stateOf[pid].el.size;
     for (const p of diffPlateau(pid, stateOf[pid], S[pid])) fail('resolver: ' + p);
-    if (resolvedSizes[pid] !== DOCUMENT.sizes[pid].elements) fail(`resolver: ${pid} resolves to ${resolvedSizes[pid]} elements, the document says ${DOCUMENT.sizes[pid].elements}`);
+    if (resolvedSizes[pid] !== DOCUMENT.sizes[pid].elements)
+      fail(
+        `resolver: ${pid} resolves to ${resolvedSizes[pid]} elements, the document says ${DOCUMENT.sizes[pid].elements}`
+      );
   }
 
   // ---- the views and the stories: what they name exists, the fixture holds what issue #115 asks for, and the files read back are the description
@@ -1031,9 +1278,13 @@ function main() {
   for (const e of ENTRIES) {
     const x = written.get(entryFile(e));
     if (!x) fail(`views and stories: ${entryFile(e)} was not read back`);
-    else if (x.kind !== e.kind || JSON.stringify(x.content) !== JSON.stringify(entryContent(e))) fail(`views and stories: ${entryFile(e)} read back from the disk is not the description\n    files  ${JSON.stringify(x.content)}\n    model  ${JSON.stringify(entryContent(e))}`);
+    else if (x.kind !== e.kind || JSON.stringify(x.content) !== JSON.stringify(entryContent(e)))
+      fail(
+        `views and stories: ${entryFile(e)} read back from the disk is not the description\n    files  ${JSON.stringify(x.content)}\n    model  ${JSON.stringify(entryContent(e))}`
+      );
   }
-  if (read.entries.length !== ENTRIES.length) fail(`views and stories: ${read.entries.length} read back, ${ENTRIES.length} described`);
+  if (read.entries.length !== ENTRIES.length)
+    fail(`views and stories: ${read.entries.length} read back, ${ENTRIES.length} described`);
 
   // ---- the variants: described, and for V1 to V8 also run in the model
   const variants = new Map();
@@ -1045,27 +1296,67 @@ function main() {
       const run = runAll(Q, v.order || ORDER);
       model = run.messages;
       if (!model.length) fail(`${v.id}: the model finds nothing wrong, the description expects ${v.expected}`);
-      for (const word of v.mentions) if (!model.some((m) => m.includes(word))) fail(`${v.id}: the model's messages do not mention "${word}":\n  ${model.join('\n  ') || '(none)'}`);
+      for (const word of v.mentions)
+        if (!model.some((m) => m.includes(word)))
+          fail(`${v.id}: the model's messages do not mention "${word}":\n  ${model.join('\n  ') || '(none)'}`);
     }
-    if (typeof v.runToday !== 'string' || !v.runToday.trim()) fail(`${v.id}: no runToday (what a tool does with it today)`);
-    variants.set(`${v.id}.json`, json({ id: v.id, kind: 'negative variant', change: v.change, expected: v.expected, class: v.class, mentions: v.mentions, model, status: v.runToday }));
+    if (typeof v.runToday !== 'string' || !v.runToday.trim())
+      fail(`${v.id}: no runToday (what a tool does with it today)`);
+    variants.set(
+      `${v.id}.json`,
+      json({
+        id: v.id,
+        kind: 'negative variant',
+        change: v.change,
+        expected: v.expected,
+        class: v.class,
+        mentions: v.mentions,
+        model,
+        status: v.runToday
+      })
+    );
   }
   const declaredAll = P.inhouse.manifests.length + P.marketplace.manifests.length;
-  if (declaredAll !== MERGES.M2.declared) fail(`M2: inhouse would declare ${declaredAll}, the document says ${MERGES.M2.declared}`);
-  if (P.marketplace.patches.length !== MERGES.M2.foldedPatches + MERGES.M2.keptPatches) fail(`M2: ${P.marketplace.patches.length} patches, the document counts ${MERGES.M2.foldedPatches} + ${MERGES.M2.keptPatches}`);
+  if (declaredAll !== MERGES.M2.declared)
+    fail(`M2: inhouse would declare ${declaredAll}, the document says ${MERGES.M2.declared}`);
+  if (P.marketplace.patches.length !== MERGES.M2.foldedPatches + MERGES.M2.keptPatches)
+    fail(
+      `M2: ${P.marketplace.patches.length} patches, the document counts ${MERGES.M2.foldedPatches} + ${MERGES.M2.keptPatches}`
+    );
   for (const [id, mg] of Object.entries(MERGES)) {
-    variants.set(`${id}.json`, json({ id, kind: 'merge scenario', ...mg, status: 'described; not run (the command does not exist: tmorin/archicode#65)' }));
+    variants.set(
+      `${id}.json`,
+      json({
+        id,
+        kind: 'merge scenario',
+        ...mg,
+        status: 'described; not run (the command does not exist: tmorin/archicode#65)'
+      })
+    );
   }
 
   // ---- expected/
   const expected = new Map();
-  expected.set('sizes.json', json({ elements: 'application + technology', plateaus: sizes, source: 'computed by the generator from the description; views: counted with the current command line' }));
+  expected.set(
+    'sizes.json',
+    json({
+      elements: 'application + technology',
+      plateaus: sizes,
+      source: 'computed by the generator from the description; views: counted with the current command line'
+    })
+  );
   expected.set('renditions.json', json(renditions));
   expected.set('comparisons.json', json(comparisons));
   expected.set('changes.json', json(changes));
   expected.set('entries.json', json(entries.facts));
-  expected.set('notable-cases.json', json(NOTABLE.map((n) => ({ id: n.id, case: n.case, where: n.where, state: n.state, why: n.why, checks: n.checks }))));
-  expected.set('README.md', 'Computed by `generate.mjs` from the description (the model of the specification). `comparisons.json` says, for each of P1 to P6, whether `archicode diff` verifies the counts or only the model does.\n`changes.json` is the table of changes of each comparison as the model computes it (elements and relationships whose state is not `none`).\n`entries.json` says, for each view and each step of each story of `layered/shared/`, in which plateaus it can be drawn and what the command line says when it cannot.\n');
+  expected.set(
+    'notable-cases.json',
+    json(NOTABLE.map((n) => ({ id: n.id, case: n.case, where: n.where, state: n.state, why: n.why, checks: n.checks })))
+  );
+  expected.set(
+    'README.md',
+    'Computed by `generate.mjs` from the description (the model of the specification). `comparisons.json` says, for each of P1 to P6, whether `archicode diff` verifies the counts or only the model does.\n`changes.json` is the table of changes of each comparison as the model computes it (elements and relationships whose state is not `none`).\n`entries.json` says, for each view and each step of each story of `layered/shared/`, in which plateaus it can be drawn and what the command line says when it cannot.\n'
+  );
   writeTree(path.join(here, 'variants'), variants);
   writeTree(path.join(here, 'expected'), expected);
   const specRows = writeRunToday(VARIANTS);
@@ -1074,23 +1365,41 @@ function main() {
   console.log('plateau      application technology elements relationships files declared patches');
   for (const pid of ORDER) {
     const s = sizes[pid];
-    console.log(`${pid.padEnd(12)} ${String(s.application).padStart(11)} ${String(s.technology).padStart(10)} ${String(s.elements).padStart(8)} ${String(s.relationships).padStart(13)} ${String(s.files).padStart(5)} ${String(s.declared).padStart(8)} ${String(s.patches).padStart(7)}`);
+    console.log(
+      `${pid.padEnd(12)} ${String(s.application).padStart(11)} ${String(s.technology).padStart(10)} ${String(s.elements).padStart(8)} ${String(s.relationships).padStart(13)} ${String(s.files).padStart(5)} ${String(s.declared).padStart(8)} ${String(s.patches).padStart(7)}`
+    );
   }
-  console.log('resolver     ' + ORDER.map((pid) => `${pid} ${resolvedSizes[pid]}`).join(', ') + ' elements (the layered rendition resolved from the files, compared with the model)');
-  console.log(`layered      ${layeredSize.files} files (${layeredSize.manifests} manifests of elements, ${layeredSize.plateauFiles} plateau.yaml, ${layeredSize.views} views, ${layeredSize.stories} stories; ${layeredSize.patches} patches), ${layeredSize.lines} lines, ${layeredSize.bytes} bytes`);
-  for (const v of entries.facts.views) console.log(`view         ${v.id.padEnd(24)} drawn in ${ORDER.filter((pid) => v.plateaus[pid].drawn).join(', ') || '-'}`);
+  console.log(
+    'resolver     ' +
+      ORDER.map((pid) => `${pid} ${resolvedSizes[pid]}`).join(', ') +
+      ' elements (the layered rendition resolved from the files, compared with the model)'
+  );
+  console.log(
+    `layered      ${layeredSize.files} files (${layeredSize.manifests} manifests of elements, ${layeredSize.plateauFiles} plateau.yaml, ${layeredSize.views} views, ${layeredSize.stories} stories; ${layeredSize.patches} patches), ${layeredSize.lines} lines, ${layeredSize.bytes} bytes`
+  );
+  for (const v of entries.facts.views)
+    console.log(
+      `view         ${v.id.padEnd(24)} drawn in ${ORDER.filter((pid) => v.plateaus[pid].drawn).join(', ') || '-'}`
+    );
   for (const st of entries.facts.stories) console.log(`story        ${st.id.padEnd(24)} ${st.steps.length} steps`);
   for (const c of comparisons) {
     const e = c.elements;
     const r = c.relationships;
-    console.log(`${c.id} ${c.comparison.padEnd(46)} +${e.new} ~${e.changed} -${e.removed}  ${c.replacing.moved} moved ${c.replacing.split} split ${c.replacing.merged} merged  relationships +${r.new} ~${r.changed} -${r.removed}  [${c.verified}]`);
+    console.log(
+      `${c.id} ${c.comparison.padEnd(46)} +${e.new} ~${e.changed} -${e.removed}  ${c.replacing.moved} moved ${c.replacing.split} split ${c.replacing.merged} merged  relationships +${r.new} ~${r.changed} -${r.removed}  [${c.verified}]`
+    );
   }
-  console.log(`variants/    ${variants.size} descriptions; expected/ ${expected.size} files` + (specRows === null ? '' : `; the document: ${specRows} rows of the table of variants`));
+  console.log(
+    `variants/    ${variants.size} descriptions; expected/ ${expected.size} files` +
+      (specRows === null ? '' : `; the document: ${specRows} rows of the table of variants`)
+  );
   if (failures.length) {
     console.error('\nFAILED:\n' + failures.map((f) => '  - ' + f).join('\n'));
     process.exit(1);
   }
-  console.log('ok: the description matches the document, and the layered rendition resolves to the model for the four plateaus');
+  console.log(
+    'ok: the description matches the document, and the layered rendition resolves to the model for the four plateaus'
+  );
 }
 
 main();

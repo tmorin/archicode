@@ -18,7 +18,13 @@ const { inPlateau, layeredFiles, openLayered, compareWith } = require('./layered
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
-const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&rarr;/g, '→').replace(/&times;/g, '×').replace(/\s+/g, ' ').trim();
+const text = (html) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&rarr;/g, '→')
+    .replace(/&times;/g, '×')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 /** What changed between two texts, line by line (a longest common subsequence): the lines that went and the lines that came, each in order. */
 function lineDiff(before, after) {
@@ -26,15 +32,18 @@ function lineDiff(before, after) {
   const b = after.split('\n');
   const table = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
   for (let i = a.length - 1; i >= 0; i--) {
-    for (let j = b.length - 1; j >= 0; j--) table[i][j] = a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
+    for (let j = b.length - 1; j >= 0; j--)
+      table[i][j] = a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
   }
   const removed = [];
   const added = [];
   let i = 0;
   let j = 0;
   while (i < a.length || j < b.length) {
-    if (i < a.length && j < b.length && a[i] === b[j]) { i++; j++; }
-    else if (j < b.length && (i === a.length || table[i][j + 1] >= table[i + 1][j])) added.push(b[j++]);
+    if (i < a.length && j < b.length && a[i] === b[j]) {
+      i++;
+      j++;
+    } else if (j < b.length && (i === a.length || table[i][j + 1] >= table[i + 1][j])) added.push(b[j++]);
     else removed.push(a[i++]);
   }
   return { removed, added };
@@ -85,10 +94,28 @@ const BAKERY = [
   ''
 ].join('\n');
 const SHOP = element('system', null, 'shop', 'Shop');
-const TILL = element('container', 'shop', 'till', 'Till', '  relationships:\n    - destination: "bakery.oven.timer"\n      label: "asks"\n    - destination: "bakery.oven"\n      label: "orders from"\n');
-const SCREEN = element('component', 'shop.till', 'screen', 'Screen', '  relationships:\n    - destination: "bakery.oven.gauge"\n      label: "shows"\n');
+const TILL = element(
+  'container',
+  'shop',
+  'till',
+  'Till',
+  '  relationships:\n    - destination: "bakery.oven.timer"\n      label: "asks"\n    - destination: "bakery.oven"\n      label: "orders from"\n'
+);
+const SCREEN = element(
+  'component',
+  'shop.till',
+  'screen',
+  'Screen',
+  '  relationships:\n    - destination: "bakery.oven.gauge"\n      label: "shows"\n'
+);
 const DELIVERY = element('system', null, 'delivery', 'Delivery');
-const VAN = element('container', 'delivery', 'van', 'Van', '  relationships:\n    - destination: bakery.oven\n      label: "collects from"\n    - destination: "shop.till"\n      label: "delivers to"\n    - destination: shop.till.screen\n      label: "is read on"\n');
+const VAN = element(
+  'container',
+  'delivery',
+  'van',
+  'Van',
+  '  relationships:\n    - destination: bakery.oven\n      label: "collects from"\n    - destination: "shop.till"\n      label: "delivers to"\n    - destination: shop.till.screen\n      label: "is read on"\n'
+);
 const PROD = [
   '# where the bakery runs',
   'header:',
@@ -115,11 +142,34 @@ const PROD = [
   '# end of prod',
   ''
 ].join('\n');
-const STAGING = element('environment', null, 'staging', 'Staging', '  uses:\n    - prod.rack-a\n    - prod.rack-a.blade\n');
-const MAP_VIEW = 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "ovens"\n  name: "The ovens"\n  viewpoint: "overview"\n  layer: application\n  properties:\n    element: "bakery.oven"\n';
+const STAGING = element(
+  'environment',
+  null,
+  'staging',
+  'Staging',
+  '  uses:\n    - prod.rack-a\n    - prod.rack-a.blade\n'
+);
+const MAP_VIEW =
+  'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "ovens"\n  name: "The ovens"\n  viewpoint: "overview"\n  layer: application\n  properties:\n    element: "bakery.oven"\n';
 
 function element(kind, parent, id, name, extra) {
-  return '# the manifest of ' + id + '\nheader:\n  kind: "archicode.morin.io/' + kind + '"\n' + (parent ? '  parent: "' + parent + '"\n' : '') + '  version: "1"\n\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n' + (extra || '') + '# end of ' + id + '\n';
+  return (
+    '# the manifest of ' +
+    id +
+    '\nheader:\n  kind: "archicode.morin.io/' +
+    kind +
+    '"\n' +
+    (parent ? '  parent: "' + parent + '"\n' : '') +
+    '  version: "1"\n\ncontent:\n  id: "' +
+    id +
+    '"\n  name: "' +
+    name +
+    '"\n' +
+    (extra || '') +
+    '# end of ' +
+    id +
+    '\n'
+  );
 }
 
 const MANIFESTS = {
@@ -137,7 +187,8 @@ const PLATEAU_LIST = [
   { id: 'base', name: 'Base', path: 'plateaus/10_base' },
   { id: 'target', name: 'Target', path: 'plateaus/20_target' }
 ];
-const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
+const folder = (dir, files) =>
+  Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
 const target = (name) => 'plateaus/20_target/' + name;
 
 /**
@@ -147,13 +198,22 @@ const target = (name) => 'plateaus/20_target/' + name;
 async function open(options = {}) {
   const manifests = options.manifests || MANIFESTS;
   if (options.plateaus === false) {
-    const files = Object.assign({ '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body])));
+    const files = Object.assign(
+      { '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' },
+      Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body]))
+    );
     return openLayered(createApp, memFolder, files, {});
   }
   // a view belongs to no plateau (run 0100): it is declared once, in the target's folder, not once in each
   const withoutViews = (all) => Object.fromEntries(Object.entries(all).filter(([name]) => !name.startsWith('view.')));
-  const files = layeredFiles(PLATEAU_LIST, Object.assign({}, folder('10_base', withoutViews(options.base || manifests)), folder('20_target', manifests)));
-  return openLayered(createApp, memFolder, files, { drawn: 'target', compared: options.compare === false ? undefined : 'base' });
+  const files = layeredFiles(
+    PLATEAU_LIST,
+    Object.assign({}, folder('10_base', withoutViews(options.base || manifests)), folder('20_target', manifests))
+  );
+  return openLayered(createApp, memFolder, files, {
+    drawn: 'target',
+    compared: options.compare === false ? undefined : 'base'
+  });
 }
 /** The manifests as the target holds them on disk: the same texts, with the plateau in their header. */
 const ON_DISK = Object.fromEntries(Object.entries(MANIFESTS).map(([name, body]) => [name, inPlateau('target', body)]));
@@ -163,8 +223,8 @@ const movedFiles = (mem) => mem.writes.slice().sort();
 const targetTexts = (mem) => Object.fromEntries(Object.keys(MANIFESTS).map((name) => [name, fileOf(mem, name)]));
 /** The names of the files whose text is not the original. */
 const changedFiles = (mem) => Object.keys(MANIFESTS).filter((name) => fileOf(mem, name) !== ON_DISK[name]);
-const move = (sandbox, reference, parent, layer) => sandbox.commitMoveElement(reference, layer || 'application', parent);
-
+const move = (sandbox, reference, parent, layer) =>
+  sandbox.commitMoveElement(reference, layer || 'application', parent);
 
 // ---- 1. A nested element with its children, in one file: the block moves as it was written, every reference to it follows, in every file ----
 
@@ -177,20 +237,57 @@ test('moving a container with its children puts the block under the new parent a
   assert.ok(run(sandbox, 'modelVersion') > version, 'the models changed: the comparison is asked again');
   // the model: the element and its children are at their new references, the old ones are gone
   const references = Array.from(state.index.application.keys());
-  for (const kept of ['delivery.oven', 'delivery.oven.gauge', 'delivery.oven.timer', 'bakery.mixer', 'bakery.shelf', 'shop.till.screen']) assert.ok(references.includes(kept), kept);
-  for (const gone of ['bakery.oven', 'bakery.oven.gauge', 'bakery.oven.timer']) assert.ok(!references.includes(gone), gone + ' is gone');
+  for (const kept of [
+    'delivery.oven',
+    'delivery.oven.gauge',
+    'delivery.oven.timer',
+    'bakery.mixer',
+    'bakery.shelf',
+    'shop.till.screen'
+  ])
+    assert.ok(references.includes(kept), kept);
+  for (const gone of ['bakery.oven', 'bakery.oven.gauge', 'bakery.oven.timer'])
+    assert.ok(!references.includes(gone), gone + ' is gone');
   assert.equal(state.index.application.get('delivery.oven').children.length, 2);
   assert.equal(state.dirtyReferences.has('application:delivery.oven'), true, 'marked as modified');
   // every reference that pointed at it resolves: the destinations of the other files, the deployment, the view
   assert.equal(state.relationshipStats.dangling, 0, 'no relationship points at nothing');
-  assert.deepEqual(plain(state.index.application.get('shop.till').relationships.map((r) => r.destination)), ['delivery.oven.timer', 'delivery.oven']);
-  assert.deepEqual(plain(state.index.technology.get('prod.rack-a').applications), ['delivery.oven', 'delivery.oven.timer']);
+  assert.deepEqual(plain(state.index.application.get('shop.till').relationships.map((r) => r.destination)), [
+    'delivery.oven.timer',
+    'delivery.oven'
+  ]);
+  assert.deepEqual(plain(state.index.technology.get('prod.rack-a').applications), [
+    'delivery.oven',
+    'delivery.oven.timer'
+  ]);
   // nothing is on disk until the user saves
   assert.deepEqual(changedFiles(mem), []);
   await sandbox.saveAllChanges();
   assert.equal(run(sandbox, 'saveStatus').state, 'success');
-  assert.deepEqual(movedFiles(mem).map((p) => p.replace('plateaus/20_target/', '')), ['app.bakery.yaml', 'app.delivery.van.yaml', 'app.delivery.yaml', 'app.shop.till.screen.yaml', 'app.shop.till.yaml', 'env.prod.yaml', 'view.ovens.yaml']);
-  assert.deepEqual(changedFiles(mem), ['app.bakery.yaml', 'app.delivery.yaml', 'app.delivery.van.yaml', 'app.shop.till.yaml', 'app.shop.till.screen.yaml', 'env.prod.yaml', 'view.ovens.yaml'].sort((a, b) => Object.keys(MANIFESTS).indexOf(a) - Object.keys(MANIFESTS).indexOf(b)));
+  assert.deepEqual(
+    movedFiles(mem).map((p) => p.replace('plateaus/20_target/', '')),
+    [
+      'app.bakery.yaml',
+      'app.delivery.van.yaml',
+      'app.delivery.yaml',
+      'app.shop.till.screen.yaml',
+      'app.shop.till.yaml',
+      'env.prod.yaml',
+      'view.ovens.yaml'
+    ]
+  );
+  assert.deepEqual(
+    changedFiles(mem),
+    [
+      'app.bakery.yaml',
+      'app.delivery.yaml',
+      'app.delivery.van.yaml',
+      'app.shop.till.yaml',
+      'app.shop.till.screen.yaml',
+      'env.prod.yaml',
+      'view.ovens.yaml'
+    ].sort((a, b) => Object.keys(MANIFESTS).indexOf(a) - Object.keys(MANIFESTS).indexOf(b))
+  );
   // the files that nothing pointed to are byte for byte what they were
   for (const name of ['app.shop.yaml', 'env.staging.yaml']) assert.equal(fileOf(mem, name), ON_DISK[name], name);
   // the lines that changed in the files that point at it: the reference, nothing around it
@@ -198,38 +295,89 @@ test('moving a container with its children puts the block under the new parent a
     removed: ['    - destination: "bakery.oven.timer"', '    - destination: "bakery.oven"'],
     added: ['    - destination: "delivery.oven.timer"', '    - destination: "delivery.oven"']
   });
-  assert.deepEqual(lineDiff(ON_DISK['app.shop.till.screen.yaml'], fileOf(mem, 'app.shop.till.screen.yaml')), { removed: ['    - destination: "bakery.oven.gauge"'], added: ['    - destination: "delivery.oven.gauge"'] });
-  assert.deepEqual(lineDiff(ON_DISK['app.delivery.van.yaml'], fileOf(mem, 'app.delivery.van.yaml')), { removed: ['    - destination: bakery.oven'], added: ['    - destination: delivery.oven'] });
-  assert.deepEqual(lineDiff(ON_DISK['env.prod.yaml'], fileOf(mem, 'env.prod.yaml')), { removed: ['        - bakery.oven', '        - bakery.oven.timer'], added: ['        - delivery.oven', '        - delivery.oven.timer'] });
-  assert.deepEqual(lineDiff(ON_DISK['view.ovens.yaml'], fileOf(mem, 'view.ovens.yaml')), { removed: ['    element: "bakery.oven"'], added: ['    element: "delivery.oven"'] });
+  assert.deepEqual(lineDiff(ON_DISK['app.shop.till.screen.yaml'], fileOf(mem, 'app.shop.till.screen.yaml')), {
+    removed: ['    - destination: "bakery.oven.gauge"'],
+    added: ['    - destination: "delivery.oven.gauge"']
+  });
+  assert.deepEqual(lineDiff(ON_DISK['app.delivery.van.yaml'], fileOf(mem, 'app.delivery.van.yaml')), {
+    removed: ['    - destination: bakery.oven'],
+    added: ['    - destination: delivery.oven']
+  });
+  assert.deepEqual(lineDiff(ON_DISK['env.prod.yaml'], fileOf(mem, 'env.prod.yaml')), {
+    removed: ['        - bakery.oven', '        - bakery.oven.timer'],
+    added: ['        - delivery.oven', '        - delivery.oven.timer']
+  });
+  assert.deepEqual(lineDiff(ON_DISK['view.ovens.yaml'], fileOf(mem, 'view.ovens.yaml')), {
+    removed: ['    element: "bakery.oven"'],
+    added: ['    element: "delivery.oven"']
+  });
   // the file of the bakery lost the block and the file of the delivery has it, with its comment, its quotes and its escaped string, as it was written; the rest is as it was (the comments of the others stay on theirs)
   const bakery = fileOf(mem, 'app.bakery.yaml');
   const delivery = fileOf(mem, 'app.delivery.yaml');
   const block = BAKERY.split('\n').slice(9, 24); // the comment of the oven to its last line
-  assert.equal(bakery, inPlateau('target', BAKERY
-    .replace(block.join('\n') + '\n', '')
-    .replace('        - destination: "bakery.oven.gauge"', '        - destination: "delivery.oven.gauge"')));
-  assert.equal(delivery, inPlateau('target', DELIVERY.replace('  name: "Delivery"\n', '  name: "Delivery"\n  elements:\n' + block.join('\n') + '\n')));
-  assert.ok(delivery.includes('    # the ovens come first\n    - kind: container\n      id: "oven"'), 'the comment above the block went with it');
-  assert.ok(delivery.includes('      description: "Bakes \\"the\\" bread: 220 degrees, no more."'), 'quoted strings are the author\'s');
-  assert.ok(bakery.startsWith('# the bakery: everything that makes bread\nheader:') && bakery.endsWith('# end of the bakery\n'));
+  assert.equal(
+    bakery,
+    inPlateau(
+      'target',
+      BAKERY.replace(block.join('\n') + '\n', '').replace(
+        '        - destination: "bakery.oven.gauge"',
+        '        - destination: "delivery.oven.gauge"'
+      )
+    )
+  );
+  assert.equal(
+    delivery,
+    inPlateau(
+      'target',
+      DELIVERY.replace('  name: "Delivery"\n', '  name: "Delivery"\n  elements:\n' + block.join('\n') + '\n')
+    )
+  );
+  assert.ok(
+    delivery.includes('    # the ovens come first\n    - kind: container\n      id: "oven"'),
+    'the comment above the block went with it'
+  );
+  assert.ok(
+    delivery.includes('      description: "Bakes \\"the\\" bread: 220 degrees, no more."'),
+    "quoted strings are the author's"
+  );
+  assert.ok(
+    bakery.startsWith('# the bakery: everything that makes bread\nheader:') && bakery.endsWith('# end of the bakery\n')
+  );
   // and the files read back as the editor, and the command line, read them
   const again = createApp({});
   await again.loadWorkspace(mem.handle);
   again.drawPlateau('target');
-  assert.deepEqual(plain(Array.from(again.__state().index.application.keys()).sort()), plain(references.slice().sort()));
+  assert.deepEqual(
+    plain(Array.from(again.__state().index.application.keys()).sort()),
+    plain(references.slice().sort())
+  );
 });
 
 test('a manifest that is not nested changes one line, its header.parent, and the manifests attached below it follow', async () => {
   const { sandbox, state, mem } = await open();
   const result = move(sandbox, 'shop.till', 'delivery');
   assert.equal(result.ok, true);
-  assert.deepEqual(Array.from(state.index.application.keys()).filter((r) => /till|screen/.test(r)).sort(), ['delivery.till', 'delivery.till.screen']);
-  assert.equal(state.index.application.get('delivery.till.screen').sourceFile, 'plateaus/20_target/app.shop.till.screen.yaml', 'the file of the child did not move');
+  assert.deepEqual(
+    Array.from(state.index.application.keys())
+      .filter((r) => /till|screen/.test(r))
+      .sort(),
+    ['delivery.till', 'delivery.till.screen']
+  );
+  assert.equal(
+    state.index.application.get('delivery.till.screen').sourceFile,
+    'plateaus/20_target/app.shop.till.screen.yaml',
+    'the file of the child did not move'
+  );
   await sandbox.saveAllChanges();
   assert.deepEqual(changedFiles(mem), ['app.shop.till.yaml', 'app.shop.till.screen.yaml', 'app.delivery.van.yaml']);
-  assert.deepEqual(lineDiff(ON_DISK['app.shop.till.yaml'], fileOf(mem, 'app.shop.till.yaml')), { removed: ['  parent: "shop"'], added: ['  parent: "delivery"'] });
-  assert.deepEqual(lineDiff(ON_DISK['app.shop.till.screen.yaml'], fileOf(mem, 'app.shop.till.screen.yaml')), { removed: ['  parent: "shop.till"'], added: ['  parent: "delivery.till"'] });
+  assert.deepEqual(lineDiff(ON_DISK['app.shop.till.yaml'], fileOf(mem, 'app.shop.till.yaml')), {
+    removed: ['  parent: "shop"'],
+    added: ['  parent: "delivery"']
+  });
+  assert.deepEqual(lineDiff(ON_DISK['app.shop.till.screen.yaml'], fileOf(mem, 'app.shop.till.screen.yaml')), {
+    removed: ['  parent: "shop.till"'],
+    added: ['  parent: "delivery.till"']
+  });
   assert.deepEqual(lineDiff(ON_DISK['app.delivery.van.yaml'], fileOf(mem, 'app.delivery.van.yaml')), {
     removed: ['    - destination: "shop.till"', '    - destination: shop.till.screen'],
     added: ['    - destination: "delivery.till"', '    - destination: delivery.till.screen']
@@ -242,17 +390,36 @@ test('a system goes under a solution: every reference to it and to what it holds
   const withSolution = Object.assign({}, MANIFESTS, { 'app.suite.yaml': element('solution', null, 'suite', 'Suite') });
   const { sandbox, state, mem } = await open({ manifests: withSolution });
   assert.equal(sandbox.moveIsPossible('bakery', 'application'), true);
-  assert.deepEqual(plain(sandbox.moveParentCandidates('bakery', 'application').parents.map((p) => p.reference)), ['suite']);
+  assert.deepEqual(plain(sandbox.moveParentCandidates('bakery', 'application').parents.map((p) => p.reference)), [
+    'suite'
+  ]);
   assert.equal(move(sandbox, 'bakery', 'suite').ok, true);
   assert.ok(state.index.application.has('suite.bakery.oven.gauge') && !state.index.application.has('bakery'));
   assert.equal(state.relationshipStats.dangling, 0);
   await sandbox.saveAllChanges();
   const added = lineDiff(ON_DISK['app.bakery.yaml'], fileOf(mem, 'app.bakery.yaml')).added;
   assert.ok(added.includes('  parent: "suite"'));
-  assert.deepEqual(added, ['  parent: "suite"', '            - destination: "suite.bakery.mixer"', '        - destination: "suite.bakery.oven.gauge"'], 'the parent and the two destinations that follow: the move writes no replaces');
-  assert.deepEqual(lineDiff(inPlateau('target', withSolution['app.suite.yaml']), mem.files.get(target('app.suite.yaml')).text), { removed: [], added: [] }, 'the new parent is not touched');
+  assert.deepEqual(
+    added,
+    [
+      '  parent: "suite"',
+      '            - destination: "suite.bakery.mixer"',
+      '        - destination: "suite.bakery.oven.gauge"'
+    ],
+    'the parent and the two destinations that follow: the move writes no replaces'
+  );
+  assert.deepEqual(
+    lineDiff(inPlateau('target', withSolution['app.suite.yaml']), mem.files.get(target('app.suite.yaml')).text),
+    { removed: [], added: [] },
+    'the new parent is not touched'
+  );
   // a move says nothing to the comparison: the system and what it holds read as removed and new until "Write replaces" tells it
-  const rows = Object.fromEntries(sandbox.comparisonState().changes.filter((r) => /bakery/.test(r.reference)).map((r) => [r.reference, r.change]));
+  const rows = Object.fromEntries(
+    sandbox
+      .comparisonState()
+      .changes.filter((r) => /bakery/.test(r.reference))
+      .map((r) => [r.reference, r.change])
+  );
   assert.equal(rows.bakery, 'removed');
   assert.equal(rows['suite.bakery'], 'new');
 });
@@ -261,7 +428,13 @@ test('a node of the technology layer moves, and what uses it follows; the applic
   const extra = Object.assign({}, MANIFESTS, {
     // an application element called like the node: only the technology layer's references may change
     'app.prod.yaml': element('system', null, 'prod', 'Prod, the application', ''),
-    'app.prod.rack-a.yaml': element('container', 'prod', 'rack-a', 'The rack, the application', '  relationships:\n    - destination: "prod.rack-a.blade"\n      label: "is not a node"\n'),
+    'app.prod.rack-a.yaml': element(
+      'container',
+      'prod',
+      'rack-a',
+      'The rack, the application',
+      '  relationships:\n    - destination: "prod.rack-a.blade"\n      label: "is not a node"\n'
+    ),
     'app.prod.rack-a.blade.yaml': element('component', 'prod.rack-a', 'blade', 'Blade, the application', '')
   });
   const { sandbox, state, mem } = await open({ manifests: extra });
@@ -271,25 +444,45 @@ test('a node of the technology layer moves, and what uses it follows; the applic
   await sandbox.saveAllChanges();
   assert.deepEqual(changedFiles(mem).sort(), ['env.prod.yaml', 'env.staging.yaml']);
   // the node had no sibling: its parent loses its `elements` line, and the new parent gains one; the block is the author's, one level shallower
-  assert.equal(fileOf(mem, 'env.prod.yaml'), ON_DISK['env.prod.yaml']
-    .replace('      elements:\n        - kind: node\n          id: "blade"\n          name: "Blade"\n', '')
-    .replace('      name: "Rack B"\n', '      name: "Rack B"\n      elements:\n        - kind: node\n          id: "blade"\n          name: "Blade"\n'));
-  assert.deepEqual(lineDiff(ON_DISK['env.staging.yaml'], fileOf(mem, 'env.staging.yaml')), { removed: ['    - prod.rack-a.blade'], added: ['    - prod.rack-b.blade'] });
+  assert.equal(
+    fileOf(mem, 'env.prod.yaml'),
+    ON_DISK['env.prod.yaml']
+      .replace('      elements:\n        - kind: node\n          id: "blade"\n          name: "Blade"\n', '')
+      .replace(
+        '      name: "Rack B"\n',
+        '      name: "Rack B"\n      elements:\n        - kind: node\n          id: "blade"\n          name: "Blade"\n'
+      )
+  );
+  assert.deepEqual(lineDiff(ON_DISK['env.staging.yaml'], fileOf(mem, 'env.staging.yaml')), {
+    removed: ['    - prod.rack-a.blade'],
+    added: ['    - prod.rack-b.blade']
+  });
 });
 
 // ---- 2. replaces: a move writes none (#97), and the comparison reads it as removed plus new until Write replaces says otherwise ----
 
 test('a move writes no replaces: the comparison reads removed and new, "Write replaces" of the Changes panel is where the key is written', async () => {
-  const rows = (page) => Object.fromEntries(page.sandbox.comparisonState().changes.filter((r) => /^(bakery|delivery)\.oven/.test(r.reference)).map((r) => [r.reference, r.change]));
+  const rows = (page) =>
+    Object.fromEntries(
+      page.sandbox
+        .comparisonState()
+        .changes.filter((r) => /^(bakery|delivery)\.oven/.test(r.reference))
+        .map((r) => [r.reference, r.change])
+    );
   assert.deepEqual(rows(await open()), {}, 'before: nothing differs');
   const page = await open();
   assert.deepEqual(plain(move(page.sandbox, 'bakery.oven', 'delivery')), { ok: true, reference: 'delivery.oven' });
   assert.deepEqual(rows(page), {
-    'bakery.oven': 'removed', 'bakery.oven.gauge': 'removed', 'bakery.oven.timer': 'removed',
-    'delivery.oven': 'new', 'delivery.oven.gauge': 'new', 'delivery.oven.timer': 'new'
+    'bakery.oven': 'removed',
+    'bakery.oven.gauge': 'removed',
+    'bakery.oven.timer': 'removed',
+    'delivery.oven': 'new',
+    'delivery.oven.gauge': 'new',
+    'delivery.oven.timer': 'new'
   });
   await page.sandbox.saveAllChanges();
-  for (const file of page.mem.writes) assert.doesNotMatch(page.mem.files.get(file).text, /replaces/, file + ' says nothing of replaces');
+  for (const file of page.mem.writes)
+    assert.doesNotMatch(page.mem.files.get(file).text, /replaces/, file + ' says nothing of replaces');
   // the writer that stays: the candidate the Changes panel proposes for the moved container is written with `Write replaces`
   const candidate = page.sandbox.comparisonState().candidates.find((c) => c.to === 'delivery.oven');
   assert.ok(candidate, 'the Changes panel proposes the pair');
@@ -301,8 +494,19 @@ test('a move writes no replaces: the comparison reads removed and new, "Write re
 
 /** What a refused move must leave alone: every manifest (model and text), the version of the models, the modified markers, the disk. */
 function snapshot(page) {
-  const files = page.state.manifestFiles.map((f) => [f.relPath, f.rawText, f.dirty, JSON.stringify([f.header, f.content])]);
-  return JSON.stringify([files, run(page.sandbox, 'modelVersion'), Array.from(page.state.dirtyReferences), page.mem.writes, page.state.selection]);
+  const files = page.state.manifestFiles.map((f) => [
+    f.relPath,
+    f.rawText,
+    f.dirty,
+    JSON.stringify([f.header, f.content])
+  ]);
+  return JSON.stringify([
+    files,
+    run(page.sandbox, 'modelVersion'),
+    Array.from(page.state.dirtyReferences),
+    page.mem.writes,
+    page.state.selection
+  ]);
 }
 
 async function refusing(options, reference, parent, expected, extra = {}) {
@@ -334,41 +538,90 @@ test('an element is not moved to the parent it has', async () => {
 });
 
 test('a parent that already holds an element with the same id refuses, and says which', async () => {
-  const clash = Object.assign({}, MANIFESTS, { 'app.bakery.yaml': BAKERY.replace('      name: "Shelf"\n', '      name: "Shelf"\n      elements:\n        - kind: component\n          id: "timer"\n          name: "A spare timer"\n') });
-  const page = await refusing({ manifests: clash }, 'bakery.oven.timer', 'bakery.shelf', /“bakery\.shelf” already holds an element with the id “timer” \(“bakery\.shelf\.timer”\)/);
-  assert.ok(!page.sandbox.moveParentCandidates('bakery.oven.timer', 'application').parents.some((p) => p.reference === 'bakery.shelf'), 'not offered');
+  const clash = Object.assign({}, MANIFESTS, {
+    'app.bakery.yaml': BAKERY.replace(
+      '      name: "Shelf"\n',
+      '      name: "Shelf"\n      elements:\n        - kind: component\n          id: "timer"\n          name: "A spare timer"\n'
+    )
+  });
+  const page = await refusing(
+    { manifests: clash },
+    'bakery.oven.timer',
+    'bakery.shelf',
+    /“bakery\.shelf” already holds an element with the id “timer” \(“bakery\.shelf\.timer”\)/
+  );
+  assert.ok(
+    !page.sandbox
+      .moveParentCandidates('bakery.oven.timer', 'application')
+      .parents.some((p) => p.reference === 'bakery.shelf'),
+    'not offered'
+  );
   // a clash with an element of a manifest of its own, in another file
-  const own = Object.assign({}, MANIFESTS, { 'app.delivery.till.yaml': element('container', 'delivery', 'till', 'Another till') });
+  const own = Object.assign({}, MANIFESTS, {
+    'app.delivery.till.yaml': element('container', 'delivery', 'till', 'Another till')
+  });
   await refusing({ manifests: own }, 'shop.till', 'delivery', /“delivery” already holds an element with the id “till”/);
 });
 
 test('a parent that cannot hold the kind refuses: a container goes under a system, never under a component', async () => {
-  await refusing({}, 'bakery.mixer', 'bakery.oven.timer', /A container cannot be put under “bakery\.oven\.timer”, a component that holds nothing/);
-  await refusing({}, 'bakery.oven.timer', 'bakery', /A component cannot be put under “bakery”, which holds container only/);
+  await refusing(
+    {},
+    'bakery.mixer',
+    'bakery.oven.timer',
+    /A container cannot be put under “bakery\.oven\.timer”, a component that holds nothing/
+  );
+  await refusing(
+    {},
+    'bakery.oven.timer',
+    'bakery',
+    /A component cannot be put under “bakery”, which holds container only/
+  );
   await refusing({}, 'shop.till', 'shop.till.screen', /inside/);
   await refusing({}, 'prod.rack-a', 'bakery', /not an element of the workspace/, { layer: 'technology' }); // the other layer's reference is not a parent
   // an environment is never put under anything, nor is a system when the workspace has no solution: no Move button, no parent
   const page = await open();
-  for (const [reference, layer] of [['prod', 'technology'], ['staging', 'technology'], ['bakery', 'application'], ['shop', 'application']]) {
+  for (const [reference, layer] of [
+    ['prod', 'technology'],
+    ['staging', 'technology'],
+    ['bakery', 'application'],
+    ['shop', 'application']
+  ]) {
     assert.equal(page.sandbox.moveIsPossible(reference, layer), false, reference);
   }
 });
 
 test('an element of the baseline, or a parent of the baseline, is read-only: the move is refused with the reason', async () => {
-  const base = Object.assign({}, MANIFESTS, { 'app.bakery.cake.yaml': element('container', 'bakery', 'cake', 'Cake'), 'app.bakery.old.yaml': element('container', 'bakery', 'old', 'Old') });
-  await refusing({ base }, 'bakery.cake', 'delivery', /“bakery\.cake” belongs to “Base”, which is only read to compare and is never written; a move happens in “Target”/);
+  const base = Object.assign({}, MANIFESTS, {
+    'app.bakery.cake.yaml': element('container', 'bakery', 'cake', 'Cake'),
+    'app.bakery.old.yaml': element('container', 'bakery', 'old', 'Old')
+  });
+  await refusing(
+    { base },
+    'bakery.cake',
+    'delivery',
+    /“bakery\.cake” belongs to “Base”, which is only read to compare and is never written; a move happens in “Target”/
+  );
   await refusing({ base }, 'bakery.mixer', 'bakery.old', /“bakery\.old” belongs to “Base”, which is only read/);
   const page = await open({ base });
   assert.equal(page.sandbox.moveIsPossible('bakery.cake', 'application'), false);
   // the element is the plateau drawn's, and also the baseline's: the baseline copy is never touched
   assert.equal(move(page.sandbox, 'bakery.mixer', 'delivery').ok, true);
-  assert.ok(page.state.baseline.index.application.has('bakery.mixer') && !page.state.baseline.index.application.has('delivery.mixer'));
+  assert.ok(
+    page.state.baseline.index.application.has('bakery.mixer') &&
+      !page.state.baseline.index.application.has('delivery.mixer')
+  );
 });
 
 test('a reference that cannot be rewritten as text, a manifest that cannot be read, and a reference declared twice refuse the move', async () => {
   // a destination written as a number names the element 8080 but cannot be rewritten as the reference of another one
   const numeric = Object.assign({}, MANIFESTS, {
-    'app.gate.yaml': element('system', null, '8080', 'Gate', '  relationships:\n    - destination: 8080\n      label: "loops"\n'),
+    'app.gate.yaml': element(
+      'system',
+      null,
+      '8080',
+      'Gate',
+      '  relationships:\n    - destination: 8080\n      label: "loops"\n'
+    ),
     'app.gate.door.yaml': element('container', '8080', 'door', 'Door')
   });
   const page = await open({ manifests: numeric });
@@ -376,9 +629,27 @@ test('a reference that cannot be rewritten as text, a manifest that cannot be re
   assert.deepEqual(plain(scan.unsafe).length, 1);
   assert.match(scan.unsafe[0], /a destination of 8080 in .*app\.gate\.yaml is written as number 8080/);
   // an unreadable manifest could hold a reference nobody can rewrite
-  await refusing({ manifests: Object.assign({}, MANIFESTS, { 'app.broken.yaml': 'header: [unclosed\n  kind: nope' }), base: MANIFESTS }, 'bakery.oven', 'delivery', /A manifest cannot be read \(plateaus\/20_target\/app\.broken\.yaml\)/);
+  await refusing(
+    {
+      manifests: Object.assign({}, MANIFESTS, { 'app.broken.yaml': 'header: [unclosed\n  kind: nope' }),
+      base: MANIFESTS
+    },
+    'bakery.oven',
+    'delivery',
+    /A manifest cannot be read \(plateaus\/20_target\/app\.broken\.yaml\)/
+  );
   // two files declaring the same reference (in a layered workspace the plateaus that do it are not drawn at all: the page says so on the band; the rule is for a workspace without plateaus)
-  await refusing({ plateaus: false, manifests: Object.assign({}, MANIFESTS, { 'app.bakery.mixer.yaml': element('container', 'bakery', 'mixer', 'Mixer, twice') }) }, 'bakery.mixer', 'delivery', /“bakery\.mixer” is declared twice/);
+  await refusing(
+    {
+      plateaus: false,
+      manifests: Object.assign({}, MANIFESTS, {
+        'app.bakery.mixer.yaml': element('container', 'bakery', 'mixer', 'Mixer, twice')
+      })
+    },
+    'bakery.mixer',
+    'delivery',
+    /“bakery\.mixer” is declared twice/
+  );
 });
 
 // ---- 4. The panel and the dialog ----
@@ -386,7 +657,12 @@ test('a reference that cannot be rewritten as text, a manifest that cannot be re
 /** A click as handleAppClick reads it: the nearest data-action element, with these attributes. */
 function click(sandbox, attributes) {
   const target = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
-  sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  sandbox.handleAppClick({
+    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    preventDefault() {},
+    stopPropagation() {},
+    detail: 1
+  });
 }
 
 /** The element in the edit form of its panel, as a click on "Edit" leaves it. */
@@ -399,9 +675,21 @@ test('the edit form of an element that can move has a Move button; one that neve
   const page = await open();
   edit(page, 'bakery.oven');
   const form = page.sandbox.renderElementEditionFormHtml('bakery.oven');
-  assert.match(form, /<button type="button" data-action="open-move-dialog" data-ref="bakery\.oven"[^>]*>Move<\/button>/);
-  assert.ok(form.indexOf('request-delete-element') < form.indexOf('open-move-dialog') && form.indexOf('open-move-dialog') < form.indexOf('open-create-child-form'), 'after Delete, before Add child');
-  for (const reference of ['bakery', 'shop']) assert.doesNotMatch(page.sandbox.renderElementEditionFormHtml(reference), /open-move-dialog/, reference + ' is a system');
+  assert.match(
+    form,
+    /<button type="button" data-action="open-move-dialog" data-ref="bakery\.oven"[^>]*>Move<\/button>/
+  );
+  assert.ok(
+    form.indexOf('request-delete-element') < form.indexOf('open-move-dialog') &&
+      form.indexOf('open-move-dialog') < form.indexOf('open-create-child-form'),
+    'after Delete, before Add child'
+  );
+  for (const reference of ['bakery', 'shop'])
+    assert.doesNotMatch(
+      page.sandbox.renderElementEditionFormHtml(reference),
+      /open-move-dialog/,
+      reference + ' is a system'
+    );
   assert.doesNotMatch(page.sandbox.renderElementEditionFormHtml('bakery').replace(/<[^>]*>/g, ''), /Move/);
   assert.doesNotMatch(page.sandbox.renderElementViewHtml('bakery.oven'), /open-move-dialog/);
 });
@@ -414,13 +702,23 @@ test('"Move" opens a dialog that lists the places the element can go: a parent o
   assert.match(dialog, /role="dialog"/);
   assert.match(dialog, /<h2 id="app-dialog-title">Move “Oven”<\/h2>/);
   const offered = Array.from(dialog.matchAll(/name="move-parent" value="([^"]*)"/g), (m) => m[1]);
-  assert.deepEqual(offered, ['delivery', 'shop'], 'the systems of the other files (the same file has no system): not bakery (its parent), not a container or a component, not the technology layer; no top level for a container');
+  assert.deepEqual(
+    offered,
+    ['delivery', 'shop'],
+    'the systems of the other files (the same file has no system): not bakery (its parent), not a container or a component, not the technology layer; no top level for a container'
+  );
   assert.match(dialog, /type="text" id="move-filter" data-dialog-filter/);
   assert.match(text(dialog), /bakery\.oven · container · the 2 elements inside it follow/);
-  assert.match(text(dialog), /Its reference changes .*and 7 references to it or inside it are rewritten in 5 files, and 1 saved view of the workspace follows\./);
+  assert.match(
+    text(dialog),
+    /Its reference changes .*and 7 references to it or inside it are rewritten in 5 files, and 1 saved view of the workspace follows\./
+  );
   assert.match(text(dialog), /shop · system · the block goes to plateaus\/20_target\/app\.shop\.yaml/);
   assert.match(text(dialog), /delivery · system · the block goes to plateaus\/20_target\/app\.delivery\.yaml/);
-  assert.match(text(dialog), /“oven” is written inside “plateaus\/20_target\/app\.bakery\.yaml”: under a parent of another file, the block is cut out of this file and pasted in that one, and both files are modified\. Comments and quotes go with the block\./);
+  assert.match(
+    text(dialog),
+    /“oven” is written inside “plateaus\/20_target\/app\.bakery\.yaml”: under a parent of another file, the block is cut out of this file and pasted in that one, and both files are modified\. Comments and quotes go with the block\./
+  );
   // one button, no second one that writes replaces
   assert.match(dialog, /class="btn-primary" data-action="move-confirm">Move<\/button>/);
   assert.doesNotMatch(dialog, /data-replaces|Move only|Move and write replaces/);
@@ -432,9 +730,15 @@ test('a manifest of its own can go under any element able to hold it, in any fil
   const page = await open();
   edit(page, 'shop.till');
   click(page.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'shop.till' });
-  const offered = Array.from(page.sandbox.renderAppDialogHtml().matchAll(/name="move-parent" value="([^"]*)"/g), (m) => m[1]);
+  const offered = Array.from(
+    page.sandbox.renderAppDialogHtml().matchAll(/name="move-parent" value="([^"]*)"/g),
+    (m) => m[1]
+  );
   assert.deepEqual(offered, ['bakery', 'delivery']);
-  assert.match(text(page.sandbox.renderAppDialogHtml()), /“till” has a manifest of its own: a move changes its header\.parent and the file stays\./);
+  assert.match(
+    text(page.sandbox.renderAppDialogHtml()),
+    /“till” has a manifest of its own: a move changes its header\.parent and the file stays\./
+  );
 });
 
 test('the search narrows the list by every word typed, in the name, the id, the reference or the kind, whatever the case', async () => {
@@ -452,9 +756,17 @@ test('the search narrows the list by every word typed, in the name, the id, the 
   const dialog = page.sandbox.renderAppDialogHtml();
   assert.match(dialog, /data-search="Delivery delivery delivery system"/);
   assert.match(dialog, /value="deliv"/);
-  assert.equal((dialog.match(/class="app-dialog-choice move-parent"[^>]* hidden/g) || []).length, 1, 'the other one is hidden');
+  assert.equal(
+    (dialog.match(/class="app-dialog-choice move-parent"[^>]* hidden/g) || []).length,
+    1,
+    'the other one is hidden'
+  );
   run(page.sandbox, "appDialog.query = 'zzz'");
-  assert.doesNotMatch(page.sandbox.renderAppDialogHtml(), /class="move-empty muted" hidden/, '“No parent matches.” shows');
+  assert.doesNotMatch(
+    page.sandbox.renderAppDialogHtml(),
+    /class="move-empty muted" hidden/,
+    '“No parent matches.” shows'
+  );
 });
 
 test('the dialog says that Move writes no replaces and where Write replaces is, in a workspace with plateaus only', async () => {
@@ -463,13 +775,20 @@ test('the dialog says that Move writes no replaces and where Write replaces is, 
     edit(page, 'shop.till');
     click(page.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'shop.till' });
     const dialog = page.sandbox.renderAppDialogHtml();
-    assert.match(text(dialog), /Move writes no replaces \. To tell a comparison that an element moved, compare two plateaus and use “Write replaces” in the Changes panel/);
+    assert.match(
+      text(dialog),
+      /Move writes no replaces \. To tell a comparison that an element moved, compare two plateaus and use “Write replaces” in the Changes panel/
+    );
     assert.match(dialog, /data-action="move-confirm">Move<\/button>/);
   }
   const plateaus = await open({ plateaus: false });
   edit(plateaus, 'shop.till');
   click(plateaus.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'shop.till' });
-  assert.doesNotMatch(text(plateaus.sandbox.renderAppDialogHtml()), /replaces/i, 'no plateau, nothing to say of replaces');
+  assert.doesNotMatch(
+    text(plateaus.sandbox.renderAppDialogHtml()),
+    /replaces/i,
+    'no plateau, nothing to say of replaces'
+  );
 });
 
 test('confirming moves the element: the dialog closes, the panel follows the element at its new reference, the row is unfolded, and "Save all changes" lights', async () => {
@@ -500,7 +819,10 @@ test('a refusal in the dialog is told there, keeps what was chosen, and changes 
   assert.match(page.sandbox.renderAppDialogHtml(), /role="alert">Choose the new parent\.</);
   assert.equal(page.sandbox.submitMoveDialog({ parent: 'bakery.mixer' }), null);
   const dialog = page.sandbox.renderAppDialogHtml();
-  assert.match(dialog, /role="alert">A container cannot be put under “bakery\.mixer”, which holds component only\. Nothing was changed\.</);
+  assert.match(
+    dialog,
+    /role="alert">A container cannot be put under “bakery\.mixer”, which holds component only\. Nothing was changed\.</
+  );
   assert.ok(run(page.sandbox, 'appDialog') !== null, 'the dialog stays open');
   assert.equal(snapshot(page), before);
   // Cancel closes it, nothing changed
@@ -513,7 +835,10 @@ test('opening the dialog applies what was typed in the form first (and keeps the
   const page = await open();
   edit(page, 'bakery.oven');
   let flushed = 0;
-  run(page.sandbox, 'flushPendingDraft = () => { __flushed(); return true; }'.replace('__flushed()', 'globalThis.__flushed++'));
+  run(
+    page.sandbox,
+    'flushPendingDraft = () => { __flushed(); return true; }'.replace('__flushed()', 'globalThis.__flushed++')
+  );
   run(page.sandbox, 'globalThis.__flushed = 0');
   click(page.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'bakery.oven' });
   assert.equal(run(page.sandbox, 'globalThis.__flushed'), 1, 'the form was applied once');
@@ -521,7 +846,11 @@ test('opening the dialog applies what was typed in the form first (and keeps the
   run(page.sandbox, 'closeAppDialog()');
   run(page.sandbox, 'flushPendingDraft = () => false');
   click(page.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'bakery.oven' });
-  assert.equal(run(page.sandbox, 'appDialog'), null, 'an invalid form shows its own errors and the dialog does not open');
+  assert.equal(
+    run(page.sandbox, 'appDialog'),
+    null,
+    'an invalid form shows its own errors and the dialog does not open'
+  );
   assert.equal(flushed, 0);
 });
 
@@ -554,10 +883,23 @@ test('a second move after the save, and a move then its undoing by a move back, 
   await again.loadWorkspace(page.mem.handle);
   again.drawPlateau('target');
   assert.equal(again.__state().relationshipStats.dangling, 0);
-  for (const name of ['app.shop.till.yaml', 'app.shop.till.screen.yaml', 'app.delivery.van.yaml', 'env.prod.yaml', 'view.ovens.yaml']) {
-    assert.equal(fileOf(page.mem, name).replace(/"/g, ''), ON_DISK[name].replace(/"/g, ''), name + ' says what it said');
+  for (const name of [
+    'app.shop.till.yaml',
+    'app.shop.till.screen.yaml',
+    'app.delivery.van.yaml',
+    'env.prod.yaml',
+    'view.ovens.yaml'
+  ]) {
+    assert.equal(
+      fileOf(page.mem, name).replace(/"/g, ''),
+      ON_DISK[name].replace(/"/g, ''),
+      name + ' says what it said'
+    );
   }
-  assert.ok(fileOf(page.mem, 'app.bakery.yaml').includes('    # the ovens come first\n    - kind: container\n      id: "oven"'), 'the comment went with the block, both ways');
+  assert.ok(
+    fileOf(page.mem, 'app.bakery.yaml').includes('    # the ovens come first\n    - kind: container\n      id: "oven"'),
+    'the comment went with the block, both ways'
+  );
 });
 
 test('the layouts of a file: a parent with no elements yet, the last child leaving, a file with Windows line breaks, a block the layout cannot follow', async () => {
@@ -565,9 +907,16 @@ test('the layouts of a file: a parent with no elements yet, the last child leavi
   let page = await open();
   assert.equal(move(page.sandbox, 'bakery.oven.timer', 'bakery.shelf').ok, true);
   await page.sandbox.saveAllChanges();
-  assert.equal(fileOf(page.mem, 'app.bakery.yaml'), inPlateau('target', BAKERY
-    .replace('        - kind: component\n          id: "timer"\n          name: "Timer"\n', '')
-    .replace('      name: "Shelf"\n', '      name: "Shelf"\n      elements:\n        - kind: component\n          id: "timer"\n          name: "Timer"\n')));
+  assert.equal(
+    fileOf(page.mem, 'app.bakery.yaml'),
+    inPlateau(
+      'target',
+      BAKERY.replace('        - kind: component\n          id: "timer"\n          name: "Timer"\n', '').replace(
+        '      name: "Shelf"\n',
+        '      name: "Shelf"\n      elements:\n        - kind: component\n          id: "timer"\n          name: "Timer"\n'
+      )
+    )
+  );
   // windows line breaks stay windows line breaks, everywhere
   const crlf = BAKERY.replace(/\n/g, '\r\n');
   page = await open({ manifests: Object.assign({}, MANIFESTS, { 'app.bakery.yaml': crlf }) });
@@ -575,10 +924,19 @@ test('the layouts of a file: a parent with no elements yet, the last child leavi
   await page.sandbox.saveAllChanges();
   const saved = fileOf(page.mem, 'app.bakery.yaml');
   assert.equal(saved.split('\r\n').length, saved.split('\n').length, 'every line break is \\r\\n');
-  assert.ok(!saved.includes('the ovens come first') && saved.includes('# the mixer is on its own\r\n'), 'the block left this file');
-  assert.ok(saved.startsWith('# the bakery: everything that makes bread\r\nheader:') && saved.endsWith('# end of the bakery\r\n'));
+  assert.ok(
+    !saved.includes('the ovens come first') && saved.includes('# the mixer is on its own\r\n'),
+    'the block left this file'
+  );
+  assert.ok(
+    saved.startsWith('# the bakery: everything that makes bread\r\nheader:') &&
+      saved.endsWith('# end of the bakery\r\n')
+  );
   // a one-line list or a map in the block the layout cannot follow: the move works, the file says the right thing (written as the emitter writes it)
-  const flow = BAKERY.replace('          name: "Timer"\n', '          name: "Timer"\n          qualifiers: [Gear, Dial]\n          tags: {kind: round}\n');
+  const flow = BAKERY.replace(
+    '          name: "Timer"\n',
+    '          name: "Timer"\n          qualifiers: [Gear, Dial]\n          tags: {kind: round}\n'
+  );
   page = await open({ manifests: Object.assign({}, MANIFESTS, { 'app.bakery.yaml': flow }) });
   assert.equal(move(page.sandbox, 'bakery.oven', 'delivery').ok, true);
   await page.sandbox.saveAllChanges();
@@ -591,23 +949,39 @@ test('the layouts of a file: a parent with no elements yet, the last child leavi
 });
 
 test('the comments on lines of their own inside the block go with it, and so does the one after its last line when it is indented as the keys of the block (#119)', async () => {
-  const commented = BAKERY
-    .replace('        - kind: component\n          id: "timer"', '        # the timer, which counts\n        - kind: component\n          id: "timer"')
-    .replace('          name: "Timer"\n', '          name: "Timer"\n        # after the oven\n');
+  const commented = BAKERY.replace(
+    '        - kind: component\n          id: "timer"',
+    '        # the timer, which counts\n        - kind: component\n          id: "timer"'
+  ).replace('          name: "Timer"\n', '          name: "Timer"\n        # after the oven\n');
   const page = await open({ manifests: Object.assign({}, MANIFESTS, { 'app.bakery.yaml': commented }) });
   assert.equal(move(page.sandbox, 'bakery.oven', 'delivery').ok, true);
   await page.sandbox.saveAllChanges();
   const saved = fileOf(page.mem, 'app.bakery.yaml');
   const received = fileOf(page.mem, 'app.delivery.yaml');
-  assert.ok(received.includes('        # the timer, which counts\n        - kind: component\n          id: "timer"\n          name: "Timer"\n'), 'the comment between two children went with them');
+  assert.ok(
+    received.includes(
+      '        # the timer, which counts\n        - kind: component\n          id: "timer"\n          name: "Timer"\n'
+    ),
+    'the comment between two children went with them'
+  );
   assert.ok(saved.includes('        - destination: "delivery.oven.gauge"\n          label: "checks"\n'));
   assert.equal((received.match(/# after the oven/g) || []).length, 1, 'the comment after the last line is not lost');
-  assert.ok(!saved.includes('# after the oven') && saved.includes('    # the mixer is on its own\n    - kind: container\n      id: "mixer"'), 'it left the place it was in: the comment of the next element stays on that element');
-  assert.ok(received.includes('          name: "Timer"\n        # after the oven\n'), 'it goes with the block, after its last line');
+  assert.ok(
+    !saved.includes('# after the oven') &&
+      saved.includes('    # the mixer is on its own\n    - kind: container\n      id: "mixer"'),
+    'it left the place it was in: the comment of the next element stays on that element'
+  );
+  assert.ok(
+    received.includes('          name: "Timer"\n        # after the oven\n'),
+    'it goes with the block, after its last line'
+  );
 });
 
 test('a block with a text over several lines, an end-of-line comment and a blank line moves whole', async () => {
-  const rich = BAKERY.replace('      description: "Bakes \\"the\\" bread: 220 degrees, no more."\n', '      description: |   # why\n        Bakes the bread.\n\n        No more than 220 degrees.\n      qualifiers: [x]  # note\n');
+  const rich = BAKERY.replace(
+    '      description: "Bakes \\"the\\" bread: 220 degrees, no more."\n',
+    '      description: |   # why\n        Bakes the bread.\n\n        No more than 220 degrees.\n      qualifiers: [x]  # note\n'
+  );
   const page = await open({ manifests: Object.assign({}, MANIFESTS, { 'app.bakery.yaml': rich }) });
   assert.equal(move(page.sandbox, 'bakery.oven', 'delivery').ok, true);
   await page.sandbox.saveAllChanges();
@@ -615,8 +989,16 @@ test('a block with a text over several lines, an end-of-line comment and a blank
   const again = createApp({});
   await again.loadWorkspace(page.mem.handle);
   again.drawPlateau('target');
-  assert.equal(again.__state().index.application.get('delivery.oven').description, 'Bakes the bread.\n\nNo more than 220 degrees.\n');
-  assert.ok(fileOf(page.mem, 'app.delivery.yaml').includes('      description: |   # why\n        Bakes the bread.\n\n        No more than 220 degrees.\n      qualifiers: [x]  # note\n      elements:\n'), 'the text over several lines, its blank line and the comments at the end of the lines, as written');
+  assert.equal(
+    again.__state().index.application.get('delivery.oven').description,
+    'Bakes the bread.\n\nNo more than 220 degrees.\n'
+  );
+  assert.ok(
+    fileOf(page.mem, 'app.delivery.yaml').includes(
+      '      description: |   # why\n        Bakes the bread.\n\n        No more than 220 degrees.\n      qualifiers: [x]  # note\n      elements:\n'
+    ),
+    'the text over several lines, its blank line and the comments at the end of the lines, as written'
+  );
   assert.ok(!saved.includes('Bakes the bread.'));
 });
 
@@ -638,8 +1020,13 @@ test('the manual describes the move, and the texts about replaces and rename poi
   const manual = fs.readFileSync(path.resolve(__dirname, '../../../doc/README.adoc'), 'utf8');
   assert.match(manual, /\[\[editor-move\]\]/);
   const section = manual.slice(manual.indexOf('[[editor-move]]'), manual.indexOf('[[editor-theme]]'));
-  for (const phrase of ['does not write `replaces`', 'header.parent', 'another file', 'Cancel']) assert.ok(section.includes(phrase), phrase);
-  for (const phrase of ['Move and write replaces', 'Move only']) assert.ok(!section.includes(phrase), 'the manual no longer teaches a button that the page cannot offer (#97): ' + phrase);
+  for (const phrase of ['does not write `replaces`', 'header.parent', 'another file', 'Cancel'])
+    assert.ok(section.includes(phrase), phrase);
+  for (const phrase of ['Move and write replaces', 'Move only'])
+    assert.ok(
+      !section.includes(phrase),
+      'the manual no longer teaches a button that the page cannot offer (#97): ' + phrase
+    );
   const replaces = manual.slice(manual.indexOf('[[editor-replaces]]'), manual.indexOf('[[editor-move]]'));
   assert.match(replaces, /<<editor-move>>/);
   assert.match(manual, /rename[^\n]*<<editor-move>>|<<editor-move>>[^\n]*rename/i);

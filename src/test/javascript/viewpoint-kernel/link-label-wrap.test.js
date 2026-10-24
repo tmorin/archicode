@@ -14,21 +14,29 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 
 /** A layout shaped like ELK's answer, without ELK: the labels keep the size the graph asked for. */
 function fakeLayout(graph) {
-  const place = (node, x) => Object.assign({}, node, {
-    x, y: 0, width: node.width || 400, height: node.height || 200,
-    children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
-  });
+  const place = (node, x) =>
+    Object.assign({}, node, {
+      x,
+      y: 0,
+      width: node.width || 400,
+      height: node.height || 200,
+      children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
+    });
   return Object.assign(place(graph, 0), {
-    width: 900, height: 600,
-    edges: graph.edges.map((edge) => Object.assign({}, edge, {
-      sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
-      labels: (edge.labels || []).map((label) => Object.assign({ x: 30, y: 7 }, label))
-    }))
+    width: 900,
+    height: 600,
+    edges: graph.edges.map((edge) =>
+      Object.assign({}, edge, {
+        sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
+        labels: (edge.labels || []).map((label) => Object.assign({ x: 30, y: 7 }, label))
+      })
+    )
   });
 }
 
 /** 108 characters of invented words: the length of the reference label, none of its text. */
-const LABEL_108 = 'alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november oscar papa quebec tau';
+const LABEL_108 =
+  'alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november oscar papa quebec tau';
 assert.equal(LABEL_108.length, 108);
 
 /** The first drawn link of the overview of `shop.web.api`, given a label and qualifiers; the graph, the drawing, the link. */
@@ -44,7 +52,11 @@ async function drawn(label, qualifiers, options = {}, show = {}) {
   const svg = sandbox.renderDiagramSvg(layout, result, 'shop.web.api', { show }).html;
   const edge = graph.edges[graph.edges.findIndex((e) => e.id === 'e' + index)];
   const text = (/<text class="dg-label"[^>]*>[\s\S]*?<\/text>/.exec(svg) || [''])[0];
-  const tspans = Array.from(text.matchAll(/<tspan x="([^"]*)" y="([^"]*)">([^<]*)<\/tspan>/g), (m) => ({ x: Number(m[1]), y: Number(m[2]), text: m[3] }));
+  const tspans = Array.from(text.matchAll(/<tspan x="([^"]*)" y="([^"]*)">([^<]*)<\/tspan>/g), (m) => ({
+    x: Number(m[1]),
+    y: Number(m[2]),
+    text: m[3]
+  }));
   return { sandbox, link, graph, edge, label: edge && edge.labels && plain(edge.labels[0]), svg, text, tspans, index };
 }
 
@@ -55,8 +67,11 @@ test('a short caption stays what it was: one <text> line, 15 px high, no <tspan>
   assert.equal(d.label.height, 15);
   assert.equal(d.label.text, 'reads [https]');
   assert.equal(d.tspans.length, 0);
-  assert.match(d.text, /^<text class="dg-label" data-from="[^"]+" data-to="[^"]+"[^>]* data-action="select-link" text-anchor="middle" x="[\d.]+" y="19">reads \[https\]<\/text>$/,
-    'the first (and only) baseline is where it always was: label.y + 12');
+  assert.match(
+    d.text,
+    /^<text class="dg-label" data-from="[^"]+" data-to="[^"]+"[^>]* data-action="select-link" text-anchor="middle" x="[\d.]+" y="19">reads \[https\]<\/text>$/,
+    'the first (and only) baseline is where it always was: label.y + 12'
+  );
   assert.equal(d.label.width, Math.ceil(measure(d.sandbox, 'reads [https]')) + 10);
 });
 
@@ -67,10 +82,17 @@ test('the reference case: 108 characters and a qualifier give lines no wider tha
   assert.ok(lines.length >= 3, 'a label of that length takes several lines: ' + lines.length);
   assert.ok(lines.length <= run(d.sandbox, 'DIAGRAM_LABEL_LINES'), 'within the cap');
   for (const line of lines) assert.ok(measure(d.sandbox, line) <= max, '"' + line + '" fits');
-  assert.equal(lines.join(' '), LABEL_108 + ' [https]', 'nothing is lost, nothing is cut: the words and the qualifier, in order');
+  assert.equal(
+    lines.join(' '),
+    LABEL_108 + ' [https]',
+    'nothing is lost, nothing is cut: the words and the qualifier, in order'
+  );
   assert.ok(lines[lines.length - 1].endsWith('[https]'), 'the qualifier is on the last line');
   assert.equal(d.tspans.length, lines.length);
-  assert.deepEqual(d.tspans.map((t) => t.text), lines);
+  assert.deepEqual(
+    d.tspans.map((t) => t.text),
+    lines
+  );
   // what the layout is told: the width of the widest line (and room around it), the height of all the lines
   assert.equal(d.label.height, lines.length * 13 + 2);
   assert.equal(d.label.width, Math.ceil(Math.max(...lines.map((line) => measure(d.sandbox, line)))) + 10);
@@ -81,24 +103,40 @@ test('the reference case: 108 characters and a qualifier give lines no wider tha
 test('the lines are centred on the link and drawn under one click target', async () => {
   const d = await drawn(LABEL_108, ['https']);
   const cx = 30 + d.label.width / 2; // fakeLayout puts the label at x=30, y=7
-  assert.match(d.text, /^<text class="dg-label" data-from="[^"]+" data-to="[^"]+"[^>]* data-action="select-link" text-anchor="middle" x="[\d.]+" y="[\d.]+">/);
+  assert.match(
+    d.text,
+    /^<text class="dg-label" data-from="[^"]+" data-to="[^"]+"[^>]* data-action="select-link" text-anchor="middle" x="[\d.]+" y="[\d.]+">/
+  );
   assert.equal(Number(/ x="([\d.]+)" y=/.exec(d.text)[1]), cx);
   d.tspans.forEach((t, i) => {
     assert.equal(t.x, cx, 'every line is centred on the same x');
     assert.equal(t.y, 7 + 12 + i * 13, 'first baseline where the single line sat, then one line height each');
   });
-  assert.equal((d.svg.match(/<text class="dg-label"/g) || []).length, d.graph.edges.filter((edge) => edge.labels).length, 'still one label per link');
+  assert.equal(
+    (d.svg.match(/<text class="dg-label"/g) || []).length,
+    d.graph.edges.filter((edge) => edge.labels).length,
+    'still one label per link'
+  );
   assert.equal(d.text.includes('<text', 1), false, 'one <text> only');
-  assert.ok(d.tspans[d.tspans.length - 1].y + 3 <= 7 + d.label.height, 'the last baseline is inside the room the layout reserved');
+  assert.ok(
+    d.tspans[d.tspans.length - 1].y + 3 <= 7 + d.label.height,
+    'the last baseline is inside the room the layout reserved'
+  );
 });
 
 test('the tooltip and the accessible name stay whole, and the data attributes of the link are those of the label', async () => {
   const d = await drawn(LABEL_108, ['https']);
-  assert.ok(d.text.includes('<title>') && d.text.includes(LABEL_108 + ' [https]'), 'the label carries the whole tooltip of its link');
+  assert.ok(
+    d.text.includes('<title>') && d.text.includes(LABEL_108 + ' [https]'),
+    'the label carries the whole tooltip of its link'
+  );
   const group = new RegExp('<g class="dg-link"([^>]*)aria-label="([^"]*)"><title>([^<]*)</title>').exec(d.svg);
   assert.ok(group[2].endsWith(': ' + LABEL_108 + ' [https]'), 'aria-label of the link: whole');
   assert.ok(group[3].includes(LABEL_108 + ' [https]'), 'title of the link: whole');
-  const ends = (tag) => ['data-from', 'data-to', 'data-nth', 'data-action'].map((name) => (new RegExp(' ' + name + '="([^"]*)"').exec(tag) || [])[1]);
+  const ends = (tag) =>
+    ['data-from', 'data-to', 'data-nth', 'data-action'].map(
+      (name) => (new RegExp(' ' + name + '="([^"]*)"').exec(tag) || [])[1]
+    );
   assert.deepEqual(ends(d.text), ends(group[1] + '>'), 'the label selects the same link as the link does');
   assert.equal(ends(d.text)[3], 'select-link');
 });
@@ -109,7 +147,10 @@ test('a caption that is too long is cut after four lines with an ellipsis, the q
   const lines = plain(cut.sandbox.diagramLabelLayout(cut.link, false).lines);
   assert.equal(lines.length, 4, 'no more than four lines');
   assert.ok(lines[lines.length - 1].endsWith('[https]'), 'the qualifier is still the end of the last line');
-  assert.ok(lines.slice(0, -1).some((line) => line.endsWith('…')) || lines[lines.length - 1].includes('…'), 'what does not fit is replaced by an ellipsis');
+  assert.ok(
+    lines.slice(0, -1).some((line) => line.endsWith('…')) || lines[lines.length - 1].includes('…'),
+    'what does not fit is replaced by an ellipsis'
+  );
   assert.ok(lines.every((line) => measure(cut.sandbox, line) <= 220));
   assert.ok(cut.text.includes(words + ' [https]'), 'and the tooltip has it all');
   assert.equal(cut.label.height, 4 * 13 + 2);
@@ -148,10 +189,16 @@ test('with and without qualifiers, a qualifier alone, and the qualifiers that ar
   const exact = await drawn('word '.repeat(7).trim(), ['https']);
   const lines = plain(exact.sandbox.diagramLabelLayout(exact.link, false).lines);
   assert.ok(lines[lines.length - 1].endsWith('[https]'));
-  const many = await drawn(LABEL_108, Array.from({ length: 30 }, (_, i) => 'qualifier' + i));
+  const many = await drawn(
+    LABEL_108,
+    Array.from({ length: 30 }, (_, i) => 'qualifier' + i)
+  );
   const manyLines = plain(many.sandbox.diagramLabelLayout(many.link, false).lines);
   assert.ok(manyLines.length <= 4, 'the cap holds with a long list of qualifiers: ' + manyLines.length);
-  assert.ok(manyLines.some((line) => line.startsWith('[qualifier0')), 'the qualifiers start a line of their own');
+  assert.ok(
+    manyLines.some((line) => line.startsWith('[qualifier0')),
+    'the qualifiers start a line of their own'
+  );
   assert.ok(manyLines.every((line) => measure(many.sandbox, line) <= 220));
 });
 
@@ -165,12 +212,17 @@ test('what is written in a label cannot reach the markup', async () => {
 test('the captions are drawn where Labels is lit, and only there: without Labels the edges carry none', async () => {
   const { sandbox, kernel } = await openFixture();
   const result = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);
-  result.links.forEach((link) => { link.label = LABEL_108; });
+  result.links.forEach((link) => {
+    link.label = LABEL_108;
+  });
   const without = sandbox.buildElkGraph(result, { captions: false });
   assert.ok(without.edges.length > 0 && without.edges.every((edge) => !edge.labels));
   const svg = sandbox.renderDiagramSvg(fakeLayout(without), result, 'shop.web.api', {}).html;
   assert.doesNotMatch(svg, /dg-label/);
-  assert.ok(sandbox.buildElkGraph(result).edges.some((edge) => edge.labels && edge.labels[0].height > 15), 'by default they are laid out wrapped');
+  assert.ok(
+    sandbox.buildElkGraph(result).edges.some((edge) => edge.labels && edge.labels[0].height > 15),
+    'by default they are laid out wrapped'
+  );
 });
 
 test('the layout and the drawing agree on the lines, whatever the options', async () => {
@@ -187,7 +239,10 @@ test('the maximum width is a constant between 200 and 240 px, and the line heigh
   assert.equal(run(sandbox, 'DIAGRAM_LABEL_LINE_HEIGHT'), 13);
   const fs = require('node:fs');
   const path = require('node:path');
-  const html = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+  const html = fs.readFileSync(
+    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
+    'utf8'
+  );
   const page = /\.dg-label \{([^}]*)\}/.exec(html)[1];
   assert.match(page, /font-size: 11px/);
   sandbox.getComputedStyle = () => ({ getPropertyValue: () => '#123456' });
@@ -204,10 +259,16 @@ test('a text is cut between code points, never between the two halves of a surro
   assert.equal(hasLoneSurrogate('\ud83d'), true, 'the probe itself works');
   const emoji = '\u{1F600}'.repeat(100);
   const layout = sandbox.diagramLabelLayout({ label: emoji, qualifiers: [] }, false);
-  assert.ok(layout.lines.length > 0 && layout.lines.every((line) => !hasLoneSurrogate(line)), JSON.stringify(layout.lines));
+  assert.ok(
+    layout.lines.length > 0 && layout.lines.every((line) => !hasLoneSurrogate(line)),
+    JSON.stringify(layout.lines)
+  );
   assert.ok(layout.lines.every((line) => measure(sandbox, line) <= 220));
   const quals = sandbox.diagramLabelLayout({ label: 'reads', qualifiers: [emoji] }, false);
-  assert.ok(quals.lines.every((line) => !hasLoneSurrogate(line)), JSON.stringify(quals.lines));
+  assert.ok(
+    quals.lines.every((line) => !hasLoneSurrogate(line)),
+    JSON.stringify(quals.lines)
+  );
   const wrapped = plain(sandbox.diagramWrapText(emoji, 220, 0, (line) => measure(sandbox, line)));
   assert.ok(wrapped.length > 1 && wrapped.every((line) => !hasLoneSurrogate(line)));
   assert.equal(wrapped.join(''), emoji, 'cut in several lines, nothing lost');

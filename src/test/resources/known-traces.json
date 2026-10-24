@@ -1,0 +1,4 @@
+{
+  "comment": "Mistakes of one key in a shipped manifest that still end in a stack trace, and whose fix needs the author to decide what the sentence or the behaviour should be (wave 023, run 0164, T8). Each entry has `case` (the label MistakeSweepTest prints: workspace, manifest, path, kind), `issue` and `reason`. MistakeSweepTest reads this file; an entry that no longer fails fails the test. Empty when every trace is fixed.",
+  "traces": []
+}

@@ -19,7 +19,12 @@ function writableFolder(dir) {
     const file = await getFileHandle(name, options);
     file.createWritable = async () => {
       const parts = [];
-      return { write: async (data) => { parts.push(data); }, close: async () => fs.writeFileSync(path.join(dir, name), parts.join('')) };
+      return {
+        write: async (data) => {
+          parts.push(data);
+        },
+        close: async () => fs.writeFileSync(path.join(dir, name), parts.join(''))
+      };
     };
     return file;
   };
@@ -31,7 +36,10 @@ async function open(settingsYaml, folderName = 'my-folder') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archicode-name-'));
   fs.mkdirSync(path.join(dir, 'manifests'));
   fs.writeFileSync(path.join(dir, 'manifests', 'app.s1.yaml'), MANIFEST);
-  fs.writeFileSync(path.join(dir, '.archicode.yaml'), 'application:\n  elements: []\n' + (settingsYaml === null ? '' : 'settings:\n' + settingsYaml));
+  fs.writeFileSync(
+    path.join(dir, '.archicode.yaml'),
+    'application:\n  elements: []\n' + (settingsYaml === null ? '' : 'settings:\n' + settingsYaml)
+  );
   const sandbox = createApp();
   sandbox.window.showDirectoryPicker = function () {};
   const handle = writableFolder(dir);
@@ -58,7 +66,9 @@ test('the name is read from the settings, and is empty when the key is absent, b
 });
 
 test('a name round-trips through a save, in its place, with the other settings', async () => {
-  const { sandbox, state, dir } = await open('  relationships:\n    default-synthetic-label: calls\n  name: Shop\n  views:\n    path: out\n');
+  const { sandbox, state, dir } = await open(
+    '  relationships:\n    default-synthetic-label: calls\n  name: Shop\n  views:\n    path: out\n'
+  );
   assert.equal(state.workspace.settings.name, 'Shop');
   state.workspace.settings.name = '  Shop 2  ';
   await sandbox.writeWorkspaceYaml();
@@ -104,10 +114,15 @@ test('a workspace whose settings are not a mapping still gets a name written wit
 test('the Settings screen has a Workspace section with the Name, between Appearance and Manifests', async () => {
   const { sandbox } = await open('  name: Shop\n');
   const html = sandbox.renderSettingsViewHtml();
-  const section = html.match(/<div class="edition-section" id="settings-workspace"><h3>Workspace<\/h3>([\s\S]*?)<\/div><\/div>/);
+  const section = html.match(
+    /<div class="edition-section" id="settings-workspace"><h3>Workspace<\/h3>([\s\S]*?)<\/div><\/div>/
+  );
   assert.ok(section, 'the section');
   assert.match(section[1], /<label class="field-label" for="settings-name-input">Name<\/label>/);
-  assert.match(section[1], /<input type="text" id="settings-name-input" value="Shop" placeholder="my-folder" aria-describedby="settings-help-name">/);
+  assert.match(
+    section[1],
+    /<input type="text" id="settings-name-input" value="Shop" placeholder="my-folder" aria-describedby="settings-help-name">/
+  );
   assert.match(section[1], /id="settings-help-name"/);
   assert.ok(html.indexOf('id="settings-appearance"') < html.indexOf('id="settings-workspace"'));
   assert.ok(html.indexOf('id="settings-workspace"') < html.indexOf('<h3>Manifests</h3>'));
@@ -129,7 +144,8 @@ test('typing a name in Settings goes through Save all changes, and marks the wor
   const getElementById = sandbox.document.getElementById;
   sandbox.document.getElementById = (id) => fields[id] || getElementById(id);
   const querySelector = sandbox.document.querySelector;
-  sandbox.document.querySelector = (selector) => (selector.startsWith('.json-editor-fallback') ? { value: '{}' } : querySelector(selector));
+  sandbox.document.querySelector = (selector) =>
+    selector.startsWith('.json-editor-fallback') ? { value: '{}' } : querySelector(selector);
   assert.equal(sandbox.hasUnsavedChanges(), false);
   const draft = sandbox.readSettingsDraft();
   assert.equal(draft.valid, true);
@@ -146,7 +162,13 @@ test('typing in the Name field dirties the form, as any field of Settings (Save 
   const { sandbox } = await open(null);
   run(sandbox, "currentPerspective = 'settings'");
   assert.equal(run(sandbox, 'draftTyped'), false);
-  sandbox.handleAppInput({ target: { id: 'settings-name-input', matches: () => false, closest: (selector) => (/settings-view/.test(selector) ? {} : null) } });
+  sandbox.handleAppInput({
+    target: {
+      id: 'settings-name-input',
+      matches: () => false,
+      closest: (selector) => (/settings-view/.test(selector) ? {} : null)
+    }
+  });
   assert.equal(run(sandbox, 'draftTyped'), true);
   assert.doesNotMatch(sandbox.renderSaveButtonHtml(), /disabled/);
 });
@@ -162,7 +184,10 @@ test('the top bar shows the name in place of the folder, and the folder is its t
 test('without a name the top bar is unchanged: the folder name and its slash', async () => {
   const { sandbox } = await open('  views:\n    path: out\n', 'archi');
   const html = sandbox.renderTopPanelHtml();
-  assert.match(html, /<span class="folder-name" title="Folder: archi \(a browser does not tell the full path of a folder\)">archi<span class="folder-root-slash">\/<\/span><\/span>/);
+  assert.match(
+    html,
+    /<span class="folder-name" title="Folder: archi \(a browser does not tell the full path of a folder\)">archi<span class="folder-root-slash">\/<\/span><\/span>/
+  );
   assert.doesNotMatch(html, /workspace-name/);
   const blank = await open('  name: "  "\n', 'archi');
   assert.equal(blank.sandbox.renderTopPanelHtml(), html, 'a blank name is no name');
@@ -178,7 +203,10 @@ test('the name is escaped in the top bar, the tooltip, the title of the page and
   assert.match(top, /title="Folder: a&quot;&lt;b&gt;"/, 'the folder name in the tooltip is escaped too');
   const settings = sandbox.renderSettingsViewHtml();
   assert.ok(!settings.includes('<img'));
-  assert.match(settings, /id="settings-name-input" value="&lt;img src=x onerror=&quot;a\(\)&quot;&gt; &amp; &quot;q&quot;"/);
+  assert.match(
+    settings,
+    /id="settings-name-input" value="&lt;img src=x onerror=&quot;a\(\)&quot;&gt; &amp; &quot;q&quot;"/
+  );
 });
 
 test('the title of the page is the editor then the name, or the folder when there is no name', async () => {
@@ -207,7 +235,8 @@ test('a save keeps the comments of .archicode.yaml and the lines it did not touc
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archicode-keep-'));
   fs.mkdirSync(path.join(dir, 'manifests'));
   fs.writeFileSync(path.join(dir, 'manifests', 'app.s1.yaml'), MANIFEST);
-  const original = '# my workspace\napplication:\n  elements: []\nsettings:\n  views:\n    path: "out"   # where the views go\n';
+  const original =
+    '# my workspace\napplication:\n  elements: []\nsettings:\n  views:\n    path: "out"   # where the views go\n';
   fs.writeFileSync(path.join(dir, '.archicode.yaml'), original);
   const sandbox = createApp();
   await sandbox.loadWorkspace(writableFolder(dir));

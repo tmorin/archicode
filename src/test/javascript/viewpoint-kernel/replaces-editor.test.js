@@ -18,19 +18,33 @@ const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/ed
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
-const text = (html) => html.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, ' ').replace(/&rarr;/g, '→').replace(/&times;/g, '×').replace(/\s+/g, ' ').trim();
+const text = (html) =>
+  html
+    .replace(/<svg[\s\S]*?<\/svg>/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&rarr;/g, '→')
+    .replace(/&times;/g, '×')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 function fakeLayout(graph) {
-  const place = (node, x) => Object.assign({}, node, {
-    x, y: 0, width: node.width || 400, height: node.height || 200,
-    children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
-  });
+  const place = (node, x) =>
+    Object.assign({}, node, {
+      x,
+      y: 0,
+      width: node.width || 400,
+      height: node.height || 200,
+      children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
+    });
   return Object.assign(place(graph, 0), {
-    width: 900, height: 600,
-    edges: graph.edges.map((edge) => Object.assign({}, edge, {
-      sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
-      labels: (edge.labels || []).map((label) => Object.assign({ x: 3, y: 3 }, label))
-    }))
+    width: 900,
+    height: 600,
+    edges: graph.edges.map((edge) =>
+      Object.assign({}, edge, {
+        sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
+        labels: (edge.labels || []).map((label) => Object.assign({ x: 3, y: 3 }, label))
+      })
+    )
   });
 }
 
@@ -38,7 +52,21 @@ function fakeLayout(graph) {
 
 // every manifest has a comment before and after, a blank line and quoted strings: what a save must keep
 const element = (kind, parent, id, name, extra) =>
-  '# the manifest of ' + id + '\nheader:\n  kind: "archicode.morin.io/' + kind + '"\n' + (parent ? '  parent: "' + parent + '"\n' : '') + '  version: "1"\n\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n' + (extra || '') + '# end of ' + id + '\n';
+  '# the manifest of ' +
+  id +
+  '\nheader:\n  kind: "archicode.morin.io/' +
+  kind +
+  '"\n' +
+  (parent ? '  parent: "' + parent + '"\n' : '') +
+  '  version: "1"\n\ncontent:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  name +
+  '"\n' +
+  (extra || '') +
+  '# end of ' +
+  id +
+  '\n';
 const LOANS_DESCRIPTION = '  description: "Records which member borrowed which book and when it is due."\n';
 const RACK_DESCRIPTION = '  description: "Keeps the rare books in a cool dry room under watch."\n';
 
@@ -59,16 +87,47 @@ const TARGET = {
   // nothing says it replaces the loans: a candidate (same description, the only two containers of the library that changed)
   'app.library.lending.yaml': element('container', 'library', 'lending', 'Lending', LOANS_DESCRIPTION),
   // unchanged, with a state written by hand on it
-  'app.library.fines.yaml': element('container', 'library', 'fines', 'Fines', '  tags:\n    rendering-stereotypes: moved\n'),
-  'app.library.catalog-a.yaml': element('container', 'library', 'catalog-a', 'Catalog of books', '  replaces:\n    - library.catalog\n'),
-  'app.library.catalog-b.yaml': element('container', 'library', 'catalog-b', 'Catalog of films', '  replaces: [library.catalog, library.nowhere]\n'),
+  'app.library.fines.yaml': element(
+    'container',
+    'library',
+    'fines',
+    'Fines',
+    '  tags:\n    rendering-stereotypes: moved\n'
+  ),
+  'app.library.catalog-a.yaml': element(
+    'container',
+    'library',
+    'catalog-a',
+    'Catalog of books',
+    '  replaces:\n    - library.catalog\n'
+  ),
+  'app.library.catalog-b.yaml': element(
+    'container',
+    'library',
+    'catalog-b',
+    'Catalog of films',
+    '  replaces: [library.catalog, library.nowhere]\n'
+  ),
   'app.archive.yaml': element('system', null, 'archive', 'Archive'),
   // a replaces that points at nothing, written on one line: the kernel ignores it, and the rack is a candidate for this vault
-  'app.archive.vault.yaml': element('container', 'archive', 'vault', 'Vault', RACK_DESCRIPTION + '  replaces: [archive.ghost]\n'),
-  'app.archive.cabinet.yaml': element('container', 'archive', 'cabinet', 'Cabinet', '  replaces:\n    - archive.shelf\n    - archive.bin\n'),
+  'app.archive.vault.yaml': element(
+    'container',
+    'archive',
+    'vault',
+    'Vault',
+    RACK_DESCRIPTION + '  replaces: [archive.ghost]\n'
+  ),
+  'app.archive.cabinet.yaml': element(
+    'container',
+    'archive',
+    'cabinet',
+    'Cabinet',
+    '  replaces:\n    - archive.shelf\n    - archive.bin\n'
+  ),
   'app.archive.counter.yaml': element('container', 'archive', 'counter', 'Counter', '  replaces:\n    - library.desk\n')
 };
-const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
+const folder = (dir, files) =>
+  Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
 /** The manifests of the target as they are on disk: the same texts, with the plateau in their header. */
 const DISK = Object.fromEntries(Object.entries(TARGET).map(([name, body]) => [name, inPlateau('target', body)]));
 const PLATEAU_LIST = [
@@ -82,7 +141,10 @@ const target = (reference) => 'plateaus/20_target/app.' + reference + '.yaml';
  * compared with the base on the band unless `compare` is false. `files` are the files as they are on disk.
  */
 async function open(options = {}) {
-  const files = layeredFiles(PLATEAU_LIST, Object.assign({}, folder('10_base', options.base || BASE), folder('20_target', options.target || TARGET)));
+  const files = layeredFiles(
+    PLATEAU_LIST,
+    Object.assign({}, folder('10_base', options.base || BASE), folder('20_target', options.target || TARGET))
+  );
   const opened = await openLayered(createApp, memFolder, files, { drawn: 'target' });
   if (options.compare !== false) compareWith(opened.sandbox, options.compareTo || 'base');
   return Object.assign(opened, { files });
@@ -91,14 +153,20 @@ async function open(options = {}) {
 /** A click as handleAppClick reads it: the nearest data-action element, with these attributes. */
 function click(sandbox, attributes) {
   const target = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
-  sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  sandbox.handleAppClick({
+    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    preventDefault() {},
+    stopPropagation() {},
+    detail: 1
+  });
 }
 
 /** The attributes of the first button of `html` whose opening tag holds `needle`. */
 function attributesOf(html, needle) {
   const tag = html.match(new RegExp('<button[^>]*' + needle + '[^>]*>'))[0];
   const attributes = {};
-  for (const m of tag.matchAll(/([a-z-]+)="([^"]*)"/g)) attributes[m[1]] = m[2].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  for (const m of tag.matchAll(/([a-z-]+)="([^"]*)"/g))
+    attributes[m[1]] = m[2].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
   return attributes;
 }
 
@@ -110,7 +178,10 @@ function lineDiff(before, after) {
   while (start < a.length && start < b.length && a[start] === b[start]) start++;
   let endA = a.length;
   let endB = b.length;
-  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) { endA--; endB--; }
+  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) {
+    endA--;
+    endB--;
+  }
   return { removed: a.slice(start, endA), added: b.slice(start, endB) };
 }
 
@@ -118,13 +189,23 @@ function lineDiff(before, after) {
 async function draw(sandbox, viewpoint, reference, options = {}) {
   run(sandbox, "currentPerspective = '" + (viewpoint === 'map' ? 'map' : 'elements') + "';");
   const kernel = await sandbox.loadViewpointKernel();
-  const { input } = sandbox.buildKernelInput(viewpoint, reference, Object.assign(viewpoint === 'map' ? { opened: ['library', 'archive', 'library.catalog'] } : {}, options.input));
+  const { input } = sandbox.buildKernelInput(
+    viewpoint,
+    reference,
+    Object.assign(viewpoint === 'map' ? { opened: ['library', 'archive', 'library.catalog'] } : {}, options.input)
+  );
   const result = kernel.compute(input);
   assert.equal(result.error, undefined);
   const comparison = sandbox.comparisonState();
   if (comparison && comparison.layers) sandbox.tellRemovedItems(result, comparison, input.layer);
   const graph = sandbox.buildElkGraph(result, { captions: false });
-  const drawing = sandbox.renderDiagramSvg(fakeLayout(graph), result, reference, { map: viewpoint === 'map', show: { labels: false }, layer: input.layer, opened: [], pinned: [] });
+  const drawing = sandbox.renderDiagramSvg(fakeLayout(graph), result, reference, {
+    map: viewpoint === 'map',
+    show: { labels: false },
+    layer: input.layer,
+    opened: [],
+    pinned: []
+  });
   return { input, result, svg: drawing.html, comparison };
 }
 
@@ -132,11 +213,30 @@ function nodeOf(svg, id) {
   const at = svg.indexOf('data-id="' + id + '"');
   assert.ok(at > 0, id + ' is drawn');
   const start = svg.lastIndexOf('<g class="dg-node', at);
-  const ends = ['<g class="dg-node', '<g class="dg-links"', '<g class="dg-link"', '<g class="dg-fold"', '<text class="dg-label"', '</svg>'].map((m) => svg.indexOf(m, start + 10)).filter((i) => i > 0);
+  const ends = [
+    '<g class="dg-node',
+    '<g class="dg-links"',
+    '<g class="dg-link"',
+    '<g class="dg-fold"',
+    '<text class="dg-label"',
+    '</svg>'
+  ]
+    .map((m) => svg.indexOf(m, start + 10))
+    .filter((i) => i > 0);
   return svg.slice(start, Math.min(...ends));
 }
-const pillsOf = (node) => Array.from(node.matchAll(/<g class="dg-badge[^"]*"[^>]*>(?:<rect [^>]*\/>)<text [^>]*>([^<]*)<\/text><\/g>/g), (m) => m[1]);
-const varsOf = (node) => Object.fromEntries(Array.from(((node.match(/^<g[^>]* style="([^"]*)"/) || [])[1] || '').matchAll(/(--[a-z-]+):([^;]*)/g), (m) => [m[1], m[2]]));
+const pillsOf = (node) =>
+  Array.from(
+    node.matchAll(/<g class="dg-badge[^"]*"[^>]*>(?:<rect [^>]*\/>)<text [^>]*>([^<]*)<\/text><\/g>/g),
+    (m) => m[1]
+  );
+const varsOf = (node) =>
+  Object.fromEntries(
+    Array.from(((node.match(/^<g[^>]* style="([^"]*)"/) || [])[1] || '').matchAll(/(--[a-z-]+):([^;]*)/g), (m) => [
+      m[1],
+      m[2]
+    ])
+  );
 
 // ---- 1. The states: one table, glyph, line, pill, tint ----
 
@@ -144,10 +244,18 @@ test('the editor knows moved, split and merged as states, in every place that li
   const { sandbox } = await open();
   assert.deepEqual(plain(run(sandbox, 'CHANGE_STATES')), ['new', 'changed', 'removed', 'moved', 'split', 'merged']);
   assert.deepEqual(plain(run(sandbox, 'IDENTITY_STATES')), ['moved', 'split', 'merged']);
-  assert.deepEqual(plain(run(sandbox, 'RELATIONSHIP_STATES')), ['new', 'changed', 'removed'], 'a relationship is never moved, split or merged');
+  assert.deepEqual(
+    plain(run(sandbox, 'RELATIONSHIP_STATES')),
+    ['new', 'changed', 'removed'],
+    'a relationship is never moved, split or merged'
+  );
   const states = run(sandbox, "CHANGE_STATES.concat('contains-changes')");
   const glyphs = plain(run(sandbox, 'CHANGE_GLYPHS'));
-  assert.deepEqual([glyphs.moved, glyphs.split, glyphs.merged], ['→', '⋔', '⊕'], 'the glyphs of the command line (ChangeMarks.java)');
+  assert.deepEqual(
+    [glyphs.moved, glyphs.split, glyphs.merged],
+    ['→', '⋔', '⊕'],
+    'the glyphs of the command line (ChangeMarks.java)'
+  );
   const looks = plain(run(sandbox, 'CHANGE_DEFAULT_LOOK'));
   const words = plain(run(sandbox, 'CHANGE_WORDS'));
   const seen = new Set();
@@ -157,8 +265,13 @@ test('the editor knows moved, split and merged as states, in every place that li
   }
   assert.equal(seen.size, 7, 'the seven glyphs differ');
   const lines = states.map((state) => looks[state]['--st-width'] + '/' + looks[state]['--st-dash']);
-  assert.equal(new Set(lines).size, 7, 'and so do the seven lines (a width and a dash pattern), so that colour is never the only way: ' + lines.join(' '));
-  for (const state of ['moved', 'split', 'merged']) assert.ok(looks[state]['--st-tint'] && looks[state]['--st-stroke'].includes('--chg-' + state));
+  assert.equal(
+    new Set(lines).size,
+    7,
+    'and so do the seven lines (a width and a dash pattern), so that colour is never the only way: ' + lines.join(' ')
+  );
+  for (const state of ['moved', 'split', 'merged'])
+    assert.ok(looks[state]['--st-tint'] && looks[state]['--st-stroke'].includes('--chg-' + state));
 });
 
 test('the three colours are defined for the light theme, the system dark theme and the forced dark theme, and read against the page', () => {
@@ -166,17 +279,43 @@ test('the three colours are defined for the light theme, the system dark theme a
   const light = block(/:root \{([^}]*)\}/);
   const system = block(/prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([^}]*)\}/);
   const forced = block(/:root\[data-theme="dark"\] \{([^}]*)\}/);
-  const colour = (css, name) => { const m = css.match(new RegExp(name + ': *(#[0-9a-f]{6})')); assert.ok(m, name); return m[1]; };
+  const colour = (css, name) => {
+    const m = css.match(new RegExp(name + ': *(#[0-9a-f]{6})'));
+    assert.ok(m, name);
+    return m[1];
+  };
   const luminance = (hex) => {
-    const channel = (i) => { const v = parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const channel = (i) => {
+      const v = parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
     return 0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
   };
-  const contrast = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
-  for (const [css, name] of [[light, 'light'], [system, 'system dark'], [forced, 'forced dark']]) {
+  const contrast = (a, b) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  for (const [css, name] of [
+    [light, 'light'],
+    [system, 'system dark'],
+    [forced, 'forced dark']
+  ]) {
     const bg = css === light ? colour(light, '--bg') : '#1e1e1e';
     for (const state of ['moved', 'split', 'merged']) {
       const value = colour(css, '--chg-' + state);
-      assert.ok(contrast(value, bg) >= 3, name + ' ' + state + ' ' + value + ' on ' + bg + ': ' + contrast(value, bg).toFixed(2) + ' is below the 3:1 a line needs');
+      assert.ok(
+        contrast(value, bg) >= 3,
+        name +
+          ' ' +
+          state +
+          ' ' +
+          value +
+          ' on ' +
+          bg +
+          ': ' +
+          contrast(value, bg).toFixed(2) +
+          ' is below the 3:1 a line needs'
+      );
     }
   }
 });
@@ -186,27 +325,65 @@ test('the map draws a moved, a split and a merged box with the glyph, the line, 
   const { svg, result } = await draw(sandbox, 'map', '');
   const moved = nodeOf(svg, 'archive.counter');
   assert.match(moved, /dg-chg-moved/);
-  assert.match(moved, /<tspan class="dg-glyph">→<\/tspan> Counter \(from library\.desk\)/, 'the glyph and the title say it, as the title of the command line does');
+  assert.match(
+    moved,
+    /<tspan class="dg-glyph">→<\/tspan> Counter \(from library\.desk\)/,
+    'the glyph and the title say it, as the title of the command line does'
+  );
   assert.deepEqual(pillsOf(moved), ['moved']);
-  assert.deepEqual([varsOf(moved)['--st-width'], varsOf(moved)['--st-dash'], varsOf(moved)['--st-stroke'], varsOf(moved)['--st-tint']], ['2px', '12 12', 'var(--chg-moved)', 'var(--chg-moved)']);
+  assert.deepEqual(
+    [varsOf(moved)['--st-width'], varsOf(moved)['--st-dash'], varsOf(moved)['--st-stroke'], varsOf(moved)['--st-tint']],
+    ['2px', '12 12', 'var(--chg-moved)', 'var(--chg-moved)']
+  );
   const split = nodeOf(svg, 'library.catalog-a');
   assert.match(split, /dg-chg-split/);
-  assert.match(split, /⋔<\/tspan> Catalog of books \(from/, 'a title longer than the box is cut with an ellipsis, as any title is; the tooltip and the panel have it whole');
-  assert.equal(sandbox.diagramItemText(result.items.find((i) => i.reference === 'library.catalog-a'), undefined, 'application').title, '⋔ Catalog of books (from library.catalog)');
+  assert.match(
+    split,
+    /⋔<\/tspan> Catalog of books \(from/,
+    'a title longer than the box is cut with an ellipsis, as any title is; the tooltip and the panel have it whole'
+  );
+  assert.equal(
+    sandbox.diagramItemText(
+      result.items.find((i) => i.reference === 'library.catalog-a'),
+      undefined,
+      'application'
+    ).title,
+    '⋔ Catalog of books (from library.catalog)'
+  );
   assert.deepEqual(pillsOf(split), ['split']);
   assert.equal(varsOf(split)['--st-dash'], '8 8');
   const merged = nodeOf(svg, 'archive.cabinet');
   assert.match(merged, /dg-chg-merged/);
   assert.match(merged, /⊕<\/tspan> Cabinet \(from archive/);
-  assert.equal(sandbox.diagramItemText(result.items.find((i) => i.reference === 'archive.cabinet'), undefined, 'application').title, '⊕ Cabinet (from archive.bin, archive.shelf)');
+  assert.equal(
+    sandbox.diagramItemText(
+      result.items.find((i) => i.reference === 'archive.cabinet'),
+      undefined,
+      'application'
+    ).title,
+    '⊕ Cabinet (from archive.bin, archive.shelf)'
+  );
   assert.deepEqual(pillsOf(merged), ['merged']);
   assert.equal(varsOf(merged)['--st-dash'], '3 9');
   // the answer of compute carries the word; the page does not invent it
-  assert.deepEqual(plain(result.items.filter((i) => i.change !== 'none' && i.change !== 'new' && i.change !== 'removed').map((i) => i.reference + ' ' + i.change).sort()),
-    ['archive.cabinet merged', 'archive.counter moved', 'library.catalog-a split', 'library.catalog-b split']);
+  assert.deepEqual(
+    plain(
+      result.items
+        .filter((i) => i.change !== 'none' && i.change !== 'new' && i.change !== 'removed')
+        .map((i) => i.reference + ' ' + i.change)
+        .sort()
+    ),
+    ['archive.cabinet merged', 'archive.counter moved', 'library.catalog-a split', 'library.catalog-b split']
+  );
   // the tooltip says it in words
-  assert.match(moved, /<title>[^<]*Moved: it replaces library\.desk of the plateau it is compared with and differs from it \(name\)\./);
-  assert.match(merged, /<title>[^<]*Merged: it replaces several elements of the plateau it is compared with \(archive\.bin, archive\.shelf\)\./);
+  assert.match(
+    moved,
+    /<title>[^<]*Moved: it replaces library\.desk of the plateau it is compared with and differs from it \(name\)\./
+  );
+  assert.match(
+    merged,
+    /<title>[^<]*Merged: it replaces several elements of the plateau it is compared with \(archive\.bin, archive\.shelf\)\./
+  );
 });
 
 test('a removed box that is only the place of what was replaced says what replaced it, after its struck name', async () => {
@@ -217,14 +394,24 @@ test('a removed box that is only the place of what was replaced says what replac
   assert.deepEqual(plain(item.replacedBy), ['library.catalog-a', 'library.catalog-b']);
   const text = sandbox.diagramItemText(item, undefined, 'application');
   assert.equal(text.title, '− Catalog (replaced by library.catalog-a, library.catalog-b)');
-  assert.equal(sandbox.diagramTitleHtml(text.title, text), '<tspan class="dg-glyph">−</tspan> <tspan class="dg-struck">Catalog</tspan> (replaced by library.catalog-a, library.catalog-b)', 'only the name is struck');
+  assert.equal(
+    sandbox.diagramTitleHtml(text.title, text),
+    '<tspan class="dg-glyph">−</tspan> <tspan class="dg-struck">Catalog</tspan> (replaced by library.catalog-a, library.catalog-b)',
+    'only the name is struck'
+  );
   // a long title wrapped by the layout: the line that is the note alone is not struck
-  assert.equal(sandbox.diagramTitleHtml('library.catalog-a, library.catalog-b)', text), 'library.catalog-a, library.catalog-b)');
+  assert.equal(
+    sandbox.diagramTitleHtml('library.catalog-a, library.catalog-b)', text),
+    'library.catalog-a, library.catalog-b)'
+  );
   // a removed box that is really removed (its replacement is not told) is what it was
   const mailer = result.items.find((i) => i.reference === 'library.catalog.index');
   assert.equal(sandbox.diagramItemText(mailer, undefined, 'application').title, '− Index');
   // the removed box is drawn in the lists of the page as it was, with its word
-  assert.deepEqual(plain(sandbox.comparisonState().records.get('application|library.catalog').replaced_by), ['library.catalog-a', 'library.catalog-b']);
+  assert.deepEqual(plain(sandbox.comparisonState().records.get('application|library.catalog').replaced_by), [
+    'library.catalog-a',
+    'library.catalog-b'
+  ]);
 });
 
 test('the key lists a state of identity only when the drawing has a box in it; every other drawing has the key it had', async () => {
@@ -235,24 +422,53 @@ test('the key lists a state of identity only when the drawing has a box in it; e
   assert.deepEqual(counts.split, { boxes: 2 });
   assert.deepEqual(counts.merged, { boxes: 1 });
   const legend = text(sandbox.diagramComparisonLegendHtml(full.comparison, counts));
-  assert.match(legend, /\+ new thick solid 2 boxes, 0 links ~ changed dotted 0 boxes, 0 links − removed long dashes, narrow gaps, struck title 4 boxes, 0 links → moved long dashes, wide gaps: replaces one element 1 box ⋔ split medium dashes: one of several that replace one 2 boxes ⊕ merged short dashes, far apart: replaces several 1 box ± contains changes thin dashed: something inside changed 2 boxes/);
+  assert.match(
+    legend,
+    /\+ new thick solid 2 boxes, 0 links ~ changed dotted 0 boxes, 0 links − removed long dashes, narrow gaps, struck title 4 boxes, 0 links → moved long dashes, wide gaps: replaces one element 1 box ⋔ split medium dashes: one of several that replace one 2 boxes ⊕ merged short dashes, far apart: replaces several 1 box ± contains changes thin dashed: something inside changed 2 boxes/
+  );
   // the diagram of one element that has none of them: the key is the key of the four states
   const one = await draw(sandbox, 'overview', 'library.lending');
-  const oneLegend = text(sandbox.diagramComparisonLegendHtml(one.comparison, plain(sandbox.comparisonCountsOf(one.result))));
+  const oneLegend = text(
+    sandbox.diagramComparisonLegendHtml(one.comparison, plain(sandbox.comparisonCountsOf(one.result)))
+  );
   assert.doesNotMatch(oneLegend, /\bmoved\b|\bsplit\b|\bmerged\b/);
   // no count given (the caller that does not count): the four states, as before
-  assert.doesNotMatch(text(sandbox.diagramComparisonLegendHtml(full.comparison, null)), /\bmoved\b|\bsplit\b|\bmerged\b/);
+  assert.doesNotMatch(
+    text(sandbox.diagramComparisonLegendHtml(full.comparison, null)),
+    /\bmoved\b|\bsplit\b|\bmerged\b/
+  );
   // and its samples are drawn with the same variables as the boxes
   const html = sandbox.diagramComparisonLegendHtml(full.comparison, counts);
-  assert.match(html, /<span class="dg-legend-state" data-state="split"><svg[^>]*><g class="dg-styled dg-chg-split" style="[^"]*--st-dash:8 8/);
-  assert.doesNotMatch(html, /data-state="moved"><svg[^>]*>[\s\S]{0,400}<svg width="26" height="8"/, 'a state of a box has no sample of a link');
+  assert.match(
+    html,
+    /<span class="dg-legend-state" data-state="split"><svg[^>]*><g class="dg-styled dg-chg-split" style="[^"]*--st-dash:8 8/
+  );
+  assert.doesNotMatch(
+    html,
+    /data-state="moved"><svg[^>]*>[\s\S]{0,400}<svg width="26" height="8"/,
+    'a state of a box has no sample of a link'
+  );
 });
 
 test('the SVG export defines the colours of the three states and repeats nothing else that a relationship does not have', async () => {
   const { sandbox } = await open();
-  const themes = { '--bg': '#fcfcfc', '--panel-bg': '#f1f1f1', '--border': '#dddddd', '--muted': '#667788', '--fg': '#111111', '--accent': '#0a66cc', '--danger': '#cc0000',
-    '--chg-new': '#007744', '--chg-changed': '#995500', '--chg-removed': '#666666', '--chg-removed-text': '#555555', '--chg-contains': '#446688',
-    '--chg-moved': '#0a5599', '--chg-split': '#993377', '--chg-merged': '#2277aa' };
+  const themes = {
+    '--bg': '#fcfcfc',
+    '--panel-bg': '#f1f1f1',
+    '--border': '#dddddd',
+    '--muted': '#667788',
+    '--fg': '#111111',
+    '--accent': '#0a66cc',
+    '--danger': '#cc0000',
+    '--chg-new': '#007744',
+    '--chg-changed': '#995500',
+    '--chg-removed': '#666666',
+    '--chg-removed-text': '#555555',
+    '--chg-contains': '#446688',
+    '--chg-moved': '#0a5599',
+    '--chg-split': '#993377',
+    '--chg-merged': '#2277aa'
+  };
   sandbox.getComputedStyle = () => ({ getPropertyValue: (name) => ' ' + themes[name] + ' ' });
   const css = sandbox.diagramExportCss();
   assert.ok(css.includes('svg{--chg-moved:#0a5599;--chg-split:#993377;--chg-merged:#2277aa}'));
@@ -292,17 +508,25 @@ test('the trees mark a moved, split or merged element with its glyph, and what i
   const { sandbox } = await open();
   const state = sandbox.comparisonState();
   run(sandbox, 'treeComparison = comparisonForTrees();');
-  const of = (reference) => run(sandbox, 'treeChangeOf(AppState.index.application.get(' + JSON.stringify(reference) + '))');
+  const of = (reference) =>
+    run(sandbox, 'treeChangeOf(AppState.index.application.get(' + JSON.stringify(reference) + '))');
   assert.equal(of('archive.counter'), 'moved');
   assert.equal(of('library.catalog-a'), 'split');
   assert.equal(of('archive.cabinet'), 'merged');
   assert.equal(of('archive'), 'contains-changes');
   assert.equal(of('library.fines'), null);
   const mark = sandbox.treeChangeMarkHtml('merged');
-  assert.match(mark, /^<span class="tree-change" data-state="merged" title="Merged since Base" aria-hidden="true">⊕<\/span>$/);
+  assert.match(
+    mark,
+    /^<span class="tree-change" data-state="merged" title="Merged since Base" aria-hidden="true">⊕<\/span>$/
+  );
   assert.match(CSS, /\.tree-change\[data-state="moved"\][^}]*border-style: dashed/);
   assert.match(CSS, /\.tree-change\[data-state="merged"\][^}]*border-style: double/);
-  assert.equal(state.records.get('application|archive').contains_changes, true, 'the kernel says it, on the element of the union');
+  assert.equal(
+    state.records.get('application|archive').contains_changes,
+    true,
+    'the kernel says it, on the element of the union'
+  );
 });
 
 // ---- 2. The Changes panel ----
@@ -310,10 +534,22 @@ test('the trees mark a moved, split or merged element with its glyph, and what i
 test('the counts and the rows of the Changes panel: the three states, in the order a reviewer reads them, each row saying where the element came from', async () => {
   const { sandbox } = await open();
   const panel = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
-  const counts = text(panel.slice(panel.indexOf('class="changes-counts"') + 'class="changes-counts" role="group" aria-label="Counts">'.length, panel.indexOf('<label class="changes-toggle"')));
-  assert.equal(counts, 'Elements + 2 new ~ 0 changed − 3 removed → 1 moved ⋔ 2 split ⊕ 1 merged Relationships + 0 new ~ 0 changed − 0 removed', 'a relationship is none of the three');
+  const counts = text(
+    panel.slice(
+      panel.indexOf('class="changes-counts"') + 'class="changes-counts" role="group" aria-label="Counts">'.length,
+      panel.indexOf('<label class="changes-toggle"')
+    )
+  );
+  assert.equal(
+    counts,
+    'Elements + 2 new ~ 0 changed − 3 removed → 1 moved ⋔ 2 split ⊕ 1 merged Relationships + 0 new ~ 0 changed − 0 removed',
+    'a relationship is none of the three'
+  );
   const list = panel.slice(panel.indexOf('<ul class="change-list" aria-label="Elements that differ">'));
-  const rows = Array.from(list.slice(0, list.indexOf('</ul>')).matchAll(/<li><button[^>]*>([\s\S]*?)<\/button><\/li>/g), (m) => text(m[1]));
+  const rows = Array.from(
+    list.slice(0, list.indexOf('</ul>')).matchAll(/<li><button[^>]*>([\s\S]*?)<\/button><\/li>/g),
+    (m) => text(m[1])
+  );
   assert.deepEqual(rows, [
     '+ new Vault archive.vault',
     '+ new Lending library.lending',
@@ -328,14 +564,31 @@ test('the counts and the rows of the Changes panel: the three states, in the ord
   // the replaced element has no row: it is not removed
   assert.ok(!rows.some((row) => /Front desk|Shelf|Bin/.test(row)));
   // the row is a button like the others: it selects the element and carries the word
-  assert.deepEqual(plain(attributesOf(list, 'data-change="moved"')), { type: 'button', class: 'change-row', 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'moved', 'data-layer': 'application', 'data-ref': 'archive.counter' });
+  assert.deepEqual(plain(attributesOf(list, 'data-change="moved"')), {
+    type: 'button',
+    class: 'change-row',
+    'data-action': 'select-change',
+    'data-thing': 'element',
+    'data-change': 'moved',
+    'data-layer': 'application',
+    'data-ref': 'archive.counter'
+  });
 });
 
 test('the tab strip counts the rows the panel lists, the new ones included, and a click on a row of a state of identity selects the element', async () => {
   const { sandbox, state } = await open();
   assert.equal(sandbox.comparisonState().changes.length, 9);
-  click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'merged', 'data-layer': 'application', 'data-ref': 'archive.cabinet' });
-  assert.deepEqual(plain({ kind: state.selection.kind, key: state.selection.key }), { kind: 'element', key: 'archive.cabinet' });
+  click(sandbox, {
+    'data-action': 'select-change',
+    'data-thing': 'element',
+    'data-change': 'merged',
+    'data-layer': 'application',
+    'data-ref': 'archive.cabinet'
+  });
+  assert.deepEqual(plain({ kind: state.selection.kind, key: state.selection.key }), {
+    kind: 'element',
+    key: 'archive.cabinet'
+  });
 });
 
 test('Changes only keeps the elements that moved, split or merged, with the boxes that place them', async () => {
@@ -360,39 +613,78 @@ test('the inspector of a moved element says what it replaces and what else chang
   const { sandbox } = await open();
   const html = sandbox.renderWhatChangedHtml('application', 'archive.counter', false);
   assert.match(html, /^<section class="what-changed" aria-label="What changed" data-state="moved">/);
-  assert.equal(text(html), 'What changed → moved Moved or renamed: it replaces an element of “Base”. Replaces Front desk library.desk Also changed: name. Compared with “Base”. Name − Before Front desk + After Counter');
+  assert.equal(
+    text(html),
+    'What changed → moved Moved or renamed: it replaces an element of “Base”. Replaces Front desk library.desk Also changed: name. Compared with “Base”. Name − Before Front desk + After Counter'
+  );
   const split = text(sandbox.renderWhatChangedHtml('application', 'library.catalog-b', false));
-  assert.equal(split, 'What changed ⋔ split Split: it is one of several elements that replace an element of “Base”. Replaces Catalog library.catalog');
+  assert.equal(
+    split,
+    'What changed ⋔ split Split: it is one of several elements that replace an element of “Base”. Replaces Catalog library.catalog'
+  );
   const merged = text(sandbox.renderWhatChangedHtml('application', 'archive.cabinet', false));
-  assert.equal(merged, 'What changed ⊕ merged Merged: it replaces several elements of “Base”. Replaces Bin archive.bin Shelf archive.shelf');
+  assert.equal(
+    merged,
+    'What changed ⊕ merged Merged: it replaces several elements of “Base”. Replaces Bin archive.bin Shelf archive.shelf'
+  );
 });
 
 test('a moved element that did not change otherwise tells only the identity', async () => {
-  const target = Object.assign({}, TARGET, { 'app.archive.counter.yaml': element('container', 'archive', 'counter', 'Front desk', '  replaces:\n    - library.desk\n') });
+  const target = Object.assign({}, TARGET, {
+    'app.archive.counter.yaml': element(
+      'container',
+      'archive',
+      'counter',
+      'Front desk',
+      '  replaces:\n    - library.desk\n'
+    )
+  });
   const { sandbox } = await open({ target });
   const html = sandbox.renderWhatChangedHtml('application', 'archive.counter', false);
-  assert.equal(text(html), 'What changed → moved Moved or renamed: it replaces an element of “Base”. Replaces Front desk library.desk');
+  assert.equal(
+    text(html),
+    'What changed → moved Moved or renamed: it replaces an element of “Base”. Replaces Front desk library.desk'
+  );
   assert.doesNotMatch(html, /change-diff" data-property="name"|Also changed/);
 });
 
 test('an element replaced by others that is drawn only as the place of what it held says what replaced it', async () => {
   const { sandbox } = await open();
   const html = sandbox.renderWhatChangedHtml('application', 'library.catalog', false);
-  assert.equal(text(html), 'What changed − removed Whole element is removed: it is only in “Base”. Replaced by Catalog of books library.catalog-a Catalog of films library.catalog-b');
+  assert.equal(
+    text(html),
+    'What changed − removed Whole element is removed: it is only in “Base”. Replaced by Catalog of books library.catalog-a Catalog of films library.catalog-b'
+  );
   // a removed element that nothing replaced has no such line
   assert.doesNotMatch(sandbox.renderWhatChangedHtml('application', 'library.loans', false), /Replaced by/);
   // and the same block is in the read-only panel of a removed box
-  const panel = sandbox.inspectionPanelHtml({ kind: 'baseline-element', key: 'library.catalog', layer: 'application', mode: 'view' }, 'library');
+  const panel = sandbox.inspectionPanelHtml(
+    { kind: 'baseline-element', key: 'library.catalog', layer: 'application', mode: 'view' },
+    'library'
+  );
   assert.match(text(panel), /Replaced by Catalog of books library\.catalog-a Catalog of films library\.catalog-b/);
 });
 
 test('an unknown reference is told as such wherever the list is read', async () => {
   const { sandbox } = await open();
   const view = sandbox.renderElementViewHtml('library.catalog-b');
-  assert.match(text(view), /Replaces 2 library\.catalog library\.nowhere not in “Base”/, 'the details of the element: only the reference the plateau compared with does not have is flagged');
-  assert.equal(sandbox.replacesFlagOf(sandbox.__state().index.application.get('library.catalog-b'), 'library.nowhere'), 'not in “Base”');
-  assert.equal(sandbox.replacesFlagOf(sandbox.__state().index.application.get('library.catalog-b'), 'library.fines'), 'still in this plateau: ignored');
-  assert.equal(sandbox.replacesFlagOf(sandbox.__state().index.application.get('library.catalog-b'), 'library.catalog'), '');
+  assert.match(
+    text(view),
+    /Replaces 2 library\.catalog library\.nowhere not in “Base”/,
+    'the details of the element: only the reference the plateau compared with does not have is flagged'
+  );
+  assert.equal(
+    sandbox.replacesFlagOf(sandbox.__state().index.application.get('library.catalog-b'), 'library.nowhere'),
+    'not in “Base”'
+  );
+  assert.equal(
+    sandbox.replacesFlagOf(sandbox.__state().index.application.get('library.catalog-b'), 'library.fines'),
+    'still in this plateau: ignored'
+  );
+  assert.equal(
+    sandbox.replacesFlagOf(sandbox.__state().index.application.get('library.catalog-b'), 'library.catalog'),
+    ''
+  );
 });
 
 // ---- 4. Candidates ----
@@ -406,14 +698,35 @@ test('the Changes panel lists the candidates of the kernel, each with "Write rep
     { layer: 'application', from: 'library.loans', to: 'library.lending', reasons: ['description'] }
   ]);
   const panel = sandbox.renderChangesPanelHtml(state);
-  const section = panel.slice(panel.indexOf('<section class="changes-candidates"'), panel.indexOf('</section>', panel.indexOf('<section class="changes-candidates"')));
+  const section = panel.slice(
+    panel.indexOf('<section class="changes-candidates"'),
+    panel.indexOf('</section>', panel.indexOf('<section class="changes-candidates"'))
+  );
   assert.match(text(section), /^Candidates 2 Each pair looks like one thing said twice\. Nothing is applied/);
   const items = Array.from(section.matchAll(/<li class="change-candidate"[\s\S]*?<\/li>/g), (m) => m[0]);
   assert.equal(items.length, 2);
-  assert.equal(text(items[0]), 'Removed Rack archive.rack New Vault archive.vault close description Write replaces Not related');
-  assert.equal(text(items[1]), 'Removed Loans library.loans New Lending library.lending close description Write replaces Not related');
-  assert.deepEqual(plain(attributesOf(items[1], 'data-action="accept-candidate"')), { type: 'button', 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
-  assert.deepEqual(plain(attributesOf(items[1], 'data-action="dismiss-candidate"')), { type: 'button', 'data-action': 'dismiss-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
+  assert.equal(
+    text(items[0]),
+    'Removed Rack archive.rack New Vault archive.vault close description Write replaces Not related'
+  );
+  assert.equal(
+    text(items[1]),
+    'Removed Loans library.loans New Lending library.lending close description Write replaces Not related'
+  );
+  assert.deepEqual(plain(attributesOf(items[1], 'data-action="accept-candidate"')), {
+    type: 'button',
+    'data-action': 'accept-candidate',
+    'data-layer': 'application',
+    'data-from': 'library.loans',
+    'data-to': 'library.lending'
+  });
+  assert.deepEqual(plain(attributesOf(items[1], 'data-action="dismiss-candidate"')), {
+    type: 'button',
+    'data-action': 'dismiss-candidate',
+    'data-layer': 'application',
+    'data-from': 'library.loans',
+    'data-to': 'library.lending'
+  });
   // listed, not applied: the loans are still removed and the lending still new
   const rows = state.changes.filter((row) => row.thing === 'element');
   assert.equal(rows.find((row) => row.reference === 'library.loans').change, 'removed');
@@ -424,7 +737,12 @@ test('the Changes panel lists the candidates of the kernel, each with "Write rep
 test('"Write replaces" writes exactly one `replaces` on the new element, keeps every other line, and the comparison then says it moved', async () => {
   const { sandbox, state, mem } = await open();
   const version = run(sandbox, 'modelVersion');
-  click(sandbox, { 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
+  click(sandbox, {
+    'data-action': 'accept-candidate',
+    'data-layer': 'application',
+    'data-from': 'library.loans',
+    'data-to': 'library.lending'
+  });
   assert.ok(run(sandbox, 'modelVersion') > version, 'the models changed: the comparison is asked again');
   // the page: the model says it, the comparison reports it as moved, the candidate is gone
   assert.deepEqual(plain(state.index.application.get('library.lending').replaces), ['library.loans']);
@@ -432,9 +750,17 @@ test('"Write replaces" writes exactly one `replaces` on the new element, keeps e
   const row = after.changes.find((r) => r.reference === 'library.lending');
   assert.equal(row.change, 'moved');
   assert.deepEqual(plain(row.replaces), ['library.loans']);
-  assert.equal(after.changes.some((r) => r.reference === 'library.loans'), false, 'no longer removed');
+  assert.equal(
+    after.changes.some((r) => r.reference === 'library.loans'),
+    false,
+    'no longer removed'
+  );
   assert.deepEqual(plain(after.candidates.map((c) => c.to)), ['archive.vault']);
-  assert.equal(state.dirtyReferences.has('application:library.lending'), true, 'marked as modified, saved with the rest');
+  assert.equal(
+    state.dirtyReferences.has('application:library.lending'),
+    true,
+    'marked as modified, saved with the rest'
+  );
   // the file is not written until the user saves: the disk still has the original
   assert.equal(mem.files.get(target('library.lending')).text, DISK['app.library.lending.yaml']);
   // the save: the file differs from the original by the two lines written, nothing else
@@ -442,8 +768,14 @@ test('"Write replaces" writes exactly one `replaces` on the new element, keeps e
   assert.equal(run(sandbox, 'saveStatus').state, 'success');
   assert.deepEqual(mem.writes, [target('library.lending')], 'one file is written');
   const saved = mem.files.get(target('library.lending')).text;
-  assert.deepEqual(lineDiff(DISK['app.library.lending.yaml'], saved), { removed: [], added: ['  replaces:', '    - "library.loans"'] });
-  assert.ok(saved.startsWith('# the manifest of lending\n') && saved.endsWith('# end of lending\n'), 'the comments, the quotes and the blank line are the author\'s');
+  assert.deepEqual(lineDiff(DISK['app.library.lending.yaml'], saved), {
+    removed: [],
+    added: ['  replaces:', '    - "library.loans"']
+  });
+  assert.ok(
+    saved.startsWith('# the manifest of lending\n') && saved.endsWith('# end of lending\n'),
+    "the comments, the quotes and the blank line are the author's"
+  );
   assert.ok(saved.includes('  kind: "archicode.morin.io/container"') && saved.includes('\n\ncontent:\n'));
   // and the file reads back as the editor, and the command line, read it
   const again = createApp({});
@@ -454,11 +786,23 @@ test('"Write replaces" writes exactly one `replaces` on the new element, keeps e
 
 test('a list written on one line gets the new reference appended, and only that line changes', async () => {
   const { sandbox, mem } = await open();
-  click(sandbox, { 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'archive.rack', 'data-to': 'archive.vault' });
-  assert.deepEqual(plain(sandbox.__state().index.application.get('archive.vault').replaces), ['archive.ghost', 'archive.rack'], 'appended after what the author wrote, no duplicate');
+  click(sandbox, {
+    'data-action': 'accept-candidate',
+    'data-layer': 'application',
+    'data-from': 'archive.rack',
+    'data-to': 'archive.vault'
+  });
+  assert.deepEqual(
+    plain(sandbox.__state().index.application.get('archive.vault').replaces),
+    ['archive.ghost', 'archive.rack'],
+    'appended after what the author wrote, no duplicate'
+  );
   await sandbox.saveAllChanges();
   const saved = mem.files.get(target('archive.vault')).text;
-  assert.deepEqual(lineDiff(DISK['app.archive.vault.yaml'], saved), { removed: ['  replaces: [archive.ghost]'], added: ['  replaces: [archive.ghost, archive.rack]'] });
+  assert.deepEqual(lineDiff(DISK['app.archive.vault.yaml'], saved), {
+    removed: ['  replaces: [archive.ghost]'],
+    added: ['  replaces: [archive.ghost, archive.rack]']
+  });
   assert.ok(saved.startsWith('# the manifest of vault\n') && saved.endsWith('# end of vault\n'));
   assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'archive.vault').change, 'moved');
   // writing the same reference again changes nothing (the kernel would not propose it, but the writer does not duplicate)
@@ -466,16 +810,38 @@ test('a list written on one line gets the new reference appended, and only that 
 });
 
 test('other flow lists of a file the edit does not touch stay on their line, and the list the edit adds as a new key is a block', async () => {
-  const withQualifiers = element('container', 'library', 'lending', 'Lending', LOANS_DESCRIPTION + '  qualifiers: [Loan, Member]  # who borrows\n');
-  const { sandbox, mem } = await open({ target: Object.assign({}, TARGET, { 'app.library.lending.yaml': withQualifiers }) });
-  click(sandbox, { 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
+  const withQualifiers = element(
+    'container',
+    'library',
+    'lending',
+    'Lending',
+    LOANS_DESCRIPTION + '  qualifiers: [Loan, Member]  # who borrows\n'
+  );
+  const { sandbox, mem } = await open({
+    target: Object.assign({}, TARGET, { 'app.library.lending.yaml': withQualifiers })
+  });
+  click(sandbox, {
+    'data-action': 'accept-candidate',
+    'data-layer': 'application',
+    'data-from': 'library.loans',
+    'data-to': 'library.lending'
+  });
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(inPlateau('target', withQualifiers), mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - "library.loans"'] }, 'the list on one line, its comment and its quotes are as they were');
+  assert.deepEqual(
+    lineDiff(inPlateau('target', withQualifiers), mem.files.get(target('library.lending')).text),
+    { removed: [], added: ['  replaces:', '    - "library.loans"'] },
+    'the list on one line, its comment and its quotes are as they were'
+  );
 });
 
 test('"Not related" sets the pair aside for this page: the list loses it, nothing is written, and "Show again" brings it back', async () => {
   const { sandbox, state, mem } = await open();
-  click(sandbox, { 'data-action': 'dismiss-candidate', 'data-layer': 'application', 'data-from': 'archive.rack', 'data-to': 'archive.vault' });
+  click(sandbox, {
+    'data-action': 'dismiss-candidate',
+    'data-layer': 'application',
+    'data-from': 'archive.rack',
+    'data-to': 'archive.vault'
+  });
   let panel = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
   assert.match(text(panel), /Candidates 1 /);
   assert.doesNotMatch(panel, /data-from="archive\.rack"/);
@@ -484,15 +850,29 @@ test('"Not related" sets the pair aside for this page: the list loses it, nothin
   assert.equal(state.dirtyReferences.size, 0);
   assert.deepEqual(mem.writes, []);
   // in memory only: the kernel is told nothing and a reload of the comparison keeps nothing in the model
-  assert.deepEqual(plain(sandbox.comparisonState().candidates.map((c) => c.to)), ['archive.vault', 'library.lending'], 'the kernel still proposes both');
+  assert.deepEqual(
+    plain(sandbox.comparisonState().candidates.map((c) => c.to)),
+    ['archive.vault', 'library.lending'],
+    'the kernel still proposes both'
+  );
   assert.deepEqual(plain(state.index.application.get('archive.vault').replaces), ['archive.ghost']);
   click(sandbox, { 'data-action': 'restore-candidates' });
   panel = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
   assert.match(text(panel), /Candidates 2 /);
   assert.doesNotMatch(text(panel), /set aside/);
   // setting both aside leaves the section with the way back and no pair
-  click(sandbox, { 'data-action': 'dismiss-candidate', 'data-layer': 'application', 'data-from': 'archive.rack', 'data-to': 'archive.vault' });
-  click(sandbox, { 'data-action': 'dismiss-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
+  click(sandbox, {
+    'data-action': 'dismiss-candidate',
+    'data-layer': 'application',
+    'data-from': 'archive.rack',
+    'data-to': 'archive.vault'
+  });
+  click(sandbox, {
+    'data-action': 'dismiss-candidate',
+    'data-layer': 'application',
+    'data-from': 'library.loans',
+    'data-to': 'library.lending'
+  });
   panel = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
   assert.match(text(panel), /Candidates 0 2 set aside\. Show again/);
   assert.doesNotMatch(panel, /change-candidate"/);
@@ -503,31 +883,71 @@ test('a candidate is refused, with the reason in the panel, when its new element
   // the pair is made up here: the page would never list it, the writer must still refuse it
   const result = sandbox.acceptCandidate({ layer: 'application', from: 'library.fines', to: 'library.loans' });
   assert.equal(result.ok, false);
-  assert.equal(result.message, '“library.loans” belongs to “Base”, the older plateau of the comparison. replaces goes on an element of “Target”, the more recent one.');
-  assert.match(sandbox.renderChangesPanelHtml(sandbox.comparisonState()), /<p class="changes-message" role="alert">“library\.loans” belongs to “Base”/);
+  assert.equal(
+    result.message,
+    '“library.loans” belongs to “Base”, the older plateau of the comparison. replaces goes on an element of “Target”, the more recent one.'
+  );
+  assert.match(
+    sandbox.renderChangesPanelHtml(sandbox.comparisonState()),
+    /<p class="changes-message" role="alert">“library\.loans” belongs to “Base”/
+  );
   assert.equal(state.dirtyReferences.size, 0);
   assert.deepEqual(mem.writes, []);
   // the other plateau's files are not written: nothing of it is among the modified files
-  assert.ok(state.manifestFiles.filter((file) => file.dirty).every((file) => file.relPath.startsWith('plateaus/20_target/')));
+  assert.ok(
+    state.manifestFiles.filter((file) => file.dirty).every((file) => file.relPath.startsWith('plateaus/20_target/'))
+  );
   // another refusal replaces the message, a click on a row of the list clears it
-  assert.equal(sandbox.acceptCandidate({ layer: 'application', from: 'library.fines', to: 'library.nowhere' }).ok, false);
-  assert.match(sandbox.renderChangesPanelHtml(sandbox.comparisonState()), /“library\.nowhere” is not an element of “Target” any more; nothing was written\./);
-  click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'new', 'data-layer': 'application', 'data-ref': 'library.lending' });
+  assert.equal(
+    sandbox.acceptCandidate({ layer: 'application', from: 'library.fines', to: 'library.nowhere' }).ok,
+    false
+  );
+  assert.match(
+    sandbox.renderChangesPanelHtml(sandbox.comparisonState()),
+    /“library\.nowhere” is not an element of “Target” any more; nothing was written\./
+  );
+  click(sandbox, {
+    'data-action': 'select-change',
+    'data-thing': 'element',
+    'data-change': 'new',
+    'data-layer': 'application',
+    'data-ref': 'library.lending'
+  });
   assert.doesNotMatch(sandbox.renderChangesPanelHtml(sandbox.comparisonState()), /changes-message/);
 });
 
 test('a candidate is refused when the replaced element is still in the plateau drawn, when it is unknown, and when the list is not a list', async () => {
   const { sandbox, state } = await open();
-  assert.match(sandbox.acceptCandidate({ layer: 'application', from: 'library.fines', to: 'library.lending' }).message, /^“library\.fines” is still an element of “Target”: a replaces that names it would be ignored\.$/);
-  assert.match(sandbox.acceptCandidate({ layer: 'application', from: 'library.unknown', to: 'library.lending' }).message, /^“library\.unknown” is not an element of “Base”; nothing was written\.$/);
+  assert.match(
+    sandbox.acceptCandidate({ layer: 'application', from: 'library.fines', to: 'library.lending' }).message,
+    /^“library\.fines” is still an element of “Target”: a replaces that names it would be ignored\.$/
+  );
+  assert.match(
+    sandbox.acceptCandidate({ layer: 'application', from: 'library.unknown', to: 'library.lending' }).message,
+    /^“library\.unknown” is not an element of “Base”; nothing was written\.$/
+  );
   assert.equal(state.dirtyReferences.size, 0);
-  const odd = Object.assign({}, TARGET, { 'app.library.lending.yaml': element('container', 'library', 'lending', 'Lending', LOANS_DESCRIPTION + '  replaces: library.loans\n') });
+  const odd = Object.assign({}, TARGET, {
+    'app.library.lending.yaml': element(
+      'container',
+      'library',
+      'lending',
+      'Lending',
+      LOANS_DESCRIPTION + '  replaces: library.loans\n'
+    )
+  });
   const scalar = await open({ target: odd });
-  assert.equal(scalar.sandbox.acceptCandidate({ layer: 'application', from: 'library.loans', to: 'library.lending' }).message, 'The replaces of “library.lending” is not a list; fix it by hand, nothing was written.');
+  assert.equal(
+    scalar.sandbox.acceptCandidate({ layer: 'application', from: 'library.loans', to: 'library.lending' }).message,
+    'The replaces of “library.lending” is not a list; fix it by hand, nothing was written.'
+  );
   assert.equal(scalar.state.dirtyReferences.size, 0);
   // and without any comparison there is nothing to accept
   const none = await open({ compare: false });
-  assert.equal(none.sandbox.acceptCandidate({ layer: 'application', from: 'library.loans', to: 'library.lending' }).message, 'Nothing is compared: choose a plateau in Compare with, on the band, first.');
+  assert.equal(
+    none.sandbox.acceptCandidate({ layer: 'application', from: 'library.loans', to: 'library.lending' }).message,
+    'Nothing is compared: choose a plateau in Compare with, on the band, first.'
+  );
 });
 
 // ---- 5. By hand ----
@@ -545,7 +965,15 @@ function formFields(sandbox, reference, adding) {
   const original = sandbox.document.getElementById;
   sandbox.document.getElementById = (id) => {
     if (fields[id]) return fields[id];
-    if (/error$/.test(id)) return { set textContent(v) { errors[id] = v; }, get textContent() { return errors[id]; } };
+    if (/error$/.test(id))
+      return {
+        set textContent(v) {
+          errors[id] = v;
+        },
+        get textContent() {
+          return errors[id];
+        }
+      };
     return original(id);
   };
   return { errors, fields };
@@ -555,10 +983,17 @@ test('the edit form of an element has a Replaces section when the workspace has 
   const { sandbox } = await open();
   const form = sandbox.renderElementEditionFormHtml('library.catalog-b');
   const section = form.slice(form.indexOf('<div class="edition-section" data-section="replaces">'));
-  assert.match(text(section), /^Replaces The elements of the plateau this one is compared with that this element is the new place of \(moved, renamed, split or merged\)\. Written by you, never guessed\. library\.catalog × library\.nowhere not in “Base” × Add$/);
+  assert.match(
+    text(section),
+    /^Replaces The elements of the plateau this one is compared with that this element is the new place of \(moved, renamed, split or merged\)\. Written by you, never guessed\. library\.catalog × library\.nowhere not in “Base” × Add$/
+  );
   assert.match(section, /<input type="text" id="add-replaces-input"[^>]*list="archicode-baseline-references"/);
   assert.match(section, /data-action="remove-replaces" data-ref="library\.catalog-b" data-index="1"/);
-  assert.match(sandbox.renderReferenceDatalistsHtml(), /<datalist id="archicode-baseline-references">(<option value="[^"]*">)*<option value="library\.loans">/, 'the references of the plateau compared with are offered');
+  assert.match(
+    sandbox.renderReferenceDatalistsHtml(),
+    /<datalist id="archicode-baseline-references">(<option value="[^"]*">)*<option value="library\.loans">/,
+    'the references of the plateau compared with are offered'
+  );
   // an element with nothing to replace still has the section: that is how an author begins
   assert.match(sandbox.renderElementEditionFormHtml('library.fines'), /data-section="replaces"/);
 });
@@ -568,22 +1003,42 @@ test('adding a reference by hand writes one line more, validates, flags an unkno
   const { errors } = formFields(sandbox, 'library.lending', 'library.loans');
   click(sandbox, { 'data-action': 'add-replaces', 'data-ref': 'library.lending' });
   assert.deepEqual(plain(state.index.application.get('library.lending').replaces), ['library.loans']);
-  assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'library.lending').change, 'moved', 'the same writer, the same result as accepting the candidate');
+  assert.equal(
+    sandbox.comparisonState().changes.find((r) => r.reference === 'library.lending').change,
+    'moved',
+    'the same writer, the same result as accepting the candidate'
+  );
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(DISK['app.library.lending.yaml'], mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - "library.loans"'] });
+  assert.deepEqual(lineDiff(DISK['app.library.lending.yaml'], mem.files.get(target('library.lending')).text), {
+    removed: [],
+    added: ['  replaces:', '    - "library.loans"']
+  });
   // an unknown reference is allowed, and flagged in the list and by the kernel's warning
   formFields(sandbox, 'library.fines', 'library.somewhere');
   click(sandbox, { 'data-action': 'add-replaces', 'data-ref': 'library.fines' });
   assert.deepEqual(plain(state.index.application.get('library.fines').replaces), ['library.somewhere']);
   assert.match(text(sandbox.renderElementEditionFormHtml('library.fines')), /library\.somewhere not in “Base” ×/);
-  assert.ok(sandbox.comparisonState().warnings.some((w) => /library\.fines.*library\.somewhere is not an element of the base plateau, ignored/.test(w)));
+  assert.ok(
+    sandbox
+      .comparisonState()
+      .warnings.some((w) => /library\.fines.*library\.somewhere is not an element of the base plateau, ignored/.test(w))
+  );
   // empty, itself, twice, with a space
-  for (const [value, message] of [['', 'Value is required.'], ['library.fines', 'An element cannot replace itself.'], ['library.somewhere', '“library.somewhere” is already listed.'], ['a b', 'A reference has no spaces.']]) {
+  for (const [value, message] of [
+    ['', 'Value is required.'],
+    ['library.fines', 'An element cannot replace itself.'],
+    ['library.somewhere', '“library.somewhere” is already listed.'],
+    ['a b', 'A reference has no spaces.']
+  ]) {
     const fields = formFields(sandbox, 'library.fines', value);
     click(sandbox, { 'data-action': 'add-replaces', 'data-ref': 'library.fines' });
     assert.equal(fields.errors['add-replaces-error'], message);
   }
-  assert.deepEqual(plain(state.index.application.get('library.fines').replaces), ['library.somewhere'], 'a refused value writes nothing');
+  assert.deepEqual(
+    plain(state.index.application.get('library.fines').replaces),
+    ['library.somewhere'],
+    'a refused value writes nothing'
+  );
   assert.equal(errors['add-replaces-error'] === undefined || errors['add-replaces-error'] === '', true);
 });
 
@@ -592,15 +1047,29 @@ test('removing a reference by hand takes its line out of the file; the last one 
   sandbox.confirm = () => true;
   formFields(sandbox, 'archive.cabinet');
   click(sandbox, { 'data-action': 'remove-replaces', 'data-ref': 'archive.cabinet', 'data-index': '0' });
-  assert.deepEqual(plain(state.index.application.get('archive.cabinet').replaces), ['archive.bin'], 'the shelf went, the bin stayed');
-  assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'archive.cabinet').change, 'moved', 'one replaced element left: moved, not merged');
+  assert.deepEqual(
+    plain(state.index.application.get('archive.cabinet').replaces),
+    ['archive.bin'],
+    'the shelf went, the bin stayed'
+  );
+  assert.equal(
+    sandbox.comparisonState().changes.find((r) => r.reference === 'archive.cabinet').change,
+    'moved',
+    'one replaced element left: moved, not merged'
+  );
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(DISK['app.archive.cabinet.yaml'], mem.files.get(target('archive.cabinet')).text), { removed: ['    - archive.shelf'], added: [] });
+  assert.deepEqual(lineDiff(DISK['app.archive.cabinet.yaml'], mem.files.get(target('archive.cabinet')).text), {
+    removed: ['    - archive.shelf'],
+    added: []
+  });
   formFields(sandbox, 'archive.cabinet');
   click(sandbox, { 'data-action': 'remove-replaces', 'data-ref': 'archive.cabinet', 'data-index': '0' });
   await sandbox.saveAllChanges();
   assert.equal(state.index.application.get('archive.cabinet').replaces.length, 0);
-  assert.deepEqual(lineDiff(DISK['app.archive.cabinet.yaml'], mem.files.get(target('archive.cabinet')).text), { removed: ['  replaces:', '    - archive.shelf', '    - archive.bin'], added: [] });
+  assert.deepEqual(lineDiff(DISK['app.archive.cabinet.yaml'], mem.files.get(target('archive.cabinet')).text), {
+    removed: ['  replaces:', '    - archive.shelf', '    - archive.bin'],
+    added: []
+  });
   assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'archive.cabinet').change, 'new');
   // declining the confirmation changes nothing
   sandbox.confirm = () => false;
@@ -610,7 +1079,15 @@ test('removing a reference by hand takes its line out of the file; the last one 
 });
 
 test('a list that is not a list is not overwritten by hand either', async () => {
-  const odd = Object.assign({}, TARGET, { 'app.library.lending.yaml': element('container', 'library', 'lending', 'Lending', LOANS_DESCRIPTION + '  replaces: library.loans\n') });
+  const odd = Object.assign({}, TARGET, {
+    'app.library.lending.yaml': element(
+      'container',
+      'library',
+      'lending',
+      'Lending',
+      LOANS_DESCRIPTION + '  replaces: library.loans\n'
+    )
+  });
   const { sandbox, state, mem } = await open({ target: odd });
   formFields(sandbox, 'library.lending', 'library.fines2');
   click(sandbox, { 'data-action': 'add-replaces', 'data-ref': 'library.lending' });
@@ -625,35 +1102,77 @@ test('a list that is not a list is not overwritten by hand either', async () => 
 test('the warnings of the kernel are a short list in the Changes panel, as the kernel says them, and nowhere else', async () => {
   const { sandbox } = await open();
   const panel = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
-  const section = panel.slice(panel.indexOf('<section class="changes-warnings-section"'), panel.indexOf('</section>', panel.indexOf('<section class="changes-warnings-section"')));
-  assert.equal(text(section), 'Warnings 2 replaces of archive.vault (application layer): archive.ghost is not an element of the base plateau, ignored replaces of library.catalog-b (application layer): library.nowhere is not an element of the base plateau, ignored');
+  const section = panel.slice(
+    panel.indexOf('<section class="changes-warnings-section"'),
+    panel.indexOf('</section>', panel.indexOf('<section class="changes-warnings-section"'))
+  );
+  assert.equal(
+    text(section),
+    'Warnings 2 replaces of archive.vault (application layer): archive.ghost is not an element of the base plateau, ignored replaces of library.catalog-b (application layer): library.nowhere is not an element of the base plateau, ignored'
+  );
   assert.deepEqual(plain(sandbox.comparisonState().warnings), [
     'replaces of archive.vault (application layer): archive.ghost is not an element of the base plateau, ignored',
     'replaces of library.catalog-b (application layer): library.nowhere is not an element of the base plateau, ignored'
   ]);
   // a reference that is still in the plateau drawn is another warning, and goes away with the reference
-  const still = Object.assign({}, TARGET, { 'app.library.catalog-b.yaml': element('container', 'library', 'catalog-b', 'Catalog of films', '  replaces: [library.catalog, library.fines]\n') });
+  const still = Object.assign({}, TARGET, {
+    'app.library.catalog-b.yaml': element(
+      'container',
+      'library',
+      'catalog-b',
+      'Catalog of films',
+      '  replaces: [library.catalog, library.fines]\n'
+    )
+  });
   const second = await open({ target: still });
-  assert.ok(second.sandbox.comparisonState().warnings.some((w) => /library\.fines is still an element of the target plateau, ignored/.test(w) || /library\.fines/.test(w)), JSON.stringify(second.sandbox.comparisonState().warnings));
+  assert.ok(
+    second.sandbox
+      .comparisonState()
+      .warnings.some(
+        (w) => /library\.fines is still an element of the target plateau, ignored/.test(w) || /library\.fines/.test(w)
+      ),
+    JSON.stringify(second.sandbox.comparisonState().warnings)
+  );
 });
 
 // ---- 7. Without any of it ----
 
 test('a comparison with no replaces and no candidate is the Changes panel it was: no section, no new count, no new key', async () => {
-  const base = { 'app.shop.yaml': element('system', null, 'shop', 'Shop'), 'app.shop.web.yaml': element('container', 'shop', 'web', 'Web', '  description: "Serves the pages."\n') };
-  const next = { 'app.shop.yaml': element('system', null, 'shop', 'Shop'), 'app.shop.web.yaml': element('container', 'shop', 'web', 'Web', '  description: "Serves the pages and the images."\n'), 'app.shop.db.yaml': element('component', 'shop.web', 'db', 'Database') };
+  const base = {
+    'app.shop.yaml': element('system', null, 'shop', 'Shop'),
+    'app.shop.web.yaml': element('container', 'shop', 'web', 'Web', '  description: "Serves the pages."\n')
+  };
+  const next = {
+    'app.shop.yaml': element('system', null, 'shop', 'Shop'),
+    'app.shop.web.yaml': element(
+      'container',
+      'shop',
+      'web',
+      'Web',
+      '  description: "Serves the pages and the images."\n'
+    ),
+    'app.shop.db.yaml': element('component', 'shop.web', 'db', 'Database')
+  };
   const { sandbox } = await open({ base, target: next });
   const state = sandbox.comparisonState();
   assert.deepEqual(plain(state.candidates), []);
   assert.deepEqual(plain(state.warnings), []);
   const panel = sandbox.renderChangesPanelHtml(state);
   assert.doesNotMatch(panel, /changes-candidates|changes-warnings|Candidates|Warnings|change-from|accept-candidate/);
-  assert.equal(text(panel.slice(panel.indexOf('Elements'), panel.indexOf('Relationships'))), 'Elements + 1 new ~ 1 changed − 0 removed');
+  assert.equal(
+    text(panel.slice(panel.indexOf('Elements'), panel.indexOf('Relationships'))),
+    'Elements + 1 new ~ 1 changed − 0 removed'
+  );
   assert.deepEqual(plain(state.counts.elements), { new: 1, changed: 1, removed: 0, wording_only: 1 });
   assert.equal(JSON.stringify(sandbox.comparisonInput()).includes('replaces'), false);
   // the edit form of an element has no Replaces section when the workspace has a single plateau
   const single = createApp({});
-  const mem = memFolder(Object.assign({ '.archicode.yaml': 'settings:\n  name: One\n' }, { 'manifests/app.shop.yaml': element('system', null, 'shop', 'Shop') }));
+  const mem = memFolder(
+    Object.assign(
+      { '.archicode.yaml': 'settings:\n  name: One\n' },
+      { 'manifests/app.shop.yaml': element('system', null, 'shop', 'Shop') }
+    )
+  );
   const st = single.__state();
   st.folder = { handle: mem.handle, name: 'ws' };
   st.permissionState = 'granted';

@@ -37,5 +37,9 @@ test('a file named like a workspace file but that is not the one opened is a man
   });
   assert.deepEqual(plain(state.manifestFiles.map((f) => f.relPath)), ['shop.yaml', 'workspace.yml']);
   assert.ok(state.index.application.has('other'), 'workspace.yml declares an element and is read');
-  assert.deepEqual(plain(state.unreadManifestFiles), ['workspace.json', 'workspace.toml'], 'the files the editor does not read are told, as for any other name');
+  assert.deepEqual(
+    plain(state.unreadManifestFiles),
+    ['workspace.json', 'workspace.toml'],
+    'the files the editor does not read are told, as for any other name'
+  );
 });

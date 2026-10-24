@@ -95,8 +95,25 @@ const LAYERS: [&str; 2] = ["application", "technology"];
 const RENDERING_PREFIX: &str = "rendering-";
 /// What `OutElement` writes itself: an extra field of that name never reaches the union.
 const RESERVED: [&str; 19] = [
-    "layer", "reference", "parent", "parent_reference", "kind", "name", "description", "qualifiers", "tags", "applications", "uses", "relationships", "change", "natures", "wording_only", "replaces", "replaced_by",
-    "contains_changes", "contains_more_than_wording",
+    "layer",
+    "reference",
+    "parent",
+    "parent_reference",
+    "kind",
+    "name",
+    "description",
+    "qualifiers",
+    "tags",
+    "applications",
+    "uses",
+    "relationships",
+    "change",
+    "natures",
+    "wording_only",
+    "replaces",
+    "replaced_by",
+    "contains_changes",
+    "contains_more_than_wording",
 ];
 
 const NEW: &str = "new";
@@ -197,14 +214,27 @@ fn unique(list: impl IntoIterator<Item = String>) -> Vec<String> {
 }
 
 fn sorted_unique(list: &[String]) -> Vec<String> {
-    list.iter().cloned().collect::<BTreeSet<_>>().into_iter().collect()
+    list.iter()
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 fn tags_of(value: Option<&Value>) -> BTreeMap<String, String> {
     match value {
         Some(Value::Object(m)) => m
             .iter()
-            .map(|(k, v)| (k.clone(), if let Value::String(s) = v { s.clone() } else { v.to_string() }))
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    if let Value::String(s) = v {
+                        s.clone()
+                    } else {
+                        v.to_string()
+                    },
+                )
+            })
             .collect(),
         _ => BTreeMap::new(),
     }
@@ -212,7 +242,13 @@ fn tags_of(value: Option<&Value>) -> BTreeMap<String, String> {
 
 fn props_of(e: &Elem) -> Props {
     let qualifiers = match e.other.get("qualifiers") {
-        Some(Value::Array(a)) => unique(a.iter().map(|q| if let Value::String(s) = q { s.clone() } else { q.to_string() })),
+        Some(Value::Array(a)) => unique(a.iter().map(|q| {
+            if let Value::String(s) = q {
+                s.clone()
+            } else {
+                q.to_string()
+            }
+        })),
         _ => Vec::new(),
     };
     Props {
@@ -236,12 +272,19 @@ fn base_props_of(e: &Elem, rewrite: &Rewrite) -> Props {
 
 /// A text, as it is compared: line ends unified, the edges trimmed, nothing at all being the empty text.
 fn norm_text(s: &Option<String>) -> String {
-    s.as_deref().unwrap_or("").replace("\r\n", "\n").trim().to_string()
+    s.as_deref()
+        .unwrap_or("")
+        .replace("\r\n", "\n")
+        .trim()
+        .to_string()
 }
 
 /// The tags that count: the ones that say something about the thing, not about how it is drawn.
 fn compared_tags(tags: &BTreeMap<String, String>) -> BTreeMap<String, String> {
-    tags.iter().filter(|(k, _)| !k.starts_with(RENDERING_PREFIX)).map(|(k, v)| (k.clone(), v.clone())).collect()
+    tags.iter()
+        .filter(|(k, _)| !k.starts_with(RENDERING_PREFIX))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
 }
 
 fn text_value(s: &Option<String>) -> Value {
@@ -253,11 +296,18 @@ fn strings_value(list: &[String]) -> Value {
 }
 
 fn tags_value(tags: &BTreeMap<String, String>) -> Value {
-    Value::Object(tags.iter().map(|(k, v)| (k.clone(), Value::String(v.clone()))).collect())
+    Value::Object(
+        tags.iter()
+            .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+            .collect(),
+    )
 }
 
 /// The natures that come from the properties of an element, and what was before and after for each one.
-fn compare_props(b: &Props, t: &Props) -> (Vec<&'static str>, Map<String, Value>, Map<String, Value>) {
+fn compare_props(
+    b: &Props,
+    t: &Props,
+) -> (Vec<&'static str>, Map<String, Value>, Map<String, Value>) {
     let (mut natures, mut before, mut after) = (Vec::new(), Map::new(), Map::new());
     let mut note = |nature: Option<&'static str>, key: &str, b: Value, t: Value| {
         if let Some(nature) = nature {
@@ -269,25 +319,60 @@ fn compare_props(b: &Props, t: &Props) -> (Vec<&'static str>, Map<String, Value>
         after.insert(key.to_string(), t);
     };
     if norm_text(&b.kind) != norm_text(&t.kind) {
-        note(Some("kind"), "kind", text_value(&b.kind), text_value(&t.kind));
+        note(
+            Some("kind"),
+            "kind",
+            text_value(&b.kind),
+            text_value(&t.kind),
+        );
     }
     if norm_text(&b.name) != norm_text(&t.name) {
-        note(Some("name"), "name", text_value(&b.name), text_value(&t.name));
+        note(
+            Some("name"),
+            "name",
+            text_value(&b.name),
+            text_value(&t.name),
+        );
     }
     if norm_text(&b.description) != norm_text(&t.description) {
-        note(Some("description"), "description", text_value(&b.description), text_value(&t.description));
+        note(
+            Some("description"),
+            "description",
+            text_value(&b.description),
+            text_value(&t.description),
+        );
     }
     if sorted_unique(&b.qualifiers) != sorted_unique(&t.qualifiers) {
-        note(Some("qualifiers"), "qualifiers", strings_value(&sorted_unique(&b.qualifiers)), strings_value(&sorted_unique(&t.qualifiers)));
+        note(
+            Some("qualifiers"),
+            "qualifiers",
+            strings_value(&sorted_unique(&b.qualifiers)),
+            strings_value(&sorted_unique(&t.qualifiers)),
+        );
     }
     if compared_tags(&b.tags) != compared_tags(&t.tags) {
-        note(Some("tags"), "tags", tags_value(&compared_tags(&b.tags)), tags_value(&compared_tags(&t.tags)));
+        note(
+            Some("tags"),
+            "tags",
+            tags_value(&compared_tags(&b.tags)),
+            tags_value(&compared_tags(&t.tags)),
+        );
     }
     if b.applications != t.applications {
-        note(Some("deployment"), "applications", strings_value(&b.applications), strings_value(&t.applications));
+        note(
+            Some("deployment"),
+            "applications",
+            strings_value(&b.applications),
+            strings_value(&t.applications),
+        );
     }
     if b.uses != t.uses {
-        note(Some("deployment"), "uses", strings_value(&b.uses), strings_value(&t.uses));
+        note(
+            Some("deployment"),
+            "uses",
+            strings_value(&b.uses),
+            strings_value(&t.uses),
+        );
     }
     (natures, before, after)
 }
@@ -325,7 +410,12 @@ impl Rewrite {
     }
 
     fn list(&self, layer: &'static str, list: &[String]) -> Vec<String> {
-        sorted_unique(&list.iter().filter_map(|r| self.get(layer, r)).collect::<Vec<_>>())
+        sorted_unique(
+            &list
+                .iter()
+                .filter_map(|r| self.get(layer, r))
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
@@ -345,7 +435,10 @@ struct Step<'a> {
 
 impl<'a> Step<'a> {
     fn of_chain(elements: &'a [ChainElem]) -> Step<'a> {
-        let mut step = Step { holds: HashSet::new(), written: HashMap::new() };
+        let mut step = Step {
+            holds: HashSet::new(),
+            written: HashMap::new(),
+        };
         for e in elements {
             step.holds.insert(e.reference.as_str());
             if let Some(v) = e.replaces.as_ref().filter(|v| says_something(v)) {
@@ -356,7 +449,10 @@ impl<'a> Step<'a> {
     }
 
     fn of_target(elements: &'a [Elem]) -> Step<'a> {
-        let mut step = Step { holds: HashSet::new(), written: HashMap::new() };
+        let mut step = Step {
+            holds: HashSet::new(),
+            written: HashMap::new(),
+        };
         for e in elements {
             step.holds.insert(e.reference.as_str());
             if let Some(v) = e.other.get("replaces").filter(|v| says_something(v)) {
@@ -397,11 +493,16 @@ impl<'a> Composer<'a> {
     /// layer no longer has. What an inherited element says again is the word of the layer that wrote it.
     fn entries(&self, j: usize, x: &str) -> Vec<String> {
         let (above, here) = (&self.steps[j - 1], &self.steps[j]);
-        let Some(written) = here.written.get(x) else { return Vec::new() };
+        let Some(written) = here.written.get(x) else {
+            return Vec::new();
+        };
         if above.holds.contains(x) && above.written.get(x) == Some(written) {
             return Vec::new();
         }
-        listed(written).into_iter().filter(|r| above.holds.contains(r.as_str()) && !here.holds.contains(r.as_str())).collect()
+        listed(written)
+            .into_iter()
+            .filter(|r| above.holds.contains(r.as_str()) && !here.holds.contains(r.as_str()))
+            .collect()
     }
 
     /// The elements of the first plateau of the chain that `x`, an element of plateau `j`, stands for: itself when the plateau above holds it,
@@ -432,15 +533,35 @@ fn compose(chain: &[ChainSide], target: &mut Side) {
         return;
     }
     for layer in LAYERS {
-        let mut steps: Vec<Step> = chain.iter().map(|c| Step::of_chain(if layer == "application" { &c.application } else { &c.technology })).collect();
-        let list: &mut Vec<Elem> = if layer == "application" { &mut target.application } else { &mut target.technology };
+        let mut steps: Vec<Step> = chain
+            .iter()
+            .map(|c| {
+                Step::of_chain(if layer == "application" {
+                    &c.application
+                } else {
+                    &c.technology
+                })
+            })
+            .collect();
+        let list: &mut Vec<Elem> = if layer == "application" {
+            &mut target.application
+        } else {
+            &mut target.technology
+        };
         steps.push(Step::of_target(list));
         let last = steps.len() - 1;
-        let mut composer = Composer { steps, memo: HashMap::new() };
+        let mut composer = Composer {
+            steps,
+            memo: HashMap::new(),
+        };
         let mut composed: Vec<(usize, Option<Vec<Value>>)> = Vec::new();
         for (at, e) in list.iter().enumerate() {
             // what the host did not give (the base says the same), and what is not a list, is read as it is: rule 6 warns of the latter
-            let Some(Value::Array(declared)) = e.other.get("replaces").filter(|v| says_something(v)) else { continue };
+            let Some(Value::Array(declared)) =
+                e.other.get("replaces").filter(|v| says_something(v))
+            else {
+                continue;
+            };
             let x = e.reference.as_str();
             let mut stands: BTreeSet<String> = BTreeSet::new();
             let mut as_written: Vec<Value> = Vec::new();
@@ -449,10 +570,13 @@ fn compose(chain: &[ChainSide], target: &mut Side) {
             }
             let own = composer.entries(last, x);
             let word = composer.steps[last].written.get(x).copied();
-            let carried = !(composer.steps[last - 1].holds.contains(x) && composer.steps[last - 1].written.get(x).copied() == word);
+            let carried = !(composer.steps[last - 1].holds.contains(x)
+                && composer.steps[last - 1].written.get(x).copied() == word);
             for entry in declared {
                 match entry.as_str().map(str::trim).filter(|s| !s.is_empty()) {
-                    Some(r) if own.iter().any(|o| o == r) => stands.extend(composer.stands_for(last - 1, r)),
+                    Some(r) if own.iter().any(|o| o == r) => {
+                        stands.extend(composer.stands_for(last - 1, r))
+                    }
                     // an inherited word is explained by the layer that wrote it; the others are the mistakes of rule 6, which warns of them
                     _ if !carried => {}
                     _ => as_written.push(entry.clone()),
@@ -467,7 +591,9 @@ fn compose(chain: &[ChainSide], target: &mut Side) {
         for (at, out) in composed {
             match out {
                 Some(list_out) => {
-                    list[at].other.insert("replaces".into(), Value::Array(list_out));
+                    list[at]
+                        .other
+                        .insert("replaces".into(), Value::Array(list_out));
                 }
                 None => {
                     list[at].other.remove("replaces");
@@ -483,8 +609,18 @@ fn resolve(input: &CompareInput) -> Resolved {
     // (layer, replacing) -> the valid references it replaces
     let mut valid: BTreeMap<(&'static str, String), Vec<String>> = BTreeMap::new();
     for layer in LAYERS {
-        let base: HashSet<&str> = input.base.layer(layer).iter().map(|e| e.reference.as_str()).collect();
-        let target: HashSet<&str> = input.target.layer(layer).iter().map(|e| e.reference.as_str()).collect();
+        let base: HashSet<&str> = input
+            .base
+            .layer(layer)
+            .iter()
+            .map(|e| e.reference.as_str())
+            .collect();
+        let target: HashSet<&str> = input
+            .target
+            .layer(layer)
+            .iter()
+            .map(|e| e.reference.as_str())
+            .collect();
         let mut elements: Vec<&Elem> = input.target.layer(layer).iter().collect();
         elements.sort_by(|a, b| a.reference.cmp(&b.reference));
         for e in elements {
@@ -492,18 +628,25 @@ fn resolve(input: &CompareInput) -> Resolved {
                 None | Some(Value::Null) => continue,
                 Some(Value::Array(list)) => list,
                 Some(_) => {
-                    warnings.push(format!("replaces of {} ({layer} layer) is not a list of references, ignored", e.reference));
+                    warnings.push(format!(
+                        "replaces of {} ({layer} layer) is not a list of references, ignored",
+                        e.reference
+                    ));
                     continue;
                 }
             };
             let mut kept: Vec<String> = Vec::new();
             for entry in declared {
-                let Some(reference) = entry.as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+                let Some(reference) = entry.as_str().map(str::trim).filter(|s| !s.is_empty())
+                else {
                     warnings.push(format!("replaces of {} ({layer} layer) has an entry that is not a reference, ignored", e.reference));
                     continue;
                 };
                 if kept.iter().any(|k| k == reference) {
-                    warnings.push(format!("replaces of {} ({layer} layer) lists {reference} twice, counted once", e.reference));
+                    warnings.push(format!(
+                        "replaces of {} ({layer} layer) lists {reference} twice, counted once",
+                        e.reference
+                    ));
                 } else if !base.contains(reference) {
                     warnings.push(format!("replaces of {} ({layer} layer): {reference} is not an element of the base plateau, ignored", e.reference));
                 } else if target.contains(reference) {
@@ -522,12 +665,19 @@ fn resolve(input: &CompareInput) -> Resolved {
     let mut replacers: BTreeMap<(&'static str, String), Vec<String>> = BTreeMap::new();
     for ((layer, replacing), replaced) in &valid {
         for r in replaced {
-            replacers.entry((*layer, r.clone())).or_default().push(replacing.clone());
+            replacers
+                .entry((*layer, r.clone()))
+                .or_default()
+                .push(replacing.clone());
         }
     }
     let mut identities = BTreeMap::new();
     for ((layer, replacing), replaced) in valid {
-        let in_base = input.base.layer(layer).iter().any(|e| e.reference == replacing);
+        let in_base = input
+            .base
+            .layer(layer)
+            .iter()
+            .any(|e| e.reference == replacing);
         let kind = if replaced.len() > 1 {
             MERGED
         } else if replacers[&(layer, replaced[0].clone())].len() > 1 {
@@ -544,9 +694,20 @@ fn resolve(input: &CompareInput) -> Resolved {
         } else {
             None
         };
-        identities.insert((layer, replacing), Identity { kind, replaces: replaced, counterpart });
+        identities.insert(
+            (layer, replacing),
+            Identity {
+                kind,
+                replaces: replaced,
+                counterpart,
+            },
+        );
     }
-    Resolved { identities, rewrite: Rewrite { by: replacers }, warnings }
+    Resolved {
+        identities,
+        rewrite: Rewrite { by: replacers },
+        warnings,
+    }
 }
 
 // ---- relationships ----
@@ -569,7 +730,11 @@ impl R {
             layer,
             from: from.to_string(),
             destination: rel.destination.clone(),
-            label: rel.label.as_ref().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()),
+            label: rel
+                .label
+                .as_ref()
+                .map(|l| l.trim().to_string())
+                .filter(|l| !l.is_empty()),
             qualifiers: unique(rel.qualifiers.iter().cloned()),
             tags: rel.tags.clone(),
         }
@@ -584,8 +749,17 @@ impl R {
         self.nq() == other.nq() && self.nt() == other.nt()
     }
     /// A total order, so that nothing depends on the order of the input.
-    fn order(&self) -> (&'static str, &str, &str, &Option<String>, Vec<String>, BTreeMap<String, String>, &Vec<String>, &BTreeMap<String, String>) {
-        (self.layer, &self.from, &self.destination, &self.label, self.nq(), self.nt(), &self.qualifiers, &self.tags)
+    fn order(&self) -> RelationshipOrder<'_> {
+        (
+            self.layer,
+            &self.from,
+            &self.destination,
+            &self.label,
+            self.nq(),
+            self.nt(),
+            &self.qualifiers,
+            &self.tags,
+        )
     }
 }
 
@@ -599,7 +773,13 @@ struct URel {
 
 impl URel {
     fn plain(r: &R, change: &'static str) -> URel {
-        URel { r: r.clone(), change, natures: Vec::new(), before: Map::new(), after: Map::new() }
+        URel {
+            r: r.clone(),
+            change,
+            natures: Vec::new(),
+            before: Map::new(),
+            after: Map::new(),
+        }
     }
 
     /// `t` is what the base's `b` became: the same relationship, said differently.
@@ -620,16 +800,37 @@ impl URel {
             before.insert("tags".into(), tags_value(&b.nt()));
             after.insert("tags".into(), tags_value(&t.nt()));
         }
-        URel { r: t.clone(), change: CHANGED, natures, before, after }
+        URel {
+            r: t.clone(),
+            change: CHANGED,
+            natures,
+            before,
+            after,
+        }
     }
 }
 
 type Key = (String, String, Option<String>);
+/// The total order of a relationship (see `R::order`).
+type RelationshipOrder<'a> = (
+    &'static str,
+    &'a str,
+    &'a str,
+    &'a Option<String>,
+    Vec<String>,
+    BTreeMap<String, String>,
+    &'a Vec<String>,
+    &'a BTreeMap<String, String>,
+);
+/// The removed and the new relationships of one pair of elements.
+type PairsOfElements<'a> = BTreeMap<(&'a str, &'a str), (Vec<&'a R>, Vec<&'a R>)>;
 
-fn group<'a>(list: &'a [R]) -> BTreeMap<Key, Vec<&'a R>> {
+fn group(list: &[R]) -> BTreeMap<Key, Vec<&R>> {
     let mut out: BTreeMap<Key, Vec<&R>> = BTreeMap::new();
     for r in list {
-        out.entry((r.from.clone(), r.destination.clone(), r.label.clone())).or_default().push(r);
+        out.entry((r.from.clone(), r.destination.clone(), r.label.clone()))
+            .or_default()
+            .push(r);
     }
     for list in out.values_mut() {
         list.sort_by(|a, b| a.order().cmp(&b.order()));
@@ -644,7 +845,10 @@ fn compare_relationships(base: &[R], target: &[R]) -> Vec<URel> {
     let mut out: Vec<URel> = Vec::new();
     let (mut removed, mut new): (Vec<&R>, Vec<&R>) = (Vec::new(), Vec::new());
     for key in keys {
-        let (bl, tl) = (bg.get(key).cloned().unwrap_or_default(), tg.get(key).cloned().unwrap_or_default());
+        let (bl, tl) = (
+            bg.get(key).cloned().unwrap_or_default(),
+            tg.get(key).cloned().unwrap_or_default(),
+        );
         let mut taken = vec![false; tl.len()];
         let mut b_rest: Vec<&R> = Vec::new();
         for b in &bl {
@@ -656,7 +860,12 @@ fn compare_relationships(base: &[R], target: &[R]) -> Vec<URel> {
                 None => b_rest.push(b),
             }
         }
-        let t_rest: Vec<&R> = tl.iter().enumerate().filter(|(i, _)| !taken[*i]).map(|(_, t)| *t).collect();
+        let t_rest: Vec<&R> = tl
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !taken[*i])
+            .map(|(_, t)| *t)
+            .collect();
         let paired = b_rest.len().min(t_rest.len());
         for i in 0..paired {
             out.push(URel::changed(b_rest[i], t_rest[i]));
@@ -665,12 +874,20 @@ fn compare_relationships(base: &[R], target: &[R]) -> Vec<URel> {
         new.extend(&t_rest[paired..]);
     }
     // one removed and one new for the same pair of elements: the label changed
-    let mut pairs: BTreeMap<(&str, &str), (Vec<&R>, Vec<&R>)> = BTreeMap::new();
+    let mut pairs: PairsOfElements = BTreeMap::new();
     for r in &removed {
-        pairs.entry((r.from.as_str(), r.destination.as_str())).or_default().0.push(r);
+        pairs
+            .entry((r.from.as_str(), r.destination.as_str()))
+            .or_default()
+            .0
+            .push(r);
     }
     for r in &new {
-        pairs.entry((r.from.as_str(), r.destination.as_str())).or_default().1.push(r);
+        pairs
+            .entry((r.from.as_str(), r.destination.as_str()))
+            .or_default()
+            .1
+            .push(r);
     }
     for (_, (rem, add)) in pairs {
         if rem.len() == 1 && add.len() == 1 {
@@ -737,7 +954,13 @@ struct OutElement {
 /// An object with its keys in order, all the way down: what a free-form field of an element is written as.
 fn canonical(v: &Value) -> Value {
     match v {
-        Value::Object(m) => Value::Object(m.iter().map(|(k, v)| (k.clone(), canonical(v))).collect::<BTreeMap<_, _>>().into_iter().collect()),
+        Value::Object(m) => Value::Object(
+            m.iter()
+                .map(|(k, v)| (k.clone(), canonical(v)))
+                .collect::<BTreeMap<_, _>>()
+                .into_iter()
+                .collect(),
+        ),
         Value::Array(a) => Value::Array(a.iter().map(canonical).collect()),
         other => other.clone(),
     }
@@ -845,11 +1068,18 @@ struct CompareOutput {
     warnings: Vec<String>,
 }
 
-fn index<'a>(list: &'a [Elem], which: &str, layer: &str) -> Result<HashMap<&'a str, &'a Elem>, String> {
+fn index<'a>(
+    list: &'a [Elem],
+    which: &str,
+    layer: &str,
+) -> Result<HashMap<&'a str, &'a Elem>, String> {
     let mut known: HashMap<&str, &Elem> = HashMap::new();
     for e in list {
         if known.insert(e.reference.as_str(), e).is_some() {
-            return Err(format!("duplicate reference: {} (in the {which} plateau, {layer} layer)", e.reference));
+            return Err(format!(
+                "duplicate reference: {} (in the {which} plateau, {layer} layer)",
+                e.reference
+            ));
         }
     }
     Ok(known)
@@ -867,14 +1097,20 @@ fn check(side: &Side, which: &str) -> Result<(), String> {
             rels.sort();
             for dest in rels {
                 if !known.contains_key(dest.as_str()) {
-                    return Err(format!("dangling reference: {dest} (relationship of {}, in the {which} plateau)", e.reference));
+                    return Err(format!(
+                        "dangling reference: {dest} (relationship of {}, in the {which} plateau)",
+                        e.reference
+                    ));
                 }
             }
             let mut used: Vec<&String> = e.uses.iter().collect();
             used.sort();
             for u in used {
                 if !known.contains_key(u.as_str()) {
-                    return Err(format!("dangling reference: {u} (uses of {}, in the {which} plateau)", e.reference));
+                    return Err(format!(
+                        "dangling reference: {u} (uses of {}, in the {which} plateau)",
+                        e.reference
+                    ));
                 }
             }
             if layer == "technology" {
@@ -894,7 +1130,11 @@ fn check(side: &Side, which: &str) -> Result<(), String> {
 /// The relationships of a layer. For the base, `rewrite` says them as the target does (an element that was replaced is the one that
 /// replaces it); the ones that end at an element that was split, or start from it, are left out.
 fn relationships_of(side: &Side, layer: &'static str, rewrite: Option<&Rewrite>) -> Vec<R> {
-    let all = side.layer(layer).iter().flat_map(|e| e.relationships.iter().map(move |r| R::of(layer, &e.reference, r)));
+    let all = side.layer(layer).iter().flat_map(|e| {
+        e.relationships
+            .iter()
+            .map(move |r| R::of(layer, &e.reference, r))
+    });
     match rewrite {
         None => all.collect(),
         Some(rewrite) => all
@@ -910,7 +1150,12 @@ fn relationships_of(side: &Side, layer: &'static str, rewrite: Option<&Rewrite>)
 // ---- candidates ----
 
 fn words(text: &Option<String>) -> BTreeSet<String> {
-    norm_text(text).to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_string).collect()
+    norm_text(text)
+        .to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_string)
+        .collect()
 }
 
 /// Shares at least `CLOSE_DESCRIPTION` of its words (of the union of the two) with the other, and has `LEAST_WORDS` of them.
@@ -927,7 +1172,9 @@ fn close_descriptions(a: &Option<String>, b: &Option<String>) -> bool {
 fn count_names(list: &[(&Elem, Props)]) -> HashMap<(String, String), usize> {
     let mut counts = HashMap::new();
     for (_, p) in list {
-        *counts.entry((norm_text(&p.kind), norm_text(&p.name).to_lowercase())).or_default() += 1;
+        *counts
+            .entry((norm_text(&p.kind), norm_text(&p.name).to_lowercase()))
+            .or_default() += 1;
     }
     counts
 }
@@ -938,23 +1185,44 @@ fn count_names(list: &[(&Elem, Props)]) -> HashMap<(String, String), usize> {
 ///
 /// `on_one_chain` says whether one plateau is the past of the other. Between two siblings the only two elements of a kind under a parent are not one
 /// thing said twice, they are two alternatives, so the parent is no reason there (issue #70): a pair that has no other reason is not listed.
-fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String), Identity>, rewrite: &Rewrite, on_one_chain: bool) -> Vec<Candidate> {
+fn candidates(
+    input: &CompareInput,
+    identities: &BTreeMap<(&'static str, String), Identity>,
+    rewrite: &Rewrite,
+    on_one_chain: bool,
+) -> Vec<Candidate> {
     let mut out = Vec::new();
     for layer in LAYERS {
-        let target_refs: HashSet<&str> = input.target.layer(layer).iter().map(|e| e.reference.as_str()).collect();
-        let base_refs: HashSet<&str> = input.base.layer(layer).iter().map(|e| e.reference.as_str()).collect();
+        let target_refs: HashSet<&str> = input
+            .target
+            .layer(layer)
+            .iter()
+            .map(|e| e.reference.as_str())
+            .collect();
+        let base_refs: HashSet<&str> = input
+            .base
+            .layer(layer)
+            .iter()
+            .map(|e| e.reference.as_str())
+            .collect();
         let mut gone: Vec<(&Elem, Props)> = input
             .base
             .layer(layer)
             .iter()
-            .filter(|e| !target_refs.contains(e.reference.as_str()) && !rewrite.is_replaced(layer, &e.reference))
+            .filter(|e| {
+                !target_refs.contains(e.reference.as_str())
+                    && !rewrite.is_replaced(layer, &e.reference)
+            })
             .map(|e| (e, props_of(e)))
             .collect();
         let mut fresh: Vec<(&Elem, Props)> = input
             .target
             .layer(layer)
             .iter()
-            .filter(|e| !base_refs.contains(e.reference.as_str()) && !identities.contains_key(&(layer, e.reference.clone())))
+            .filter(|e| {
+                !base_refs.contains(e.reference.as_str())
+                    && !identities.contains_key(&(layer, e.reference.clone()))
+            })
             .map(|e| (e, props_of(e)))
             .collect();
         gone.sort_by(|a, b| a.0.reference.cmp(&b.0.reference));
@@ -997,7 +1265,12 @@ fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String)
                     }
                 }
                 if !reasons.is_empty() {
-                    out.push(Candidate { layer, from: from.reference.clone(), to: to.reference.clone(), reasons });
+                    out.push(Candidate {
+                        layer,
+                        from: from.reference.clone(),
+                        to: to.reference.clone(),
+                        reasons,
+                    });
                 }
             }
         }
@@ -1007,21 +1280,39 @@ fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String)
 
 /// The natures that come from the relationships an element declares: added, removed, changed.
 fn relationship_natures(flags: (bool, bool, bool)) -> Vec<&'static str> {
-    [(flags.0, "relationships-added"), (flags.1, "relationships-removed"), (flags.2, "relationships-changed")].into_iter().filter(|(flag, _)| *flag).map(|(_, nature)| nature).collect()
+    [
+        (flags.0, "relationships-added"),
+        (flags.1, "relationships-removed"),
+        (flags.2, "relationships-changed"),
+    ]
+    .into_iter()
+    .filter(|(flag, _)| *flag)
+    .map(|(_, nature)| nature)
+    .collect()
 }
 
 fn run(input: &str) -> Result<CompareOutput, String> {
-    let mut input: CompareInput = serde_json::from_str(input).map_err(|e| format!("invalid input: {e}"))?;
-    let on_one_chain = input.on_one_chain.ok_or_else(|| ON_ONE_CHAIN_MISSING.to_string())?;
+    let mut input: CompareInput =
+        serde_json::from_str(input).map_err(|e| format!("invalid input: {e}"))?;
+    let on_one_chain = input
+        .on_one_chain
+        .ok_or_else(|| ON_ONE_CHAIN_MISSING.to_string())?;
     check(&input.base, "base")?;
     check(&input.target, "target")?;
     compose(&input.chain, &mut input.target);
-    let Resolved { identities, rewrite, warnings } = resolve(&input);
+    let Resolved {
+        identities,
+        rewrite,
+        warnings,
+    } = resolve(&input);
 
     // the relationships first: the natures of an element depend on them
     let mut relationships: Vec<URel> = Vec::new();
     for layer in LAYERS {
-        relationships.extend(compare_relationships(&relationships_of(&input.base, layer, Some(&rewrite)), &relationships_of(&input.target, layer, None)));
+        relationships.extend(compare_relationships(
+            &relationships_of(&input.base, layer, Some(&rewrite)),
+            &relationships_of(&input.target, layer, None),
+        ));
     }
     relationships.sort_by(|a, b| a.r.order().cmp(&b.r.order()).then(a.change.cmp(b.change)));
     // (layer, source) -> (added, removed, changed)
@@ -1046,19 +1337,31 @@ fn run(input: &str) -> Result<CompareOutput, String> {
             // the element of the base this one is compared with: itself, else the one it is the new place of
             let counterpart = match base.get(reference) {
                 Some(b) => Some(*b),
-                None => identity.and_then(|i| i.counterpart.as_deref()).and_then(|c| base.get(c).copied()),
+                None => identity
+                    .and_then(|i| i.counterpart.as_deref())
+                    .and_then(|c| base.get(c).copied()),
             };
             match (counterpart, identity) {
                 (None, None) => elements.push(out_element(layer, t, &tp, NEW)),
                 (None, Some(_)) => {
                     let mut element = out_element(layer, t, &tp, NONE);
-                    element.natures = relationship_natures(moved.get(&(layer, *reference)).copied().unwrap_or_default());
+                    element.natures = relationship_natures(
+                        moved.get(&(layer, *reference)).copied().unwrap_or_default(),
+                    );
                     elements.push(element);
                 }
                 (Some(b), _) => {
-                    let (mut natures, before, after) = compare_props(&base_props_of(b, &rewrite), &tp);
-                    natures.extend(relationship_natures(moved.get(&(layer, *reference)).copied().unwrap_or_default()));
-                    let mut element = out_element(layer, t, &tp, if natures.is_empty() { NONE } else { CHANGED });
+                    let (mut natures, before, after) =
+                        compare_props(&base_props_of(b, &rewrite), &tp);
+                    natures.extend(relationship_natures(
+                        moved.get(&(layer, *reference)).copied().unwrap_or_default(),
+                    ));
+                    let mut element = out_element(
+                        layer,
+                        t,
+                        &tp,
+                        if natures.is_empty() { NONE } else { CHANGED },
+                    );
                     element.wording_only = natures == ["description"];
                     element.natures = natures;
                     element.before = before;
@@ -1084,7 +1387,9 @@ fn run(input: &str) -> Result<CompareOutput, String> {
             .filter(|e| e.layer == layer && e.change == REMOVED)
             .flat_map(|e| {
                 let parts: Vec<&str> = e.reference.split('.').collect();
-                (1..parts.len()).map(|i| parts[..i].join(".")).collect::<Vec<_>>()
+                (1..parts.len())
+                    .map(|i| parts[..i].join("."))
+                    .collect::<Vec<_>>()
             })
             .filter(|ancestor| rewrite.is_replaced(layer, ancestor))
             .collect();
@@ -1101,7 +1406,10 @@ fn run(input: &str) -> Result<CompareOutput, String> {
 
     let mut counts = Counts::default();
     let mut changes: Vec<Value> = Vec::new();
-    for e in elements.iter().filter(|e| e.change != NONE && e.replaced_by.is_empty()) {
+    for e in elements
+        .iter()
+        .filter(|e| e.change != NONE && e.replaced_by.is_empty())
+    {
         match e.change {
             NEW => counts.elements.new += 1,
             CHANGED => {
@@ -1125,13 +1433,19 @@ fn run(input: &str) -> Result<CompareOutput, String> {
         }
         row.insert("change".into(), e.change.into());
         if !e.natures.is_empty() {
-            row.insert("natures".into(), Value::Array(e.natures.iter().map(|n| (*n).into()).collect()));
+            row.insert(
+                "natures".into(),
+                Value::Array(e.natures.iter().map(|n| (*n).into()).collect()),
+            );
         }
         if e.wording_only {
             row.insert("wording_only".into(), true.into());
         }
         if !e.replaces.is_empty() {
-            row.insert("replaces".into(), Value::Array(e.replaces.iter().cloned().map(Value::String).collect()));
+            row.insert(
+                "replaces".into(),
+                Value::Array(e.replaces.iter().cloned().map(Value::String).collect()),
+            );
         }
         if e.change == CHANGED || (!e.replaces.is_empty() && !e.before.is_empty()) {
             row.insert("before".into(), Value::Object(e.before.clone()));
@@ -1153,7 +1467,10 @@ fn run(input: &str) -> Result<CompareOutput, String> {
         row.insert("label".into(), text_value(&u.r.label));
         row.insert("change".into(), u.change.into());
         if !u.natures.is_empty() {
-            row.insert("natures".into(), Value::Array(u.natures.iter().map(|n| (*n).into()).collect()));
+            row.insert(
+                "natures".into(),
+                Value::Array(u.natures.iter().map(|n| (*n).into()).collect()),
+            );
         }
         if u.change == CHANGED {
             row.insert("before".into(), Value::Object(u.before.clone()));
@@ -1176,7 +1493,15 @@ fn run(input: &str) -> Result<CompareOutput, String> {
         })
         .collect();
     let candidates = candidates(&input, &identities, &rewrite, on_one_chain);
-    Ok(CompareOutput { version: CONTRACT_VERSION, elements, relationships, changes, counts, candidates, warnings })
+    Ok(CompareOutput {
+        version: CONTRACT_VERSION,
+        elements,
+        relationships,
+        changes,
+        counts,
+        candidates,
+        warnings,
+    })
 }
 
 /// `contains_changes` and `contains_more_than_wording` on the elements of the union (the rule of `compute`, which draws the union: an
@@ -1204,7 +1529,9 @@ fn mark_containers(elements: &mut [OutElement]) {
 /// The comparison of two plateaus: see the top of this file.
 pub fn compare_json(input: &str) -> String {
     run(input)
-        .and_then(|out| serde_json::to_string(&out).map_err(|e| format!("cannot write the comparison: {e}")))
+        .and_then(|out| {
+            serde_json::to_string(&out).map_err(|e| format!("cannot write the comparison: {e}"))
+        })
         .unwrap_or_else(|e| serde_json::json!({ "error": e }).to_string())
 }
 
@@ -1231,12 +1558,18 @@ mod tests {
     }
 
     fn compare(base: Value, target: Value) -> Value {
-        serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": true }).to_string())).unwrap()
+        serde_json::from_str(&compare_json(
+            &json!({ "base": base, "target": target, "on_one_chain": true }).to_string(),
+        ))
+        .unwrap()
     }
 
     /// The same, for two plateaus that are not on one chain (siblings: neither is the past of the other).
     fn compare_siblings(base: Value, target: Value) -> Value {
-        serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": false }).to_string())).unwrap()
+        serde_json::from_str(&compare_json(
+            &json!({ "base": base, "target": target, "on_one_chain": false }).to_string(),
+        ))
+        .unwrap()
     }
 
     fn app(base: Vec<Value>, target: Vec<Value>) -> Value {
@@ -1244,7 +1577,12 @@ mod tests {
     }
 
     fn element<'a>(out: &'a Value, reference: &str) -> &'a Value {
-        out["elements"].as_array().unwrap().iter().find(|e| e["reference"] == reference).unwrap_or_else(|| panic!("no element {reference} in {out}"))
+        out["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["reference"] == reference)
+            .unwrap_or_else(|| panic!("no element {reference} in {out}"))
     }
 
     fn relationship<'a>(out: &'a Value, from: &str, destination: &str, label: &str) -> &'a Value {
@@ -1257,15 +1595,24 @@ mod tests {
     }
 
     fn row<'a>(out: &'a Value, thing: &str, reference: &str) -> &'a Value {
-        out["changes"].as_array().unwrap().iter().find(|r| r["thing"] == thing && r["reference"] == reference).unwrap_or_else(|| panic!("no {thing} row for {reference} in {}", out["changes"]))
+        out["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["thing"] == thing && r["reference"] == reference)
+            .unwrap_or_else(|| panic!("no {thing} row for {reference} in {}", out["changes"]))
     }
 
     fn natures(v: &Value) -> Vec<&str> {
-        v["natures"].as_array().map_or(vec![], |a| a.iter().map(|n| n.as_str().unwrap()).collect())
+        v["natures"]
+            .as_array()
+            .map_or(vec![], |a| a.iter().map(|n| n.as_str().unwrap()).collect())
     }
 
     fn error(out: &Value) -> &str {
-        out["error"].as_str().unwrap_or_else(|| panic!("expected an error, got {out}"))
+        out["error"]
+            .as_str()
+            .unwrap_or_else(|| panic!("expected an error, got {out}"))
     }
 
     fn rows(out: &Value) -> usize {
@@ -1281,12 +1628,25 @@ mod tests {
 
     #[test]
     fn a_reference_only_the_target_has_is_new_and_one_only_the_base_has_is_removed() {
-        let out = app(vec![el("kept", json!({})), el("gone", json!({ "name": "Gone" }))], vec![el("kept", json!({})), el("fresh", json!({ "name": "Fresh" }))]);
+        let out = app(
+            vec![el("kept", json!({})), el("gone", json!({ "name": "Gone" }))],
+            vec![
+                el("kept", json!({})),
+                el("fresh", json!({ "name": "Fresh" })),
+            ],
+        );
         assert_eq!(element(&out, "kept")["change"], "none");
         assert_eq!(element(&out, "fresh")["change"], "new");
         assert_eq!(element(&out, "gone")["change"], "removed");
-        assert_eq!(element(&out, "gone")["name"], "Gone", "a removed element keeps its properties, so that it can be drawn");
-        assert_eq!(out["counts"]["elements"], json!({ "new": 1, "changed": 0, "removed": 1, "wording_only": 0 }));
+        assert_eq!(
+            element(&out, "gone")["name"],
+            "Gone",
+            "a removed element keeps its properties, so that it can be drawn"
+        );
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 1, "changed": 0, "removed": 1, "wording_only": 0 })
+        );
         assert_eq!(rows(&out), 2);
         assert_eq!(row(&out, "element", "fresh")["change"], "new");
         assert!(row(&out, "element", "fresh").get("before").is_none());
@@ -1294,7 +1654,10 @@ mod tests {
 
     #[test]
     fn a_moved_or_renamed_element_is_a_removal_and_an_addition() {
-        let out = app(vec![el("old", json!({ "name": "X" }))], vec![el("new", json!({ "name": "X" }))]);
+        let out = app(
+            vec![el("old", json!({ "name": "X" }))],
+            vec![el("new", json!({ "name": "X" }))],
+        );
         assert_eq!(element(&out, "old")["change"], "removed");
         assert_eq!(element(&out, "new")["change"], "new");
     }
@@ -1304,7 +1667,12 @@ mod tests {
         let base = plateau(vec![el("shop", json!({}))], vec![el("shop", json!({}))]);
         let target = plateau(vec![el("shop", json!({}))], vec![]);
         let out = compare(base, target);
-        let shops: Vec<(&str, &str)> = out["elements"].as_array().unwrap().iter().map(|e| (e["layer"].as_str().unwrap(), e["change"].as_str().unwrap())).collect();
+        let shops: Vec<(&str, &str)> = out["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| (e["layer"].as_str().unwrap(), e["change"].as_str().unwrap()))
+            .collect();
         assert_eq!(shops, [("application", "none"), ("technology", "removed")]);
     }
 
@@ -1314,28 +1682,57 @@ mod tests {
     fn each_property_has_its_nature() {
         let cases = [
             ("name", json!({ "name": "A" }), json!({ "name": "B" })),
-            ("kind", json!({ "kind": "system" }), json!({ "kind": "service" })),
-            ("qualifiers", json!({ "qualifiers": ["x"] }), json!({ "qualifiers": ["x", "y"] })),
-            ("tags", json!({ "tags": { "owner": "a" } }), json!({ "tags": { "owner": "b" } })),
-            ("tags", json!({ "tags": {} }), json!({ "tags": { "owner": "b" } })),
-            ("description", json!({ "description": "one" }), json!({ "description": "two" })),
+            (
+                "kind",
+                json!({ "kind": "system" }),
+                json!({ "kind": "service" }),
+            ),
+            (
+                "qualifiers",
+                json!({ "qualifiers": ["x"] }),
+                json!({ "qualifiers": ["x", "y"] }),
+            ),
+            (
+                "tags",
+                json!({ "tags": { "owner": "a" } }),
+                json!({ "tags": { "owner": "b" } }),
+            ),
+            (
+                "tags",
+                json!({ "tags": {} }),
+                json!({ "tags": { "owner": "b" } }),
+            ),
+            (
+                "description",
+                json!({ "description": "one" }),
+                json!({ "description": "two" }),
+            ),
         ];
         for (nature, before, after) in cases {
             let out = one(before.clone(), after.clone());
             assert_eq!(element(&out, "a")["change"], "changed", "{nature}: {out}");
             assert_eq!(natures(element(&out, "a")), [nature], "{nature}");
             let r = row(&out, "element", "a");
-            assert!(r["before"].get(nature).is_some() && r["after"].get(nature).is_some(), "{nature}: the row says before and after: {r}");
+            assert!(
+                r["before"].get(nature).is_some() && r["after"].get(nature).is_some(),
+                "{nature}: the row says before and after: {r}"
+            );
             assert_eq!(out["counts"]["elements"]["changed"], 1);
         }
     }
 
     #[test]
     fn the_row_of_a_changed_element_says_what_it_was_and_what_it_is_and_nothing_else() {
-        let out = one(json!({ "name": "A", "description": "same", "qualifiers": ["x", "y"], "tags": { "k": "1", "rendering-a": "x" } }), json!({ "name": "B", "description": "same", "qualifiers": ["y", "z"], "tags": { "k": "1", "rendering-a": "z" } }));
+        let out = one(
+            json!({ "name": "A", "description": "same", "qualifiers": ["x", "y"], "tags": { "k": "1", "rendering-a": "x" } }),
+            json!({ "name": "B", "description": "same", "qualifiers": ["y", "z"], "tags": { "k": "1", "rendering-a": "z" } }),
+        );
         let r = row(&out, "element", "a");
         assert_eq!(r["natures"], json!(["name", "qualifiers"]));
-        assert_eq!(r["before"], json!({ "name": "A", "qualifiers": ["x", "y"] }));
+        assert_eq!(
+            r["before"],
+            json!({ "name": "A", "qualifiers": ["x", "y"] })
+        );
         assert_eq!(r["after"], json!({ "name": "B", "qualifiers": ["y", "z"] }));
         assert_eq!(r["name"], "B");
     }
@@ -1343,62 +1740,147 @@ mod tests {
     #[test]
     fn a_change_of_description_alone_is_wording_and_is_counted_apart() {
         let out = app(
-            vec![el("a", json!({ "description": "one" })), el("b", json!({ "name": "B", "description": "one" })), el("c", json!({}))],
-            vec![el("a", json!({ "description": "two" })), el("b", json!({ "name": "B2", "description": "two" })), el("c", json!({}))],
+            vec![
+                el("a", json!({ "description": "one" })),
+                el("b", json!({ "name": "B", "description": "one" })),
+                el("c", json!({})),
+            ],
+            vec![
+                el("a", json!({ "description": "two" })),
+                el("b", json!({ "name": "B2", "description": "two" })),
+                el("c", json!({})),
+            ],
         );
         assert_eq!(element(&out, "a")["wording_only"], true);
-        assert!(element(&out, "b").get("wording_only").is_none(), "a name changed too");
-        assert_eq!(natures(element(&out, "b")), ["name", "description"], "the natures come in their own order");
-        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 2, "removed": 0, "wording_only": 1 }));
+        assert!(
+            element(&out, "b").get("wording_only").is_none(),
+            "a name changed too"
+        );
+        assert_eq!(
+            natures(element(&out, "b")),
+            ["name", "description"],
+            "the natures come in their own order"
+        );
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 0, "changed": 2, "removed": 0, "wording_only": 1 })
+        );
         assert_eq!(row(&out, "element", "a")["wording_only"], true);
     }
 
     #[test]
     fn deployment_is_the_applications_and_the_uses_of_a_node() {
         let apps = vec![el("one", json!({})), el("two", json!({}))];
-        let node = |applications: Value, uses: Value| el("env", json!({ "applications": applications, "uses": uses }));
+        let node = |applications: Value, uses: Value| {
+            el("env", json!({ "applications": applications, "uses": uses }))
+        };
         let side = |env: Value| plateau(apps.clone(), vec![env, el("other", json!({}))]);
-        let out = compare(side(node(json!(["one"]), json!([]))), side(node(json!(["one", "two"]), json!([]))));
+        let out = compare(
+            side(node(json!(["one"]), json!([]))),
+            side(node(json!(["one", "two"]), json!([]))),
+        );
         assert_eq!(natures(element(&out, "env")), ["deployment"]);
-        assert_eq!(row(&out, "element", "env")["before"], json!({ "applications": ["one"] }));
-        assert_eq!(row(&out, "element", "env")["after"], json!({ "applications": ["one", "two"] }));
-        let out = compare(side(node(json!([]), json!([]))), side(node(json!([]), json!(["other"]))));
+        assert_eq!(
+            row(&out, "element", "env")["before"],
+            json!({ "applications": ["one"] })
+        );
+        assert_eq!(
+            row(&out, "element", "env")["after"],
+            json!({ "applications": ["one", "two"] })
+        );
+        let out = compare(
+            side(node(json!([]), json!([]))),
+            side(node(json!([]), json!(["other"]))),
+        );
         assert_eq!(natures(element(&out, "env")), ["deployment"]);
-        assert_eq!(row(&out, "element", "env")["after"], json!({ "uses": ["other"] }));
-        let out = compare(side(node(json!(["one"]), json!(["other"]))), side(node(json!(["two"]), json!([]))));
-        assert_eq!(natures(element(&out, "env")), ["deployment"], "one nature, however many links moved");
+        assert_eq!(
+            row(&out, "element", "env")["after"],
+            json!({ "uses": ["other"] })
+        );
+        let out = compare(
+            side(node(json!(["one"]), json!(["other"]))),
+            side(node(json!(["two"]), json!([]))),
+        );
+        assert_eq!(
+            natures(element(&out, "env")),
+            ["deployment"],
+            "one nature, however many links moved"
+        );
     }
 
     // ---- what is not a change ----
 
     #[test]
     fn a_rendering_tag_is_not_a_change() {
-        let out = one(json!({ "tags": { "owner": "a", "rendering-stereotypes": "external" } }), json!({ "tags": { "owner": "a", "rendering-stereotypes": "internal", "rendering-new": "x" } }));
+        let out = one(
+            json!({ "tags": { "owner": "a", "rendering-stereotypes": "external" } }),
+            json!({ "tags": { "owner": "a", "rendering-stereotypes": "internal", "rendering-new": "x" } }),
+        );
         assert_eq!(element(&out, "a")["change"], "none");
-        assert_eq!(element(&out, "a")["tags"]["rendering-stereotypes"], "internal", "the union shows the target as it is");
+        assert_eq!(
+            element(&out, "a")["tags"]["rendering-stereotypes"],
+            "internal",
+            "the union shows the target as it is"
+        );
         assert_eq!(rows(&out), 0);
-        let out = one(json!({ "tags": {} }), json!({ "tags": { "rendering-stereotypes": "external" } }));
+        let out = one(
+            json!({ "tags": {} }),
+            json!({ "tags": { "rendering-stereotypes": "external" } }),
+        );
         assert_eq!(element(&out, "a")["change"], "none");
     }
 
     #[test]
     fn the_order_of_lists_is_not_a_change() {
         let node = |apps: Value, uses: Value, qualifiers: Value, rels: Value| {
-            el("n", json!({ "applications": apps, "uses": uses, "qualifiers": qualifiers, "relationships": rels }))
+            el(
+                "n",
+                json!({ "applications": apps, "uses": uses, "qualifiers": qualifiers, "relationships": rels }),
+            )
         };
-        let side = |n: Value| plateau(vec![el("p", json!({})), el("q", json!({}))], vec![n, el("m", json!({})), el("k", json!({}))]);
-        let base = side(node(json!(["p", "q"]), json!(["m", "k"]), json!(["x", "y"]), json!([rel("m", "r1"), rel("k", "r2")])));
-        let target = side(node(json!(["q", "p"]), json!(["k", "m"]), json!(["y", "x"]), json!([rel("k", "r2"), rel("m", "r1")])));
+        let side = |n: Value| {
+            plateau(
+                vec![el("p", json!({})), el("q", json!({}))],
+                vec![n, el("m", json!({})), el("k", json!({}))],
+            )
+        };
+        let base = side(node(
+            json!(["p", "q"]),
+            json!(["m", "k"]),
+            json!(["x", "y"]),
+            json!([rel("m", "r1"), rel("k", "r2")]),
+        ));
+        let target = side(node(
+            json!(["q", "p"]),
+            json!(["k", "m"]),
+            json!(["y", "x"]),
+            json!([rel("k", "r2"), rel("m", "r1")]),
+        ));
         let out = compare(base, target);
         assert_eq!(rows(&out), 0, "{}", out["changes"]);
-        assert!(out["elements"].as_array().unwrap().iter().all(|e| e["change"] == "none"));
-        assert!(out["relationships"].as_array().unwrap().iter().all(|r| r["change"] == "none"));
-        assert_eq!(element(&out, "n")["qualifiers"], json!(["y", "x"]), "the qualifiers keep the order of the target, which is how the box is drawn");
+        assert!(out["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|e| e["change"] == "none"));
+        assert!(out["relationships"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|r| r["change"] == "none"));
+        assert_eq!(
+            element(&out, "n")["qualifiers"],
+            json!(["y", "x"]),
+            "the qualifiers keep the order of the target, which is how the box is drawn"
+        );
     }
 
     #[test]
     fn text_is_compared_trimmed_and_an_empty_text_is_none() {
-        let out = one(json!({ "name": "A", "description": "a\nb\n" }), json!({ "name": " A ", "description": "a\r\nb" }));
+        let out = one(
+            json!({ "name": "A", "description": "a\nb\n" }),
+            json!({ "name": " A ", "description": "a\r\nb" }),
+        );
         assert_eq!(element(&out, "a")["change"], "none");
         let out = one(json!({ "description": "" }), json!({}));
         assert_eq!(element(&out, "a")["change"], "none");
@@ -1408,62 +1890,145 @@ mod tests {
 
     #[test]
     fn the_other_fields_travel_and_are_not_compared() {
-        let out = one(json!({ "file": "a.yaml", "extra": { "z": 1, "a": 2 } }), json!({ "file": "b.yaml", "extra": { "a": 2, "z": 1 }, "change": "fake", "natures": ["fake"] }));
+        let out = one(
+            json!({ "file": "a.yaml", "extra": { "z": 1, "a": 2 } }),
+            json!({ "file": "b.yaml", "extra": { "a": 2, "z": 1 }, "change": "fake", "natures": ["fake"] }),
+        );
         let e = element(&out, "a");
         assert_eq!(e["change"], "none");
         assert_eq!(e["file"], "b.yaml");
-        assert!(e.get("natures").is_none(), "an extra field cannot pose as the answer");
+        assert!(
+            e.get("natures").is_none(),
+            "an extra field cannot pose as the answer"
+        );
         assert!(compare_json(&json!({ "base": plateau(vec![el("a", json!({ "extra": { "z": 1, "a": 2 } }))], vec![]), "target": plateau(vec![], vec![]), "on_one_chain": true }).to_string()).contains(r#""extra":{"a":2,"z":1}"#), "keys of a free-form object are sorted");
     }
 
     #[test]
     fn a_free_form_field_cannot_pose_as_a_field_of_the_answer() {
         // every field `OutElement` writes is reserved, `wording_only` included: it would be a second key of the same name
-        let base = plateau(vec![el("a", json!({ "description": "one", "wording_only": "base" }))], vec![]);
-        let target = plateau(vec![el("a", json!({ "description": "two", "wording_only": "target" }))], vec![]);
-        let raw = compare_json(&json!({ "base": base, "target": target, "on_one_chain": true }).to_string());
+        let base = plateau(
+            vec![el(
+                "a",
+                json!({ "description": "one", "wording_only": "base" }),
+            )],
+            vec![],
+        );
+        let target = plateau(
+            vec![el(
+                "a",
+                json!({ "description": "two", "wording_only": "target" }),
+            )],
+            vec![],
+        );
+        let raw = compare_json(
+            &json!({ "base": base, "target": target, "on_one_chain": true }).to_string(),
+        );
         let text = raw.to_string();
         let out: Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(out["elements"].to_string().matches("\"wording_only\":").count(), 1, "one key of that name in the element: {}", text);
+        assert_eq!(
+            out["elements"]
+                .to_string()
+                .matches("\"wording_only\":")
+                .count(),
+            1,
+            "one key of that name in the element: {}",
+            text
+        );
         assert_eq!(element(&out, "a")["wording_only"], json!(true));
-        let unchanged = one(json!({ "wording_only": "x", "natures": ["fake"] }), json!({ "wording_only": "y" }));
-        assert!(element(&unchanged, "a").get("wording_only").is_none(), "a field of the answer that is not set is not written, and not borrowed");
+        let unchanged = one(
+            json!({ "wording_only": "x", "natures": ["fake"] }),
+            json!({ "wording_only": "y" }),
+        );
+        assert!(
+            element(&unchanged, "a").get("wording_only").is_none(),
+            "a field of the answer that is not set is not written, and not borrowed"
+        );
         // and the fields of the answer, one by one, are not let through from the input
-        for name in ["layer", "parent_reference", "change", "natures", "wording_only"] {
+        for name in [
+            "layer",
+            "parent_reference",
+            "change",
+            "natures",
+            "wording_only",
+        ] {
             assert!(RESERVED.contains(&name), "{} is reserved", name);
             let out = one(json!({}), json!({ name: "free" }));
             let e = element(&out, "a");
-            assert_ne!(e.get(name), Some(&json!("free")), "{} is the answer's own", name);
+            assert_ne!(
+                e.get(name),
+                Some(&json!("free")),
+                "{} is the answer's own",
+                name
+            );
         }
     }
 
     #[test]
     fn a_container_is_not_changed_because_a_child_is() {
         let out = app(
-            vec![el("sys", json!({ "name": "S" })), el("sys.a", json!({ "name": "A" })), el("sys.b", json!({})), el("other", json!({ "relationships": [rel("sys.a", "calls")] }))],
-            vec![el("sys", json!({ "name": "S" })), el("sys.a", json!({ "name": "A2" })), el("sys.b", json!({})), el("other", json!({ "relationships": [rel("sys.a", "calls")] }))],
+            vec![
+                el("sys", json!({ "name": "S" })),
+                el("sys.a", json!({ "name": "A" })),
+                el("sys.b", json!({})),
+                el("other", json!({ "relationships": [rel("sys.a", "calls")] })),
+            ],
+            vec![
+                el("sys", json!({ "name": "S" })),
+                el("sys.a", json!({ "name": "A2" })),
+                el("sys.b", json!({})),
+                el("other", json!({ "relationships": [rel("sys.a", "calls")] })),
+            ],
         );
         assert_eq!(element(&out, "sys")["change"], "none");
         assert_eq!(element(&out, "sys.a")["change"], "changed");
-        assert_eq!(element(&out, "other")["change"], "none", "pointing at a changed element is not changing");
+        assert_eq!(
+            element(&out, "other")["change"],
+            "none",
+            "pointing at a changed element is not changing"
+        );
         assert_eq!(out["counts"]["elements"]["changed"], 1);
     }
 
     #[test]
     fn a_child_of_a_container_that_is_new_or_removed_is_too_and_keeps_its_parent() {
         let out = app(
-            vec![el("old", json!({})), el("old.child", json!({ "name": "Child" })), el("stay", json!({})), el("stay.gone", json!({}))],
-            vec![el("fresh", json!({})), el("fresh.child", json!({})), el("stay", json!({}))],
+            vec![
+                el("old", json!({})),
+                el("old.child", json!({ "name": "Child" })),
+                el("stay", json!({})),
+                el("stay.gone", json!({})),
+            ],
+            vec![
+                el("fresh", json!({})),
+                el("fresh.child", json!({})),
+                el("stay", json!({})),
+            ],
         );
-        for (reference, change, parent) in [("old", "removed", None), ("old.child", "removed", Some("old")), ("stay", "none", None), ("stay.gone", "removed", Some("stay")), ("fresh", "new", None), ("fresh.child", "new", Some("fresh"))] {
+        for (reference, change, parent) in [
+            ("old", "removed", None),
+            ("old.child", "removed", Some("old")),
+            ("stay", "none", None),
+            ("stay.gone", "removed", Some("stay")),
+            ("fresh", "new", None),
+            ("fresh.child", "new", Some("fresh")),
+        ] {
             let e = element(&out, reference);
             assert_eq!(e["change"], change, "{reference}");
-            assert_eq!(e.get("parent_reference").and_then(|p| p.as_str()), parent, "{reference}");
+            assert_eq!(
+                e.get("parent_reference").and_then(|p| p.as_str()),
+                parent,
+                "{reference}"
+            );
         }
         assert_eq!(element(&out, "old")["parent"], true);
         assert_eq!(element(&out, "old.child")["parent"], false);
         assert_eq!(element(&out, "old.child")["name"], "Child");
-        assert_eq!(element(&out, "stay")["change"], "none", "losing a child does not change the container");
+        assert_eq!(
+            element(&out, "stay")["change"],
+            "none",
+            "losing a child does not change the container"
+        );
     }
 
     // ---- relationships ----
@@ -1471,32 +2036,71 @@ mod tests {
     #[test]
     fn a_relationship_is_new_removed_or_unchanged_by_its_source_destination_and_label() {
         let out = app(
-            vec![el("a", json!({ "relationships": [rel("b", "calls"), rel("b", "reads"), rel("c", "keeps")] })), el("b", json!({})), el("c", json!({}))],
-            vec![el("a", json!({ "relationships": [rel("b", "calls"), rel("c", "keeps"), rel("c", "also"), rel("b", "writes"), rel("b", "pings")] })), el("b", json!({})), el("c", json!({}))],
+            vec![
+                el(
+                    "a",
+                    json!({ "relationships": [rel("b", "calls"), rel("b", "reads"), rel("c", "keeps")] }),
+                ),
+                el("b", json!({})),
+                el("c", json!({})),
+            ],
+            vec![
+                el(
+                    "a",
+                    json!({ "relationships": [rel("b", "calls"), rel("c", "keeps"), rel("c", "also"), rel("b", "writes"), rel("b", "pings")] }),
+                ),
+                el("b", json!({})),
+                el("c", json!({})),
+            ],
         );
         assert_eq!(relationship(&out, "a", "b", "calls")["change"], "none");
         assert_eq!(relationship(&out, "a", "c", "keeps")["change"], "none");
         assert_eq!(relationship(&out, "a", "c", "also")["change"], "new");
-        assert_eq!(relationship(&out, "a", "b", "reads")["change"], "removed", "one removed, two new for the pair: ambiguous, no pairing");
+        assert_eq!(
+            relationship(&out, "a", "b", "reads")["change"],
+            "removed",
+            "one removed, two new for the pair: ambiguous, no pairing"
+        );
         assert_eq!(relationship(&out, "a", "b", "writes")["change"], "new");
         assert_eq!(relationship(&out, "a", "b", "pings")["change"], "new");
-        assert_eq!(out["counts"]["relationships"], json!({ "new": 3, "changed": 0, "removed": 1 }));
-        assert_eq!(natures(element(&out, "a")), ["relationships-added", "relationships-removed"]);
+        assert_eq!(
+            out["counts"]["relationships"],
+            json!({ "new": 3, "changed": 0, "removed": 1 })
+        );
+        assert_eq!(
+            natures(element(&out, "a")),
+            ["relationships-added", "relationships-removed"]
+        );
     }
 
     #[test]
     fn a_removed_label_and_a_new_one_for_the_same_pair_are_one_relationship_whose_label_changed() {
         let out = app(
-            vec![el("a", json!({ "relationships": [rel("b", "sends")] })), el("b", json!({}))],
-            vec![el("a", json!({ "relationships": [rel("b", "publishes")] })), el("b", json!({}))],
+            vec![
+                el("a", json!({ "relationships": [rel("b", "sends")] })),
+                el("b", json!({})),
+            ],
+            vec![
+                el("a", json!({ "relationships": [rel("b", "publishes")] })),
+                el("b", json!({})),
+            ],
         );
         assert_eq!(out["relationships"].as_array().unwrap().len(), 1);
         let r = relationship(&out, "a", "b", "publishes");
-        assert_eq!((r["change"].as_str().unwrap(), natures(r)), ("changed", vec!["label"]));
+        assert_eq!(
+            (r["change"].as_str().unwrap(), natures(r)),
+            ("changed", vec!["label"])
+        );
         let row = row(&out, "relationship", "a");
-        assert_eq!((row["before"].clone(), row["after"].clone()), (json!({ "label": "sends" }), json!({ "label": "publishes" })));
+        assert_eq!(
+            (row["before"].clone(), row["after"].clone()),
+            (json!({ "label": "sends" }), json!({ "label": "publishes" }))
+        );
         assert_eq!(natures(element(&out, "a")), ["relationships-changed"]);
-        assert_eq!(out["counts"]["relationships"], json!({ "new": 0, "changed": 1, "removed": 0 }));
+        assert_eq!(
+            out["counts"]["relationships"],
+            json!({ "new": 0, "changed": 1, "removed": 0 })
+        );
     }
 
     #[test]
@@ -1505,25 +2109,63 @@ mod tests {
         before["qualifiers"] = json!(["REST"]);
         let mut after = rel("b", "publishes");
         after["qualifiers"] = json!(["AMQP"]);
-        let out = app(vec![el("a", json!({ "relationships": [before] })), el("b", json!({}))], vec![el("a", json!({ "relationships": [after] })), el("b", json!({}))]);
-        assert_eq!(natures(relationship(&out, "a", "b", "publishes")), ["label", "qualifiers"]);
+        let out = app(
+            vec![
+                el("a", json!({ "relationships": [before] })),
+                el("b", json!({})),
+            ],
+            vec![
+                el("a", json!({ "relationships": [after] })),
+                el("b", json!({})),
+            ],
+        );
+        assert_eq!(
+            natures(relationship(&out, "a", "b", "publishes")),
+            ["label", "qualifiers"]
+        );
     }
 
     #[test]
     fn two_removed_or_two_new_for_a_pair_are_not_paired() {
         let out = app(
-            vec![el("a", json!({ "relationships": [rel("b", "one"), rel("b", "two")] })), el("b", json!({}))],
-            vec![el("a", json!({ "relationships": [rel("b", "three")] })), el("b", json!({}))],
+            vec![
+                el(
+                    "a",
+                    json!({ "relationships": [rel("b", "one"), rel("b", "two")] }),
+                ),
+                el("b", json!({})),
+            ],
+            vec![
+                el("a", json!({ "relationships": [rel("b", "three")] })),
+                el("b", json!({})),
+            ],
         );
-        let changes: Vec<&str> = out["relationships"].as_array().unwrap().iter().map(|r| r["change"].as_str().unwrap()).collect();
-        assert_eq!(changes, ["removed", "new", "removed"], "sorted by label: one, three, two");
+        let changes: Vec<&str> = out["relationships"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["change"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            changes,
+            ["removed", "new", "removed"],
+            "sorted by label: one, three, two"
+        );
     }
 
     #[test]
     fn a_label_is_paired_with_another_one_of_the_same_pair_only() {
         let out = app(
-            vec![el("a", json!({ "relationships": [rel("b", "x")] })), el("b", json!({})), el("c", json!({}))],
-            vec![el("a", json!({ "relationships": [rel("c", "y")] })), el("b", json!({})), el("c", json!({}))],
+            vec![
+                el("a", json!({ "relationships": [rel("b", "x")] })),
+                el("b", json!({})),
+                el("c", json!({})),
+            ],
+            vec![
+                el("a", json!({ "relationships": [rel("c", "y")] })),
+                el("b", json!({})),
+                el("c", json!({})),
+            ],
         );
         assert_eq!(relationship(&out, "a", "b", "x")["change"], "removed");
         assert_eq!(relationship(&out, "a", "c", "y")["change"], "new");
@@ -1533,24 +2175,57 @@ mod tests {
     fn qualifiers_and_tags_make_a_relationship_changed_but_not_rendering_tags_nor_order() {
         let r = |qualifiers: Value, tags: Value| json!({ "destination": "b", "label": "l", "qualifiers": qualifiers, "tags": tags });
         let compare_rels = |before: Value, after: Value| {
-            app(vec![el("a", json!({ "relationships": [before] })), el("b", json!({}))], vec![el("a", json!({ "relationships": [after] })), el("b", json!({}))])
+            app(
+                vec![
+                    el("a", json!({ "relationships": [before] })),
+                    el("b", json!({})),
+                ],
+                vec![
+                    el("a", json!({ "relationships": [after] })),
+                    el("b", json!({})),
+                ],
+            )
         };
-        let out = compare_rels(r(json!(["x", "y"]), json!({ "k": "1" })), r(json!(["y", "x"]), json!({ "k": "1", "rendering-w": "3" })));
+        let out = compare_rels(
+            r(json!(["x", "y"]), json!({ "k": "1" })),
+            r(json!(["y", "x"]), json!({ "k": "1", "rendering-w": "3" })),
+        );
         assert_eq!(relationship(&out, "a", "b", "l")["change"], "none");
         assert_eq!(rows(&out), 0);
         let out = compare_rels(r(json!(["x"]), json!({})), r(json!(["x", "z"]), json!({})));
         assert_eq!(natures(relationship(&out, "a", "b", "l")), ["qualifiers"]);
-        let out = compare_rels(r(json!([]), json!({ "k": "1" })), r(json!([]), json!({ "k": "2" })));
+        let out = compare_rels(
+            r(json!([]), json!({ "k": "1" })),
+            r(json!([]), json!({ "k": "2" })),
+        );
         let changed = relationship(&out, "a", "b", "l");
         assert_eq!(natures(changed), ["tags"]);
-        assert_eq!(row(&out, "relationship", "a")["before"], json!({ "tags": { "k": "1" } }));
+        assert_eq!(
+            row(&out, "relationship", "a")["before"],
+            json!({ "tags": { "k": "1" } })
+        );
         assert_eq!(element(&out, "a")["change"], "changed");
         assert_eq!(natures(element(&out, "a")), ["relationships-changed"]);
     }
 
     #[test]
     fn an_empty_label_is_no_label() {
-        let out = app(vec![el("a", json!({ "relationships": [json!({ "destination": "b" })] })), el("b", json!({}))], vec![el("a", json!({ "relationships": [json!({ "destination": "b", "label": "" })] })), el("b", json!({}))]);
+        let out = app(
+            vec![
+                el(
+                    "a",
+                    json!({ "relationships": [json!({ "destination": "b" })] }),
+                ),
+                el("b", json!({})),
+            ],
+            vec![
+                el(
+                    "a",
+                    json!({ "relationships": [json!({ "destination": "b", "label": "" })] }),
+                ),
+                el("b", json!({})),
+            ],
+        );
         assert_eq!(rows(&out), 0);
         assert_eq!(out["relationships"][0]["label"], Value::Null);
     }
@@ -1559,41 +2234,90 @@ mod tests {
     fn relationships_that_differ_by_their_tags_are_matched_one_to_one() {
         let tagged = |t: &str| json!({ "destination": "b", "label": "l", "tags": { "k": t } });
         let out = app(
-            vec![el("a", json!({ "relationships": [tagged("1"), tagged("2")] })), el("b", json!({}))],
-            vec![el("a", json!({ "relationships": [tagged("2"), tagged("1")] })), el("b", json!({}))],
+            vec![
+                el("a", json!({ "relationships": [tagged("1"), tagged("2")] })),
+                el("b", json!({})),
+            ],
+            vec![
+                el("a", json!({ "relationships": [tagged("2"), tagged("1")] })),
+                el("b", json!({})),
+            ],
         );
         assert_eq!(rows(&out), 0);
         let out = app(
-            vec![el("a", json!({ "relationships": [tagged("1"), tagged("2")] })), el("b", json!({}))],
-            vec![el("a", json!({ "relationships": [tagged("2"), tagged("3"), tagged("4")] })), el("b", json!({}))],
+            vec![
+                el("a", json!({ "relationships": [tagged("1"), tagged("2")] })),
+                el("b", json!({})),
+            ],
+            vec![
+                el(
+                    "a",
+                    json!({ "relationships": [tagged("2"), tagged("3"), tagged("4")] }),
+                ),
+                el("b", json!({})),
+            ],
         );
-        let changes: Vec<&str> = out["relationships"].as_array().unwrap().iter().map(|r| r["change"].as_str().unwrap()).collect();
-        assert_eq!(changes, ["none", "changed", "new"], "2 is kept; 1 became 3 (equal ones first, then in order); 4 is new");
+        let changes: Vec<&str> = out["relationships"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["change"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            changes,
+            ["none", "changed", "new"],
+            "2 is kept; 1 became 3 (equal ones first, then in order); 4 is new"
+        );
     }
 
     #[test]
     fn the_relationships_of_a_new_or_removed_element_are_new_or_removed_and_do_not_change_it() {
         let out = app(
-            vec![el("a", json!({})), el("gone", json!({ "relationships": [rel("a", "calls")] }))],
-            vec![el("a", json!({})), el("fresh", json!({ "relationships": [rel("a", "calls")] }))],
+            vec![
+                el("a", json!({})),
+                el("gone", json!({ "relationships": [rel("a", "calls")] })),
+            ],
+            vec![
+                el("a", json!({})),
+                el("fresh", json!({ "relationships": [rel("a", "calls")] })),
+            ],
         );
-        assert_eq!(relationship(&out, "gone", "a", "calls")["change"], "removed");
+        assert_eq!(
+            relationship(&out, "gone", "a", "calls")["change"],
+            "removed"
+        );
         assert_eq!(relationship(&out, "fresh", "a", "calls")["change"], "new");
         assert_eq!(element(&out, "fresh")["change"], "new");
         assert!(element(&out, "fresh").get("natures").is_none());
-        assert_eq!(element(&out, "a")["change"], "none", "being pointed at is not a change");
+        assert_eq!(
+            element(&out, "a")["change"],
+            "none",
+            "being pointed at is not a change"
+        );
     }
 
     #[test]
     fn a_base_relationship_may_end_on_a_removed_element_and_a_new_one_on_a_new_element() {
         let out = app(
-            vec![el("a", json!({ "relationships": [rel("gone", "calls")] })), el("gone", json!({}))],
-            vec![el("a", json!({ "relationships": [rel("fresh", "calls")] })), el("fresh", json!({}))],
+            vec![
+                el("a", json!({ "relationships": [rel("gone", "calls")] })),
+                el("gone", json!({})),
+            ],
+            vec![
+                el("a", json!({ "relationships": [rel("fresh", "calls")] })),
+                el("fresh", json!({})),
+            ],
         );
         assert!(out.get("error").is_none(), "{out}");
-        assert_eq!(relationship(&out, "a", "gone", "calls")["change"], "removed");
+        assert_eq!(
+            relationship(&out, "a", "gone", "calls")["change"],
+            "removed"
+        );
         assert_eq!(relationship(&out, "a", "fresh", "calls")["change"], "new");
-        assert_eq!(natures(element(&out, "a")), ["relationships-added", "relationships-removed"]);
+        assert_eq!(
+            natures(element(&out, "a")),
+            ["relationships-added", "relationships-removed"]
+        );
     }
 
     // ---- both layers ----
@@ -1601,23 +2325,60 @@ mod tests {
     #[test]
     fn the_technology_layer_is_compared_with_its_deployment_and_its_own_relationships() {
         let apps = |names: &[&str]| names.iter().map(|n| el(n, json!({}))).collect::<Vec<_>>();
-        let base = plateau(apps(&["web", "api"]), vec![el("env", json!({ "applications": ["web"], "relationships": [rel("env.db", "stores")] })), el("env.db", json!({ "applications": [] }))]);
-        let target = plateau(apps(&["web", "api"]), vec![el("env", json!({ "applications": ["web", "api"], "relationships": [rel("env.db", "stores")] })), el("env.db", json!({ "relationships": [rel("env", "backs")] }))]);
+        let base = plateau(
+            apps(&["web", "api"]),
+            vec![
+                el(
+                    "env",
+                    json!({ "applications": ["web"], "relationships": [rel("env.db", "stores")] }),
+                ),
+                el("env.db", json!({ "applications": [] })),
+            ],
+        );
+        let target = plateau(
+            apps(&["web", "api"]),
+            vec![
+                el(
+                    "env",
+                    json!({ "applications": ["web", "api"], "relationships": [rel("env.db", "stores")] }),
+                ),
+                el("env.db", json!({ "relationships": [rel("env", "backs")] })),
+            ],
+        );
         let out = compare(base, target);
         assert_eq!(natures(element(&out, "env")), ["deployment"]);
         assert_eq!(natures(element(&out, "env.db")), ["relationships-added"]);
         let r = relationship(&out, "env.db", "env", "backs");
-        assert_eq!((r["layer"].as_str().unwrap(), r["change"].as_str().unwrap()), ("technology", "new"));
+        assert_eq!(
+            (r["layer"].as_str().unwrap(), r["change"].as_str().unwrap()),
+            ("technology", "new")
+        );
         assert_eq!(element(&out, "web")["change"], "none");
     }
 
     #[test]
-    fn a_deployed_application_that_is_removed_is_an_error_in_the_plateau_that_still_deploys_it_but_not_in_the_union() {
-        let out = compare(plateau(vec![el("web", json!({}))], vec![el("env", json!({ "applications": ["web"] }))]), plateau(vec![], vec![el("env", json!({ "applications": [] }))]));
+    fn a_deployed_application_that_is_removed_is_an_error_in_the_plateau_that_still_deploys_it_but_not_in_the_union(
+    ) {
+        let out = compare(
+            plateau(
+                vec![el("web", json!({}))],
+                vec![el("env", json!({ "applications": ["web"] }))],
+            ),
+            plateau(vec![], vec![el("env", json!({ "applications": [] }))]),
+        );
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(element(&out, "web")["change"], "removed");
-        let out = compare(plateau(vec![], vec![]), plateau(vec![], vec![el("env", json!({ "applications": ["ghost"] }))]));
-        assert!(error(&out).starts_with("dangling application reference: ghost"), "{out}");
+        let out = compare(
+            plateau(vec![], vec![]),
+            plateau(
+                vec![],
+                vec![el("env", json!({ "applications": ["ghost"] }))],
+            ),
+        );
+        assert!(
+            error(&out).starts_with("dangling application reference: ghost"),
+            "{out}"
+        );
     }
 
     // ---- the output ----
@@ -1625,30 +2386,78 @@ mod tests {
     #[test]
     fn the_table_lists_the_elements_then_the_relationships_sorted() {
         let out = compare(
-            plateau(vec![el("b", json!({ "name": "1" })), el("c", json!({ "relationships": [rel("b", "x")] }))], vec![el("t", json!({}))]),
-            plateau(vec![el("b", json!({ "name": "2" })), el("a", json!({})), el("c", json!({ "relationships": [rel("b", "y")] }))], vec![]),
+            plateau(
+                vec![
+                    el("b", json!({ "name": "1" })),
+                    el("c", json!({ "relationships": [rel("b", "x")] })),
+                ],
+                vec![el("t", json!({}))],
+            ),
+            plateau(
+                vec![
+                    el("b", json!({ "name": "2" })),
+                    el("a", json!({})),
+                    el("c", json!({ "relationships": [rel("b", "y")] })),
+                ],
+                vec![],
+            ),
         );
         let table: Vec<(String, String, String)> = out["changes"]
             .as_array()
             .unwrap()
             .iter()
-            .map(|r| (r["thing"].as_str().unwrap().to_string(), r["layer"].as_str().unwrap().to_string(), r["reference"].as_str().unwrap().to_string()))
+            .map(|r| {
+                (
+                    r["thing"].as_str().unwrap().to_string(),
+                    r["layer"].as_str().unwrap().to_string(),
+                    r["reference"].as_str().unwrap().to_string(),
+                )
+            })
             .collect();
-        let expected = [("element", "application", "a"), ("element", "application", "b"), ("element", "application", "c"), ("element", "technology", "t"), ("relationship", "application", "c")];
-        assert_eq!(table, expected.map(|(a, b, c)| (a.to_string(), b.to_string(), c.to_string())));
+        let expected = [
+            ("element", "application", "a"),
+            ("element", "application", "b"),
+            ("element", "application", "c"),
+            ("element", "technology", "t"),
+            ("relationship", "application", "c"),
+        ];
+        assert_eq!(
+            table,
+            expected.map(|(a, b, c)| (a.to_string(), b.to_string(), c.to_string()))
+        );
     }
 
     #[test]
     fn a_plateau_compared_with_itself_has_an_empty_table_and_zero_counts() {
         let side = || {
             plateau(
-                vec![el("sys", json!({ "name": "S", "qualifiers": ["x"], "tags": { "rendering-a": "b", "k": "v" } })), el("sys.a", json!({ "relationships": [rel("sys.b", "calls"), rel("ext", "feeds")] })), el("sys.b", json!({})), el("ext", json!({}))],
-                vec![el("env", json!({ "applications": ["sys.a"], "uses": ["env.n"] })), el("env.n", json!({}))],
+                vec![
+                    el(
+                        "sys",
+                        json!({ "name": "S", "qualifiers": ["x"], "tags": { "rendering-a": "b", "k": "v" } }),
+                    ),
+                    el(
+                        "sys.a",
+                        json!({ "relationships": [rel("sys.b", "calls"), rel("ext", "feeds")] }),
+                    ),
+                    el("sys.b", json!({})),
+                    el("ext", json!({})),
+                ],
+                vec![
+                    el(
+                        "env",
+                        json!({ "applications": ["sys.a"], "uses": ["env.n"] }),
+                    ),
+                    el("env.n", json!({})),
+                ],
             )
         };
         let out = compare(side(), side());
         assert_eq!(out["changes"], json!([]));
-        assert_eq!(out["counts"], json!({ "elements": { "new": 0, "changed": 0, "removed": 0, "wording_only": 0 }, "relationships": { "new": 0, "changed": 0, "removed": 0 } }));
+        assert_eq!(
+            out["counts"],
+            json!({ "elements": { "new": 0, "changed": 0, "removed": 0, "wording_only": 0 }, "relationships": { "new": 0, "changed": 0, "removed": 0 } })
+        );
         assert_eq!(out["elements"].as_array().unwrap().len(), 6);
         assert_eq!(out["relationships"].as_array().unwrap().len(), 2);
         assert_eq!(out["version"], CONTRACT_VERSION);
@@ -1663,7 +2472,11 @@ mod tests {
                     .map(|(k, v)| {
                         let v = reordered(v);
                         let v = match (k.as_str(), v) {
-                            ("application" | "technology" | "relationships" | "applications" | "uses", Value::Array(mut a)) => {
+                            (
+                                "application" | "technology" | "relationships" | "applications"
+                                | "uses",
+                                Value::Array(mut a),
+                            ) => {
                                 a.reverse();
                                 let n = 1.min(a.len());
                                 a.rotate_left(n);
@@ -1707,16 +2520,36 @@ mod tests {
         let first = compare_json(&input.to_string());
         assert_eq!(first, compare_json(&input.to_string()), "twice");
         let shuffled = reordered(&input);
-        assert_ne!(shuffled.to_string(), input.to_string(), "the test must really shuffle");
+        assert_ne!(
+            shuffled.to_string(),
+            input.to_string(),
+            "the test must really shuffle"
+        );
         assert_eq!(first, compare_json(&shuffled.to_string()));
         assert_eq!(first, compare_json(&reordered(&shuffled).to_string()));
         let out: Value = serde_json::from_str(&first).unwrap();
         assert!(out.get("error").is_none(), "{out}");
-        assert_eq!(out["counts"]["elements"], json!({ "new": 2, "changed": 2, "removed": 2, "wording_only": 0 }));
-        assert_eq!(natures(element(&out, "a")), ["name", "description", "qualifiers", "relationships-added", "relationships-removed", "relationships-changed"]);
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 2, "changed": 2, "removed": 2, "wording_only": 0 })
+        );
+        assert_eq!(
+            natures(element(&out, "a")),
+            [
+                "name",
+                "description",
+                "qualifiers",
+                "relationships-added",
+                "relationships-removed",
+                "relationships-changed"
+            ]
+        );
         assert_eq!(element(&out, "b")["change"], "none");
         assert_eq!(natures(element(&out, "env")), ["deployment"]);
-        assert_eq!(out["counts"]["relationships"], json!({ "new": 1, "changed": 1, "removed": 1 }));
+        assert_eq!(
+            out["counts"]["relationships"],
+            json!({ "new": 1, "changed": 1, "removed": 1 })
+        );
     }
 
     // ---- errors ----
@@ -1724,24 +2557,46 @@ mod tests {
     #[test]
     fn a_dangling_reference_is_an_error_in_the_plateau_that_has_it() {
         let dangling = |side: &str| {
-            let broken = plateau(vec![el("a", json!({ "relationships": [rel("nowhere", "x")] }))], vec![]);
+            let broken = plateau(
+                vec![el("a", json!({ "relationships": [rel("nowhere", "x")] }))],
+                vec![],
+            );
             let fine = plateau(vec![el("a", json!({}))], vec![]);
-            if side == "base" { compare(broken, fine) } else { compare(fine, broken) }
+            if side == "base" {
+                compare(broken, fine)
+            } else {
+                compare(fine, broken)
+            }
         };
         for side in ["base", "target"] {
             let out = dangling(side);
-            assert!(error(&out).starts_with("dangling reference: nowhere"), "{out}");
-            assert!(error(&out).contains(side), "the message says which plateau: {out}");
+            assert!(
+                error(&out).starts_with("dangling reference: nowhere"),
+                "{out}"
+            );
+            assert!(
+                error(&out).contains(side),
+                "the message says which plateau: {out}"
+            );
         }
-        let out = compare(plateau(vec![], vec![el("env", json!({ "uses": ["nowhere"] }))]), plateau(vec![], vec![]));
-        assert!(error(&out).starts_with("dangling reference: nowhere"), "{out}");
+        let out = compare(
+            plateau(vec![], vec![el("env", json!({ "uses": ["nowhere"] }))]),
+            plateau(vec![], vec![]),
+        );
+        assert!(
+            error(&out).starts_with("dangling reference: nowhere"),
+            "{out}"
+        );
     }
 
     #[test]
     fn a_reference_declared_twice_in_a_layer_is_an_error() {
         let out = app(vec![el("a", json!({})), el("a", json!({}))], vec![]);
         assert!(error(&out).starts_with("duplicate reference: a"), "{out}");
-        let out = compare(plateau(vec![el("a", json!({}))], vec![el("a", json!({}))]), plateau(vec![], vec![]));
+        let out = compare(
+            plateau(vec![el("a", json!({}))], vec![el("a", json!({}))]),
+            plateau(vec![], vec![]),
+        );
         assert!(out.get("error").is_none(), "{out}");
     }
 
@@ -1749,7 +2604,8 @@ mod tests {
     fn a_missing_plateau_or_a_missing_layer_is_read_as_empty_or_refused() {
         let out: Value = serde_json::from_str(&compare_json(r#"{"base":{},"target":{"application":null,"technology":[{"reference":"t"}]},"on_one_chain":true}"#)).unwrap();
         assert_eq!(out["counts"]["elements"]["new"], 1);
-        let out: Value = serde_json::from_str(&compare_json(r#"{"base":{},"on_one_chain":true}"#)).unwrap();
+        let out: Value =
+            serde_json::from_str(&compare_json(r#"{"base":{},"on_one_chain":true}"#)).unwrap();
         assert!(error(&out).starts_with("invalid input"), "{out}");
         let out: Value = serde_json::from_str(&compare_json("nope")).unwrap();
         assert!(error(&out).starts_with("invalid input"), "{out}");
@@ -1764,55 +2620,124 @@ mod tests {
     }
 
     fn warnings(out: &Value) -> Vec<&str> {
-        out["warnings"].as_array().map_or(vec![], |a| a.iter().map(|w| w.as_str().unwrap()).collect())
+        out["warnings"]
+            .as_array()
+            .map_or(vec![], |a| a.iter().map(|w| w.as_str().unwrap()).collect())
     }
 
     fn has_element(out: &Value, reference: &str) -> bool {
-        out["elements"].as_array().unwrap().iter().any(|e| e["reference"] == reference)
+        out["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["reference"] == reference)
     }
 
     fn candidate_pairs(out: &Value) -> Vec<(String, String)> {
-        out["candidates"].as_array().unwrap().iter().map(|c| (c["from"].as_str().unwrap().to_string(), c["to"].as_str().unwrap().to_string())).collect()
+        out["candidates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| {
+                (
+                    c["from"].as_str().unwrap().to_string(),
+                    c["to"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect()
     }
 
     #[test]
-    fn one_element_that_replaces_one_in_another_place_is_moved_and_the_replaced_one_is_not_removed() {
+    fn one_element_that_replaces_one_in_another_place_is_moved_and_the_replaced_one_is_not_removed()
+    {
         let out = app(
-            vec![el("a", json!({})), el("b", json!({})), el("a.svc", json!({ "kind": "container", "name": "Billing" }))],
-            vec![el("a", json!({})), el("b", json!({})), replacing("b.svc", json!(["a.svc"]), json!({ "kind": "container", "name": "Billing" }))],
+            vec![
+                el("a", json!({})),
+                el("b", json!({})),
+                el("a.svc", json!({ "kind": "container", "name": "Billing" })),
+            ],
+            vec![
+                el("a", json!({})),
+                el("b", json!({})),
+                replacing(
+                    "b.svc",
+                    json!(["a.svc"]),
+                    json!({ "kind": "container", "name": "Billing" }),
+                ),
+            ],
         );
         assert!(out.get("error").is_none(), "{out}");
         let moved = element(&out, "b.svc");
         assert_eq!(moved["change"], "moved");
         assert_eq!(moved["replaces"], json!(["a.svc"]));
         assert!(natures(moved).is_empty(), "nothing else changed: {moved}");
-        assert!(!has_element(&out, "a.svc"), "the replaced element is not in the union: {out}");
-        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 0, "removed": 0, "wording_only": 0, "moved": 1 }));
+        assert!(
+            !has_element(&out, "a.svc"),
+            "the replaced element is not in the union: {out}"
+        );
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 0, "changed": 0, "removed": 0, "wording_only": 0, "moved": 1 })
+        );
         assert_eq!(rows(&out), 1);
         let r = row(&out, "element", "b.svc");
-        assert_eq!((r["change"].clone(), r["replaces"].clone()), (json!("moved"), json!(["a.svc"])));
-        assert!(r.get("before").is_none(), "no property differs, so no before and after");
+        assert_eq!(
+            (r["change"].clone(), r["replaces"].clone()),
+            (json!("moved"), json!(["a.svc"]))
+        );
+        assert!(
+            r.get("before").is_none(),
+            "no property differs, so no before and after"
+        );
         assert!(out.get("warnings").is_none());
     }
 
     #[test]
     fn a_moved_element_keeps_its_own_changes_next_to_its_identity() {
         let out = app(
-            vec![el("a", json!({})), el("b", json!({})), el("a.svc", json!({ "name": "Billing", "description": "charges" }))],
-            vec![el("a", json!({})), el("b", json!({})), replacing("b.svc", json!(["a.svc"]), json!({ "name": "Invoicing", "description": "charges" }))],
+            vec![
+                el("a", json!({})),
+                el("b", json!({})),
+                el(
+                    "a.svc",
+                    json!({ "name": "Billing", "description": "charges" }),
+                ),
+            ],
+            vec![
+                el("a", json!({})),
+                el("b", json!({})),
+                replacing(
+                    "b.svc",
+                    json!(["a.svc"]),
+                    json!({ "name": "Invoicing", "description": "charges" }),
+                ),
+            ],
         );
         let moved = element(&out, "b.svc");
         assert_eq!(moved["change"], "moved");
         assert_eq!(natures(moved), ["name"]);
         let r = row(&out, "element", "b.svc");
-        assert_eq!((r["before"]["name"].clone(), r["after"]["name"].clone()), (json!("Billing"), json!("Invoicing")));
-        assert_eq!(out["counts"]["elements"]["changed"], 0, "a moved element is counted as moved, not also as changed");
+        assert_eq!(
+            (r["before"]["name"].clone(), r["after"]["name"].clone()),
+            (json!("Billing"), json!("Invoicing"))
+        );
+        assert_eq!(
+            out["counts"]["elements"]["changed"], 0,
+            "a moved element is counted as moved, not also as changed"
+        );
         assert_eq!(moved.get("wording_only"), None);
     }
 
     #[test]
     fn a_description_change_of_a_moved_element_is_not_wording_only() {
-        let out = app(vec![el("a", json!({ "description": "one" }))], vec![replacing("b", json!(["a"]), json!({ "description": "two" }))]);
+        let out = app(
+            vec![el("a", json!({ "description": "one" }))],
+            vec![replacing(
+                "b",
+                json!(["a"]),
+                json!({ "description": "two" }),
+            )],
+        );
         assert_eq!(element(&out, "b")["change"], "moved");
         assert_eq!(natures(element(&out, "b")), ["description"]);
         assert!(element(&out, "b").get("wording_only").is_none());
@@ -1823,31 +2748,71 @@ mod tests {
     fn the_relationships_follow_the_element_that_was_replaced() {
         // c -> a.svc becomes c -> b.svc; a.svc -> db becomes b.svc -> db: neither is a change
         let out = app(
-            vec![el("a", json!({})), el("b", json!({})), el("c", json!({ "relationships": [rel("a.svc", "calls")] })), el("db", json!({})), el("a.svc", json!({ "relationships": [rel("db", "reads")] }))],
+            vec![
+                el("a", json!({})),
+                el("b", json!({})),
+                el("c", json!({ "relationships": [rel("a.svc", "calls")] })),
+                el("db", json!({})),
+                el("a.svc", json!({ "relationships": [rel("db", "reads")] })),
+            ],
             vec![
                 el("a", json!({})),
                 el("b", json!({})),
                 el("c", json!({ "relationships": [rel("b.svc", "calls")] })),
                 el("db", json!({})),
-                replacing("b.svc", json!(["a.svc"]), json!({ "relationships": [rel("db", "reads")] })),
+                replacing(
+                    "b.svc",
+                    json!(["a.svc"]),
+                    json!({ "relationships": [rel("db", "reads")] }),
+                ),
             ],
         );
-        assert_eq!(out["counts"]["relationships"], json!({ "new": 0, "changed": 0, "removed": 0 }), "{out}");
+        assert_eq!(
+            out["counts"]["relationships"],
+            json!({ "new": 0, "changed": 0, "removed": 0 }),
+            "{out}"
+        );
         assert_eq!(element(&out, "c")["change"], "none");
         assert!(natures(element(&out, "b.svc")).is_empty());
         // and one that really changed is still told
         let out = app(
-            vec![el("a", json!({})), el("b", json!({})), el("db", json!({})), el("a.svc", json!({ "relationships": [rel("db", "reads")] }))],
-            vec![el("a", json!({})), el("b", json!({})), el("db", json!({})), replacing("b.svc", json!(["a.svc"]), json!({ "relationships": [rel("db", "writes")] }))],
+            vec![
+                el("a", json!({})),
+                el("b", json!({})),
+                el("db", json!({})),
+                el("a.svc", json!({ "relationships": [rel("db", "reads")] })),
+            ],
+            vec![
+                el("a", json!({})),
+                el("b", json!({})),
+                el("db", json!({})),
+                replacing(
+                    "b.svc",
+                    json!(["a.svc"]),
+                    json!({ "relationships": [rel("db", "writes")] }),
+                ),
+            ],
         );
         assert_eq!(natures(element(&out, "b.svc")), ["relationships-changed"]);
-        assert_eq!(relationship(&out, "b.svc", "db", "writes")["change"], "changed");
+        assert_eq!(
+            relationship(&out, "b.svc", "db", "writes")["change"],
+            "changed"
+        );
     }
 
     #[test]
     fn the_deployment_follows_an_application_that_was_replaced() {
-        let base = plateau(vec![el("a", json!({})), el("a.svc", json!({}))], vec![el("env", json!({ "applications": ["a.svc"] }))]);
-        let target = plateau(vec![el("a", json!({})), replacing("a.api", json!(["a.svc"]), json!({}))], vec![el("env", json!({ "applications": ["a.api"] }))]);
+        let base = plateau(
+            vec![el("a", json!({})), el("a.svc", json!({}))],
+            vec![el("env", json!({ "applications": ["a.svc"] }))],
+        );
+        let target = plateau(
+            vec![
+                el("a", json!({})),
+                replacing("a.api", json!(["a.svc"]), json!({})),
+            ],
+            vec![el("env", json!({ "applications": ["a.api"] }))],
+        );
         let out = compare(base, target);
         assert_eq!(element(&out, "a.api")["change"], "moved");
         assert_eq!(element(&out, "env")["change"], "none", "{out}");
@@ -1856,7 +2821,12 @@ mod tests {
     /// What `compute` is handed for the comparison: the elements of a layer of the union, each with the relationships of the union it declares.
     fn union_of(out: &Value, layer: &str) -> Value {
         let mut elements = Vec::new();
-        for e in out["elements"].as_array().unwrap().iter().filter(|e| e["layer"] == layer) {
+        for e in out["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| e["layer"] == layer)
+        {
             let mut e = e.clone();
             let declared: Vec<Value> = out["relationships"]
                 .as_array()
@@ -1876,12 +2846,21 @@ mod tests {
         for viewpoint in ["overview", "detailed", "deep"] {
             for layer in ["application", "technology"] {
                 let elements = union_of(out, layer);
-                for focal in elements.as_array().unwrap().iter().filter(|e| e["parent"] == true).map(|e| e["reference"].clone()) {
+                for focal in elements
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|e| e["parent"] == true)
+                    .map(|e| e["reference"].clone())
+                {
                     let answer: Value = serde_json::from_str(&crate::compute_json(
                         &json!({ "viewpoint": viewpoint, "layer": layer, "focal": focal, "elements": elements, "app_elements": union_of(out, "application") }).to_string(),
                     ))
                     .unwrap();
-                    assert!(answer.get("error").is_none(), "{viewpoint} of {focal} in the {layer} layer: {answer}");
+                    assert!(
+                        answer.get("error").is_none(),
+                        "{viewpoint} of {focal} in the {layer} layer: {answer}"
+                    );
                 }
             }
         }
@@ -1890,17 +2869,40 @@ mod tests {
     #[test]
     fn what_a_removed_node_deploys_is_said_as_the_target_says_it_and_the_union_can_be_drawn() {
         // E1 of the Brightcart document: the node `n` is removed, and it deployed `s.x`, which `s.y` replaced
-        let base = plateau(vec![el("s", json!({})), el("s.x", json!({}))], vec![el("e", json!({})), el("e.n", json!({ "applications": ["s.x"] }))]);
+        let base = plateau(
+            vec![el("s", json!({})), el("s.x", json!({}))],
+            vec![
+                el("e", json!({})),
+                el("e.n", json!({ "applications": ["s.x"] })),
+            ],
+        );
         let target = plateau(
-            vec![el("s", json!({})), replacing("s.y", json!(["s.x"]), json!({}))],
-            vec![el("e", json!({})), el("e.m", json!({ "applications": ["s.y"] }))],
+            vec![
+                el("s", json!({})),
+                replacing("s.y", json!(["s.x"]), json!({})),
+            ],
+            vec![
+                el("e", json!({})),
+                el("e.m", json!({ "applications": ["s.y"] })),
+            ],
         );
         let out = compare(base, target);
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(element(&out, "e.n")["change"], "removed");
-        assert_eq!(element(&out, "e.n")["applications"], json!(["s.y"]), "the application that took the place of the one it deployed: {out}");
-        assert!(!has_element(&out, "s.x"), "the replaced application is still not in the union");
-        assert_eq!(out["counts"]["elements"], json!({ "new": 1, "changed": 0, "removed": 1, "wording_only": 0, "moved": 1 }), "the counts are what they were");
+        assert_eq!(
+            element(&out, "e.n")["applications"],
+            json!(["s.y"]),
+            "the application that took the place of the one it deployed: {out}"
+        );
+        assert!(
+            !has_element(&out, "s.x"),
+            "the replaced application is still not in the union"
+        );
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 1, "changed": 0, "removed": 1, "wording_only": 0, "moved": 1 }),
+            "the counts are what they were"
+        );
         views_of_the_union(&out);
     }
 
@@ -1908,9 +2910,21 @@ mod tests {
     fn what_a_removed_element_uses_follows_the_element_that_was_replaced() {
         let base = plateau(
             vec![],
-            vec![el("env", json!({ "uses": ["old"] })), el("old", json!({})), el("env2", json!({})), el("env2.gone", json!({ "uses": ["old"] }))],
+            vec![
+                el("env", json!({ "uses": ["old"] })),
+                el("old", json!({})),
+                el("env2", json!({})),
+                el("env2.gone", json!({ "uses": ["old"] })),
+            ],
         );
-        let target = plateau(vec![], vec![el("env", json!({ "uses": ["new"] })), replacing("new", json!(["old"]), json!({})), el("env2", json!({}))]);
+        let target = plateau(
+            vec![],
+            vec![
+                el("env", json!({ "uses": ["new"] })),
+                replacing("new", json!(["old"]), json!({})),
+                el("env2", json!({})),
+            ],
+        );
         let out = compare(base, target);
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(element(&out, "env2.gone")["change"], "removed");
@@ -1921,19 +2935,37 @@ mod tests {
     #[test]
     fn what_a_removed_node_deploys_is_dropped_when_the_application_was_split() {
         // `s.x` became `s.y` and `s.z`: which of them the removed node would deploy is a guess, so it deploys none
-        let base = plateau(vec![el("s", json!({})), el("s.x", json!({}))], vec![el("e", json!({})), el("e.n", json!({ "applications": ["s.x", "s.keep"] }))]);
+        let base = plateau(
+            vec![el("s", json!({})), el("s.x", json!({}))],
+            vec![
+                el("e", json!({})),
+                el("e.n", json!({ "applications": ["s.x", "s.keep"] })),
+            ],
+        );
         let base = {
             let mut b = base;
-            b["application"].as_array_mut().unwrap().push(el("s.keep", json!({})));
+            b["application"]
+                .as_array_mut()
+                .unwrap()
+                .push(el("s.keep", json!({})));
             b
         };
         let target = plateau(
-            vec![el("s", json!({})), el("s.keep", json!({})), replacing("s.y", json!(["s.x"]), json!({})), replacing("s.z", json!(["s.x"]), json!({}))],
+            vec![
+                el("s", json!({})),
+                el("s.keep", json!({})),
+                replacing("s.y", json!(["s.x"]), json!({})),
+                replacing("s.z", json!(["s.x"]), json!({})),
+            ],
             vec![el("e", json!({}))],
         );
         let out = compare(base, target);
         assert!(out.get("error").is_none(), "{out}");
-        assert_eq!(element(&out, "e.n")["applications"], json!(["s.keep"]), "{out}");
+        assert_eq!(
+            element(&out, "e.n")["applications"],
+            json!(["s.keep"]),
+            "{out}"
+        );
         views_of_the_union(&out);
     }
 
@@ -1942,16 +2974,33 @@ mod tests {
         // the replaced node `e.old` is in the union because its child was removed; the application it deployed was replaced
         let base = plateau(
             vec![el("s", json!({})), el("s.x", json!({}))],
-            vec![el("e", json!({})), el("e.old", json!({ "applications": ["s.x"] })), el("e.old.child", json!({}))],
+            vec![
+                el("e", json!({})),
+                el("e.old", json!({ "applications": ["s.x"] })),
+                el("e.old.child", json!({})),
+            ],
         );
         let target = plateau(
-            vec![el("s", json!({})), replacing("s.y", json!(["s.x"]), json!({}))],
-            vec![el("e", json!({})), replacing("e.fresh", json!(["e.old"]), json!({ "applications": ["s.y"] }))],
+            vec![
+                el("s", json!({})),
+                replacing("s.y", json!(["s.x"]), json!({})),
+            ],
+            vec![
+                el("e", json!({})),
+                replacing(
+                    "e.fresh",
+                    json!(["e.old"]),
+                    json!({ "applications": ["s.y"] }),
+                ),
+            ],
         );
         let out = compare(base, target);
         assert!(out.get("error").is_none(), "{out}");
         let place = element(&out, "e.old");
-        assert_eq!((place["change"].clone(), place["replaced_by"].clone()), (json!("removed"), json!(["e.fresh"])));
+        assert_eq!(
+            (place["change"].clone(), place["replaced_by"].clone()),
+            (json!("removed"), json!(["e.fresh"]))
+        );
         assert_eq!(place["applications"], json!(["s.y"]), "{out}");
         views_of_the_union(&out);
     }
@@ -1960,18 +3009,35 @@ mod tests {
     fn one_element_that_replaces_several_is_merged_and_several_that_replace_one_are_split() {
         // merge: x1 and x2 become y; split: s becomes t1 and t2
         let out = app(
-            vec![el("x1", json!({ "name": "X1" })), el("x2", json!({})), el("s", json!({})), el("keep", json!({}))],
-            vec![replacing("y", json!(["x2", "x1"]), json!({})), replacing("t1", json!(["s"]), json!({})), replacing("t2", json!(["s"]), json!({})), el("keep", json!({}))],
+            vec![
+                el("x1", json!({ "name": "X1" })),
+                el("x2", json!({})),
+                el("s", json!({})),
+                el("keep", json!({})),
+            ],
+            vec![
+                replacing("y", json!(["x2", "x1"]), json!({})),
+                replacing("t1", json!(["s"]), json!({})),
+                replacing("t2", json!(["s"]), json!({})),
+                el("keep", json!({})),
+            ],
         );
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(element(&out, "y")["change"], "merged");
-        assert_eq!(element(&out, "y")["replaces"], json!(["x1", "x2"]), "sorted, whatever the author's order");
+        assert_eq!(
+            element(&out, "y")["replaces"],
+            json!(["x1", "x2"]),
+            "sorted, whatever the author's order"
+        );
         assert_eq!(element(&out, "t1")["change"], "split");
         assert_eq!(element(&out, "t2")["change"], "split");
         for gone in ["x1", "x2", "s"] {
             assert!(!has_element(&out, gone), "{gone} is replaced, not removed");
         }
-        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 0, "removed": 0, "wording_only": 0, "split": 2, "merged": 1 }));
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 0, "changed": 0, "removed": 0, "wording_only": 0, "split": 2, "merged": 1 })
+        );
         assert_eq!(rows(&out), 3);
         assert_eq!(row(&out, "element", "t1")["replaces"], json!(["s"]));
     }
@@ -1979,13 +3045,20 @@ mod tests {
     #[test]
     fn an_element_that_was_already_there_and_replaces_another_is_merged_with_it() {
         let out = app(
-            vec![el("a", json!({ "name": "A" })), el("b", json!({ "name": "B" }))],
+            vec![
+                el("a", json!({ "name": "A" })),
+                el("b", json!({ "name": "B" })),
+            ],
             vec![replacing("b", json!(["a"]), json!({ "name": "B2" }))],
         );
         let b = element(&out, "b");
         assert_eq!(b["change"], "merged");
         assert_eq!(b["replaces"], json!(["a"]));
-        assert_eq!(natures(b), ["name"], "compared with its own base version: {out}");
+        assert_eq!(
+            natures(b),
+            ["name"],
+            "compared with its own base version: {out}"
+        );
         assert_eq!(row(&out, "element", "b")["before"]["name"], "B");
         assert!(!has_element(&out, "a"));
     }
@@ -1995,7 +3068,10 @@ mod tests {
         // a is replaced by b1 and b2 (a split), and b2 also replaces c (a merge)
         let out = app(
             vec![el("a", json!({})), el("c", json!({}))],
-            vec![replacing("b1", json!(["a"]), json!({})), replacing("b2", json!(["a", "c"]), json!({}))],
+            vec![
+                replacing("b1", json!(["a"]), json!({})),
+                replacing("b2", json!(["a", "c"]), json!({})),
+            ],
         );
         assert_eq!(element(&out, "b1")["change"], "split");
         assert_eq!(element(&out, "b2")["change"], "merged");
@@ -2004,55 +3080,111 @@ mod tests {
     #[test]
     fn the_relationships_of_a_split_element_are_not_compared_and_those_of_merged_ones_follow() {
         let out = app(
-            vec![el("s", json!({ "relationships": [rel("db", "reads")] })), el("m1", json!({ "relationships": [rel("db", "reads")] })), el("m2", json!({})), el("db", json!({}))],
             vec![
-                replacing("t1", json!(["s"]), json!({ "relationships": [rel("db", "reads")] })),
+                el("s", json!({ "relationships": [rel("db", "reads")] })),
+                el("m1", json!({ "relationships": [rel("db", "reads")] })),
+                el("m2", json!({})),
+                el("db", json!({})),
+            ],
+            vec![
+                replacing(
+                    "t1",
+                    json!(["s"]),
+                    json!({ "relationships": [rel("db", "reads")] }),
+                ),
                 replacing("t2", json!(["s"]), json!({})),
-                replacing("m", json!(["m1", "m2"]), json!({ "relationships": [rel("db", "reads")] })),
+                replacing(
+                    "m",
+                    json!(["m1", "m2"]),
+                    json!({ "relationships": [rel("db", "reads")] }),
+                ),
                 el("db", json!({})),
             ],
         );
-        assert_eq!(out["counts"]["relationships"]["removed"], 0, "nothing is invented as removed: {out}");
-        assert!(natures(element(&out, "m")).is_empty(), "m1 -> db became m -> db, which m still has: {out}");
+        assert_eq!(
+            out["counts"]["relationships"]["removed"], 0,
+            "nothing is invented as removed: {out}"
+        );
+        assert!(
+            natures(element(&out, "m")).is_empty(),
+            "m1 -> db became m -> db, which m still has: {out}"
+        );
     }
 
     #[test]
     fn a_reference_unknown_in_the_base_is_a_warning_and_changes_nothing() {
-        let out = app(vec![el("a", json!({}))], vec![el("a", json!({})), replacing("b", json!(["nowhere"]), json!({}))]);
+        let out = app(
+            vec![el("a", json!({}))],
+            vec![
+                el("a", json!({})),
+                replacing("b", json!(["nowhere"]), json!({})),
+            ],
+        );
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(element(&out, "b")["change"], "new");
-        assert!(element(&out, "b").get("replaces").is_none(), "an ignored replaces does not travel: {out}");
+        assert!(
+            element(&out, "b").get("replaces").is_none(),
+            "an ignored replaces does not travel: {out}"
+        );
         assert_eq!(warnings(&out).len(), 1);
-        assert!(warnings(&out)[0].contains("nowhere") && warnings(&out)[0].contains("not an element of the base plateau"), "{out}");
+        assert!(
+            warnings(&out)[0].contains("nowhere")
+                && warnings(&out)[0].contains("not an element of the base plateau"),
+            "{out}"
+        );
         assert_eq!(out["counts"]["elements"]["new"], 1);
     }
 
     #[test]
     fn a_reference_that_is_still_in_the_target_is_ignored_with_a_warning() {
-        let out = app(vec![el("a", json!({})), el("b", json!({}))], vec![el("a", json!({})), replacing("b", json!(["a"]), json!({}))]);
+        let out = app(
+            vec![el("a", json!({})), el("b", json!({}))],
+            vec![el("a", json!({})), replacing("b", json!(["a"]), json!({}))],
+        );
         assert_eq!(element(&out, "a")["change"], "none", "{out}");
         assert_eq!(element(&out, "b")["change"], "none");
         assert_eq!(warnings(&out).len(), 1);
-        assert!(warnings(&out)[0].contains("still an element of the target plateau"), "{out}");
+        assert!(
+            warnings(&out)[0].contains("still an element of the target plateau"),
+            "{out}"
+        );
     }
 
     #[test]
     fn a_replaces_that_is_malformed_is_a_warning_not_an_error() {
         let out = app(
             vec![el("a", json!({})), el("c", json!({}))],
-            vec![replacing("b", json!("a"), json!({})), replacing("d", json!([3, null, "", "c"]), json!({}))],
+            vec![
+                replacing("b", json!("a"), json!({})),
+                replacing("d", json!([3, null, "", "c"]), json!({})),
+            ],
         );
         assert!(out.get("error").is_none(), "{out}");
-        assert_eq!(element(&out, "b")["change"], "new", "a text instead of a list is ignored");
-        assert_eq!(element(&out, "d")["change"], "moved", "the entries that are references count");
+        assert_eq!(
+            element(&out, "b")["change"],
+            "new",
+            "a text instead of a list is ignored"
+        );
+        assert_eq!(
+            element(&out, "d")["change"],
+            "moved",
+            "the entries that are references count"
+        );
         assert_eq!(warnings(&out).len(), 1 + 3);
         assert!(element(&out, "a")["change"] == "removed");
     }
 
     #[test]
     fn a_reference_listed_twice_counts_once() {
-        let out = app(vec![el("a", json!({}))], vec![replacing("b", json!(["a", "a"]), json!({}))]);
-        assert_eq!(element(&out, "b")["change"], "moved", "twice the same one is still one: {out}");
+        let out = app(
+            vec![el("a", json!({}))],
+            vec![replacing("b", json!(["a", "a"]), json!({}))],
+        );
+        assert_eq!(
+            element(&out, "b")["change"],
+            "moved",
+            "twice the same one is still one: {out}"
+        );
         assert_eq!(element(&out, "b")["replaces"], json!(["a"]));
         assert_eq!(warnings(&out).len(), 1);
         assert!(warnings(&out)[0].contains("twice"));
@@ -2061,7 +3193,11 @@ mod tests {
     #[test]
     fn cycles_and_self_references_are_ignored_and_never_loop() {
         // a and b replace each other, c replaces itself, d replaces e that replaces d: all of them are in both plateaus
-        let both = |replaces_a: Value, replaces_b: Value, replaces_c: Value, replaces_d: Value, replaces_e: Value| {
+        let both = |replaces_a: Value,
+                    replaces_b: Value,
+                    replaces_c: Value,
+                    replaces_d: Value,
+                    replaces_e: Value| {
             vec![
                 replacing("a", replaces_a, json!({})),
                 replacing("b", replaces_b, json!({})),
@@ -2072,7 +3208,13 @@ mod tests {
         };
         let out = app(
             both(json!([]), json!([]), json!([]), json!([]), json!([])),
-            both(json!(["b"]), json!(["a"]), json!(["c"]), json!(["e"]), json!(["d"])),
+            both(
+                json!(["b"]),
+                json!(["a"]),
+                json!(["c"]),
+                json!(["e"]),
+                json!(["d"]),
+            ),
         );
         assert!(out.get("error").is_none(), "{out}");
         for r in ["a", "b", "c", "d", "e"] {
@@ -2080,7 +3222,14 @@ mod tests {
         }
         assert_eq!(warnings(&out).len(), 5);
         // a self reference of a new element, and a chain through an element that is new: nothing in the base to replace
-        let out = app(vec![el("old", json!({}))], vec![replacing("n1", json!(["n1"]), json!({})), replacing("n2", json!(["n1"]), json!({})), replacing("n3", json!(["old", "n3"]), json!({}))]);
+        let out = app(
+            vec![el("old", json!({}))],
+            vec![
+                replacing("n1", json!(["n1"]), json!({})),
+                replacing("n2", json!(["n1"]), json!({})),
+                replacing("n3", json!(["old", "n3"]), json!({})),
+            ],
+        );
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(element(&out, "n1")["change"], "new");
         assert_eq!(element(&out, "n2")["change"], "new");
@@ -2091,34 +3240,71 @@ mod tests {
     #[test]
     fn what_a_replaced_element_contained_is_still_removed_unless_it_is_replaced_too() {
         let out = app(
-            vec![el("a", json!({})), el("a.x", json!({})), el("a.y", json!({}))],
-            vec![replacing("b", json!(["a"]), json!({})), replacing("b.x", json!(["a.x"]), json!({}))],
+            vec![
+                el("a", json!({})),
+                el("a.x", json!({})),
+                el("a.y", json!({})),
+            ],
+            vec![
+                replacing("b", json!(["a"]), json!({})),
+                replacing("b.x", json!(["a.x"]), json!({})),
+            ],
         );
         assert_eq!(element(&out, "b")["change"], "moved");
         assert_eq!(element(&out, "b.x")["change"], "moved");
-        assert_eq!(element(&out, "a.y")["change"], "removed", "nobody said where it went: {out}");
+        assert_eq!(
+            element(&out, "a.y")["change"],
+            "removed",
+            "nobody said where it went: {out}"
+        );
         assert!(!has_element(&out, "a.x"), "replaced, and nothing below it");
         // a is replaced, not removed; it is in the union only because a.y, below it, was removed: a view needs it to place a.y
         let place = element(&out, "a");
-        assert_eq!((place["change"].clone(), place["replaced_by"].clone()), (json!("removed"), json!(["b"])), "{out}");
-        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 0, "removed": 1, "wording_only": 0, "moved": 2 }), "the place is not counted");
-        assert!(out["changes"].as_array().unwrap().iter().all(|r| r["reference"] != "a"), "and has no row: {}", out["changes"]);
+        assert_eq!(
+            (place["change"].clone(), place["replaced_by"].clone()),
+            (json!("removed"), json!(["b"])),
+            "{out}"
+        );
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 0, "changed": 0, "removed": 1, "wording_only": 0, "moved": 2 }),
+            "the place is not counted"
+        );
+        assert!(
+            out["changes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|r| r["reference"] != "a"),
+            "and has no row: {}",
+            out["changes"]
+        );
     }
 
     #[test]
     fn replaces_works_in_the_technology_layer_and_never_across_layers() {
         let base = plateau(vec![el("shop", json!({}))], vec![el("old-env", json!({}))]);
-        let target = plateau(vec![replacing("shop2", json!(["old-env"]), json!({}))], vec![replacing("new-env", json!(["old-env"]), json!({}))]);
+        let target = plateau(
+            vec![replacing("shop2", json!(["old-env"]), json!({}))],
+            vec![replacing("new-env", json!(["old-env"]), json!({}))],
+        );
         let out = compare(base, target);
         assert_eq!(element(&out, "new-env")["change"], "moved");
-        assert_eq!(element(&out, "shop2")["change"], "new", "old-env is not an application: {out}");
+        assert_eq!(
+            element(&out, "shop2")["change"],
+            "new",
+            "old-env is not an application: {out}"
+        );
         assert_eq!(element(&out, "shop")["change"], "removed");
         assert_eq!(warnings(&out).len(), 1);
     }
 
     #[test]
     fn a_replaces_on_a_base_element_is_not_read_and_never_leaks() {
-        let out = app(vec![replacing("a", json!(["b"]), json!({})), el("b", json!({}))], vec![el("c", json!({}))]);
+        let out = app(
+            vec![replacing("a", json!(["b"]), json!({})), el("b", json!({}))],
+            vec![el("c", json!({}))],
+        );
         assert_eq!(element(&out, "a")["change"], "removed");
         assert_eq!(element(&out, "b")["change"], "removed");
         for r in ["a", "b", "c"] {
@@ -2130,9 +3316,19 @@ mod tests {
     #[test]
     fn a_free_form_field_named_like_a_reserved_word_does_not_reach_the_answer() {
         // `replaces` is the author's hint, read and written by the kernel only: the union writes it itself, and only when it applies
-        let out = app(vec![el("a", json!({}))], vec![el("a", json!({})), replacing("n", json!("a text"), json!({ "extra": 1 }))]);
+        let out = app(
+            vec![el("a", json!({}))],
+            vec![
+                el("a", json!({})),
+                replacing("n", json!("a text"), json!({ "extra": 1 })),
+            ],
+        );
         assert!(element(&out, "n").get("replaces").is_none(), "{out}");
-        assert_eq!(element(&out, "n")["extra"], 1, "the other fields still travel");
+        assert_eq!(
+            element(&out, "n")["extra"],
+            1,
+            "the other fields still travel"
+        );
         let out = app(vec![replacing("a", json!(["x"]), json!({}))], vec![]);
         assert!(element(&out, "a").get("replaces").is_none(), "{out}");
     }
@@ -2142,46 +3338,100 @@ mod tests {
         let out = app(
             vec![
                 el("old", json!({})),
-                el("old.billing", json!({ "kind": "container", "name": "Billing", "description": "charges the customers every month and sends the invoices" })),
-                el("old.audit", json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log" })),
+                el(
+                    "old.billing",
+                    json!({ "kind": "container", "name": "Billing", "description": "charges the customers every month and sends the invoices" }),
+                ),
+                el(
+                    "old.audit",
+                    json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log" }),
+                ),
                 el("old.cache", json!({ "kind": "component", "name": "Cache" })),
             ],
             vec![
                 el("old", json!({})),
                 el("new", json!({})),
-                el("new.invoicing", json!({ "kind": "container", "name": "Billing", "description": "a different text" })),
-                el("new.finance", json!({ "kind": "container", "name": "Finance", "description": "charges the customers every month and sends the invoices by mail" })),
+                el(
+                    "new.invoicing",
+                    json!({ "kind": "container", "name": "Billing", "description": "a different text" }),
+                ),
+                el(
+                    "new.finance",
+                    json!({ "kind": "container", "name": "Finance", "description": "charges the customers every month and sends the invoices by mail" }),
+                ),
                 el("new.cache", json!({ "kind": "container", "name": "Cache" })),
             ],
         );
         assert!(out.get("error").is_none(), "{out}");
         let pairs = candidate_pairs(&out);
-        assert_eq!(pairs, [("old.billing".to_string(), "new.finance".to_string()), ("old.billing".to_string(), "new.invoicing".to_string())], "{}", out["candidates"]);
+        assert_eq!(
+            pairs,
+            [
+                ("old.billing".to_string(), "new.finance".to_string()),
+                ("old.billing".to_string(), "new.invoicing".to_string())
+            ],
+            "{}",
+            out["candidates"]
+        );
         assert_eq!(out["candidates"][0]["reasons"], json!(["description"]));
         assert_eq!(out["candidates"][1]["reasons"], json!(["name"]));
         // not applied: they are still removed and new
         assert_eq!(element(&out, "old.billing")["change"], "removed");
         assert_eq!(element(&out, "new.invoicing")["change"], "new");
-        assert_eq!(out["counts"]["elements"], json!({ "new": 4, "changed": 0, "removed": 3, "wording_only": 0 }));
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 4, "changed": 0, "removed": 3, "wording_only": 0 })
+        );
     }
 
     #[test]
     fn the_same_parent_makes_a_candidate_only_for_the_only_two_of_their_kind_under_it() {
         let out = app(
-            vec![el("p", json!({})), el("p.a", json!({ "kind": "container" })), el("p.x", json!({ "kind": "component" }))],
-            vec![el("p", json!({})), el("p.b", json!({ "kind": "container" })), el("p.y", json!({ "kind": "component" })), el("p.z", json!({ "kind": "component" }))],
+            vec![
+                el("p", json!({})),
+                el("p.a", json!({ "kind": "container" })),
+                el("p.x", json!({ "kind": "component" })),
+            ],
+            vec![
+                el("p", json!({})),
+                el("p.b", json!({ "kind": "container" })),
+                el("p.y", json!({ "kind": "component" })),
+                el("p.z", json!({ "kind": "component" })),
+            ],
         );
-        assert_eq!(candidate_pairs(&out), [("p.a".to_string(), "p.b".to_string())], "{}", out["candidates"]);
+        assert_eq!(
+            candidate_pairs(&out),
+            [("p.a".to_string(), "p.b".to_string())],
+            "{}",
+            out["candidates"]
+        );
         assert_eq!(out["candidates"][0]["reasons"], json!(["parent"]));
     }
 
     /// The Brightcart pair of issue #70: the node that hosts the commerce platform in one plateau and the one that hosts the tax service in another,
     /// the only nodes of their kind under `partners` in the one and in the other.
     fn alternatives() -> (Value, Value) {
-        let node = |reference: &str, name: &str| el(reference, json!({ "kind": "node", "name": name, "description": name }));
+        let node = |reference: &str, name: &str| {
+            el(
+                reference,
+                json!({ "kind": "node", "name": name, "description": name }),
+            )
+        };
         (
-            plateau(vec![], vec![el("partners", json!({})), node("partners.commerce-live", "Commerce platform")]),
-            plateau(vec![], vec![el("partners", json!({})), node("partners.tax-live", "Tax service")]),
+            plateau(
+                vec![],
+                vec![
+                    el("partners", json!({})),
+                    node("partners.commerce-live", "Commerce platform"),
+                ],
+            ),
+            plateau(
+                vec![],
+                vec![
+                    el("partners", json!({})),
+                    node("partners.tax-live", "Tax service"),
+                ],
+            ),
         )
     }
 
@@ -2189,7 +3439,15 @@ mod tests {
     fn two_plateaus_on_one_chain_get_the_pair_whose_only_reason_is_the_parent() {
         let (base, target) = alternatives();
         let out = compare(base, target);
-        assert_eq!(candidate_pairs(&out), [("partners.commerce-live".to_string(), "partners.tax-live".to_string())], "{}", out["candidates"]);
+        assert_eq!(
+            candidate_pairs(&out),
+            [(
+                "partners.commerce-live".to_string(),
+                "partners.tax-live".to_string()
+            )],
+            "{}",
+            out["candidates"]
+        );
         assert_eq!(out["candidates"][0]["reasons"], json!(["parent"]));
     }
 
@@ -2210,18 +3468,82 @@ mod tests {
     #[test]
     fn two_siblings_keep_the_pairs_that_have_another_reason_and_do_not_say_the_parent() {
         let out_chain = app(
-            vec![el("p", json!({})), el("p.a", json!({ "kind": "container", "name": "Billing" })), el("q", json!({})), el("q.b", json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log of every payment made by a customer" }))],
-            vec![el("p", json!({})), el("p.c", json!({ "kind": "container", "name": "Billing" })), el("q", json!({})), el("q.d", json!({ "kind": "container", "name": "Journal", "description": "keeps a log of every payment made by a customer" }))],
+            vec![
+                el("p", json!({})),
+                el("p.a", json!({ "kind": "container", "name": "Billing" })),
+                el("q", json!({})),
+                el(
+                    "q.b",
+                    json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log of every payment made by a customer" }),
+                ),
+            ],
+            vec![
+                el("p", json!({})),
+                el("p.c", json!({ "kind": "container", "name": "Billing" })),
+                el("q", json!({})),
+                el(
+                    "q.d",
+                    json!({ "kind": "container", "name": "Journal", "description": "keeps a log of every payment made by a customer" }),
+                ),
+            ],
         );
-        assert_eq!(out_chain["candidates"][0]["reasons"], json!(["name", "parent"]), "{out_chain}");
-        assert_eq!(out_chain["candidates"][1]["reasons"], json!(["description", "parent"]), "{out_chain}");
+        assert_eq!(
+            out_chain["candidates"][0]["reasons"],
+            json!(["name", "parent"]),
+            "{out_chain}"
+        );
+        assert_eq!(
+            out_chain["candidates"][1]["reasons"],
+            json!(["description", "parent"]),
+            "{out_chain}"
+        );
         let out = compare_siblings(
-            plateau(vec![el("p", json!({})), el("p.a", json!({ "kind": "container", "name": "Billing" })), el("q", json!({})), el("q.b", json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log of every payment made by a customer" }))], vec![]),
-            plateau(vec![el("p", json!({})), el("p.c", json!({ "kind": "container", "name": "Billing" })), el("q", json!({})), el("q.d", json!({ "kind": "container", "name": "Journal", "description": "keeps a log of every payment made by a customer" }))], vec![]),
+            plateau(
+                vec![
+                    el("p", json!({})),
+                    el("p.a", json!({ "kind": "container", "name": "Billing" })),
+                    el("q", json!({})),
+                    el(
+                        "q.b",
+                        json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log of every payment made by a customer" }),
+                    ),
+                ],
+                vec![],
+            ),
+            plateau(
+                vec![
+                    el("p", json!({})),
+                    el("p.c", json!({ "kind": "container", "name": "Billing" })),
+                    el("q", json!({})),
+                    el(
+                        "q.d",
+                        json!({ "kind": "container", "name": "Journal", "description": "keeps a log of every payment made by a customer" }),
+                    ),
+                ],
+                vec![],
+            ),
         );
-        assert_eq!(candidate_pairs(&out), [("p.a".to_string(), "p.c".to_string()), ("q.b".to_string(), "q.d".to_string())], "{}", out["candidates"]);
-        assert_eq!(out["candidates"][0]["reasons"], json!(["name"]), "the parent is not said between siblings: {}", out["candidates"]);
-        assert_eq!(out["candidates"][1]["reasons"], json!(["description"]), "{}", out["candidates"]);
+        assert_eq!(
+            candidate_pairs(&out),
+            [
+                ("p.a".to_string(), "p.c".to_string()),
+                ("q.b".to_string(), "q.d".to_string())
+            ],
+            "{}",
+            out["candidates"]
+        );
+        assert_eq!(
+            out["candidates"][0]["reasons"],
+            json!(["name"]),
+            "the parent is not said between siblings: {}",
+            out["candidates"]
+        );
+        assert_eq!(
+            out["candidates"][1]["reasons"],
+            json!(["description"]),
+            "{}",
+            out["candidates"]
+        );
     }
 
     #[test]
@@ -2229,13 +3551,22 @@ mod tests {
         // contract 5: a caller that does not say is refused, with the one sentence that says what to add; it does not get a default that would
         // bring back the pairs of issue #70 (or hide the legitimate ones) without telling
         let (base, target) = alternatives();
-        for given in [json!({ "base": base, "target": target }), json!({ "base": base, "target": target, "on_one_chain": null })] {
+        for given in [
+            json!({ "base": base, "target": target }),
+            json!({ "base": base, "target": target, "on_one_chain": null }),
+        ] {
             let out: Value = serde_json::from_str(&compare_json(&given.to_string())).unwrap();
             assert_eq!(error(&out), ON_ONE_CHAIN_MISSING, "{out}");
-            assert!(out.get("elements").is_none() && out.get("candidates").is_none(), "no partial answer: {out}");
+            assert!(
+                out.get("elements").is_none() && out.get("candidates").is_none(),
+                "no partial answer: {out}"
+            );
         }
         for wrong in [json!("yes"), json!(1), json!([true]), json!({})] {
-            let out: Value = serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": wrong }).to_string())).unwrap();
+            let out: Value = serde_json::from_str(&compare_json(
+                &json!({ "base": base, "target": target, "on_one_chain": wrong }).to_string(),
+            ))
+            .unwrap();
             assert!(error(&out).starts_with("invalid input"), "{out}");
             assert!(error(&out).contains("boolean"), "{out}");
         }
@@ -2250,30 +3581,100 @@ mod tests {
     #[test]
     fn a_name_that_repeats_among_the_removed_or_the_new_is_no_reason() {
         // `Cache` is on two removed and two new components: four pairs for two answers, and nothing says which is which
-        let cache = |reference: &str| el(reference, json!({ "kind": "component", "name": "Cache" }));
+        let cache =
+            |reference: &str| el(reference, json!({ "kind": "component", "name": "Cache" }));
         let out = app(
-            vec![el("a", json!({})), cache("a.cache"), el("b", json!({})), cache("b.cache"), el("c", json!({})), el("c.broker", json!({ "kind": "component", "name": "Broker" }))],
-            vec![el("a2", json!({})), cache("a2.cache"), el("b2", json!({})), cache("b2.cache"), el("c", json!({})), el("c.relay", json!({ "kind": "component", "name": "Broker" }))],
+            vec![
+                el("a", json!({})),
+                cache("a.cache"),
+                el("b", json!({})),
+                cache("b.cache"),
+                el("c", json!({})),
+                el("c.broker", json!({ "kind": "component", "name": "Broker" })),
+            ],
+            vec![
+                el("a2", json!({})),
+                cache("a2.cache"),
+                el("b2", json!({})),
+                cache("b2.cache"),
+                el("c", json!({})),
+                el("c.relay", json!({ "kind": "component", "name": "Broker" })),
+            ],
         );
-        assert_eq!(candidate_pairs(&out), [("c.broker".to_string(), "c.relay".to_string())], "only the Broker is the one removed and the one new of its name: {}", out["candidates"]);
+        assert_eq!(
+            candidate_pairs(&out),
+            [("c.broker".to_string(), "c.relay".to_string())],
+            "only the Broker is the one removed and the one new of its name: {}",
+            out["candidates"]
+        );
         assert_eq!(out["candidates"][0]["reasons"], json!(["name", "parent"]));
         // one side is enough to make the name say nothing: two removed `Cache`, one new
-        let out = app(vec![el("a", json!({})), cache("a.cache"), cache("a.cache2")], vec![el("a", json!({})), cache("a.store")]);
-        assert_eq!(candidate_pairs(&out), [] as [(String, String); 0], "{}", out["candidates"]);
-        // the other reasons still stand for a name that repeats
-        let described = |reference: &str, description: &str| el(reference, json!({ "kind": "component", "name": "Cache", "description": description }));
         let out = app(
-            vec![el("a", json!({})), described("a.one", "keeps the recent answers of the catalogue in memory"), described("a.two", "holds the sessions of the signed in visitors")],
-            vec![el("a", json!({})), described("a.three", "keeps the recent answers of the catalogue in memory for a minute"), described("a.four", "something else entirely written in other words")],
+            vec![el("a", json!({})), cache("a.cache"), cache("a.cache2")],
+            vec![el("a", json!({})), cache("a.store")],
         );
-        assert_eq!(candidate_pairs(&out), [("a.one".to_string(), "a.three".to_string())], "{}", out["candidates"]);
+        assert_eq!(
+            candidate_pairs(&out),
+            [] as [(String, String); 0],
+            "{}",
+            out["candidates"]
+        );
+        // the other reasons still stand for a name that repeats
+        let described = |reference: &str, description: &str| {
+            el(
+                reference,
+                json!({ "kind": "component", "name": "Cache", "description": description }),
+            )
+        };
+        let out = app(
+            vec![
+                el("a", json!({})),
+                described(
+                    "a.one",
+                    "keeps the recent answers of the catalogue in memory",
+                ),
+                described("a.two", "holds the sessions of the signed in visitors"),
+            ],
+            vec![
+                el("a", json!({})),
+                described(
+                    "a.three",
+                    "keeps the recent answers of the catalogue in memory for a minute",
+                ),
+                described("a.four", "something else entirely written in other words"),
+            ],
+        );
+        assert_eq!(
+            candidate_pairs(&out),
+            [("a.one".to_string(), "a.three".to_string())],
+            "{}",
+            out["candidates"]
+        );
         assert_eq!(out["candidates"][0]["reasons"], json!(["description"]));
     }
 
     #[test]
     fn a_name_is_a_reason_again_once_the_author_has_settled_the_others_that_share_it() {
-        let cache = |reference: &str| el(reference, json!({ "kind": "component", "name": "Cache" }));
-        let out = app(vec![el("a", json!({})), cache("a.cache"), el("b", json!({})), cache("b.cache")], vec![el("a2", json!({})), replacing("a2.cache", json!(["a.cache"]), json!({ "kind": "component", "name": "Cache" })), el("b2", json!({})), cache("b2.cache")]);
+        let cache =
+            |reference: &str| el(reference, json!({ "kind": "component", "name": "Cache" }));
+        let out = app(
+            vec![
+                el("a", json!({})),
+                cache("a.cache"),
+                el("b", json!({})),
+                cache("b.cache"),
+            ],
+            vec![
+                el("a2", json!({})),
+                replacing(
+                    "a2.cache",
+                    json!(["a.cache"]),
+                    json!({ "kind": "component", "name": "Cache" }),
+                ),
+                el("b2", json!({})),
+                cache("b2.cache"),
+            ],
+        );
         assert_eq!(candidate_pairs(&out), [("b.cache".to_string(), "b2.cache".to_string())], "a.cache is replaced, so the other Cache is now the only one of its name on each side: {}", out["candidates"]);
         assert_eq!(out["candidates"][0]["reasons"], json!(["name"]));
     }
@@ -2281,10 +3682,27 @@ mod tests {
     #[test]
     fn what_is_replaced_or_replaces_is_no_candidate_and_a_kind_is_needed() {
         let out = app(
-            vec![el("a", json!({ "kind": "container", "name": "Same" })), el("b", json!({ "kind": "container", "name": "Other" })), el("c", json!({ "name": "Same" }))],
-            vec![replacing("a2", json!(["a"]), json!({ "kind": "container", "name": "Same" })), el("b2", json!({ "kind": "container", "name": "Other" })), el("c2", json!({ "kind": "container", "name": "Same" }))],
+            vec![
+                el("a", json!({ "kind": "container", "name": "Same" })),
+                el("b", json!({ "kind": "container", "name": "Other" })),
+                el("c", json!({ "name": "Same" })),
+            ],
+            vec![
+                replacing(
+                    "a2",
+                    json!(["a"]),
+                    json!({ "kind": "container", "name": "Same" }),
+                ),
+                el("b2", json!({ "kind": "container", "name": "Other" })),
+                el("c2", json!({ "kind": "container", "name": "Same" })),
+            ],
         );
-        assert_eq!(candidate_pairs(&out), [("b".to_string(), "b2".to_string())], "a is replaced, a2 replaces, c has no kind: {}", out["candidates"]);
+        assert_eq!(
+            candidate_pairs(&out),
+            [("b".to_string(), "b2".to_string())],
+            "a is replaced, a2 replaces, c has no kind: {}",
+            out["candidates"]
+        );
     }
 
     #[test]
@@ -2292,7 +3710,10 @@ mod tests {
         let out = one(json!({ "name": "A" }), json!({ "name": "B" }));
         assert_eq!(out["candidates"], json!([]));
         assert!(out.get("warnings").is_none());
-        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 1, "removed": 0, "wording_only": 0 }));
+        assert_eq!(
+            out["counts"]["elements"],
+            json!({ "new": 0, "changed": 1, "removed": 0, "wording_only": 0 })
+        );
         assert_eq!(out["version"], CONTRACT_VERSION);
     }
 
@@ -2319,10 +3740,17 @@ mod tests {
         let out: Value = serde_json::from_str(&first).unwrap();
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(warnings(&out).len(), 2, "{out}");
-        assert_eq!(candidate_pairs(&out), [("gone".to_string(), "fresh".to_string())]);
+        assert_eq!(
+            candidate_pairs(&out),
+            [("gone".to_string(), "fresh".to_string())]
+        );
         assert_eq!(first, compare_json(&input.to_string()), "twice");
         let shuffled = reordered(&input);
-        assert_ne!(shuffled.to_string(), input.to_string(), "the test must really shuffle");
+        assert_ne!(
+            shuffled.to_string(),
+            input.to_string(),
+            "the test must really shuffle"
+        );
         assert_eq!(first, compare_json(&shuffled.to_string()));
         assert_eq!(first, compare_json(&reordered(&shuffled).to_string()));
     }
@@ -2359,10 +3787,24 @@ mod tests {
     fn the_union_says_which_elements_contain_changes() {
         let out = tree();
         for reference in ["top", "top.mid", "reworded"] {
-            assert_eq!(element(&out, reference)["contains_changes"], json!(true), "{reference}: it did not change and holds a change");
+            assert_eq!(
+                element(&out, reference)["contains_changes"],
+                json!(true),
+                "{reference}: it did not change and holds a change"
+            );
         }
-        for reference in ["top.mid.new", "top.mid.gone", "top.mid.leaf", "reworded.leaf", "quiet", "quiet.leaf"] {
-            assert!(element(&out, reference).get("contains_changes").is_none(), "{reference}: a change says `change`, an element that holds none says nothing");
+        for reference in [
+            "top.mid.new",
+            "top.mid.gone",
+            "top.mid.leaf",
+            "reworded.leaf",
+            "quiet",
+            "quiet.leaf",
+        ] {
+            assert!(
+                element(&out, reference).get("contains_changes").is_none(),
+                "{reference}: a change says `change`, an element that holds none says nothing"
+            );
         }
         // the rule is the reference tree, not the elements listed: a change whose parent is not in the union still marks its ancestors
         let orphan = app(vec![], vec![el("a.b.c", json!({}))]);
@@ -2373,54 +3815,127 @@ mod tests {
     fn the_union_says_what_holds_more_than_a_rewording() {
         let out = tree();
         for reference in ["top", "top.mid"] {
-            assert_eq!(element(&out, reference)["contains_more_than_wording"], json!(true), "{reference}");
+            assert_eq!(
+                element(&out, reference)["contains_more_than_wording"],
+                json!(true),
+                "{reference}"
+            );
         }
         for reference in ["reworded", "quiet", "reworded.leaf", "top.mid.new"] {
-            assert!(element(&out, reference).get("contains_more_than_wording").is_none(), "{reference}: nothing below it but a rewording, or nothing");
+            assert!(
+                element(&out, reference)
+                    .get("contains_more_than_wording")
+                    .is_none(),
+                "{reference}: nothing below it but a rewording, or nothing"
+            );
         }
         // whatever the element did itself: a changed element that holds a new one
-        let out = app(vec![el("x", json!({ "name": "A" }))], vec![el("x", json!({ "name": "B" })), el("x.y", json!({}))]);
+        let out = app(
+            vec![el("x", json!({ "name": "A" }))],
+            vec![el("x", json!({ "name": "B" })), el("x.y", json!({}))],
+        );
         assert_eq!(element(&out, "x")["change"], "changed");
         assert!(element(&out, "x").get("contains_changes").is_none());
-        assert_eq!(element(&out, "x")["contains_more_than_wording"], json!(true));
+        assert_eq!(
+            element(&out, "x")["contains_more_than_wording"],
+            json!(true)
+        );
     }
 
     #[test]
     fn the_two_layers_have_their_own_trees() {
         let base = plateau(vec![el("shop", json!({}))], vec![el("shop", json!({}))]);
-        let target = plateau(vec![el("shop", json!({})), el("shop.cart", json!({}))], vec![el("shop", json!({}))]);
+        let target = plateau(
+            vec![el("shop", json!({})), el("shop.cart", json!({}))],
+            vec![el("shop", json!({}))],
+        );
         let out = compare(base, target);
-        let flags: Vec<(&str, bool)> = out["elements"].as_array().unwrap().iter().map(|e| (e["layer"].as_str().unwrap(), e.get("contains_changes").is_some())).collect();
-        assert_eq!(flags, [("application", true), ("application", false), ("technology", false)]);
+        let flags: Vec<(&str, bool)> = out["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| {
+                (
+                    e["layer"].as_str().unwrap(),
+                    e.get("contains_changes").is_some(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            flags,
+            [
+                ("application", true),
+                ("application", false),
+                ("technology", false)
+            ]
+        );
     }
 
     #[test]
     fn what_replaced_elements_hold_is_counted_as_compute_counts_it() {
         // a replaced element is in the union as `removed` (a place) only because something below it was removed: it is a change, and it marks what is above it
-        let base = plateau(vec![el("old", json!({})), el("old.child", json!({})), el("zone", json!({})), el("zone.old", json!({}))], vec![]);
-        let target = plateau(vec![replacing("fresh", json!(["old"]), json!({})), el("zone", json!({}))], vec![]);
-        let out = compare_json(&json!({ "base": base, "target": target, "on_one_chain": true }).to_string());
+        let base = plateau(
+            vec![
+                el("old", json!({})),
+                el("old.child", json!({})),
+                el("zone", json!({})),
+                el("zone.old", json!({})),
+            ],
+            vec![],
+        );
+        let target = plateau(
+            vec![
+                replacing("fresh", json!(["old"]), json!({})),
+                el("zone", json!({})),
+            ],
+            vec![],
+        );
+        let out = compare_json(
+            &json!({ "base": base, "target": target, "on_one_chain": true }).to_string(),
+        );
         let out: Value = serde_json::from_str(&out).unwrap();
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(element(&out, "fresh")["change"], "moved");
         assert!(element(&out, "fresh").get("contains_changes").is_none());
-        assert_eq!(element(&out, "zone")["contains_changes"], json!(true), "{out}");
+        assert_eq!(
+            element(&out, "zone")["contains_changes"],
+            json!(true),
+            "{out}"
+        );
     }
 
     #[test]
     fn a_free_form_field_cannot_say_it_for_the_union() {
-        let out = one(json!({ "contains_changes": true, "contains_more_than_wording": true }), json!({ "contains_changes": true, "contains_more_than_wording": true }));
+        let out = one(
+            json!({ "contains_changes": true, "contains_more_than_wording": true }),
+            json!({ "contains_changes": true, "contains_more_than_wording": true }),
+        );
         assert!(element(&out, "a").get("contains_changes").is_none());
-        assert!(element(&out, "a").get("contains_more_than_wording").is_none());
-        assert_eq!(out["counts"]["elements"]["changed"], 0, "and it is no change of the element");
+        assert!(element(&out, "a")
+            .get("contains_more_than_wording")
+            .is_none());
+        assert_eq!(
+            out["counts"]["elements"]["changed"], 0,
+            "and it is no change of the element"
+        );
     }
 
     /// What the union says, drawn: `compute` is given the union of each layer as it is, and every item says the same as the element.
     #[test]
     fn compute_works_out_the_same_states_as_the_union_says() {
         let out = tree();
-        let elements: Vec<Value> = out["elements"].as_array().unwrap().iter().filter(|e| e["layer"] == "application").cloned().collect();
-        let opened: Vec<&str> = elements.iter().filter(|e| e["parent"] == true).map(|e| e["reference"].as_str().unwrap()).collect();
+        let elements: Vec<Value> = out["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| e["layer"] == "application")
+            .cloned()
+            .collect();
+        let opened: Vec<&str> = elements
+            .iter()
+            .filter(|e| e["parent"] == true)
+            .map(|e| e["reference"].as_str().unwrap())
+            .collect();
         let mut input = json!({ "viewpoint": "map", "layer": "application", "focal": "", "elements": elements, "opened": opened });
         let drawn: Value = serde_json::from_str(&crate::compute_json(&input.to_string())).unwrap();
         assert!(drawn.get("error").is_none(), "{drawn}");
@@ -2428,27 +3943,45 @@ mod tests {
         assert_eq!(items.len(), elements.len(), "every element is drawn");
         for item in items {
             let reference = item["reference"].as_str().unwrap();
-            assert_eq!(item.get("contains_changes"), element(&out, reference).get("contains_changes"), "{reference}");
+            assert_eq!(
+                item.get("contains_changes"),
+                element(&out, reference).get("contains_changes"),
+                "{reference}"
+            );
         }
         // the key travels in the input and is not read: the drawing is what it was without it
         for e in input["elements"].as_array_mut().unwrap() {
             e.as_object_mut().unwrap().remove("contains_changes");
-            e.as_object_mut().unwrap().remove("contains_more_than_wording");
+            e.as_object_mut()
+                .unwrap()
+                .remove("contains_more_than_wording");
         }
-        assert_eq!(drawn, serde_json::from_str::<Value>(&crate::compute_json(&input.to_string())).unwrap());
+        assert_eq!(
+            drawn,
+            serde_json::from_str::<Value>(&crate::compute_json(&input.to_string())).unwrap()
+        );
         // and a facet does not see it
         input["elements"] = json!(elements);
         input["facet"] = json!({ "actions": [{ "operator": "REMOVE", "json_path": "$..elements[?(@.contains_changes == true)]" }] });
-        let faceted: Value = serde_json::from_str(&crate::compute_json(&input.to_string())).unwrap();
+        let faceted: Value =
+            serde_json::from_str(&crate::compute_json(&input.to_string())).unwrap();
         assert!(faceted.get("error").is_none(), "{faceted}");
-        assert_eq!(faceted["items"].as_array().unwrap().len(), items.len(), "the facet removed nothing: it never saw the key");
+        assert_eq!(
+            faceted["items"].as_array().unwrap().len(),
+            items.len(),
+            "the facet removed nothing: it never saw the key"
+        );
     }
 
     // ---- `chain`: the `replaces` of the layers between the base and the target are composed (rule 8, wave 017, issue #89) ----
 
     /// `compare` with the plateaus the target stands on (`chain`, oldest first), for two plateaus on one chain.
     fn via(chain: Vec<Value>, base: Value, target: Value) -> Value {
-        serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": true, "chain": chain }).to_string())).unwrap()
+        serde_json::from_str(&compare_json(
+            &json!({ "base": base, "target": target, "on_one_chain": true, "chain": chain })
+                .to_string(),
+        ))
+        .unwrap()
     }
 
     fn apps(list: Vec<Value>) -> Value {
@@ -2456,23 +3989,46 @@ mod tests {
     }
 
     fn changes_of(out: &Value) -> Vec<(String, String)> {
-        out["changes"].as_array().unwrap().iter().filter(|r| r["thing"] == "element").map(|r| (r["reference"].as_str().unwrap().to_string(), r["change"].as_str().unwrap().to_string())).collect()
+        out["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| r["thing"] == "element")
+            .map(|r| {
+                (
+                    r["reference"].as_str().unwrap().to_string(),
+                    r["change"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect()
     }
 
     fn pairs(list: &[(&str, &str)]) -> Vec<(String, String)> {
-        list.iter().map(|(r, c)| (r.to_string(), c.to_string())).collect()
+        list.iter()
+            .map(|(r, c)| (r.to_string(), c.to_string()))
+            .collect()
     }
 
     #[test]
     fn a_move_made_in_two_steps_is_a_move_from_the_first_plateau() {
-        let (m0, m1) = (apps(vec![el("x", json!({}))]), apps(vec![replacing("y", json!(["x"]), json!({}))]));
+        let (m0, m1) = (
+            apps(vec![el("x", json!({}))]),
+            apps(vec![replacing("y", json!(["x"]), json!({}))]),
+        );
         let m2 = apps(vec![replacing("z", json!(["y"]), json!({}))]);
         let out = via(vec![m0.clone(), m1.clone()], m0.clone(), m2.clone());
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(changes_of(&out), pairs(&[("z", "moved")]));
-        assert_eq!(element(&out, "z")["replaces"], json!(["x"]), "the union says the composed word");
+        assert_eq!(
+            element(&out, "z")["replaces"],
+            json!(["x"]),
+            "the union says the composed word"
+        );
         assert!(warnings(&out).is_empty(), "{out}");
-        assert!(!has_element(&out, "x") && !has_element(&out, "y"), "nothing replaced is removed: {out}");
+        assert!(
+            !has_element(&out, "x") && !has_element(&out, "y"),
+            "nothing replaced is removed: {out}"
+        );
         // without the plateaus in between the second step names an element the base does not have: what the tool did before
         let alone = compare(m0, m2);
         assert_eq!(changes_of(&alone), pairs(&[("x", "removed"), ("z", "new")]));
@@ -2500,7 +4056,10 @@ mod tests {
     fn a_move_then_a_split_is_a_split_of_the_first_plateaus_element() {
         let m0 = apps(vec![el("x", json!({}))]);
         let m1 = apps(vec![replacing("y", json!(["x"]), json!({}))]);
-        let m2 = apps(vec![replacing("z1", json!(["y"]), json!({})), replacing("z2", json!(["y"]), json!({}))]);
+        let m2 = apps(vec![
+            replacing("z1", json!(["y"]), json!({})),
+            replacing("z2", json!(["y"]), json!({})),
+        ]);
         let out = via(vec![m0.clone(), m1], m0, m2);
         assert_eq!(changes_of(&out), pairs(&[("z1", "split"), ("z2", "split")]));
         assert_eq!(element(&out, "z1")["replaces"], json!(["x"]));
@@ -2511,11 +4070,21 @@ mod tests {
     #[test]
     fn a_split_then_a_move_of_one_half_is_still_a_split() {
         let m0 = apps(vec![el("x", json!({}))]);
-        let m1 = apps(vec![replacing("y1", json!(["x"]), json!({})), replacing("y2", json!(["x"]), json!({}))]);
+        let m1 = apps(vec![
+            replacing("y1", json!(["x"]), json!({})),
+            replacing("y2", json!(["x"]), json!({})),
+        ]);
         // y2 stays and says what its layer wrote; y1 moves to z
-        let m2 = apps(vec![replacing("y2", json!(["x"]), json!({})), replacing("z", json!(["y1"]), json!({}))]);
+        let m2 = apps(vec![
+            replacing("y2", json!(["x"]), json!({})),
+            replacing("z", json!(["y1"]), json!({})),
+        ]);
         let out = via(vec![m0.clone(), m1], m0, m2);
-        assert_eq!(changes_of(&out), pairs(&[("y2", "split"), ("z", "split")]), "{out}");
+        assert_eq!(
+            changes_of(&out),
+            pairs(&[("y2", "split"), ("z", "split")]),
+            "{out}"
+        );
         assert_eq!(element(&out, "z")["replaces"], json!(["x"]));
         assert_eq!(element(&out, "y2")["replaces"], json!(["x"]));
         assert!(warnings(&out).is_empty(), "{out}");
@@ -2524,7 +4093,10 @@ mod tests {
     #[test]
     fn a_move_then_a_merge_is_a_merge_of_the_first_plateaus_elements() {
         let m0 = apps(vec![el("x1", json!({})), el("x2", json!({}))]);
-        let m1 = apps(vec![replacing("y1", json!(["x1"]), json!({})), replacing("y2", json!(["x2"]), json!({}))]);
+        let m1 = apps(vec![
+            replacing("y1", json!(["x1"]), json!({})),
+            replacing("y2", json!(["x2"]), json!({})),
+        ]);
         let m2 = apps(vec![replacing("w", json!(["y1", "y2"]), json!({}))]);
         let out = via(vec![m0.clone(), m1], m0, m2);
         assert_eq!(changes_of(&out), pairs(&[("w", "merged")]));
@@ -2536,11 +4108,17 @@ mod tests {
     fn an_element_created_in_a_layer_in_between_and_moved_by_the_next_is_new() {
         let m0 = apps(vec![el("keep", json!({}))]);
         let m1 = apps(vec![el("keep", json!({})), el("y", json!({}))]);
-        let m2 = apps(vec![el("keep", json!({})), replacing("z", json!(["y"]), json!({}))]);
+        let m2 = apps(vec![
+            el("keep", json!({})),
+            replacing("z", json!(["y"]), json!({})),
+        ]);
         let out = via(vec![m0.clone(), m1], m0, m2);
         assert_eq!(changes_of(&out), pairs(&[("z", "new")]));
         assert!(element(&out, "z").get("replaces").is_none(), "{out}");
-        assert!(warnings(&out).is_empty(), "the chain explains the entry, it is no mistake: {out}");
+        assert!(
+            warnings(&out).is_empty(),
+            "the chain explains the entry, it is no mistake: {out}"
+        );
     }
 
     #[test]
@@ -2549,7 +4127,10 @@ mod tests {
         let m1 = apps(vec![replacing("y", json!(["x"]), json!({}))]);
         let m2 = apps(vec![el("other", json!({}))]);
         let out = via(vec![m0.clone(), m1], m0, m2);
-        assert_eq!(changes_of(&out), pairs(&[("other", "new"), ("x", "removed")]));
+        assert_eq!(
+            changes_of(&out),
+            pairs(&[("other", "new"), ("x", "removed")])
+        );
         assert!(warnings(&out).is_empty(), "{out}");
         // a last layer that names what the layer in between removed names nothing of the plateau above: rule 6 ignores it
         let m0 = apps(vec![el("x", json!({}))]);
@@ -2564,8 +4145,15 @@ mod tests {
     fn an_element_that_a_layer_in_between_wrote_keeps_its_word_through_the_next_layers() {
         // y is declared in the first layer and inherited by the second: it is a move from x between the base and the second plateau
         let m0 = apps(vec![el("x", json!({})), el("keep", json!({}))]);
-        let m1 = apps(vec![replacing("y", json!(["x"]), json!({})), el("keep", json!({}))]);
-        let m2 = apps(vec![replacing("y", json!(["x"]), json!({})), el("keep", json!({})), el("added", json!({}))]);
+        let m1 = apps(vec![
+            replacing("y", json!(["x"]), json!({})),
+            el("keep", json!({})),
+        ]);
+        let m2 = apps(vec![
+            replacing("y", json!(["x"]), json!({})),
+            el("keep", json!({})),
+            el("added", json!({})),
+        ]);
         let out = via(vec![m0.clone(), m1], m0, m2);
         assert_eq!(changes_of(&out), pairs(&[("added", "new"), ("y", "moved")]));
         assert_eq!(element(&out, "y")["replaces"], json!(["x"]));
@@ -2576,15 +4164,26 @@ mod tests {
     fn what_the_host_did_not_give_is_not_composed_and_what_is_not_a_list_is_told() {
         // the base says the same for the element: the host leaves the word out
         let m0 = apps(vec![el("x", json!({})), el("y", json!({}))]);
-        let m1 = apps(vec![el("x", json!({})), el("y", json!({})), replacing("z", json!(["x"]), json!({}))]);
-        let m2 = apps(vec![el("x", json!({})), el("y", json!({})), el("z", json!({}))]);
+        let m1 = apps(vec![
+            el("x", json!({})),
+            el("y", json!({})),
+            replacing("z", json!(["x"]), json!({})),
+        ]);
+        let m2 = apps(vec![
+            el("x", json!({})),
+            el("y", json!({})),
+            el("z", json!({})),
+        ]);
         let out = via(vec![m0.clone(), m1], m0, m2);
         assert!(element(&out, "z").get("replaces").is_none(), "{out}");
         let m0 = apps(vec![el("x", json!({}))]);
         let m1 = apps(vec![el("x", json!({}))]);
         let m2 = apps(vec![replacing("z", json!("x"), json!({}))]);
         let out = via(vec![m0.clone(), m1], m0, m2);
-        assert_eq!(warnings(&out), ["replaces of z (application layer) is not a list of references, ignored"]);
+        assert_eq!(
+            warnings(&out),
+            ["replaces of z (application layer) is not a list of references, ignored"]
+        );
     }
 
     #[test]
@@ -2595,7 +4194,10 @@ mod tests {
         for chain in [vec![], vec![m0.clone()]] {
             assert_eq!(via(chain, m0.clone(), m1.clone()), plain);
         }
-        let null: Value = serde_json::from_str(&compare_json(&json!({ "base": m0, "target": m1, "on_one_chain": true, "chain": null }).to_string())).unwrap();
+        let null: Value = serde_json::from_str(&compare_json(
+            &json!({ "base": m0, "target": m1, "on_one_chain": true, "chain": null }).to_string(),
+        ))
+        .unwrap();
         assert_eq!(null, plain);
     }
 
@@ -2605,12 +4207,20 @@ mod tests {
         let a = apps(vec![el("x", json!({}))]);
         let t1 = apps(vec![replacing("y", json!(["x"]), json!({}))]);
         let target = apps(vec![replacing("z", json!(["y"]), json!({}))]);
-        let kept: Value = serde_json::from_str(&compare_json(&json!({ "base": a, "target": target, "on_one_chain": false, "chain": [a, t1] }).to_string())).unwrap();
+        let kept: Value = serde_json::from_str(&compare_json(
+            &json!({ "base": a, "target": target, "on_one_chain": false, "chain": [a, t1] })
+                .to_string(),
+        ))
+        .unwrap();
         assert_eq!(changes_of(&kept), pairs(&[("z", "moved")]));
         assert_eq!(element(&kept, "z")["replaces"], json!(["x"]));
         // a sibling that has no `x` any more: the composed entry names nothing of the base, rule 6 says so
         let other = apps(vec![el("w", json!({}))]);
-        let lost: Value = serde_json::from_str(&compare_json(&json!({ "base": other, "target": target, "on_one_chain": false, "chain": [a, t1] }).to_string())).unwrap();
+        let lost: Value = serde_json::from_str(&compare_json(
+            &json!({ "base": other, "target": target, "on_one_chain": false, "chain": [a, t1] })
+                .to_string(),
+        ))
+        .unwrap();
         assert_eq!(changes_of(&lost), pairs(&[("w", "removed"), ("z", "new")]));
         assert_eq!(warnings(&lost), ["replaces of z (application layer): x is not an element of the base plateau, ignored"]);
     }
@@ -2635,10 +4245,32 @@ mod tests {
     #[test]
     fn the_candidates_are_those_of_the_composed_identity() {
         // `x` is moved to `z` over two steps: no pair is proposed for them; `q` and `r` look alike and nobody said so
-        let m0 = apps(vec![el("x", json!({ "kind": "system", "name": "Billing" })), el("q", json!({ "kind": "system", "name": "Mailer" }))]);
-        let m1 = apps(vec![replacing("y", json!(["x"]), json!({ "kind": "system", "name": "Billing" })), el("q", json!({ "kind": "system", "name": "Mailer" }))]);
-        let m2 = apps(vec![replacing("z", json!(["y"]), json!({ "kind": "system", "name": "Billing" })), el("r", json!({ "kind": "system", "name": "Mailer" }))]);
+        let m0 = apps(vec![
+            el("x", json!({ "kind": "system", "name": "Billing" })),
+            el("q", json!({ "kind": "system", "name": "Mailer" })),
+        ]);
+        let m1 = apps(vec![
+            replacing(
+                "y",
+                json!(["x"]),
+                json!({ "kind": "system", "name": "Billing" }),
+            ),
+            el("q", json!({ "kind": "system", "name": "Mailer" })),
+        ]);
+        let m2 = apps(vec![
+            replacing(
+                "z",
+                json!(["y"]),
+                json!({ "kind": "system", "name": "Billing" }),
+            ),
+            el("r", json!({ "kind": "system", "name": "Mailer" })),
+        ]);
         let out = via(vec![m0.clone(), m1], m0, m2);
-        assert_eq!(candidate_pairs(&out), [("q".to_string(), "r".to_string())], "{}", out["candidates"]);
+        assert_eq!(
+            candidate_pairs(&out),
+            [("q".to_string(), "r".to_string())],
+            "{}",
+            out["candidates"]
+        );
     }
 }

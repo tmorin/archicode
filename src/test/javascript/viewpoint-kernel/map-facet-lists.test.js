@@ -27,7 +27,8 @@ async function chooseFacet(page, name) {
 }
 
 const text = (canvas) => canvas.innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-const boxes = (page) => Array.from(page.scene().html.matchAll(/<g class="dg-node[^>]*? data-id="([^"]*)"/g), (m) => m[1]);
+const boxes = (page) =>
+  Array.from(page.scene().html.matchAll(/<g class="dg-node[^>]*? data-id="([^"]*)"/g), (m) => m[1]);
 
 test('Unfold all, then the facet journey: the Map is drawn, with no dangling reference', async () => {
   const page = await baselineMap();
@@ -35,16 +36,25 @@ test('Unfold all, then the facet journey: the Map is drawn, with no dangling ref
   assert.ok(before.includes('backoffice'), 'the Back office is on the Map before the facet');
   click(page.sandbox, { 'data-action': 'unfold-all' });
   await page.drawn();
-  assert.ok(run(page.sandbox, 'Array.from(currentMapOpened())').includes('backoffice'), 'Unfold all opened the Back office');
+  assert.ok(
+    run(page.sandbox, 'Array.from(currentMapOpened())').includes('backoffice'),
+    'Unfold all opened the Back office'
+  );
   const canvas = await chooseFacet(page, 'journey');
   assert.doesNotMatch(text(canvas), /dangling reference/, text(canvas));
   assert.equal(run(page.sandbox, 'diagramFacet'), 'journey');
   const drawn = boxes(page);
-  assert.ok(drawn.length > 0 && !drawn.includes('backoffice') && !drawn.some((id) => id.startsWith('backoffice.')), 'the facet removed the Back office: ' + drawn.join(', '));
+  assert.ok(
+    drawn.length > 0 && !drawn.includes('backoffice') && !drawn.some((id) => id.startsWith('backoffice.')),
+    'the facet removed the Back office: ' + drawn.join(', ')
+  );
   // the choice of the user is kept: without the facet the opened boxes are open again
   const without = await chooseFacet(page, '');
   assert.doesNotMatch(text(without), /dangling reference/);
-  assert.ok(boxes(page).some((id) => id.startsWith('backoffice.')), 'Facet: none draws the Back office open again');
+  assert.ok(
+    boxes(page).some((id) => id.startsWith('backoffice.')),
+    'Facet: none draws the Back office open again'
+  );
 });
 
 test('a pinned element and a hidden one that the facet removes are left out, and the others stay', async () => {
@@ -57,7 +67,11 @@ test('a pinned element and a hidden one that the facet removes are left out, and
     const drawn = boxes(page);
     assert.ok(drawn.length > 0 && !drawn.includes('backoffice'), action + ': ' + drawn.join(', '));
     const list = action === 'map-pin' ? 'mapPinned' : 'mapHidden';
-    assert.deepEqual(plain(run(page.sandbox, 'Array.from(' + list + ')')), ['backoffice'], action + ': the page still remembers the choice');
+    assert.deepEqual(
+      plain(run(page.sandbox, 'Array.from(' + list + ')')),
+      ['backoffice'],
+      action + ': the page still remembers the choice'
+    );
   }
 });
 
@@ -81,9 +95,17 @@ test('the Map through a facet is computed twice, whatever the number of referenc
   const journey = run(sandbox, 'AppState.workspace.settings.facets.customs.find((facet) => facet.name === "journey")');
   const removed = ['agent', 'backoffice', 'fulfilment', 'merchandiser']; // four boxes of the baseline that `journey` removes (backoffice.console and fulfilment.sync go with their parents)
   let computes = 0;
-  const kernel = { compute: (input) => { computes++; return page.kernel.compute(input); } };
+  const kernel = {
+    compute: (input) => {
+      computes++;
+      return page.kernel.compute(input);
+    }
+  };
   const lists = (opened, pinned, hidden) => {
-    const { input } = run(sandbox, '(function () { return buildKernelInput("map", "", { facet: AppState.workspace.settings.facets.customs.find((f) => f.name === "journey"), layer: "application" }); })()');
+    const { input } = run(
+      sandbox,
+      '(function () { return buildKernelInput("map", "", { facet: AppState.workspace.settings.facets.customs.find((f) => f.name === "journey"), layer: "application" }); })()'
+    );
     return Object.assign(input, { opened, pinned, hidden });
   };
   assert.ok(journey, 'the facet exists');
@@ -91,7 +113,11 @@ test('the Map through a facet is computed twice, whatever the number of referenc
     [removed.concat(['backoffice.console']), ['shop'], ['shop.cache']],
     [['shop'], removed, []],
     [[], ['shop'], removed.concat(['fulfilment.sync'])],
-    [['shop', 'backoffice'], ['agent', 'shop', 'merchandiser'], ['backoffice.console', 'fulfilment', 'tax']]
+    [
+      ['shop', 'backoffice'],
+      ['agent', 'shop', 'merchandiser'],
+      ['backoffice.console', 'fulfilment', 'tax']
+    ]
   ]) {
     computes = 0;
     const input = lists(opened, pinned, hidden);
@@ -99,7 +125,16 @@ test('the Map through a facet is computed twice, whatever the number of referenc
     assert.equal(result.error, undefined, 'drawn: ' + result.error);
     assert.ok(computes <= 2, computes + ' computations for ' + JSON.stringify({ opened, pinned, hidden }));
     for (const list of ['opened', 'pinned', 'hidden']) {
-      assert.ok(input[list].every((reference) => !reference.startsWith('backoffice') && !reference.startsWith('fulfilment') && reference !== 'agent' && reference !== 'merchandiser'), list + ': ' + input[list].join(', '));
+      assert.ok(
+        input[list].every(
+          (reference) =>
+            !reference.startsWith('backoffice') &&
+            !reference.startsWith('fulfilment') &&
+            reference !== 'agent' &&
+            reference !== 'merchandiser'
+        ),
+        list + ': ' + input[list].join(', ')
+      );
     }
   }
   // what the facet leaves is kept, and nothing is computed twice when nothing was removed

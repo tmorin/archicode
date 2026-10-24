@@ -94,8 +94,14 @@ enum Op {
 }
 
 enum Selector<'a> {
-    Target { layer: &'static str, reference: &'a str },
-    Path { path: &'a str, expect: Option<usize> },
+    Target {
+        layer: &'static str,
+        reference: &'a str,
+    },
+    Path {
+        path: &'a str,
+        expect: Option<usize>,
+    },
 }
 
 /// A failure: the sentence, and which patch it is about.
@@ -114,7 +120,10 @@ struct Who<'a> {
 
 impl Who<'_> {
     fn fail(&self, problem: impl std::fmt::Display) -> Fail {
-        let plateau = self.plateau.map(|p| format!("plateau {p}: ")).unwrap_or_default();
+        let plateau = self
+            .plateau
+            .map(|p| format!("plateau {p}: "))
+            .unwrap_or_default();
         let patch = match (&self.operator, &self.selector) {
             (Some(o), Some(s)) => format!(" ({o} {s})"),
             (Some(o), None) => format!(" ({o})"),
@@ -131,7 +140,10 @@ impl Who<'_> {
         if let Some(s) = &self.selector {
             data.insert("selector".into(), json!(s));
         }
-        Fail { message: format!("{plateau}patch {}{patch}: {problem}", self.rank), patch: Some(Value::Object(data)) }
+        Fail {
+            message: format!("{plateau}patch {}{patch}: {problem}", self.rank),
+            patch: Some(Value::Object(data)),
+        }
     }
 }
 
@@ -142,7 +154,9 @@ fn selector_text(raw: &Value) -> Option<String> {
         Some(l) => format!("target {t} layer {l}"),
         None => format!("target {t}"),
     });
-    let path = text("json-path").or(text("json_path")).map(|p| format!("json-path {p}"));
+    let path = text("json-path")
+        .or(text("json_path"))
+        .map(|p| format!("json-path {p}"));
     match (target, path) {
         (Some(t), Some(p)) => Some(format!("{t} {p}")),
         (t, p) => t.or(p),
@@ -161,11 +175,19 @@ fn kind(v: &Value) -> &'static str {
 }
 
 fn nodes(n: usize) -> String {
-    if n == 1 { "1 node".into() } else { format!("{n} nodes") }
+    if n == 1 {
+        "1 node".into()
+    } else {
+        format!("{n} nodes")
+    }
 }
 
 fn shown(layer: &str, reference: &str) -> String {
-    if layer == "technology" { format!("{reference} (technology)") } else { reference.to_string() }
+    if layer == "technology" {
+        format!("{reference} (technology)")
+    } else {
+        reference.to_string()
+    }
 }
 
 fn path_text(steps: &[Step]) -> String {
@@ -189,19 +211,29 @@ fn check(patch: &Patch) -> Result<(Op, Selector<'_>), String> {
         "SET" => Op::Set,
         "ADD" => Op::Add,
         "MERGE" => Op::Merge,
-        other => return Err(format!("unsupported operator {other}: REMOVE, SET, ADD and MERGE are the operators of a patch")),
+        other => {
+            const WHAT: &str = "REMOVE, SET, ADD and MERGE are the operators of a patch";
+            return Err(format!("unsupported operator {other}: {WHAT}"));
+        }
     };
     let selector = match (&patch.target, &patch.json_path) {
-        (Some(_), Some(_)) => return Err("has a `target` and a `json-path`: write one of them".into()),
+        (Some(_), Some(_)) => {
+            return Err("has a `target` and a `json-path`: write one of them".into())
+        }
         (None, None) => return Err("has no selector: write a `target` or a `json-path`".into()),
         (Some(reference), None) => {
             if patch.expect.is_some() {
-                return Err("`expect` goes with a `json-path`: a `target` selects exactly one element".into());
+                return Err(
+                    "`expect` goes with a `json-path`: a `target` selects exactly one element"
+                        .into(),
+                );
             }
             let layer = match patch.layer.as_deref() {
                 None | Some("application") => "application",
                 Some("technology") => "technology",
-                Some(other) => return Err(format!("unknown layer {other}: application or technology")),
+                Some(other) => {
+                    return Err(format!("unknown layer {other}: application or technology"))
+                }
             };
             Selector::Target { layer, reference }
         }
@@ -210,9 +242,14 @@ fn check(patch: &Patch) -> Result<(Op, Selector<'_>), String> {
                 return Err("`layer` goes with a `target`: a `json-path` starts at `$.application` or `$.technology`".into());
             }
             if patch.expect == Some(0) {
-                return Err("`expect` is 1 or more: a patch that selects nothing is an error".into());
+                return Err(
+                    "`expect` is 1 or more: a patch that selects nothing is an error".into(),
+                );
             }
-            Selector::Path { path, expect: patch.expect.map(|e| e as usize) }
+            Selector::Path {
+                path,
+                expect: patch.expect.map(|e| e as usize),
+            }
         }
     };
     if let Some(field) = &patch.field {
@@ -229,15 +266,25 @@ fn check(patch: &Patch) -> Result<(Op, Selector<'_>), String> {
             return Err("`where` goes with a `target`".into());
         }
         if op != Op::Set {
-            return Err("`where` goes with SET: it finds the relationship whose fields `value` replaces".into());
+            return Err(
+                "`where` goes with SET: it finds the relationship whose fields `value` replaces"
+                    .into(),
+            );
         }
         if patch.field.as_deref() != Some("relationships") {
             return Err("`where` finds a relationship: write `field: relationships`".into());
         }
     }
     if op == Op::Remove {
-        let what = if patch.field.is_some() { "takes a field out of what the selector selects" } else { "removes what the selector selects" };
-        for (name, given) in [("where", patch.condition.is_some()), ("value", patch.value.is_some())] {
+        let what = if patch.field.is_some() {
+            "takes a field out of what the selector selects"
+        } else {
+            "removes what the selector selects"
+        };
+        for (name, given) in [
+            ("where", patch.condition.is_some()),
+            ("value", patch.value.is_some()),
+        ] {
             if given {
                 return Err(format!("REMOVE takes no `{name}`: it {what}"));
             }
@@ -247,12 +294,17 @@ fn check(patch: &Patch) -> Result<(Op, Selector<'_>), String> {
         }
         return Ok((op, selector));
     }
-    let Some(value) = &patch.value else { return Err("needs a `value`".into()) };
+    let Some(value) = &patch.value else {
+        return Err("needs a `value`".into());
+    };
     if on_target && patch.field.is_none() {
         return Err("needs a `field`: a `target` is an element, and `field` says which of its fields changes".into());
     }
     if op == Op::Merge && !value.is_object() {
-        return Err(format!("MERGE merges an object: `value` is {}", kind(value)));
+        return Err(format!(
+            "MERGE merges an object: `value` is {}",
+            kind(value)
+        ));
     }
     if patch.condition.is_some() && !value.is_object() {
         return Err(format!("with `where`, `value` is an object (the fields of the relationship to replace), not {}", kind(value)));
@@ -266,7 +318,9 @@ fn find_element(doc: &Value, layer: &'static str, reference: &str) -> Option<Vec
     let mut current = doc.get(layer)?;
     for id in reference.split('.') {
         let list = current.get("elements")?.as_array()?;
-        let index = list.iter().position(|n| n.get("id").and_then(Value::as_str) == Some(id))?;
+        let index = list
+            .iter()
+            .position(|n| n.get("id").and_then(Value::as_str) == Some(id))?;
         steps.push(Step::Name("elements".to_string()));
         steps.push(Step::Index(index));
         current = &list[index];
@@ -277,7 +331,9 @@ fn find_element(doc: &Value, layer: &'static str, reference: &str) -> Option<Vec
 /// The element a node is, or lies in: its layer and its reference. None for a node that is in no element (a layer, the list of its
 /// elements, anything outside the two layers).
 fn element_of(doc: &Value, steps: &[Step]) -> Option<(&'static str, String)> {
-    let (Step::Name(layer), mut rest) = steps.split_first()? else { return None };
+    let (Step::Name(layer), mut rest) = steps.split_first()? else {
+        return None;
+    };
     let layer = LAYERS.into_iter().find(|l| l == layer)?;
     let mut node = doc.get(layer)?;
     let mut reference: Option<String> = None;
@@ -311,14 +367,30 @@ fn node_at_mut<'a>(doc: &'a mut Value, steps: &[Step]) -> Option<&'a mut Value> 
 /// The nodes a patch selects, each once, sorted by path.
 fn select(doc: &Value, selector: &Selector<'_>) -> Result<Vec<Vec<Step>>, String> {
     match selector {
-        Selector::Target { layer, reference } => find_element(doc, *layer, reference).map(|steps| vec![steps]).ok_or_else(|| {
-            let other = if *layer == "application" { "technology" } else { "application" };
-            let hint = if find_element(doc, other, reference).is_some() { format!(" (the {other} layer has it: write `layer: {other}`)") } else { String::new() };
-            format!("selects nothing, there is no element {reference} in the {layer} layer{hint}")
-        }),
+        Selector::Target { layer, reference } => find_element(doc, layer, reference)
+            .map(|steps| vec![steps])
+            .ok_or_else(|| {
+                let other = if *layer == "application" {
+                    "technology"
+                } else {
+                    "application"
+                };
+                let hint = if find_element(doc, other, reference).is_some() {
+                    format!(" (the {other} layer has it: write `layer: {other}`)")
+                } else {
+                    String::new()
+                };
+                format!(
+                    "selects nothing, there is no element {reference} in the {layer} layer{hint}"
+                )
+            }),
         Selector::Path { path, expect } => {
             let parsed = JsonPath::parse(path).map_err(|e| format!("invalid JSONPath: {e}"))?;
-            let mut found: Vec<Vec<Step>> = parsed.query_located(doc).iter().map(|node| node.location().iter().map(Step::from).collect()).collect();
+            let mut found: Vec<Vec<Step>> = parsed
+                .query_located(doc)
+                .iter()
+                .map(|node| node.location().iter().map(Step::from).collect())
+                .collect();
             found.sort_unstable();
             found.dedup();
             match (found.len(), expect) {
@@ -332,14 +404,22 @@ fn select(doc: &Value, selector: &Selector<'_>) -> Result<Vec<Vec<Step>>, String
 }
 
 fn label_of(relationship: &Value) -> &str {
-    relationship.get("label").and_then(Value::as_str).unwrap_or("")
+    relationship
+        .get("label")
+        .and_then(Value::as_str)
+        .unwrap_or("")
 }
 
 fn merge_into(slot: &mut Value, value: &Value, what: &str) -> Result<(), String> {
     if slot.is_null() {
         *slot = json!({});
     }
-    let Value::Object(object) = slot else { return Err(format!("{what} is {}, and MERGE merges an object", kind(slot))) };
+    let Value::Object(object) = slot else {
+        return Err(format!(
+            "{what} is {}, and MERGE merges an object",
+            kind(slot)
+        ));
+    };
     for (key, v) in value.as_object().into_iter().flatten() {
         object.insert(key.clone(), v.clone());
     }
@@ -350,7 +430,12 @@ fn push_into(slot: &mut Value, value: &Value, what: &str) -> Result<(), String> 
     if slot.is_null() {
         *slot = json!([]);
     }
-    let Value::Array(list) = slot else { return Err(format!("{what} is {}, and ADD appends to a list", kind(slot))) };
+    let Value::Array(list) = slot else {
+        return Err(format!(
+            "{what} is {}, and ADD appends to a list",
+            kind(slot)
+        ));
+    };
     match value {
         Value::Array(items) => list.extend(items.iter().cloned()),
         one => list.push(one.clone()),
@@ -360,7 +445,10 @@ fn push_into(slot: &mut Value, value: &Value, what: &str) -> Result<(), String> 
 
 /// SET, ADD or MERGE on one selected node.
 fn change(node: &mut Value, op: Op, patch: &Patch, owner: &str) -> Result<(), String> {
-    let value = patch.value.as_ref().expect("checked: SET, ADD and MERGE have a value");
+    let value = patch
+        .value
+        .as_ref()
+        .expect("checked: SET, ADD and MERGE have a value");
     let Some(field) = &patch.field else {
         return match op {
             Op::Set => {
@@ -373,17 +461,26 @@ fn change(node: &mut Value, op: Op, patch: &Patch, owner: &str) -> Result<(), St
     };
     let kind_of_node = kind(node);
     let Value::Object(object) = node else {
-        return Err(format!("a selected node of {owner} is {kind_of_node}, it has no field `{field}`"));
+        return Err(format!(
+            "a selected node of {owner} is {kind_of_node}, it has no field `{field}`"
+        ));
     };
     if let Some(condition) = &patch.condition {
         let label = condition.label.as_deref().unwrap_or("");
-        let named = if label.is_empty() { "no label".to_string() } else { format!("the label `{label}`") };
+        let named = if label.is_empty() {
+            "no label".to_string()
+        } else {
+            format!("the label `{label}`")
+        };
         let hits: Vec<&mut Value> = object
             .get_mut("relationships")
             .and_then(Value::as_array_mut)
             .into_iter()
             .flatten()
-            .filter(|r| r.get("destination").and_then(Value::as_str) == Some(condition.destination.as_str()) && label_of(r) == label)
+            .filter(|r| {
+                r.get("destination").and_then(Value::as_str) == Some(condition.destination.as_str())
+                    && label_of(r) == label
+            })
             .collect();
         return match hits.len() {
             0 => Err(format!("{owner} has no relationship to {} with {named}", condition.destination)),
@@ -396,8 +493,16 @@ fn change(node: &mut Value, op: Op, patch: &Patch, owner: &str) -> Result<(), St
             object.insert(field.clone(), value.clone());
             Ok(())
         }
-        Op::Merge => merge_into(object.entry(field.clone()).or_insert(Value::Null), value, &format!("`{field}` of {owner}")),
-        _ => push_into(object.entry(field.clone()).or_insert(Value::Null), value, &format!("`{field}` of {owner}")),
+        Op::Merge => merge_into(
+            object.entry(field.clone()).or_insert(Value::Null),
+            value,
+            &format!("`{field}` of {owner}"),
+        ),
+        _ => push_into(
+            object.entry(field.clone()).or_insert(Value::Null),
+            value,
+            &format!("`{field}` of {owner}"),
+        ),
     }
 }
 
@@ -413,13 +518,23 @@ fn sorted(set: &std::collections::HashSet<String>) -> Vec<&String> {
 
 /// The first reference (by layer, then name) that `a` has and `b` does not.
 fn differing<'a>(a: &'a References, b: &'a References) -> Option<(&'static str, &'a String)> {
-    let application = a.application.difference(&b.application).map(|r| ("application", r));
-    let technology = a.technology.difference(&b.technology).map(|r| ("technology", r));
+    let application = a
+        .application
+        .difference(&b.application)
+        .map(|r| ("application", r));
+    let technology = a
+        .technology
+        .difference(&b.technology)
+        .map(|r| ("technology", r));
     application.chain(technology).min()
 }
 
 /// Applies one patch. Returns what it says about itself: `matched`, `touched` and, for REMOVE, `removed` and `dropped`.
-fn apply_one(doc: &mut Value, patch: &Patch, known: &mut Option<RefCounts>) -> Result<Map<String, Value>, String> {
+fn apply_one(
+    doc: &mut Value,
+    patch: &Patch,
+    known: &mut Option<RefCounts>,
+) -> Result<Map<String, Value>, String> {
     let (op, selector) = check(patch)?;
     let found = select(doc, &selector)?;
     let mut touched: BTreeSet<(&'static str, String)> = BTreeSet::new();
@@ -428,33 +543,58 @@ fn apply_one(doc: &mut Value, patch: &Patch, known: &mut Option<RefCounts>) -> R
             Some(owner) => {
                 touched.insert(owner);
             }
-            None => return Err(format!("selects a node outside the elements of the two layers: {}", path_text(steps))),
+            None => {
+                return Err(format!(
+                    "selects a node outside the elements of the two layers: {}",
+                    path_text(steps)
+                ))
+            }
         }
     }
     let mut report = Map::new();
     report.insert("matched".into(), json!(found.len()));
-    report.insert("touched".into(), Value::Array(touched.iter().map(|(l, r)| reference_json(l, r)).collect()));
+    report.insert(
+        "touched".into(),
+        Value::Array(touched.iter().map(|(l, r)| reference_json(l, r)).collect()),
+    );
     if let (Op::Remove, Some(field)) = (op, &patch.field) {
         // a field taken out of the elements selected: nothing leaves the graph, so no cascade and no `removed` or `dropped`
         for steps in found.iter().rev() {
-            let (layer, reference) = element_of(doc, steps).expect("checked: every selected node is in an element");
+            let (layer, reference) =
+                element_of(doc, steps).expect("checked: every selected node is in an element");
             let owner = shown(layer, &reference);
-            let node = node_at_mut(doc, steps).ok_or_else(|| format!("{owner} changed under the patch"))?;
+            let node = node_at_mut(doc, steps)
+                .ok_or_else(|| format!("{owner} changed under the patch"))?;
             let kind_of_node = kind(node);
             let Value::Object(object) = node else {
-                return Err(format!("a selected node of {owner} is {kind_of_node}, it has no field `{field}`"));
+                return Err(format!(
+                    "a selected node of {owner} is {kind_of_node}, it has no field `{field}`"
+                ));
             };
             object.shift_remove(field);
         }
         return Ok(report);
     }
     if op == Op::Remove {
-        if let Some(steps) = found.iter().find(|steps| matches!(steps.last(), Some(Step::Name(name)) if name == "id")) {
-            return Err(format!("would remove an `id`: a patch never changes an id or a parent ({})", path_text(steps)));
+        if let Some(steps) = found
+            .iter()
+            .find(|steps| matches!(steps.last(), Some(Step::Name(name)) if name == "id"))
+        {
+            return Err(format!(
+                "would remove an `id`: a patch never changes an id or a parent ({})",
+                path_text(steps)
+            ));
         }
         let removal = remove_nodes(doc, found, known);
-        let mut removed: Vec<Value> = sorted(&removal.gone.application).into_iter().map(|r| reference_json("application", r)).collect();
-        removed.extend(sorted(&removal.gone.technology).into_iter().map(|r| reference_json("technology", r)));
+        let mut removed: Vec<Value> = sorted(&removal.gone.application)
+            .into_iter()
+            .map(|r| reference_json("application", r))
+            .collect();
+        removed.extend(
+            sorted(&removal.gone.technology)
+                .into_iter()
+                .map(|r| reference_json("technology", r)),
+        );
         report.insert("removed".into(), Value::Array(removed));
         let dropped = removal.dropped.into_iter().map(|d| json!({ "layer": d.layer, "reference": d.holder, "field": d.field, "entry": d.entry }));
         report.insert("dropped".into(), Value::Array(dropped.collect()));
@@ -465,35 +605,59 @@ fn apply_one(doc: &mut Value, patch: &Patch, known: &mut Option<RefCounts>) -> R
     let reads_references = patch.field.is_none();
     let before = reads_references.then(|| References::of(doc));
     for steps in found.iter().rev() {
-        let (layer, reference) = element_of(doc, steps).expect("checked: every selected node is in an element");
+        let (layer, reference) =
+            element_of(doc, steps).expect("checked: every selected node is in an element");
         let owner = shown(layer, &reference);
-        let node = node_at_mut(doc, steps).ok_or_else(|| format!("{owner} changed under the patch"))?;
+        let node =
+            node_at_mut(doc, steps).ok_or_else(|| format!("{owner} changed under the patch"))?;
         change(node, op, patch, &owner)?;
     }
-    let Some(before) = before else { return Ok(report) };
+    let Some(before) = before else {
+        return Ok(report);
+    };
     let after = References::of(doc);
     if after != before {
         // what disappeared first (that is the reference the patch changed), else what appeared
-        let (layer, reference) = differing(&before, &after).or_else(|| differing(&after, &before)).expect("the references differ");
-        return Err(format!("would change the reference {}: a patch never changes an id or a parent", shown(layer, reference)));
+        let (layer, reference) = differing(&before, &after)
+            .or_else(|| differing(&after, &before))
+            .expect("the references differ");
+        return Err(format!(
+            "would change the reference {}: a patch never changes an id or a parent",
+            shown(layer, reference)
+        ));
     }
     *known = None; // the references were read as sets: the next removal counts them again
     Ok(report)
 }
 
 fn run(input: &str) -> Result<Value, Fail> {
-    let plain = |message: String| Fail { message, patch: None };
-    let request: Request = serde_json::from_str(input).map_err(|e| plain(format!("invalid input: {e}")))?;
+    let plain = |message: String| Fail {
+        message,
+        patch: None,
+    };
+    let request: Request =
+        serde_json::from_str(input).map_err(|e| plain(format!("invalid input: {e}")))?;
     let mut doc = request.workspace;
     if !doc.is_object() {
-        return Err(plain(format!("invalid input: `workspace` is {}, not an object", kind(&doc))));
+        return Err(plain(format!(
+            "invalid input: `workspace` is {}, not an object",
+            kind(&doc)
+        )));
     }
     let plateau = request.plateau.as_deref().filter(|p| !p.is_empty());
     let mut reports = Vec::with_capacity(request.patches.len());
     // the references of the document after the last patch that read them, for the next one (see `remove_nodes`)
     let mut known: Option<RefCounts> = None;
     for (index, raw) in request.patches.iter().enumerate() {
-        let who = Who { plateau, rank: index + 1, operator: raw.get("operator").and_then(Value::as_str).map(str::to_string), selector: selector_text(raw) };
+        let who = Who {
+            plateau,
+            rank: index + 1,
+            operator: raw
+                .get("operator")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            selector: selector_text(raw),
+        };
         let patch = Patch::deserialize(raw).map_err(|e| who.fail(format!("invalid patch: {e}")))?;
         let body = apply_one(&mut doc, &patch, &mut known).map_err(|problem| who.fail(problem))?;
         let mut report = Map::new();

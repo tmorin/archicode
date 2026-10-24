@@ -33,9 +33,22 @@ const BRIGHTCART = walk(LAYERED, LAYERED, {});
 const WITHOUT_ENTRIES = Object.fromEntries(Object.entries(BRIGHTCART).filter(([file]) => !file.startsWith('shared/')));
 
 /** `saas` declares `id` too (a system with that id), as `inhouse` does: a fork where both plateaus have the reference. */
-const system = (id, plateau) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' + (plateau ? '  plateau: "' + plateau + '"\n' : '') + 'content:\n  id: "' + id + '"\n  name: "' + id + ' of ' + plateau + '"\n';
-const FORK_ON_COMMERCE = Object.assign({}, BRIGHTCART, { 'saas/application/commerce.yaml': system('commerce', 'saas') });
-const FORK_ON_COMMERCE_SAAS = Object.assign({}, BRIGHTCART, { 'inhouse/application/commerce-saas.yaml': system('commerce-saas', 'inhouse') });
+const system = (id, plateau) =>
+  'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' +
+  (plateau ? '  plateau: "' + plateau + '"\n' : '') +
+  'content:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  id +
+  ' of ' +
+  plateau +
+  '"\n';
+const FORK_ON_COMMERCE = Object.assign({}, BRIGHTCART, {
+  'saas/application/commerce.yaml': system('commerce', 'saas')
+});
+const FORK_ON_COMMERCE_SAAS = Object.assign({}, BRIGHTCART, {
+  'inhouse/application/commerce-saas.yaml': system('commerce-saas', 'inhouse')
+});
 
 async function open(files, drawn) {
   const mem = memFolder(files);
@@ -69,7 +82,8 @@ function typeId(sandbox, reference, id) {
   const doc = sandbox.document;
   const original = { getElementById: doc.getElementById, querySelectorAll: doc.querySelectorAll };
   doc.getElementById = (name) => byId[name] || original.getElementById.call(doc, name);
-  doc.querySelectorAll = (selector) => (selector.includes('relationship-edit-row') ? [] : original.querySelectorAll.call(doc, selector));
+  doc.querySelectorAll = (selector) =>
+    selector.includes('relationship-edit-row') ? [] : original.querySelectorAll.call(doc, selector);
   return () => Object.assign(doc, original);
 }
 
@@ -93,7 +107,14 @@ function sayYes(sandbox) {
   }
   return met;
 }
-const text = (html) => html.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+const text = (html) =>
+  html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
 const status = (sandbox) => plain(run(sandbox, 'saveStatus'));
 const dirty = (state) => Array.from(state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath)).sort();
 
@@ -115,7 +136,9 @@ test('renaming an element a sibling plateau still declares opens a dialog before
   assert.equal(dialog.kind, 'rename-siblings');
   const impact = plain(dialog.impact);
   assert.deepEqual(impact, {
-    from: 'commerce', to: 'billing', plateau: 'inhouse',
+    from: 'commerce',
+    to: 'billing',
+    plateau: 'inhouse',
     plateaus: [{ id: 'saas', name: 'Buy the commerce platform', declaredIn: 'saas', references: ['commerce'] }],
     views: [{ id: 'commerce_overview', label: 'The commerce services we would build', plateaus: ['saas'] }],
     steps: []
@@ -138,8 +161,14 @@ test('the dialog names the plateau, the old and the new reference, the view and 
   const said = text(html);
   assert.match(said, /Rename “Commerce services”: 1 plateau keeps the old reference/);
   assert.match(said, /commerce becomes billing in the plateau inhouse, and in the plateaus that stand on it\./);
-  assert.match(said, /This plateau does not stand on inhouse and still has commerce \(the rename does not reach it\):\s*saas/);
-  assert.match(said, /Views and stories belong to no plateau: they follow the rename everywhere, so this one cannot be drawn any more in the plateaus that keep the old reference:/);
+  assert.match(
+    said,
+    /This plateau does not stand on inhouse and still has commerce \(the rename does not reach it\):\s*saas/
+  );
+  assert.match(
+    said,
+    /Views and stories belong to no plateau: they follow the rename everywhere, so this one cannot be drawn any more in the plateaus that keep the old reference:/
+  );
   assert.match(said, /the view The commerce services we would build commerce_overview in saas/);
   assert.match(said, /cancel, draw that plateau and give the element the same new id there/);
   assert.doesNotMatch(said, /marketplace/, 'marketplace stands on inhouse: it is rewritten, not listed');
@@ -158,17 +187,31 @@ test('"Rename anyway" writes what a rename has always written: the same files, b
   const out = await saved(forked);
   // the control: the same rename where no plateau keeps the reference (the low-level write, which asks nothing of ours)
   const control = await open(BRIGHTCART, 'inhouse');
-  control.sandbox.commitElementEdit('commerce', (n) => { n.id = 'billing'; return { renamedTo: { from: 'commerce', to: 'billing' } }; }, 'application', { confirmed: true });
+  control.sandbox.commitElementEdit(
+    'commerce',
+    (n) => {
+      n.id = 'billing';
+      return { renamedTo: { from: 'commerce', to: 'billing' } };
+    },
+    'application',
+    { confirmed: true }
+  );
   const expected = await saved(control);
   assert.deepEqual(out.changed, expected.changed, 'the rewrite is the rewrite');
   assert.deepEqual(out.removed, expected.removed);
   assert.ok(Object.keys(out.changed).includes('shared/view.commerce_overview.yaml'), 'the view follows');
   assert.match(out.changed['shared/view.commerce_overview.yaml'], /element: "billing"/);
-  assert.ok(Object.keys(out.changed).some((file) => file.startsWith('marketplace/')), 'a plateau that stands on inhouse is rewritten');
+  assert.ok(
+    Object.keys(out.changed).some((file) => file.startsWith('marketplace/')),
+    'a plateau that stands on inhouse is rewritten'
+  );
   assert.ok(!Object.keys(out.changed).some((file) => file.startsWith('saas/')), 'the sibling keeps its own commerce');
   // the sibling really cannot draw the view now, as the dialog said
   forked.sandbox.drawPlateau('saas');
-  assert.equal(forked.sandbox.viewProblem(forked.sandbox.findSavedView('commerce_overview')), 'The element “billing” is not in the plateau “saas”.');
+  assert.equal(
+    forked.sandbox.viewProblem(forked.sandbox.findSavedView('commerce_overview')),
+    'The element “billing” is not in the plateau “saas”.'
+  );
 });
 
 test('the views and the steps the dialog lists are the ones the rename rewrites, and only those', async () => {
@@ -177,7 +220,9 @@ test('the views and the steps the dialog lists are the ones the rename rewrites,
   assert.equal(saveForm(sandbox, 'commerce-saas', 'commerce-hosted'), false);
   const impact = plain(dialogOf(sandbox).impact);
   assert.deepEqual(impact.views, []);
-  assert.deepEqual(impact.steps, [{ story: 'fork_tour', label: 'Two ways out of the monolith', number: 2, plateaus: ['inhouse', 'marketplace'] }]);
+  assert.deepEqual(impact.steps, [
+    { story: 'fork_tour', label: 'Two ways out of the monolith', number: 2, plateaus: ['inhouse', 'marketplace'] }
+  ]);
   sandbox.submitAppDialog({});
   const out = await saved(opened);
   const entries = Object.keys(out.changed).filter((file) => file.startsWith('shared/'));
@@ -188,7 +233,13 @@ test('the views and the steps the dialog lists are the ones the rename rewrites,
 test('a plateau that only inherits the reference counts as one that declares it, and says where it comes from', async () => {
   const { sandbox } = await open(FORK_ON_COMMERCE_SAAS, 'saas');
   saveForm(sandbox, 'commerce-saas', 'commerce-hosted');
-  assert.deepEqual(plain(dialogOf(sandbox).impact.plateaus).map((p) => [p.id, p.declaredIn]), [['inhouse', 'inhouse'], ['marketplace', 'inhouse']]);
+  assert.deepEqual(
+    plain(dialogOf(sandbox).impact.plateaus).map((p) => [p.id, p.declaredIn]),
+    [
+      ['inhouse', 'inhouse'],
+      ['marketplace', 'inhouse']
+    ]
+  );
   const said = text(sandbox.renderAppDialogHtml());
   assert.match(said, /Rename “Commerce platform \(SaaS\)”: 2 plateaus keep the old reference/);
   assert.match(said, /These 2 plateaus do not stand on saas and still have commerce-saas/);
@@ -231,9 +282,21 @@ test('a rename in a layered workspace where no plateau beside keeps the referenc
   const form = await open(BRIGHTCART, 'inhouse');
   assert.equal(form.sandbox.renameSiblingImpact('commerce', 'billing', 'application'), null);
   saveForm(form.sandbox, 'commerce', 'billing');
-  assert.deepEqual(sayYes(form.sandbox), ['layer-confirm'], 'only the dialog of the plateaus that stand on inhouse, as before this run');
+  assert.deepEqual(
+    sayYes(form.sandbox),
+    ['layer-confirm'],
+    'only the dialog of the plateaus that stand on inhouse, as before this run'
+  );
   const low = await open(BRIGHTCART, 'inhouse');
-  low.sandbox.commitElementEdit('commerce', (n) => { n.id = 'billing'; return { renamedTo: { from: 'commerce', to: 'billing' } }; }, 'application', { confirmed: true });
+  low.sandbox.commitElementEdit(
+    'commerce',
+    (n) => {
+      n.id = 'billing';
+      return { renamedTo: { from: 'commerce', to: 'billing' } };
+    },
+    'application',
+    { confirmed: true }
+  );
   assert.deepEqual(await saved(form), await saved(low), 'byte for byte');
 });
 
@@ -243,7 +306,14 @@ test('a rename where nothing stands on the plateau drawn and no sibling keeps th
   assert.equal(dialogOf(form.sandbox), null);
   assert.equal(form.state.index.application.has('commerce-hosted'), true);
   const low = await open(BRIGHTCART, 'saas');
-  low.sandbox.commitElementEdit('commerce-saas', (n) => { n.id = 'commerce-hosted'; return { renamedTo: { from: 'commerce-saas', to: 'commerce-hosted' } }; }, 'application');
+  low.sandbox.commitElementEdit(
+    'commerce-saas',
+    (n) => {
+      n.id = 'commerce-hosted';
+      return { renamedTo: { from: 'commerce-saas', to: 'commerce-hosted' } };
+    },
+    'application'
+  );
   assert.deepEqual(await saved(form), await saved(low), 'byte for byte, the story with a step on it included');
 });
 
@@ -252,7 +322,11 @@ test('a sibling that keeps the reference but is named by no view and no step ask
   const form = await open(files, 'inhouse');
   assert.equal(form.sandbox.renameSiblingImpact('commerce', 'billing', 'application'), null);
   saveForm(form.sandbox, 'commerce', 'billing');
-  assert.deepEqual(sayYes(form.sandbox), ['layer-confirm'], 'the sibling asks nothing: only the plateaus that stand on inhouse are asked, as before');
+  assert.deepEqual(
+    sayYes(form.sandbox),
+    ['layer-confirm'],
+    'the sibling asks nothing: only the plateaus that stand on inhouse are asked, as before'
+  );
   assert.equal(form.state.index.application.has('billing'), true);
 });
 
@@ -262,7 +336,11 @@ test('a rename in baseline asks nothing: every plateau stands on it, and the vie
   assert.equal(sandbox.findSavedView('customer_overview').properties.element, 'customer');
   assert.equal(sandbox.renameSiblingImpact('customer', 'shopper', 'application'), null);
   assert.equal(saveForm(sandbox, 'customer', 'shopper'), false);
-  assert.deepEqual(sayYes(sandbox), ['layer-confirm'], 'the plateaus that inherit `customer` change too, and that is all that is asked');
+  assert.deepEqual(
+    sayYes(sandbox),
+    ['layer-confirm'],
+    'the plateaus that inherit `customer` change too, and that is all that is asked'
+  );
   assert.equal(sandbox.findSavedView('customer_overview').properties.element, 'shopper');
   for (const id of ['saas', 'inhouse', 'marketplace']) {
     sandbox.drawPlateau(id);
@@ -281,7 +359,10 @@ test('an element the plateau drawn only inherits is refused with its own sentenc
   assert.equal(saveForm(sandbox, 'shop.web', 'front'), false);
   assert.equal(dialogOf(sandbox), null);
   assert.equal(status(sandbox).state, 'error');
-  assert.equal(status(sandbox).message, 'Not written: `shop.web` is declared in the plateau `baseline`, and a patch never changes an id: it is renamed where it is declared. Draw `baseline` to rename it. Nothing was changed.');
+  assert.equal(
+    status(sandbox).message,
+    'Not written: `shop.web` is declared in the plateau `baseline`, and a patch never changes an id: it is renamed where it is declared. Draw `baseline` to rename it. Nothing was changed.'
+  );
 });
 
 test('a plain edit of the form that does not change the id asks nothing', async () => {
@@ -295,7 +376,8 @@ test('a workspace with no plateau renames as it always did: no dialog, the view 
     '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
     'app.ferry.yaml': system('ferry', null).replace('name: "ferry of null"', 'name: "Ferry"'),
     'app.pier.yaml': system('pier', null).replace('name: "pier of null"', 'name: "Pier"'),
-    'view.ferry_overview.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "ferry_overview"\n  viewpoint: overview\n  properties:\n    element: ferry\n'
+    'view.ferry_overview.yaml':
+      'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "ferry_overview"\n  viewpoint: overview\n  properties:\n    element: ferry\n'
   };
   const opened = await open(files);
   const { sandbox } = opened;
@@ -316,7 +398,11 @@ test('what a recipe names is what the rewrite rewrites: the element of a view, t
     { viewpoint: 'overview', layer: 'application', properties: { element: 'commerce.cart' } },
     { viewpoint: 'detailed', properties: { element: 'commerce' } },
     { viewpoint: 'overview', layer: 'technology', properties: { element: 'commerce' } },
-    { viewpoint: 'map', layer: 'application', properties: { pinned: ['commerce', 'customer'], hidden: ['commerce.cart'], opened: ['commerce', 3] } },
+    {
+      viewpoint: 'map',
+      layer: 'application',
+      properties: { pinned: ['commerce', 'customer'], hidden: ['commerce.cart'], opened: ['commerce', 3] }
+    },
     { viewpoint: 'map', layer: 'technology', properties: { pinned: ['commerce'] } },
     { viewpoint: 'overview', layer: 'application' },
     { viewpoint: 'map', layer: 'application', properties: { pinned: 'commerce' } }
@@ -325,18 +411,29 @@ test('what a recipe names is what the rewrite rewrites: the element of a view, t
     const names = sandbox.recipeNamedReferences(recipe, 'application');
     const copy = plain(recipe);
     const rewritten = sandbox.rewriteRecipeReferences(copy, 'commerce', 'billing', 'application');
-    const affected = names.some((reference) => sandbox.rewriteReferenceValue(reference, 'commerce', 'billing') !== reference);
+    const affected = names.some(
+      (reference) => sandbox.rewriteReferenceValue(reference, 'commerce', 'billing') !== reference
+    );
     assert.equal(affected, rewritten, JSON.stringify(recipe));
   }
-  assert.deepEqual(plain(sandbox.recipeNamedReferences(recipes[3], 'application')), ['commerce', 'customer', 'commerce.cart', 'commerce']);
+  assert.deepEqual(plain(sandbox.recipeNamedReferences(recipes[3], 'application')), [
+    'commerce',
+    'customer',
+    'commerce.cart',
+    'commerce'
+  ]);
   assert.deepEqual(plain(sandbox.recipeNamedReferences(recipes[3], 'technology')), []);
 });
 
 test('a map that pins the element in a sibling is listed too', async () => {
   const files = Object.assign({}, FORK_ON_COMMERCE, {
-    'shared/view.commerce_map.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "commerce_map"\n  name: "Commerce map"\n  viewpoint: map\n  layer: application\n  properties:\n    pinned: ["commerce", "customer"]\n'
+    'shared/view.commerce_map.yaml':
+      'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "commerce_map"\n  name: "Commerce map"\n  viewpoint: map\n  layer: application\n  properties:\n    pinned: ["commerce", "customer"]\n'
   });
   const { sandbox } = await open(files, 'inhouse');
   saveForm(sandbox, 'commerce', 'billing');
-  assert.deepEqual(plain(dialogOf(sandbox).impact.views).map((v) => v.id), ['commerce_map', 'commerce_overview']);
+  assert.deepEqual(
+    plain(dialogOf(sandbox).impact.views).map((v) => v.id),
+    ['commerce_map', 'commerce_overview']
+  );
 });

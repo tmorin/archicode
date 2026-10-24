@@ -137,7 +137,10 @@ class WarningsChannelTest {
         val lines = result.err().lines().toList();
         assertEquals(2, lines.size(), result.err());
         assertTrue(lines.get(0).startsWith("warning: the story `tour`"), result.err());
-        assertEquals("error: dangling reference: nowhere", lines.get(1));
+        assertEquals(
+            "error: `sol_a.sys_aa` has a relationship towards `nowhere`, which does not exist, at `relationships[0].destination`",
+            lines.get(1)
+        );
     }
 
     @Test

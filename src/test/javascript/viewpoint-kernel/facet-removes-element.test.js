@@ -30,7 +30,8 @@ async function editorOnTheExample() {
   return { sandbox, state, kernel };
 }
 
-const draw = (sandbox, kernel, viewpoint, reference, options) => plain(kernel.compute(sandbox.buildKernelInput(viewpoint, reference, options).input));
+const draw = (sandbox, kernel, viewpoint, reference, options) =>
+  plain(kernel.compute(sandbox.buildKernelInput(viewpoint, reference, options).input));
 const targets = (out) => out.links.map((l) => l.to).sort();
 
 test('a facet that removes an element takes the relationships that point at it out of the diagram', async () => {
@@ -39,12 +40,18 @@ test('a facet that removes an element takes the relationships that point at it o
   assert.ok(targets(without).includes('shop.catalog'), 'the diagram without the facet draws the link');
   const through = draw(sandbox, kernel, 'overview', 'shop.web', { facet: byId });
   assert.equal(through.error, undefined);
-  assert.ok(!targets(through).includes('shop.catalog') && targets(through).includes('shop.payments'), JSON.stringify(targets(through)));
+  assert.ok(
+    !targets(through).includes('shop.catalog') && targets(through).includes('shop.payments'),
+    JSON.stringify(targets(through))
+  );
   assert.ok(!through.items.some((item) => item.reference === 'shop.catalog'));
   for (const viewpoint of ['detailed', 'deep']) {
     const out = draw(sandbox, kernel, viewpoint, 'shop', { facet: byId });
     assert.equal(out.error, undefined, viewpoint);
-    assert.ok(!out.items.some((item) => item.reference === 'shop.catalog') && !out.links.some((l) => l.to === 'shop.catalog'), viewpoint);
+    assert.ok(
+      !out.items.some((item) => item.reference === 'shop.catalog') && !out.links.some((l) => l.to === 'shop.catalog'),
+      viewpoint
+    );
   }
 });
 
@@ -56,7 +63,10 @@ test('the facets of the comparison that remove a changed or a moved element draw
   assert.ok(targets(draw(sandbox, kernel, 'overview', 'customer')).includes('shop'));
   const customer = draw(sandbox, kernel, 'overview', 'customer', { facet: changed });
   assert.equal(customer.error, undefined);
-  assert.ok(!customer.items.some((item) => item.reference === 'shop.web') && customer.links.length === 0, JSON.stringify(customer.links));
+  assert.ok(
+    !customer.items.some((item) => item.reference === 'shop.web') && customer.links.length === 0,
+    JSON.stringify(customer.links)
+  );
   assert.ok(targets(draw(sandbox, kernel, 'overview', 'warehouse.picking')).includes('warehouse.inventory'));
   const picking = draw(sandbox, kernel, 'overview', 'warehouse.picking', { facet: moved });
   assert.equal(picking.error, undefined);

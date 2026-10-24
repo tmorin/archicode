@@ -33,7 +33,12 @@ for (const c of DOCUMENT.cases) {
       // the command line refuses the workspace with this sentence, and the editor with the same one under its own heading (a capital and a full stop apart)
       if (expect.editorSays !== undefined) {
         assert.equal(state.fatalError, expect.editorSays);
-        if (expect.removedKey !== undefined) assert.equal(state.fatalError, 'Could not read/parse .archicode.yaml: ' + expect.removedKey, 'one line: the heading and the sentence of the command line');
+        if (expect.removedKey !== undefined)
+          assert.equal(
+            state.fatalError,
+            'Could not read/parse .archicode.yaml: ' + expect.removedKey,
+            'one line: the heading and the sentence of the command line'
+          );
         else assert.equal(state.fatalError.split('\n').slice(1).join('\n'), expect.noPlateau);
       } else {
         // the editor has no option to type: the address names a plateau it does not have, and the page draws baseline
@@ -53,39 +58,72 @@ for (const c of DOCUMENT.cases) {
     const tree = state.plateauTree;
     if (expect.errors !== undefined) {
       // the order the command line tells them in: the tree, the references declared twice in a plateau, those declared again in an ancestor
-      const told = Array.from(tree.problems).concat(state.duplicateReferences.map((d) => d.message), Array.from(tree.redeclared));
+      const told = Array.from(tree.problems).concat(
+        state.duplicateReferences.map((d) => d.message),
+        Array.from(tree.redeclared)
+      );
       assert.deepEqual(told, expect.errors);
       return;
     }
-    assert.deepEqual(Array.from(tree.problems).concat(Array.from(tree.redeclared), state.duplicateReferences.map((d) => d.message)), [], 'no mistake in the plateaus');
+    assert.deepEqual(
+      Array.from(tree.problems).concat(
+        Array.from(tree.redeclared),
+        state.duplicateReferences.map((d) => d.message)
+      ),
+      [],
+      'no mistake in the plateaus'
+    );
     assert.deepEqual(Array.from(tree.warnings), expect.warnings);
     assert.deepEqual(Array.from(state.index.application.keys()).sort(), expect.loaded.slice().sort(), 'what is drawn');
   });
 }
 
-const manifest = (kind, extra) => 'header:\n  kind: "archicode.morin.io/' + kind + '"\n' + (extra || '') + '  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n';
+const manifest = (kind, extra) =>
+  'header:\n  kind: "archicode.morin.io/' +
+  kind +
+  '"\n' +
+  (extra || '') +
+  '  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n';
 
 test('the place-holder refusal of wave 013 is gone: kind plateau, in any case, and the plateau key of the header are read', async () => {
   const { sandbox } = await open({ files: {} });
   assert.equal(sandbox.parseManifestText(manifest('plateau')).error, null);
-  assert.equal(sandbox.parseManifestText(manifest('Plateau')).error, null, 'a kind is read in any case, as the command line reads it');
+  assert.equal(
+    sandbox.parseManifestText(manifest('Plateau')).error,
+    null,
+    'a kind is read in any case, as the command line reads it'
+  );
   assert.equal(sandbox.parseManifestText(manifest('system', '  plateau: later\n')).error, null);
-  assert.equal(sandbox.parseManifestText(manifest('system', '  plateau: [a]\n')).error, 'the value has the wrong shape (found an array) at `header.plateau`');
-  assert.equal(sandbox.parseManifestText(manifest('system', '  nothing: x\n')).error, 'unknown key `nothing` (known: kind, parent, plateau, version) at `header.nothing`');
+  assert.equal(
+    sandbox.parseManifestText(manifest('system', '  plateau: [a]\n')).error,
+    'the value has the wrong shape (found an array) at `header.plateau`'
+  );
+  assert.equal(
+    sandbox.parseManifestText(manifest('system', '  nothing: x\n')).error,
+    'unknown key `nothing` (known: kind, parent, plateau, version) at `header.nothing`'
+  );
 });
 
 test('the tree of the plateaus: the chain of a plateau, from baseline, and the order of the tree', async () => {
-  const plateau = (id, override) => 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (override ? '  override: "' + override + '"\n' : '');
+  const plateau = (id, override) =>
+    'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' +
+    id +
+    '"\n' +
+    (override ? '  override: "' + override + '"\n' : '');
   const { sandbox, state } = await open({
     files: {
       'manifests/marketplace.yaml': plateau('marketplace', 'inhouse'),
       'manifests/saas.yaml': plateau('saas'),
-      'manifests/inhouse.yaml': plateau('inhouse'),
-    },
+      'manifests/inhouse.yaml': plateau('inhouse')
+    }
   });
   const model = state.plateauTree;
   assert.deepEqual(Array.from(model.ids), ['baseline', 'inhouse', 'marketplace', 'saas']);
-  assert.deepEqual(Array.from(sandbox.plateauChain(model, 'marketplace').map((n) => n.id)), ['baseline', 'inhouse', 'marketplace']);
+  assert.deepEqual(Array.from(sandbox.plateauChain(model, 'marketplace').map((n) => n.id)), [
+    'baseline',
+    'inhouse',
+    'marketplace'
+  ]);
   assert.deepEqual(Array.from(sandbox.plateauChain(model, 'baseline').map((n) => n.id)), ['baseline']);
   assert.equal(model.nodes.get('baseline').parent, null);
   assert.equal(model.nodes.get('saas').parent, 'baseline');
@@ -106,8 +144,9 @@ test('the mistakes of the tree and the warnings are told on the page, nothing el
     files: {
       'manifests/shop.yaml': manifest('system'),
       'manifests/a.yaml': manifest('system', '  plateau: later\n').replace('"shop"', '"a"'),
-      'manifests/b.yaml': 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "b"\n  override: "nothing"\n',
-    },
+      'manifests/b.yaml':
+        'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "b"\n  override: "nothing"\n'
+    }
   });
   assert.equal(state.fatalError, null);
   const html = sandbox.renderPlateauTreeHtml();

@@ -220,9 +220,16 @@ public class KernelViewpointFactory implements ViewpointFactory {
 
         val map = viewpoint.equals(MAP);
         // the map has no focal element: every element of the layer is in play, `pinned`, `hidden` and `opened` say which
-        val focal = map ? "" : Objects.requireNonNull(view.getProperties()).path("element").asText("");
+        val focal = map
+            ? ""
+            : Optional.<JsonNode>ofNullable(view.getProperties())
+                  .map(p -> p.path("element").asText(""))
+                  .orElse("");
         if (!map && focal.isBlank()) {
-            throw new ArchiCodeException("the view %s has no element", view.getId());
+            throw new ArchiCodeException(
+                "the view %s has no element: write the reference of one in `properties.element`",
+                view.getId()
+            );
         }
 
         val mainIndex = workspace.resolveMainIndexForView(view);
@@ -276,7 +283,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
             ViewpointKernel.getInstance().compute(objectMapper.writeValueAsString(input))
         );
         if (output.has("error")) {
-            val message = output.get("error").asText();
+            val message = danglingSentence(workspace, output.get("error").asText());
             throw new ArchiCodeException("%s", map ? "the view " + view.getId() + ": " + message : message);
         }
         if (output.path("version").asInt() != ViewpointKernel.CONTRACT_VERSION) {
@@ -484,6 +491,23 @@ public class KernelViewpointFactory implements ViewpointFactory {
             new HashMap<>(Optional.ofNullable(candidate.getTags()).orElseGet(Map::of)).equals(tags)
         );
     }
+
+    /**
+     * The kernel can only say {@code dangling reference: x}. When an element of the graph holds {@code x} (a relationship
+     * destination, a {@code uses} entry, a hosted application) the author is told which one, in which file and at which key
+     * (issue #159); a reference that only a view names keeps the kernel's words.
+     */
+    private static String danglingSentence(Workspace workspace, String message) {
+        val named = DANGLING.matcher(message);
+        if (!named.matches()) {
+            return message;
+        }
+        return workspace.danglingSentence(named.group(1)).orElse(message);
+    }
+
+    private static final java.util.regex.Pattern DANGLING = java.util.regex.Pattern.compile(
+        "dangling (?:application )?reference: (.+)"
+    );
 
     /** Whether the element declares the relationship of the union (same destination, label, qualifiers and tags). */
     private static boolean declares(Element element, JsonNode rel) {

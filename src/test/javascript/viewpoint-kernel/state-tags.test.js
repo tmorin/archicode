@@ -16,16 +16,23 @@ const FIXTURE = path.resolve(__dirname, '../../resources/plateau-state-tags');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 function fakeLayout(graph) {
-  const place = (node, x) => Object.assign({}, node, {
-    x, y: 0, width: node.width || 400, height: node.height || 200,
-    children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
-  });
+  const place = (node, x) =>
+    Object.assign({}, node, {
+      x,
+      y: 0,
+      width: node.width || 400,
+      height: node.height || 200,
+      children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
+    });
   return Object.assign(place(graph, 0), {
-    width: 900, height: 600,
-    edges: graph.edges.map((edge) => Object.assign({}, edge, {
-      sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
-      labels: (edge.labels || []).map((label) => Object.assign({ x: 3, y: 3 }, label))
-    }))
+    width: 900,
+    height: 600,
+    edges: graph.edges.map((edge) =>
+      Object.assign({}, edge, {
+        sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
+        labels: (edge.labels || []).map((label) => Object.assign({ x: 3, y: 3 }, label))
+      })
+    )
   });
 }
 
@@ -62,18 +69,36 @@ function nodeOf(svg, id) {
   const at = svg.indexOf('data-id="' + id + '"');
   assert.ok(at > 0, id + ' is drawn');
   const start = svg.lastIndexOf('<g class="dg-node', at);
-  const ends = ['<g class="dg-node', '<g class="dg-links"', '<g class="dg-link"', '<g class="dg-fold"', '<text class="dg-label"', '</svg>'].map((m) => svg.indexOf(m, start + 10)).filter((i) => i > 0);
+  const ends = [
+    '<g class="dg-node',
+    '<g class="dg-links"',
+    '<g class="dg-link"',
+    '<g class="dg-fold"',
+    '<text class="dg-label"',
+    '</svg>'
+  ]
+    .map((m) => svg.indexOf(m, start + 10))
+    .filter((i) => i > 0);
   return svg.slice(start, Math.min(...ends));
 }
-const styleOf = (node) => { const m = /^<g [^>]*? style="([^"]*)"/.exec(node); return m ? m[1] : ''; };
-const varsOf = (node) => Object.fromEntries(styleOf(node).split(';').filter(Boolean).map((d) => [d.slice(0, d.indexOf(':')), d.slice(d.indexOf(':') + 1)]));
+const styleOf = (node) => {
+  const m = /^<g [^>]*? style="([^"]*)"/.exec(node);
+  return m ? m[1] : '';
+};
+const varsOf = (node) =>
+  Object.fromEntries(
+    styleOf(node)
+      .split(';')
+      .filter(Boolean)
+      .map((d) => [d.slice(0, d.indexOf(':')), d.slice(d.indexOf(':') + 1)])
+  );
 
 // What the outcome is, for both tools, on this case: the box that has the state computed has the default look of the state (the thick line of
 // `new`, a tint, a glyph) and the author's line colour over it; a box that carries the word without having the state has the author's line
 // colour and nothing of the default.
 const AUTHOR_LINE = '#7b3fa0';
 
-test('an unchanged element with a hand-written `new` keeps the author\'s own look, in a view where something else is new', async () => {
+test("an unchanged element with a hand-written `new` keeps the author's own look, in a view where something else is new", async () => {
   const { sandbox } = await open(true);
   const { result, svg } = await draw(sandbox);
   const item = (id) => result.items.find((i) => i.id === id);
@@ -86,13 +111,13 @@ test('an unchanged element with a hand-written `new` keeps the author\'s own loo
   // the box that has the state: the default look of `new`, the author's colour of the line over it
   const kiosk = varsOf(nodeOf(svg, 'office.kiosk'));
   assert.equal(kiosk['--st-width'], '3px', 'the thick line of the state');
-  assert.equal(kiosk['--st-stroke'], AUTHOR_LINE, 'the author\'s colour wins, property by property');
+  assert.equal(kiosk['--st-stroke'], AUTHOR_LINE, "the author's colour wins, property by property");
   assert.equal(kiosk['--st-tint'], 'var(--chg-new)');
   assert.match(nodeOf(svg, 'office.kiosk'), /dg-glyph/);
 
   // the unchanged box that carries the word: the author's style of `new` and nothing of the default
   const counter = varsOf(nodeOf(svg, 'office.counter'));
-  assert.equal(counter['--st-stroke'], AUTHOR_LINE, 'the author\'s own style');
+  assert.equal(counter['--st-stroke'], AUTHOR_LINE, "the author's own style");
   assert.ok(!('--st-width' in counter), 'no thick line');
   assert.ok(!('--st-tint' in counter), 'no tint');
   assert.doesNotMatch(nodeOf(svg, 'office.counter'), /dg-glyph|dg-tint/, 'no glyph of the state');
@@ -122,7 +147,7 @@ test('the same for `changed` on an unchanged element, and for `new` on an elemen
   assert.equal(varsOf(nodeOf(svg, 'office.window'))['--st-width'], '3px');
 });
 
-test('without a comparison the hand-written word has the author\'s style and nothing else, and the drawing is the one it always was', async () => {
+test("without a comparison the hand-written word has the author's style and nothing else, and the drawing is the one it always was", async () => {
   const { sandbox } = await open(false);
   const { svg } = await draw(sandbox);
   for (const id of ['office.counter', 'office.printer', 'office.window']) {

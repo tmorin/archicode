@@ -17,7 +17,14 @@ const { memFolder } = require('./mem-folder');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));
-const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&times;/g, '×').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+const text = (html) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&times;/g, '×')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
 const filesOf = (mem) => Object.fromEntries(Array.from(mem.files, ([p, f]) => [p, f.text]));
 
 async function open(files, plateau, against) {
@@ -36,7 +43,12 @@ async function open(files, plateau, against) {
 
 function click(sandbox, attributes) {
   const target = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
-  sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  sandbox.handleAppClick({
+    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    preventDefault() {},
+    stopPropagation() {},
+    detail: 1
+  });
 }
 
 /** The fields of the edit form of `reference`, as the page reads them, with `adding` typed in the field of Add replaces; the inline errors are collected. */
@@ -52,21 +64,41 @@ function formFields(sandbox, reference, adding) {
   const original = sandbox.document.getElementById;
   sandbox.document.getElementById = (id) => {
     if (fields[id]) return fields[id];
-    if (/error$/.test(id)) return { set textContent(v) { errors[id] = v; }, get textContent() { return errors[id]; } };
+    if (/error$/.test(id))
+      return {
+        set textContent(v) {
+          errors[id] = v;
+        },
+        get textContent() {
+          return errors[id];
+        }
+      };
     return original(id);
   };
   return { errors, fields };
 }
 
-const SYSTEM = (id, name, rest, plateau) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' + (plateau ? '  plateau: ' + plateau + '\n' : '') + 'content:\n  id: "' + id + '"\n  name: "' + name + '"\n' + (rest || '');
-const PLATEAU = (id, rest) => 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (rest || '');
+const SYSTEM = (id, name, rest, plateau) =>
+  'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' +
+  (plateau ? '  plateau: ' + plateau + '\n' : '') +
+  'content:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  name +
+  '"\n' +
+  (rest || '');
+const PLATEAU = (id, rest) =>
+  'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (rest || '');
 const WORKSPACE = 'settings:\n  manifests:\n    paths: ["manifests/**"]\n';
 
 // ---- (a) Add replaces ----
 
 // R07: p1 removes a (b replaces it there), p2 over p1 removes b and adds n; compared with baseline, p2 is two layers away
-const R07 = JSON.parse(fs.readFileSync(path.join(__dirname, 'compose-replaces-cases.json'), 'utf8')).cases.find((c) => c.id === 'R07').files;
-const SENTENCE = '“a” is not an element of “p1”, the plateau “p2” builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. ' +
+const R07 = JSON.parse(fs.readFileSync(path.join(__dirname, 'compose-replaces-cases.json'), 'utf8')).cases.find(
+  (c) => c.id === 'R07'
+).files;
+const SENTENCE =
+  '“a” is not an element of “p1”, the plateau “p2” builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. ' +
   'Compare “p2” with “p1”, or write the entry in the layer that still has “a” (a plateau that overrides one that holds it); nothing was written.';
 
 test('(a) Add replaces refuses a reference the layer cannot hold, with the sentence of Write replaces, and writes nothing', async () => {
@@ -121,27 +153,46 @@ const MERGE = {
   'manifests/base/b.yaml': SYSTEM('b', 'B', SAME),
   'manifests/base/k.yaml': SYSTEM('k', 'K'),
   'manifests/p1/plateau.yaml': PLATEAU('p1', '  patches:\n    - operator: REMOVE\n      target: "a"\n'),
-  'manifests/p2/plateau.yaml': PLATEAU('p2', '  override: "p1"\n  patches:\n    - operator: REMOVE\n      target: "b"\n'),
+  'manifests/p2/plateau.yaml': PLATEAU(
+    'p2',
+    '  override: "p1"\n  patches:\n    - operator: REMOVE\n      target: "b"\n'
+  ),
   'manifests/p2/n.yaml': SYSTEM('n', 'N', SAME, 'p2')
 };
-const MERGE_SENTENCE = '“n” would merge “a” and “b”, which is written one pair at a time, so every pair is checked before the first is written: ' +
+const MERGE_SENTENCE =
+  '“n” would merge “a” and “b”, which is written one pair at a time, so every pair is checked before the first is written: ' +
   '“a” is not an element of “p1”, the plateau “p2” builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. ' +
   'Compare “p2” with “p1”, or write the entry in the layer that still has “a” (a plateau that overrides one that holds it). If a pair is no part of the merge, set it aside with “Not related”; nothing was written.';
 
 test('(b) a merge one of whose pairs the layer cannot hold is refused as a whole: both buttons are off, and the pair the layer could hold is not written', async () => {
   const { sandbox, state, mem } = await open(MERGE, 'p2', 'baseline');
   const view = sandbox.comparisonState();
-  assert.deepEqual(plain(view.candidates).map((c) => [c.from, c.to]), [['a', 'n'], ['b', 'n']], 'the kernel proposes a merge');
+  assert.deepEqual(
+    plain(view.candidates).map((c) => [c.from, c.to]),
+    [
+      ['a', 'n'],
+      ['b', 'n']
+    ],
+    'the kernel proposes a merge'
+  );
   assert.notEqual(sandbox.replacesLayerProblem('application', 'a', view), null);
   assert.equal(sandbox.replacesLayerProblem('application', 'b', view), null, 'b alone could be written: p1 has it');
   const panel = sandbox.renderChangesPanelHtml(view);
-  const buttons = Array.from(panel.matchAll(/<button type="button" data-action="accept-candidate"[^>]*>/g)).map((m) => m[0]);
+  const buttons = Array.from(panel.matchAll(/<button type="button" data-action="accept-candidate"[^>]*>/g)).map(
+    (m) => m[0]
+  );
   assert.equal(buttons.length, 2);
   for (const button of buttons) assert.match(button, / disabled title="/);
-  assert.ok(buttons[0].includes('title="“a” is not an element of “p1”'), 'the pair whose own from is refused keeps its own sentence (#130)');
+  assert.ok(
+    buttons[0].includes('title="“a” is not an element of “p1”'),
+    'the pair whose own from is refused keeps its own sentence (#130)'
+  );
   assert.ok(text(panel).includes(MERGE_SENTENCE), 'the other pair says why the merge is refused');
   const before = filesOf(mem);
-  assert.deepEqual(plain(sandbox.acceptCandidate({ layer: 'application', from: 'b', to: 'n' })), { ok: false, message: MERGE_SENTENCE });
+  assert.deepEqual(plain(sandbox.acceptCandidate({ layer: 'application', from: 'b', to: 'n' })), {
+    ok: false,
+    message: MERGE_SENTENCE
+  });
   assert.deepEqual(plain(state.index.application.get('n').replaces), [], 'no half-written merge');
   assert.equal(state.dirtyReferences.size, 0);
   assert.deepEqual(plain(state.manifestFiles.filter((f) => f.dirty)), []);
@@ -161,12 +212,21 @@ test('(b) a merge whose every pair the layer holds is written as before, one pai
   const files = Object.assign({}, MERGE, {
     'manifests/base/c.yaml': SYSTEM('c', 'C', SAME),
     'manifests/p1/plateau.yaml': PLATEAU('p1'),
-    'manifests/p2/plateau.yaml': PLATEAU('p2', '  override: "p1"\n  patches:\n    - operator: REMOVE\n      target: "a"\n    - operator: REMOVE\n      target: "c"\n')
+    'manifests/p2/plateau.yaml': PLATEAU(
+      'p2',
+      '  override: "p1"\n  patches:\n    - operator: REMOVE\n      target: "a"\n    - operator: REMOVE\n      target: "c"\n'
+    )
   });
   delete files['manifests/base/b.yaml'];
   const { sandbox, state } = await open(files, 'p2', 'baseline');
   const view = sandbox.comparisonState();
-  assert.deepEqual(plain(view.candidates).map((c) => [c.from, c.to]), [['a', 'n'], ['c', 'n']]);
+  assert.deepEqual(
+    plain(view.candidates).map((c) => [c.from, c.to]),
+    [
+      ['a', 'n'],
+      ['c', 'n']
+    ]
+  );
   assert.doesNotMatch(sandbox.renderChangesPanelHtml(view), / disabled/);
   assert.deepEqual(plain(sandbox.acceptCandidate({ layer: 'application', from: 'a', to: 'n' })), { ok: true });
   assert.deepEqual(plain(state.index.application.get('n').replaces), ['a']);
@@ -183,10 +243,20 @@ function walk(dir, base, out) {
   }
   return out;
 }
-const BRIGHTCART = Object.fromEntries(Object.entries(walk(LAYERED, LAYERED, {})).filter(([file]) => !file.startsWith('shared/')));
-const ELEMENT = (kind, plateau, body) => 'header:\n  kind: "archicode.morin.io/' + kind + '"\n  version: "1"\n' + (plateau ? '  plateau: ' + plateau + '\n' : '') + 'content:\n' + body;
-const STORY = (id, steps) => 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  steps:\n' + steps;
-const VIEW = (id, body) => 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + body;
+const BRIGHTCART = Object.fromEntries(
+  Object.entries(walk(LAYERED, LAYERED, {})).filter(([file]) => !file.startsWith('shared/'))
+);
+const ELEMENT = (kind, plateau, body) =>
+  'header:\n  kind: "archicode.morin.io/' +
+  kind +
+  '"\n  version: "1"\n' +
+  (plateau ? '  plateau: ' + plateau + '\n' : '') +
+  'content:\n' +
+  body;
+const STORY = (id, steps) =>
+  'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  steps:\n' + steps;
+const VIEW = (id, body) =>
+  'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + body;
 // `pilot` stands between inhouse and marketplace and declares `loyalty` and the environment `lab`; `twin`, beside it, declares a `loyalty` of its own, so the name exists in a
 // plateau once pilot is gone and the plateau-free check says nothing of it: only what marketplace loses is told
 const PILOT = Object.assign({}, BRIGHTCART, {
@@ -198,8 +268,14 @@ const PILOT = Object.assign({}, BRIGHTCART, {
   'twin/technology/lab.yaml': ELEMENT('environment', 'twin', '  id: "lab"\n'),
   'marketplace/plateau.yaml': BRIGHTCART['marketplace/plateau.yaml'].replace('override: "inhouse"', 'override: "pilot"')
 });
-const parents = (state) => Object.fromEntries(Array.from(state.plateauTree.nodes.values()).map((n) => [n.id, n.parent]));
-const snapshot = (state) => ({ files: state.manifestFiles.map((mf) => [mf.relPath, mf.rawText, mf.dirty]), removals: plain(state.pendingFileRemovals), parents: parents(state), topLevel: plain(state.workspace.topLevel) });
+const parents = (state) =>
+  Object.fromEntries(Array.from(state.plateauTree.nodes.values()).map((n) => [n.id, n.parent]));
+const snapshot = (state) => ({
+  files: state.manifestFiles.map((mf) => [mf.relPath, mf.rawText, mf.dirty]),
+  removals: plain(state.pendingFileRemovals),
+  parents: parents(state),
+  topLevel: plain(state.workspace.topLevel)
+});
 
 /** Asserts that the delete of `id` is refused with `blocking`, in the dialog and by the writer, and that nothing changes. */
 async function refused(files, id, blocking) {
@@ -214,7 +290,12 @@ async function refused(files, id, blocking) {
   assert.match(text(html), /It cannot be deleted yet: once these files are gone/);
   assert.doesNotMatch(html, /Delete plateau<\/button>/);
   sandbox.closeAppDialog();
-  assert.throws(() => sandbox.commitPlateauDelete(id, { listed: true }), (e) => e.message.startsWith('The plateau `' + id + '` cannot be deleted: ') && e.message.includes(blocking[0].replace(/\.$/, '')));
+  assert.throws(
+    () => sandbox.commitPlateauDelete(id, { listed: true }),
+    (e) =>
+      e.message.startsWith('The plateau `' + id + '` cannot be deleted: ') &&
+      e.message.includes(blocking[0].replace(/\.$/, ''))
+  );
   assert.deepEqual(snapshot(state), before);
   await sandbox.saveAllChanges();
   assert.deepEqual(plain(mem.writes), [], 'nothing on disk');
@@ -224,12 +305,14 @@ async function refused(files, id, blocking) {
 
 test('(c) a step compared with a plateau above refuses the delete when neither it nor the plateau it is told at keeps what it draws; one that keeps a pin there, is told at a plateau that keeps it, or compares with a plateau beside, does not', async () => {
   const files = Object.assign({}, PILOT, {
-    'stories/story.tour.yaml': STORY('tour',
+    'stories/story.tour.yaml': STORY(
+      'tour',
       '    - viewpoint: overview\n      properties:\n        element: loyalty\n      against: marketplace\n' + // told at the plateau drawn
-      '    - viewpoint: overview\n      properties:\n        element: loyalty\n      at: twin\n      against: marketplace\n' + // twin keeps loyalty: the comparison is drawn from it, so the step still draws
-      '    - viewpoint: map\n      properties:\n        pinned: [loyalty, customer]\n      against: marketplace\n' + // customer stays: the map is drawn
-      '    - viewpoint: overview\n      properties:\n        element: loyalty\n      against: saas\n' + // saas does not stand on pilot
-      '    - viewpoint: map\n      layer: technology\n      properties:\n        pinned: [lab]\n      at: saas\n      against: marketplace\n')
+        '    - viewpoint: overview\n      properties:\n        element: loyalty\n      at: twin\n      against: marketplace\n' + // twin keeps loyalty: the comparison is drawn from it, so the step still draws
+        '    - viewpoint: map\n      properties:\n        pinned: [loyalty, customer]\n      against: marketplace\n' + // customer stays: the map is drawn
+        '    - viewpoint: overview\n      properties:\n        element: loyalty\n      against: saas\n' + // saas does not stand on pilot
+        '    - viewpoint: map\n      layer: technology\n      properties:\n        pinned: [lab]\n      at: saas\n      against: marketplace\n'
+    )
   });
   await refused(files, 'pilot', [
     'the story `tour` (`stories/story.tour.yaml`) step 1 is compared with `marketplace`, which would no longer have `loyalty`',
@@ -240,7 +323,10 @@ test('(c) a step compared with a plateau above refuses the delete when neither i
 test('(c) a step told at a plateau above and compared with another one above says both, the `at` first, as run 0132 said the `at`', async () => {
   const files = Object.assign({}, PILOT, {
     'beta/plateau.yaml': PLATEAU('beta', '  override: "pilot"\n'),
-    'stories/story.tour.yaml': STORY('tour', '    - viewpoint: overview\n      properties:\n        element: loyalty\n      at: beta\n      against: marketplace\n')
+    'stories/story.tour.yaml': STORY(
+      'tour',
+      '    - viewpoint: overview\n      properties:\n        element: loyalty\n      at: beta\n      against: marketplace\n'
+    )
   });
   await refused(files, 'pilot', [
     'the story `tour` (`stories/story.tour.yaml`) step 1 is told at `beta`, which would no longer have `loyalty`',
@@ -251,16 +337,29 @@ test('(c) a step told at a plateau above and compared with another one above say
 test('(c) a saved view drawn in the plateaus above that would lose what it draws refuses the delete, one sentence naming them; a view that keeps it does not', async () => {
   const files = Object.assign({}, PILOT, {
     'beta/plateau.yaml': PLATEAU('beta', '  override: "pilot"\n'),
-    'entries/view.loyalty.yaml': VIEW('loyalty_overview', '  viewpoint: overview\n  properties:\n    element: loyalty\n'),
-    'entries/view.lab.yaml': VIEW('lab_map', '  viewpoint: map\n  layer: technology\n  properties:\n    pinned: [lab]\n'),
+    'entries/view.loyalty.yaml': VIEW(
+      'loyalty_overview',
+      '  viewpoint: overview\n  properties:\n    element: loyalty\n'
+    ),
+    'entries/view.lab.yaml': VIEW(
+      'lab_map',
+      '  viewpoint: map\n  layer: technology\n  properties:\n    pinned: [lab]\n'
+    ),
     'entries/view.kept.yaml': VIEW('kept_map', '  viewpoint: map\n  properties:\n    pinned: [loyalty, customer]\n'),
-    'entries/view.customer.yaml': VIEW('customer_overview', '  viewpoint: overview\n  properties:\n    element: customer\n')
+    'entries/view.customer.yaml': VIEW(
+      'customer_overview',
+      '  viewpoint: overview\n  properties:\n    element: customer\n'
+    )
   });
   const { sandbox } = await refused(files, 'pilot', [
     'the view `lab_map` (`entries/view.lab.yaml`) is drawn in `beta`, `marketplace`, which would no longer have `lab`',
     'the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `marketplace`, which would no longer have `loyalty`'
   ]);
-  assert.match(sandbox.plateauDeletion('pilot').blocking.join('\n'), /^(?![\s\S]*kept_map)(?![\s\S]*customer_overview)/, 'a map that keeps a pin, and a view of an element that stays, are not told');
+  assert.match(
+    sandbox.plateauDeletion('pilot').blocking.join('\n'),
+    /^(?![\s\S]*kept_map)(?![\s\S]*customer_overview)/,
+    'a map that keeps a pin, and a view of an element that stays, are not told'
+  );
 });
 
 test('(c) a view or a step of an element only the deleted plateau declares is told by the plateau-free check too, as the step told at a plateau above already was', async () => {
@@ -276,8 +375,14 @@ test('(c) a view or a step of an element only the deleted plateau declares is to
 
 test('(c) a leaf has no plateau above it: a view or a step of what it declares is told by the plateau-free check alone, as before', async () => {
   const files = Object.assign({}, PILOT, {
-    'entries/view.loyalty.yaml': VIEW('loyalty_overview', '  viewpoint: overview\n  properties:\n    element: loyalty\n'),
-    'stories/story.tour.yaml': STORY('tour', '    - viewpoint: overview\n      properties:\n        element: loyalty\n      against: twin\n')
+    'entries/view.loyalty.yaml': VIEW(
+      'loyalty_overview',
+      '  viewpoint: overview\n  properties:\n    element: loyalty\n'
+    ),
+    'stories/story.tour.yaml': STORY(
+      'tour',
+      '    - viewpoint: overview\n      properties:\n        element: loyalty\n      against: twin\n'
+    )
   });
   const { sandbox } = await open(files);
   assert.deepEqual(plain(sandbox.plateauDeletion('twin').blocking), [

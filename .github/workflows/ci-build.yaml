@@ -62,10 +62,23 @@ jobs:
         uses: "actions/setup-node@v4"
         with:
           node-version: "22"
+          cache: "npm"
+      - name: "Install the Node.js dependencies"
+        # package-lock.json is committed: the same Prettier on every run
+        run: npm ci
+      - name: "Check the format"
+        # Prettier of .prettierrc.yaml; run `npm run format` to fix
+        run: npm run format:check
       - name: "Test the viewpoint kernel"
         run: |
           (cd src/main/rust/viewpoint-kernel && cargo test)
-          node --test "src/test/javascript/**/*.test.js"
+          npm run test:unit
+      - name: "Check the format of the viewpoint kernel"
+        # rustfmt of rust-toolchain.toml; run `cargo fmt` in src/main/rust/viewpoint-kernel to fix
+        run: (cd src/main/rust/viewpoint-kernel && cargo fmt --check)
+      - name: "Lint the viewpoint kernel"
+        # every clippy finding is fixed; a lint that would change what the kernel computes is allowed on its item with the reason
+        run: (cd src/main/rust/viewpoint-kernel && cargo clippy --all-targets -- -D warnings)
       - name: "Check the committed WebAssembly is the one the Rust builds"
         # the same build as embed.sh, into a scratch directory, with the compiler of rust-toolchain.toml: a change to the
         # Rust whose .wasm was not re-embedded (in src/main/wasm and in standalone.html) fails

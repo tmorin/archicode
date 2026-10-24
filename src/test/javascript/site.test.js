@@ -27,7 +27,7 @@ function open(hash) {
   const document = {
     documentElement: {},
     getElementById: (id) => (ids.has(id) ? {} : null),
-    addEventListener: (name, listener) => loaded.push(listener),
+    addEventListener: (name, listener) => loaded.push(listener)
   };
   vm.runInNewContext(script, { document, location: { hash, replace: (url) => sent.push(url) } });
   loaded.forEach((listener) => listener());
@@ -73,8 +73,8 @@ test('the footer shows the version that the release stamps into the page, and no
       document: {
         querySelector: () => ({ getAttribute: () => version }),
         getElementById: () => footer,
-        querySelectorAll: () => [],
-      },
+        querySelectorAll: () => []
+      }
     });
     return footer.textContent;
   };

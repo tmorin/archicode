@@ -1,5 +1,6 @@
 package io.morin.archicode.cli;
 
+import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.Element;
@@ -82,8 +83,8 @@ public class GetGraphQuery implements Runnable {
         val elements = new ArrayList<ElementEntry>();
         val relationships = new ArrayList<RelationshipEntry>();
 
-        collect(workspace.appIndex, View.Layer.APPLICATION, elements, relationships);
-        collect(workspace.techIndex, View.Layer.TECHNOLOGY, elements, relationships);
+        collect(workspace, workspace.appIndex, View.Layer.APPLICATION, elements, relationships);
+        collect(workspace, workspace.techIndex, View.Layer.TECHNOLOGY, elements, relationships);
 
         return Graph.builder().elements(elements).relationships(relationships).build();
     }
@@ -98,12 +99,14 @@ public class GetGraphQuery implements Runnable {
      * their references, layer by layer (application, then technology), and the relationships follow their source: by
      * source, then, for one source, as the author wrote them.
      *
+     * @param workspace     the workspace the index belongs to
      * @param index         the index to walk
      * @param layer         the layer the index belongs to
      * @param elements      the collected element entries, appended in place
      * @param relationships the collected relationship entries, appended in place
      */
     private void collect(
+        @NonNull Workspace workspace,
         @NonNull ElementIndex index,
         @NonNull View.Layer layer,
         @NonNull List<ElementEntry> elements,
@@ -115,8 +118,15 @@ public class GetGraphQuery implements Runnable {
 
             for (Relationship relationship : Optional.ofNullable(element.getRelationships()).orElseGet(Set::of)) {
                 // Force resolution the same way MetaLinkFinderForEgress/MetaLinkFinderForIngress already do:
-                // this throws ArchiCodeException, uncaught, if the destination is dangling.
-                index.getElementByReference(relationship.getDestination());
+                // this throws ArchiCodeException, uncaught, if the destination is dangling: it names the element, the file and the key.
+                if (index.searchElement(relationship.getDestination()).isEmpty()) {
+                    throw new ArchiCodeException(
+                        "%s",
+                        workspace
+                            .danglingSentence(relationship.getDestination())
+                            .orElseGet(() -> "unable to find the element " + relationship.getDestination())
+                    );
+                }
                 relationships.add(
                     RelationshipEntry.builder().source(reference).layer(layer).relationship(relationship).build()
                 );

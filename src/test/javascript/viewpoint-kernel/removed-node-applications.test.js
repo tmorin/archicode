@@ -14,7 +14,11 @@ const { createApp, makeDirHandle } = require('./harness');
 
 const LAYERED = path.resolve(__dirname, '../../resources/brightcart/layered');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const text = (html) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 async function inhouseAgainstBaseline() {
   const sandbox = createApp();
@@ -33,21 +37,36 @@ async function inhouseAgainstBaseline() {
 /** The panel of a node, as the Changes panel opens it: a click on its row (removed) or the page's own selection (changed). */
 function removedPanel(sandbox, reference) {
   run(sandbox, "currentPerspective = 'map';");
-  const target = { getAttribute: (name) => ({ 'data-action': 'select-removed', 'data-ref': reference, 'data-layer': 'technology' })[name] || null, closest: () => null };
-  sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  const target = {
+    getAttribute: (name) =>
+      ({ 'data-action': 'select-removed', 'data-ref': reference, 'data-layer': 'technology' })[name] || null,
+    closest: () => null
+  };
+  sandbox.handleAppClick({
+    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    preventDefault() {},
+    stopPropagation() {},
+    detail: 1
+  });
   return sandbox.renderMapPerspectiveHtml().right;
 }
 
 /** The "Applications deployed" block of a panel: its label and the lines it has. */
 function applicationsBlock(panel) {
-  const block = panel.match(/<div class="change-diff" data-property="applications">[\s\S]*?(?=<div class="change-diff"|<h5|<\/section>)/);
+  const block = panel.match(
+    /<div class="change-diff" data-property="applications">[\s\S]*?(?=<div class="change-diff"|<h5|<\/section>)/
+  );
   assert.ok(block, 'the panel has an Applications deployed block');
   return block[0];
 }
 
 test('the panel of the removed Cache VM lists the applications it deployed in the baseline, under the label of the changed node, Before only', async () => {
   const { sandbox, state } = await inhouseAgainstBaseline();
-  assert.deepEqual(JSON.parse(JSON.stringify(state.baseline.index.technology.get('prod.dc.cache-vm').applications)), ['shop.cache'], 'the baseline file says the node deployed shop.cache');
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(state.baseline.index.technology.get('prod.dc.cache-vm').applications)),
+    ['shop.cache'],
+    'the baseline file says the node deployed shop.cache'
+  );
   const panel = removedPanel(sandbox, 'prod.dc.cache-vm');
   assert.match(panel, /inspection-removed" data-inspection-ref="prod\.dc\.cache-vm"/);
   const block = applicationsBlock(panel);
@@ -67,7 +86,9 @@ test('the changed node staging.vm keeps its Before and After, under the same lab
 
 test('every removed node that deployed something in the baseline lists it, and a removed element with nothing to list shows no empty block', async () => {
   const { sandbox, state } = await inhouseAgainstBaseline();
-  const removed = Array.from(sandbox.comparisonState().records.values()).filter((r) => r.layer === 'technology' && r.change === 'removed');
+  const removed = Array.from(sandbox.comparisonState().records.values()).filter(
+    (r) => r.layer === 'technology' && r.change === 'removed'
+  );
   assert.ok(removed.length > 0, 'the comparison removes at least one technology element');
   let listed = 0;
   for (const record of removed) {
@@ -76,7 +97,8 @@ test('every removed node that deployed something in the baseline lists it, and a
     if (applications.length) {
       listed++;
       const block = text(applicationsBlock(panel));
-      for (const application of applications) assert.ok(block.includes(application), record.reference + ' lists ' + application);
+      for (const application of applications)
+        assert.ok(block.includes(application), record.reference + ' lists ' + application);
     } else {
       assert.doesNotMatch(panel, /data-property="applications"/, record.reference + ' deployed nothing: no block');
     }

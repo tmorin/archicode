@@ -94,18 +94,19 @@ public class LayerLoader {
         // one mapper for the load (built by the first layer that has patches), not one for each of them
         ObjectMapper json = null;
         Indexes drawn = null;
+        val files = new Files();
         for (val node : chain) {
             log.info("load the plateau {}", node.id());
             val own = parsed.ofPlateau(node.id());
-            var indexes = index(resources, own.elements());
+            var indexes = index(resources, own.elements(), files);
             // before the patches: a patch may remove a parent, and the elements declared under it go with it
             tell(parentProblems(node.id(), indexes, own.elements()));
             if (!node.patches().isEmpty()) {
                 json = json == null ? patchMapper() : json;
                 resources = applyPatches(json, node, resources, removals);
-                indexes = index(resources, Map.of());
+                indexes = index(resources, Map.of(), files);
             }
-            tell(problems(node.id(), indexes));
+            tell(problems(node.id(), indexes, files));
             drawn = indexes;
             steps.add(new PlateauStep(node.id(), indexes.application(), indexes.technology()));
         }
@@ -130,9 +131,22 @@ public class LayerLoader {
         }
     }
 
+    /** The file that declares each element of the chain so far, by reference, in each layer (the patches rebuild the graph and lose it). */
+    private record Files(Map<String, String> application, Map<String, String> technology) {
+        Files() {
+            this(new java.util.HashMap<>(), new java.util.HashMap<>());
+        }
+    }
+
     /** Index the graph, adding the elements the manifests of a layer declare to it (the model is changed by this). */
-    private static Indexes index(Workspace resources, Map<Class<?>, Set<ManifestParser.Candidate>> candidates) {
+    private static Indexes index(
+        Workspace resources,
+        Map<Class<?>, Set<ManifestParser.Candidate>> candidates,
+        Files files
+    ) {
         val layers = ElementIndexFactory.indexLayers(resources, candidates, true);
+        files.application.putAll(layers.application().sourceByReference);
+        files.technology.putAll(layers.technology().sourceByReference);
         return new Indexes(layers.application(), layers.technology());
     }
 
@@ -355,88 +369,15 @@ public class LayerLoader {
         );
     }
 
-    /** A reference that leads nowhere: who has it, what it points at, and the sentence. */
-    private record Problem(String element, String other, String sentence) {}
-
-    /** What the graph points at that is not there, by element and then by what it points at. */
-    private static List<String> problems(String plateau, Indexes indexes) {
-        val problems = new ArrayList<Problem>();
-        val in = "in the plateau `" + plateau + "`, ";
-        for (val index : List.of(indexes.application(), indexes.technology())) {
-            new TreeMap<>(index.elementByReferenceIndex).forEach((reference, element) -> {
-                for (val relationship : sorted(element.getRelationships(), r -> r.getDestination())) {
-                    if (index.searchElement(relationship.getDestination()).isEmpty()) {
-                        problems.add(
-                            new Problem(
-                                reference,
-                                relationship.getDestination(),
-                                in +
-                                    "`" +
-                                    reference +
-                                    "` has a relationship towards `" +
-                                    relationship.getDestination() +
-                                    "`, which does not exist"
-                            )
-                        );
-                    }
-                }
-                if (element instanceof Environment environment && environment.getUses() != null) {
-                    for (val used : new TreeSet<>(environment.getUses())) {
-                        if (index.searchElement(used).isEmpty()) {
-                            problems.add(
-                                new Problem(
-                                    reference,
-                                    used,
-                                    in + "`" + reference + "` uses `" + used + "`, which does not exist"
-                                )
-                            );
-                        }
-                    }
-                }
-                if (element instanceof Node node && node.getApplications() != null) {
-                    for (val application : new TreeSet<>(node.getApplications())) {
-                        if (indexes.application().searchElement(application).isEmpty()) {
-                            problems.add(
-                                new Problem(
-                                    reference,
-                                    application,
-                                    in + "`" + reference + "` hosts `" + application + "`, which does not exist"
-                                )
-                            );
-                        }
-                    }
-                }
-            });
-        }
-        // one sentence for each thing that is missing: the elements that point at it are one cause (the editor says the same:
-        // `layerProblemsOf` in `standalone.html`)
-        val byMissing = new LinkedHashMap<String, List<Problem>>();
-        problems
-            .stream()
-            .sorted(
-                Comparator.comparing(Problem::element).thenComparing(Problem::other).thenComparing(Problem::sentence)
-            )
-            .forEach(problem -> byMissing.computeIfAbsent(problem.other(), k -> new ArrayList<>()).add(problem));
-        return byMissing
-            .values()
-            .stream()
-            .map(group -> {
-                val others = group.stream().map(Problem::element).distinct().count() - 1;
-                val first = group.get(0).sentence();
-                return others == 0
-                    ? first
-                    : first +
-                          " (" +
-                          others +
-                          (others == 1
-                              ? " more element of the plateau points at it)"
-                              : " more elements of the plateau point at it)");
-            })
-            .toList();
-    }
-
-    private static <T> List<T> sorted(Set<T> set, java.util.function.Function<T, String> key) {
-        return set == null ? List.of() : set.stream().sorted(Comparator.comparing(key)).toList();
+    /**
+     * What the graph points at that is not there, one sentence for each thing that is missing (see {@link DanglingReferences}).
+     * The files are those that declared the elements of the chain so far.
+     */
+    private static List<String> problems(String plateau, Indexes indexes, Files files) {
+        return DanglingReferences.sentences(
+            DanglingReferences.find(indexes.application(), indexes.technology(), files.application, files.technology),
+            plateau
+        );
     }
 
     /**

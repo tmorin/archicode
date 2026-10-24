@@ -36,7 +36,9 @@ async function openLayered() {
 }
 
 async function openFiles(files, settings) {
-  const mem = memFolder(Object.assign({ '.archicode.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
+  const mem = memFolder(
+    Object.assign({ '.archicode.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files)
+  );
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -52,7 +54,11 @@ function countsOf(comparison) {
   return {
     elements: { new: e.new, changed: e.changed, removed: e.removed },
     replacing: { moved: e.moved || 0, split: e.split || 0, merged: e.merged || 0 },
-    relationships: { new: comparison.counts.relationships.new, changed: comparison.counts.relationships.changed, removed: comparison.counts.relationships.removed }
+    relationships: {
+      new: comparison.counts.relationships.new,
+      changed: comparison.counts.relationships.changed,
+      removed: comparison.counts.relationships.removed
+    }
   };
 }
 
@@ -72,21 +78,53 @@ test('a horizon reads as a date when it is a year, a month, a day, a quarter or 
   assert.equal(date('2026-Q4'), 20261001);
   assert.equal(date('2026Q1'), 20260101);
   assert.equal(date('2027-H2'), 20270701);
-  for (const none of ['soon', 'Q4 2026', '2026-13', '2026-02-30', '', null, undefined, '2026-Q5']) assert.equal(date(none), null, String(none));
+  for (const none of ['soon', 'Q4 2026', '2026-13', '2026-02-30', '', null, undefined, '2026-Q5'])
+    assert.equal(date(none), null, String(none));
 });
 
 test('siblings are placed by horizon when it reads as a date, and by id otherwise: the dated first, a total order', async () => {
   const { sandbox } = await openFiles({});
-  const order = (nodes) => nodes.slice().sort(sandbox.compareBandSiblings).map((n) => n.id);
-  assert.deepEqual(order([{ id: 'c', horizon: '2027' }, { id: 'a', horizon: '2028-Q1' }, { id: 'b', horizon: '2026-H2' }]), ['b', 'c', 'a'], 'by date, not by id');
-  assert.deepEqual(order([{ id: 'b', horizon: '2026-Q4' }, { id: 'a', horizon: '2026-Q4' }]), ['a', 'b'], 'the same date: by id');
-  assert.deepEqual(order([{ id: 'a', horizon: 'someday' }, { id: 'z', horizon: '2030' }, { id: 'b', horizon: null }]), ['z', 'a', 'b'], 'what reads as no date comes after, by id');
+  const order = (nodes) =>
+    nodes
+      .slice()
+      .sort(sandbox.compareBandSiblings)
+      .map((n) => n.id);
+  assert.deepEqual(
+    order([
+      { id: 'c', horizon: '2027' },
+      { id: 'a', horizon: '2028-Q1' },
+      { id: 'b', horizon: '2026-H2' }
+    ]),
+    ['b', 'c', 'a'],
+    'by date, not by id'
+  );
+  assert.deepEqual(
+    order([
+      { id: 'b', horizon: '2026-Q4' },
+      { id: 'a', horizon: '2026-Q4' }
+    ]),
+    ['a', 'b'],
+    'the same date: by id'
+  );
+  assert.deepEqual(
+    order([
+      { id: 'a', horizon: 'someday' },
+      { id: 'z', horizon: '2030' },
+      { id: 'b', horizon: null }
+    ]),
+    ['z', 'a', 'b'],
+    'what reads as no date comes after, by id'
+  );
   assert.deepEqual(order([{ id: 'b' }, { id: 'a' }, { id: 'c', horizon: '' }]), ['a', 'b', 'c']);
 });
 
 test('the band of the layered Brightcart is the tree of the four plateaus, the siblings in the order of the rule', async () => {
   const { sandbox, state } = await openLayered();
-  assert.deepEqual(Array.from(sandbox.bandOrderOf(state.plateauTree)), ['baseline', 'inhouse', 'marketplace', 'saas'], 'inhouse and saas share a horizon: by id');
+  assert.deepEqual(
+    Array.from(sandbox.bandOrderOf(state.plateauTree)),
+    ['baseline', 'inhouse', 'marketplace', 'saas'],
+    'inhouse and saas share a horizon: by id'
+  );
   const root = sandbox.bandTreeOf(state.plateauTree);
   assert.equal(root.id, 'baseline');
   assert.deepEqual(plain(root.children.map((c) => c.id)), ['inhouse', 'saas']);
@@ -94,28 +132,55 @@ test('the band of the layered Brightcart is the tree of the four plateaus, the s
 });
 
 test('a horizon decides the order of the siblings in the page', async () => {
-  const plateau = (id, horizon) => 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  horizon: "' + horizon + '"\n';
+  const plateau = (id, horizon) =>
+    'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' +
+    id +
+    '"\n  horizon: "' +
+    horizon +
+    '"\n';
   const { sandbox, state } = await openFiles({
     'plateaus/a.yaml': plateau('alpha', '2028'),
     'plateaus/b.yaml': plateau('beta', '2026-Q2'),
     'plateaus/c.yaml': plateau('gamma', '2027-10')
   });
   assert.deepEqual(Array.from(sandbox.bandOrderOf(state.plateauTree)), ['baseline', 'beta', 'gamma', 'alpha']);
-  assert.deepEqual(plain(bandOf(sandbox).plateaus.map((o) => o.value)), ['baseline', 'beta', 'gamma', 'alpha'], 'the list of the band is in that order');
+  assert.deepEqual(
+    plain(bandOf(sandbox).plateaus.map((o) => o.value)),
+    ['baseline', 'beta', 'gamma', 'alpha'],
+    'the list of the band is in that order'
+  );
 });
 
 // ---- the band ----
 
 test('a workspace with no plateau has the band, with baseline alone, drawn, and nothing to compare', async () => {
-  const { sandbox, state } = await openFiles({ 'manifests/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n' });
+  const { sandbox, state } = await openFiles({
+    'manifests/app.shop.yaml':
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n'
+  });
   assert.deepEqual(plain(state.layers), { current: 'baseline', compare: null, blocked: null });
   const html = sandbox.renderPlateauBandHtml();
   assert.match(html, /<nav class="plateau-band col-span-3" id="plateau-band" aria-label="Plateaus">/);
   const band = bandOf(sandbox);
-  assert.deepEqual(plain(band.plateaus.map((o) => [o.value, o.selected])), [['baseline', true]], 'baseline alone, drawn');
-  assert.deepEqual(plain(band.compare.map((o) => [o.value, o.selected, o.disabled])), [['', true, false], ['plateau:baseline', false, true]], 'nothing to compare baseline with: no past, and the only plateau, the one drawn, is greyed');
+  assert.deepEqual(
+    plain(band.plateaus.map((o) => [o.value, o.selected])),
+    [['baseline', true]],
+    'baseline alone, drawn'
+  );
+  assert.deepEqual(
+    plain(band.compare.map((o) => [o.value, o.selected, o.disabled])),
+    [
+      ['', true, false],
+      ['plateau:baseline', false, true]
+    ],
+    'nothing to compare baseline with: no past, and the only plateau, the one drawn, is greyed'
+  );
   assert.equal(band.mistakes, null);
-  assert.match(sandbox.renderShellHtml(), /grid-rows-\[auto_auto_auto_minmax\(0,1fr\)\]/, 'the shell has a row for it, and one for the pages below Timeline');
+  assert.match(
+    sandbox.renderShellHtml(),
+    /grid-rows-\[auto_auto_auto_minmax\(0,1fr\)\]/,
+    'the shell has a row for it, and one for the pages below Timeline'
+  );
   // a click on it changes nothing
   const before = state.index;
   sandbox.drawPlateau('baseline');
@@ -128,16 +193,42 @@ test('a workspace with no plateau has the band, with baseline alone, drawn, and 
 test('the band of the layered Brightcart lists the four plateaus in the order of the tree, baseline drawn, and shows the same tree to compare with, the plateau drawn greyed in it', async () => {
   const { sandbox, state } = await openLayered();
   const band = bandOf(sandbox);
-  assert.deepEqual(plain(band.plateaus.map((o) => o.value)), ['baseline', 'inhouse', 'marketplace', 'saas'], 'the order of the tree');
+  assert.deepEqual(
+    plain(band.plateaus.map((o) => o.value)),
+    ['baseline', 'inhouse', 'marketplace', 'saas'],
+    'the order of the tree'
+  );
   assert.equal(band.drawn, 'baseline');
-  assert.match(band.plateaus.find((o) => o.value === 'saas').label, /Buy the commerce platform/, 'an entry says the name of its plateau');
+  assert.match(
+    band.plateaus.find((o) => o.value === 'saas').label,
+    /Buy the commerce platform/,
+    'an entry says the name of its plateau'
+  );
   assert.match(band.plateaus.find((o) => o.value === 'saas').label, /2026-Q4/, 'and its horizon');
-  assert.match(band.html, /<option value="marketplace">\u2003\u2003/, 'a plateau is indented by its depth: marketplace overrides inhouse');
+  assert.match(
+    band.html,
+    /<option value="marketplace">\u2003\u2003/,
+    'a plateau is indented by its depth: marketplace overrides inhouse'
+  );
   // baseline overrides nothing (no past); the tree is the one of the list Plateau, in the same order, and baseline, which is drawn, is greyed in its place
-  assert.deepEqual(plain(band.compare.map((o) => o.value)), ['', 'plateau:baseline', 'plateau:inhouse', 'plateau:marketplace', 'plateau:saas']);
+  assert.deepEqual(plain(band.compare.map((o) => o.value)), [
+    '',
+    'plateau:baseline',
+    'plateau:inhouse',
+    'plateau:marketplace',
+    'plateau:saas'
+  ]);
   assert.deepEqual(plain(band.compare.filter((o) => o.disabled).map((o) => o.value)), ['plateau:baseline']);
-  assert.deepEqual(plain(band.compare.slice(1).map((o) => o.label)), plain(band.plateaus.map((o) => o.label)), 'the same labels');
-  assert.match(band.html, /<select id="band-compare"[\s\S]*<option value="plateau:marketplace">\u2003\u2003/, 'and the same indentation: marketplace overrides inhouse');
+  assert.deepEqual(
+    plain(band.compare.slice(1).map((o) => o.label)),
+    plain(band.plateaus.map((o) => o.label)),
+    'the same labels'
+  );
+  assert.match(
+    band.html,
+    /<select id="band-compare"[\s\S]*<option value="plateau:marketplace">\u2003\u2003/,
+    'and the same indentation: marketplace overrides inhouse'
+  );
   assert.ok(!band.html.includes('optgroup'));
   assert.equal(band.compared, '');
   assert.equal(state.layers.blocked, null);
@@ -155,7 +246,11 @@ test('a choice in the lists of the band is what the buttons were: draw a plateau
   assert.equal(band.compared, 'past');
   assert.equal(band.compare.find((o) => o.value === 'past').label, 'Past (follows the plateau drawn)');
   chooseOnBand(sandbox, 'compare', 'plateau:saas');
-  assert.deepEqual(plain(state.layers.compare), { mode: 'other', other: 'saas', chosen: true }, 'a plateau that is neither the past nor a future of the one drawn');
+  assert.deepEqual(
+    plain(state.layers.compare),
+    { mode: 'other', other: 'saas', chosen: true },
+    'a plateau that is neither the past nor a future of the one drawn'
+  );
   assert.equal(bandOf(sandbox).compared, 'plateau:saas');
   chooseOnBand(sandbox, 'compare', '');
   assert.equal(state.layers.compare, null);
@@ -163,7 +258,14 @@ test('a choice in the lists of the band is what the buttons were: draw a plateau
   // inhouse is overridden by marketplace alone: the future is one entry
   chooseOnBand(sandbox, 'plateau', 'inhouse');
   band = bandOf(sandbox);
-  assert.deepEqual(plain(band.compare.map((o) => o.value)), ['', 'past', 'plateau:baseline', 'plateau:inhouse', 'plateau:marketplace', 'plateau:saas']);
+  assert.deepEqual(plain(band.compare.map((o) => o.value)), [
+    '',
+    'past',
+    'plateau:baseline',
+    'plateau:inhouse',
+    'plateau:marketplace',
+    'plateau:saas'
+  ]);
   chooseOnBand(sandbox, 'compare', 'plateau:marketplace');
   assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: 'marketplace', chosen: true });
   assert.equal(bandOf(sandbox).compared, 'plateau:marketplace');
@@ -174,13 +276,20 @@ test('a choice in the lists of the band is what the buttons were: draw a plateau
 });
 
 test('a workspace with settings.plateaus is refused with the one sentence of the command line, and there is no band and no selector to draw', async () => {
-  const mem = memFolder({ '.archicode.yaml': 'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n', 'plateaus/10_as-is/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n' });
+  const mem = memFolder({
+    '.archicode.yaml': 'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n',
+    'plateaus/10_as-is/app.shop.yaml':
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n'
+  });
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  assert.match(state.fatalError, /^Could not read\/parse \.archicode\.yaml: `settings\.plateaus` no longer exists: a plateau is a layer now\. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, /);
+  assert.match(
+    state.fatalError,
+    /^Could not read\/parse \.archicode\.yaml: `settings\.plateaus` no longer exists: a plateau is a layer now\. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, /
+  );
   assert.equal(state.workspace, null);
   assert.equal(state.layers, null);
   assert.equal(sandbox.renderPlateauBandHtml(), '');
@@ -198,7 +307,11 @@ test('a click on a node draws that plateau: the elements of its chain, and the s
     assert.equal(state.index.application.size, sizes[id].application, id + ': application elements');
     assert.equal(state.index.technology.size, sizes[id].technology, id + ': technology elements');
     assert.equal(state.layerProblems, null);
-    assert.deepEqual(plain(state.relationshipStats), { total: sizes[id].relationships, dangling: 0 }, id + ': relationships');
+    assert.deepEqual(
+      plain(state.relationshipStats),
+      { total: sizes[id].relationships, dangling: 0 },
+      id + ': relationships'
+    );
   }
 });
 
@@ -209,7 +322,13 @@ test('what is drawn is the plateau: an element a plateau removes is gone, one it
   sandbox.drawPlateau('saas');
   assert.ok(!state.index.application.has('shop.app.catalog'), 'removed by patch of saas');
   assert.ok(state.index.application.has('commerce-saas'), 'declared by a manifest of saas');
-  assert.deepEqual(plain(state.workspace.application.elements.map((r) => r.reference).sort()), Array.from(state.index.application.values()).filter((r) => !r.reference.includes('.')).map((r) => r.reference).sort());
+  assert.deepEqual(
+    plain(state.workspace.application.elements.map((r) => r.reference).sort()),
+    Array.from(state.index.application.values())
+      .filter((r) => !r.reference.includes('.'))
+      .map((r) => r.reference)
+      .sort()
+  );
   sandbox.drawPlateau('marketplace');
   assert.ok(!state.index.application.has('commerce-saas'), 'saas is a sibling, not an ancestor');
   assert.ok(state.index.application.has('commerce.gateway'), 'declared by inhouse, inherited by marketplace');
@@ -251,12 +370,19 @@ test('the files of the folder are not read again by a click, and the models of a
   mem.failGetFile = 'the folder was read again'; // a read of any file from here on is an error the page would show
   for (const id of ['saas', 'inhouse', 'marketplace', 'baseline', 'marketplace', 'saas']) sandbox.drawPlateau(id);
   assert.equal(state.fatalError, null);
-  assert.ok(state.manifestFiles.every((f) => !f.error), 'no file was read again');
+  assert.ok(
+    state.manifestFiles.every((f) => !f.error),
+    'no file was read again'
+  );
   assert.equal(state.layers.current, 'saas');
   const steps = () => run(sandbox, 'layerCache.counters.steps');
   const models = () => run(sandbox, 'layerCache.counters.models');
   const afterFirstRound = { steps: steps(), models: models() };
-  assert.equal(afterFirstRound.steps, 4, 'one layer for each plateau, and marketplace reuses the layers of inhouse and baseline');
+  assert.equal(
+    afterFirstRound.steps,
+    4,
+    'one layer for each plateau, and marketplace reuses the layers of inhouse and baseline'
+  );
   assert.equal(afterFirstRound.models, 4);
   for (const id of ['saas', 'inhouse', 'marketplace', 'baseline', 'saas']) sandbox.drawPlateau(id);
   assert.deepEqual({ steps: steps(), models: models() }, afterFirstRound, 'drawing a plateau again resolves nothing');
@@ -264,7 +390,10 @@ test('the files of the folder are not read again by a click, and the models of a
 
 test('a click on the band does not compute more than needed: one comparison per comparison asked for, and none for a plain render', async () => {
   const { sandbox, state } = await openLayered();
-  run(sandbox, `globalThis.__spy = { compares: 0 }; const kernel = loadedKernel; const compare = kernel.compare; kernel.compare = function (input) { __spy.compares++; return compare.call(this, input); };`);
+  run(
+    sandbox,
+    `globalThis.__spy = { compares: 0 }; const kernel = loadedKernel; const compare = kernel.compare; kernel.compare = function (input) { __spy.compares++; return compare.call(this, input); };`
+  );
   const compares = () => run(sandbox, '__spy.compares');
   sandbox.drawPlateau('saas');
   assert.equal(compares(), 0, 'nothing is compared, so the kernel is not asked');
@@ -311,21 +440,39 @@ for (const [id, drawn, how, other] of PAIRS) {
     const comparison = sandbox.comparisonState();
     const want = CHANGES[id];
     // the states a box gets from what is below it (contains-changes) are the drawing's; a box another one replaced and that stays to hold what was below it is neither counted nor listed
-    const wantElements = want.elements.filter((e) => e.state !== 'contains-changes').map((e) => e.layer + '|' + e.ref + '|' + e.state).sort();
+    const wantElements = want.elements
+      .filter((e) => e.state !== 'contains-changes')
+      .map((e) => e.layer + '|' + e.ref + '|' + e.state)
+      .sort();
     const gotElements = [];
     for (const layer of ['application', 'technology']) {
-      for (const e of comparison.layers[layer]) if (e.change !== 'none' && !e.replaced_by) gotElements.push(layer + '|' + e.reference + '|' + e.change);
+      for (const e of comparison.layers[layer])
+        if (e.change !== 'none' && !e.replaced_by) gotElements.push(layer + '|' + e.reference + '|' + e.change);
     }
     assert.deepEqual(gotElements.sort(), wantElements);
     const html = sandbox.renderChangesPanelHtml(comparison);
-    assert.match(html, new RegExp('<p class="changes-compared">' + state_title(drawn) + ' compared with ' + state_title(other) + '\\.</p>'));
-    for (const [n, label] of [[wanted(id).elements.new, 'new'], [wanted(id).elements.removed, 'removed']]) assert.ok(html.includes('<span class="change-count">' + n + '</span> ' + label), label);
+    assert.match(
+      html,
+      new RegExp(
+        '<p class="changes-compared">' + state_title(drawn) + ' compared with ' + state_title(other) + '\\.</p>'
+      )
+    );
+    for (const [n, label] of [
+      [wanted(id).elements.new, 'new'],
+      [wanted(id).elements.removed, 'removed']
+    ])
+      assert.ok(html.includes('<span class="change-count">' + n + '</span> ' + label), label);
   });
 }
 
 /** What the panel calls a plateau: its name, else its id. */
 function state_title(id) {
-  return { baseline: 'Monolith', saas: 'Buy the commerce platform', inhouse: 'Build commerce services', marketplace: 'Marketplace and personalisation' }[id];
+  return {
+    baseline: 'Monolith',
+    saas: 'Buy the commerce platform',
+    inhouse: 'Build commerce services',
+    marketplace: 'Marketplace and personalisation'
+  }[id];
 }
 
 test('the future gives the same numbers: the plateau drawn is the base, the plateau that overrides it the target', async () => {
@@ -344,7 +491,18 @@ test('the future gives the same numbers: the plateau drawn is the base, the plat
   assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: null, chosen: false });
   assert.equal(sandbox.comparisonState(), null, 'nothing is compared until the target is chosen');
   const asking = bandOf(sandbox);
-  assert.deepEqual(plain(asking.compare.map((o) => [o.value, o.selected, o.disabled])), [['', false, false], ['future', true, true], ['plateau:baseline', false, true], ['plateau:inhouse', false, false], ['plateau:marketplace', false, false], ['plateau:saas', false, false]], 'the list says the choice is still to make, and the tree under it has nothing selected');
+  assert.deepEqual(
+    plain(asking.compare.map((o) => [o.value, o.selected, o.disabled])),
+    [
+      ['', false, false],
+      ['future', true, true],
+      ['plateau:baseline', false, true],
+      ['plateau:inhouse', false, false],
+      ['plateau:marketplace', false, false],
+      ['plateau:saas', false, false]
+    ],
+    'the list says the choice is still to make, and the tree under it has nothing selected'
+  );
   assert.match(asking.compare[1].label, /Choose a future plateau/);
   sandbox.compareWithPlateau('saas');
   comparison = sandbox.comparisonState();
@@ -368,8 +526,16 @@ test('with the future, what the plateau drawn does not have is read from the oth
   const commerce = comparison.records.get('application|commerce-saas');
   assert.equal(commerce.change, 'new');
   assert.ok(!state.index.application.has('commerce-saas'));
-  assert.equal(sandbox.elementIsOnlyInTheOtherPlateau('application', 'commerce-saas', 'new'), true, 'only in the future');
-  assert.equal(sandbox.elementIsOnlyInTheOtherPlateau('application', 'shop.app.catalog', 'removed'), false, 'baseline has it: a box like any other');
+  assert.equal(
+    sandbox.elementIsOnlyInTheOtherPlateau('application', 'commerce-saas', 'new'),
+    true,
+    'only in the future'
+  );
+  assert.equal(
+    sandbox.elementIsOnlyInTheOtherPlateau('application', 'shop.app.catalog', 'removed'),
+    false,
+    'baseline has it: a box like any other'
+  );
   assert.ok(state.index.application.has('shop.app.catalog'));
   // a click on its row picks it, read-only, from the plateau compared with
   sandbox.selectChange({ thing: 'element', change: 'new', layer: 'application', ref: 'commerce-saas' });
@@ -378,9 +544,14 @@ test('with the future, what the plateau drawn does not have is read from the oth
   assert.match(panel, /the plateau that overrides this one/);
   assert.match(panel, />new</);
   // and the boxes of the drawing are told, from the union
-  const result = { items: [{ id: 'commerce-saas', reference: 'commerce-saas', change: 'new' }, { id: 'shop.app.catalog', reference: 'shop.app.catalog', change: 'removed' }] };
+  const result = {
+    items: [
+      { id: 'commerce-saas', reference: 'commerce-saas', change: 'new' },
+      { id: 'shop.app.catalog', reference: 'shop.app.catalog', change: 'removed' }
+    ]
+  };
   sandbox.tellRemovedItems(result, comparison, 'application');
-  assert.ok(result.items[0].removed, 'the future\'s box is told what it is');
+  assert.ok(result.items[0].removed, "the future's box is told what it is");
   assert.equal(result.items[1].removed, undefined, 'a removed box of the plateau drawn is a box of the plateau drawn');
   assert.match(sandbox.diagramItemText(result.items[1]).tooltip, /not in the plateau that overrides the one drawn/);
 });
@@ -391,7 +562,11 @@ test('the two toggles follow the plateau drawn, and the same button again stops 
   sandbox.toggleCompareWithPast();
   assert.deepEqual(plain(state.layers.compare), { mode: 'past', other: 'inhouse', chosen: false });
   sandbox.drawPlateau('inhouse');
-  assert.deepEqual(plain(state.layers.compare), { mode: 'past', other: 'baseline', chosen: false }, 'the past of the plateau now drawn');
+  assert.deepEqual(
+    plain(state.layers.compare),
+    { mode: 'past', other: 'baseline', chosen: false },
+    'the past of the plateau now drawn'
+  );
   assert.equal(state.baseline.plateau.id, 'baseline');
   sandbox.drawPlateau('baseline');
   assert.equal(state.layers.compare, null, 'baseline has no past');
@@ -415,7 +590,11 @@ test('any two nodes of the band can be compared: a sibling is the base, the node
   assert.equal(comparison.target.id, 'marketplace');
   assert.ok(comparison.counts.elements.new > 0);
   sandbox.drawPlateau('inhouse');
-  assert.deepEqual(plain(state.layers.compare), { mode: 'other', other: 'saas', chosen: true }, 'the choice stays while it is another plateau');
+  assert.deepEqual(
+    plain(state.layers.compare),
+    { mode: 'other', other: 'saas', chosen: true },
+    'the choice stays while it is another plateau'
+  );
   sandbox.compareWithPlateau('saas');
   assert.equal(state.layers.compare, null);
 });
@@ -425,17 +604,27 @@ test('any two nodes of the band can be compared: a sibling is the base, the node
 const rowText = (row) => [row.plateau, row.effect, row.layer, row.element, row.detail].join('|');
 
 for (const [id, drawn, how, other] of PAIRS) {
-  test(id + ': the cascade of the removals is the one `archicode diff` lists, row by row, in the Changes panel', async () => {
-    const { sandbox } = await openLayered();
-    sandbox.drawPlateau(drawn);
-    if (how === 'past') sandbox.toggleCompareWithPast();
-    else sandbox.compareWithPlateau(other);
-    const comparison = sandbox.comparisonState();
-    assert.deepEqual(plain(comparison.cascade.map(rowText)), CASCADE[id]);
-    const html = sandbox.renderChangesPanelHtml(comparison);
-    assert.equal((html.match(/class="change-cascade-row"/g) || []).length, CASCADE[id].length);
-    assert.match(html, new RegExp('<h4 class="inspection-subhead changes-subhead">Cascade of the removals <span class="field-count">' + CASCADE[id].length + '</span>'));
-  });
+  test(
+    id + ': the cascade of the removals is the one `archicode diff` lists, row by row, in the Changes panel',
+    async () => {
+      const { sandbox } = await openLayered();
+      sandbox.drawPlateau(drawn);
+      if (how === 'past') sandbox.toggleCompareWithPast();
+      else sandbox.compareWithPlateau(other);
+      const comparison = sandbox.comparisonState();
+      assert.deepEqual(plain(comparison.cascade.map(rowText)), CASCADE[id]);
+      const html = sandbox.renderChangesPanelHtml(comparison);
+      assert.equal((html.match(/class="change-cascade-row"/g) || []).length, CASCADE[id].length);
+      assert.match(
+        html,
+        new RegExp(
+          '<h4 class="inspection-subhead changes-subhead">Cascade of the removals <span class="field-count">' +
+            CASCADE[id].length +
+            '</span>'
+        )
+      );
+    }
+  );
 }
 
 test('against a descendant nothing is removed between the two: no cascade, no section', async () => {
@@ -447,7 +636,11 @@ test('against a descendant nothing is removed between the two: no cascade, no se
   sandbox.compareWithPlateau('marketplace'); // the future: marketplace is the target, inhouse the base
   const comparison = sandbox.comparisonState();
   assert.equal(comparison.future, true);
-  assert.deepEqual(plain(comparison.cascade.map(rowText)), CASCADE.P3, 'the future of inhouse is the P3 of marketplace');
+  assert.deepEqual(
+    plain(comparison.cascade.map(rowText)),
+    CASCADE.P3,
+    'the future of inhouse is the P3 of marketplace'
+  );
   sandbox.drawPlateau('baseline');
   sandbox.compareWithPlateau('inhouse');
   assert.deepEqual(plain(sandbox.comparisonState().cascade.map(rowText)), CASCADE.P2);
@@ -476,7 +669,10 @@ test('the value of a field says where it comes from: declared in the plateau, in
   assert.equal(sandbox.originText(sandbox.fieldOriginOf(saas, 'name')), 'declared in saas');
   // in a plateau further down, what a patch of an ancestor set is inherited
   sandbox.drawPlateau('baseline');
-  assert.equal(sandbox.originText(sandbox.fieldOriginOf(state.index.application.get('shop.web'), 'name')), 'declared in baseline');
+  assert.equal(
+    sandbox.originText(sandbox.fieldOriginOf(state.index.application.get('shop.web'), 'name')),
+    'declared in baseline'
+  );
   sandbox.drawPlateau('marketplace');
   const gateway = state.index.application.get('commerce.gateway');
   assert.equal(gateway.declaredIn, 'inhouse');
@@ -488,7 +684,10 @@ test('the origin is on the page: after each value of an element, and as a block 
   sandbox.drawPlateau('saas');
   const record = state.index.application.get('shop.web');
   const properties = sandbox.renderElementPropertiesHtml(record);
-  assert.match(properties, /<span class="field-origin" data-origin="patch" data-field="description" title="set by patch \d+ of saas \(SET target shop\.web\)">set by patch \d+ of saas \(SET target shop\.web\)<\/span>/);
+  assert.match(
+    properties,
+    /<span class="field-origin" data-origin="patch" data-field="description" title="set by patch \d+ of saas \(SET target shop\.web\)">set by patch \d+ of saas \(SET target shop\.web\)<\/span>/
+  );
   assert.match(properties, /data-origin="inherited" data-field="name"[^>]*>inherited from baseline</);
   assert.match(properties, /data-origin="patch" data-field="qualifiers"/);
   const view = sandbox.renderElementViewHtml('shop.web');
@@ -496,34 +695,69 @@ test('the origin is on the page: after each value of an element, and as a block 
   assert.match(view, /inherited from baseline/);
   assert.match(view, /patch \d+ of saas: SET target shop\.web/);
   assert.match(view, /data-origin="[a-z]+" data-field="relationships"/, 'the relationships row says too');
-  const panel = sandbox.inspectionPanelHtml({ kind: 'element', key: 'shop.web', layer: 'application', mode: 'view' }, 'elements');
+  const panel = sandbox.inspectionPanelHtml(
+    { kind: 'element', key: 'shop.web', layer: 'application', mode: 'view' },
+    'elements'
+  );
   assert.match(panel, /class="origin-block"/);
   // a workspace with no layers says nothing of the kind
-  const plain_ = await openFiles({ 'manifests/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n' });
-  assert.doesNotMatch(plain_.sandbox.renderElementPropertiesHtml(plain_.state.index.application.get('shop')), /field-origin/);
+  const plain_ = await openFiles({
+    'manifests/app.shop.yaml':
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n'
+  });
+  assert.doesNotMatch(
+    plain_.sandbox.renderElementPropertiesHtml(plain_.state.index.application.get('shop')),
+    /field-origin/
+  );
   assert.doesNotMatch(plain_.sandbox.renderElementViewHtml('shop'), /origin-block/);
 });
 
 // ---- the mistakes of a layer name the plateau ----
 
 const SYSTEM = (id, extra, plateau, parent) =>
-  'header:\n  kind: "archicode.morin.io/system"\n' + (parent ? '  parent: "' + parent + '"\n' : '') + (plateau ? '  plateau: ' + plateau + '\n' : '') + '  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n' + (extra || '');
-const PLATEAU = (id, body, override) => 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (override ? '  override: "' + override + '"\n' : '') + (body || '');
+  'header:\n  kind: "archicode.morin.io/system"\n' +
+  (parent ? '  parent: "' + parent + '"\n' : '') +
+  (plateau ? '  plateau: ' + plateau + '\n' : '') +
+  '  version: "1"\ncontent:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  id +
+  '"\n' +
+  (extra || '');
+const PLATEAU = (id, body, override) =>
+  'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' +
+  id +
+  '"\n' +
+  (override ? '  override: "' + override + '"\n' : '') +
+  (body || '');
 
 test('a patch that selects nothing is the sentence of the command line, naming the plateau and the patch, and the plateau is not drawn', async () => {
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
-    'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n')
+    'later/plateau.yaml': PLATEAU(
+      'later',
+      '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n'
+    )
   });
   sandbox.drawPlateau('later');
   assert.equal(state.layers.current, 'later');
-  assert.deepEqual(plain(state.layerProblems), ['plateau later: patch 1 (SET target nope): selects nothing, there is no element nope in the application layer']);
+  assert.deepEqual(plain(state.layerProblems), [
+    'plateau later: patch 1 (SET target nope): selects nothing, there is no element nope in the application layer'
+  ]);
   assert.equal(state.layerUndrawable, true);
   assert.equal(state.index.application.size, 0, 'nothing of it is drawn');
   const band = bandOf(sandbox);
   assert.equal(band.mistakes, '! 1 mistake', 'the band has one button, that says there is a mistake');
-  assert.match(band.plateaus.find((o) => o.value === 'later').label, /^! later/, 'and the plateau is marked in the list');
-  assert.match(sandbox.renderMistakesDialogBodyHtml(), /<strong>later cannot be drawn\.<\/strong><ul><li>plateau later: patch 1 \(SET target nope\)/, 'the button opens the sentences of the command line');
+  assert.match(
+    band.plateaus.find((o) => o.value === 'later').label,
+    /^! later/,
+    'and the plateau is marked in the list'
+  );
+  assert.match(
+    sandbox.renderMistakesDialogBodyHtml(),
+    /<strong>later cannot be drawn\.<\/strong><ul><li>plateau later: patch 1 \(SET target nope\)/,
+    'the button opens the sentences of the command line'
+  );
   assert.deepEqual(plain(sandbox.comparisonState()), null, 'nothing is compared');
   sandbox.toggleCompareWithPast();
   assert.match(sandbox.comparisonState().problems[0], /cannot be drawn, so there is nothing to compare/);
@@ -535,27 +769,43 @@ test('a patch that selects nothing is the sentence of the command line, naming t
 
 test('a plateau the command line refuses for a link to nothing is drawn all the same, with the sentence, so that it can be repaired; the plateaus above tell the same', async () => {
   const { sandbox, state } = await openFiles({
-    'app.ferry.yaml': SYSTEM('ferry', '  relationships:\n    - destination: "dock"\n      label: "uses"\n    - destination: "lost"\n'),
+    'app.ferry.yaml': SYSTEM(
+      'ferry',
+      '  relationships:\n    - destination: "dock"\n      label: "uses"\n    - destination: "lost"\n'
+    ),
     'app.dock.yaml': SYSTEM('dock'),
     'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: REMOVE\n      target: dock\n'),
-    'env.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "prod"\n  uses: ["nowhere"]\n  elements:\n    - kind: node\n      id: "vm"\n      applications: ["ferry", "gone"]\n'
+    'env.yaml':
+      'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "prod"\n  uses: ["nowhere"]\n  elements:\n    - kind: node\n      id: "vm"\n      applications: ["ferry", "gone"]\n'
   });
-  assert.deepEqual(plain(state.layerProblems), [
-    'in the plateau `baseline`, `ferry` has a relationship towards `lost`, which does not exist',
-    'in the plateau `baseline`, `prod` uses `nowhere`, which does not exist',
-    'in the plateau `baseline`, `prod.vm` hosts `gone`, which does not exist'
-  ], 'by element, then by what it points at, as the command line orders them');
+  assert.deepEqual(
+    plain(state.layerProblems),
+    [
+      'in the plateau `baseline`, `ferry` has a relationship towards `lost`, which does not exist, in `app.ferry.yaml` at `relationships[1].destination`',
+      'in the plateau `baseline`, `prod` uses `nowhere`, which does not exist, in `env.yaml` at `uses[0]`',
+      'in the plateau `baseline`, `prod.vm` hosts `gone`, which does not exist, in `env.yaml` at `applications[1]`'
+    ],
+    'by element, then by what it points at, as the command line orders them'
+  );
   assert.equal(state.layerUndrawable, false);
   assert.ok(state.index.application.has('ferry') && state.index.application.has('dock'), 'it is drawn');
   assert.equal(state.relationshipStats.dangling, 1, 'and the link to nothing is flagged as ever');
   sandbox.drawPlateau('later');
-  assert.deepEqual(plain(state.layerProblems), plain(sandbox.layerModelOf('baseline', state.workspace.settings).problems), 'the first layer that is wrong ends the chain, and says what is wrong in it');
+  assert.deepEqual(
+    plain(state.layerProblems),
+    plain(sandbox.layerModelOf('baseline', state.workspace.settings).problems),
+    'the first layer that is wrong ends the chain, and says what is wrong in it'
+  );
   assert.equal(sandbox.layerModelOf('later', state.workspace.settings).failedAt, 'baseline');
   assert.ok(!state.index.application.has('dock'), 'later is drawn');
   const band = bandOf(sandbox);
   assert.match(sandbox.renderMistakesDialogBodyHtml(), /later is drawn, and the command line refuses it:/);
   assert.equal(band.mistakes, '! 3 mistakes', 'every sentence is counted');
-  assert.match(band.plateaus.find((o) => o.value === 'baseline').label, /^! /, 'the plateau that is wrong in the chain is marked in the list');
+  assert.match(
+    band.plateaus.find((o) => o.value === 'baseline').label,
+    /^! /,
+    'the plateau that is wrong in the chain is marked in the list'
+  );
 });
 
 test('the cascade of a REMOVE takes the link to the removed element, so the plateau that removes it is not wrong for it', async () => {
@@ -570,23 +820,33 @@ test('the cascade of a REMOVE takes the link to the removed element, so the plat
   assert.equal(state.index.application.get('ferry').relationships.length, 0, 'the cascade took the link');
   sandbox.toggleCompareWithPast();
   const comparison = sandbox.comparisonState();
-  assert.deepEqual(plain(comparison.cascade.map(rowText)), ['later|dropped|application|ferry|relationships: dock (uses)']);
+  assert.deepEqual(plain(comparison.cascade.map(rowText)), [
+    'later|dropped|application|ferry|relationships: dock (uses)'
+  ]);
 });
 
 test('an element declared under a parent that does not exist names the plateau, and a view or a story that names an element no plateau has is told apart from the plateaus', async () => {
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
     'later/plateau.yaml': PLATEAU('later'),
-    'later/app.ferry.dock.yaml': 'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry.lost"\n  plateau: later\n  version: "1"\ncontent:\n  id: "dock"\n'
+    'later/app.ferry.dock.yaml':
+      'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry.lost"\n  plateau: later\n  version: "1"\ncontent:\n  id: "dock"\n'
   });
   sandbox.drawPlateau('later');
-  assert.deepEqual(plain(state.layerProblems), ['in the plateau `later`, `ferry.lost.dock` is declared under `ferry.lost`, which does not exist']);
-  assert.ok(state.index.application.has('ferry.lost.dock'), 'it stays at the top under the reference its manifest gives it, and can be repaired');
+  assert.deepEqual(plain(state.layerProblems), [
+    'in the plateau `later`, `ferry.lost.dock` is declared under `ferry.lost`, which does not exist'
+  ]);
+  assert.ok(
+    state.index.application.has('ferry.lost.dock'),
+    'it stays at the top under the reference its manifest gives it, and can be repaired'
+  );
   assert.equal(sandbox.findElementRecord('ferry.lost.dock').sourceFile, 'later/app.ferry.dock.yaml');
   const files = {
     'app.ferry.yaml': SYSTEM('ferry'),
-    'view.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n    pinned: ["ghost"]\n',
-    'story.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  plateau: later\n  version: "1"\ncontent:\n  id: "s"\n  steps:\n    - viewpoint: "overview"\n      layer: TECHNOLOGY\n      properties:\n        element: "vm"\n',
+    'view.yaml':
+      'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n    pinned: ["ghost"]\n',
+    'story.yaml':
+      'header:\n  kind: "archicode.morin.io/story"\n  plateau: later\n  version: "1"\ncontent:\n  id: "s"\n  steps:\n    - viewpoint: "overview"\n      layer: TECHNOLOGY\n      properties:\n        element: "vm"\n',
     'later/plateau.yaml': PLATEAU('later')
   };
   const second = await openFiles(files);
@@ -600,14 +860,21 @@ test('an element declared under a parent that does not exist names the plateau, 
   for (const drawn of ['baseline', 'later']) {
     second.sandbox.drawPlateau(drawn);
     assert.equal(second.state.layerProblems, null, drawn + ': the layers are fine');
-    assert.deepEqual(plain(second.sandbox.bandMistakes().sections), [{ heading: 'The views and the stories name elements that no plateau has:', lines: told }], drawn);
+    assert.deepEqual(
+      plain(second.sandbox.bandMistakes().sections),
+      [{ heading: 'The views and the stories name elements that no plateau has:', lines: told }],
+      drawn
+    );
     assert.equal(second.sandbox.bandMistakes().count, 2);
   }
   // a name that another plateau has is no mistake: the story names `vm`, which `later` declares
-  const third = await openFiles(Object.assign({}, files, {
-    'view.yaml': files['view.yaml'].replace('pinned: ["ghost"]', 'pinned: ["ferry"]'),
-    'later/env.vm.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  plateau: later\n  version: "1"\ncontent:\n  id: "vm"\n'
-  }));
+  const third = await openFiles(
+    Object.assign({}, files, {
+      'view.yaml': files['view.yaml'].replace('pinned: ["ghost"]', 'pinned: ["ferry"]'),
+      'later/env.vm.yaml':
+        'header:\n  kind: "archicode.morin.io/environment"\n  plateau: later\n  version: "1"\ncontent:\n  id: "vm"\n'
+    })
+  );
   assert.deepEqual(plain(third.sandbox.entryProblemsOf(third.state.workspace.settings)), []);
   assert.equal(third.sandbox.bandMistakes().count, 0);
   third.sandbox.drawPlateau('baseline');
@@ -615,12 +882,17 @@ test('an element declared under a parent that does not exist names the plateau, 
 });
 
 test('the views and the stories that .archicode.yaml keeps are looked at too, after those of the manifests, unless a manifest has the id', async () => {
-  const settings = 'settings:\n  manifests:\n    paths: ["./**"]\nviews:\n  - id: old\n    viewpoint: overview\n    layer: Technology\n    properties:\n      element: ghost\n  - id: shadowed\n    viewpoint: overview\n    properties:\n      element: nowhere\nstories:\n  - id: tale\n    steps:\n      - viewpoint: overview\n        properties:\n          element: gone\n';
-  const { sandbox, state } = await openFiles({
-    'app.ferry.yaml': SYSTEM('ferry'),
-    'later/plateau.yaml': PLATEAU('later'),
-    'view.shadowed.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "shadowed"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n'
-  }, settings);
+  const settings =
+    'settings:\n  manifests:\n    paths: ["./**"]\nviews:\n  - id: old\n    viewpoint: overview\n    layer: Technology\n    properties:\n      element: ghost\n  - id: shadowed\n    viewpoint: overview\n    properties:\n      element: nowhere\nstories:\n  - id: tale\n    steps:\n      - viewpoint: overview\n        properties:\n          element: gone\n';
+  const { sandbox, state } = await openFiles(
+    {
+      'app.ferry.yaml': SYSTEM('ferry'),
+      'later/plateau.yaml': PLATEAU('later'),
+      'view.shadowed.yaml':
+        'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "shadowed"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n'
+    },
+    settings
+  );
   assert.deepEqual(plain(sandbox.entryProblemsOf(state.workspace.settings)), [
     'the view `old` (`.archicode.yaml`) names `ghost`, which exists in no plateau',
     'the story `tale` (`.archicode.yaml`) names `gone`, which exists in no plateau'
@@ -630,7 +902,8 @@ test('the views and the stories that .archicode.yaml keeps are looked at too, af
 test('a view or a story that says `plateau:` is not told, with or without plateaus in the workspace: the key names none and means nothing', async () => {
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
-    'story.tour.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  plateau: later\n  version: "1"\ncontent:\n  id: "tour"\n  steps: []\n'
+    'story.tour.yaml':
+      'header:\n  kind: "archicode.morin.io/story"\n  plateau: later\n  version: "1"\ncontent:\n  id: "tour"\n  steps: []\n'
   });
   assert.equal(state.plateauTree.layered, false);
   assert.deepEqual(Array.from(state.plateauTree.warnings), []);
@@ -651,20 +924,33 @@ test('a mistake in the tree leaves baseline drawn and the other nodes out, with 
   assert.match(sandbox.renderMistakesDialogBodyHtml(), /The plateaus have a mistake/);
   assert.equal(band.mistakes, '! 1 mistake');
   assert.equal(band.disabled, true, 'only baseline is drawn: nothing to choose');
-  assert.deepEqual(plain(band.plateaus.map((o) => o.value)), ['baseline'], 'the plateau with the mistake is not offered: it is not drawn');
+  assert.deepEqual(
+    plain(band.plateaus.map((o) => o.value)),
+    ['baseline'],
+    'the plateau with the mistake is not offered: it is not drawn'
+  );
   sandbox.drawPlateau('one');
   assert.equal(state.layers.current, 'baseline');
 });
 
 test('settings.current names the plateau drawn at the opening, and one that is not a plateau is the sentence of the command line', async () => {
-  const files = { 'app.ferry.yaml': SYSTEM('ferry'), 'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: REMOVE\n      target: ferry\n') };
+  const files = {
+    'app.ferry.yaml': SYSTEM('ferry'),
+    'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: REMOVE\n      target: ferry\n')
+  };
   const { state } = await openFiles(files, 'settings:\n  current: later\n  manifests:\n    paths: ["./**"]\n');
   assert.equal(state.layers.current, 'later');
   assert.equal(state.index.application.size, 0);
   const bad = await openFiles(files, 'settings:\n  current: nope\n  manifests:\n    paths: ["./**"]\n');
-  assert.equal(bad.state.fatalError, 'Could not read the plateaus of .archicode.yaml:\n`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `later`)');
+  assert.equal(
+    bad.state.fatalError,
+    'Could not read the plateaus of .archicode.yaml:\n`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `later`)'
+  );
   const none = await openFiles({ 'app.ferry.yaml': SYSTEM('ferry') }, 'settings:\n  current: later\n');
-  assert.equal(none.state.fatalError, 'Could not read the plateaus of .archicode.yaml:\n`settings.current` is `later` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)');
+  assert.equal(
+    none.state.fatalError,
+    'Could not read the plateaus of .archicode.yaml:\n`settings.current` is `later` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)'
+  );
 });
 
 // ---- writing ----
@@ -673,28 +959,67 @@ test('a plateau that cannot be drawn is not written: every writer refuses with o
   // (run 0082 lifts the rule of run 0080 for the plateau drawn; what stays is a plateau whose patches the kernel refuses: it has no graph to edit)
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
-    'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n')
+    'later/plateau.yaml': PLATEAU(
+      'later',
+      '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n'
+    )
   });
   assert.equal(sandbox.readOnlyPlateauMessage(), null);
   sandbox.drawPlateau('later');
   const message = sandbox.readOnlyPlateauMessage();
-  assert.equal(message, 'The plateau `later` cannot be drawn, so nothing is written in it: repair its patches in Files first.');
-  assert.match(sandbox.renderMistakesDialogBodyHtml(), /<p class="band-readonly">The plateau <code>later<\/code> cannot be drawn, so nothing is written in it/, 'the dialog of the mistakes says why nothing is written');
+  assert.equal(
+    message,
+    'The plateau `later` cannot be drawn, so nothing is written in it: repair its patches in Files first.'
+  );
+  assert.match(
+    sandbox.renderMistakesDialogBodyHtml(),
+    /<p class="band-readonly">The plateau <code>later<\/code> cannot be drawn, so nothing is written in it/,
+    'the dialog of the mistakes says why nothing is written'
+  );
   for (const write of [
-    () => sandbox.commitElementEdit('ferry', (node) => { node.name = 'x'; }, 'application'),
-    () => sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', id: 'zz', name: 'zz', description: '' }),
+    () =>
+      sandbox.commitElementEdit(
+        'ferry',
+        (node) => {
+          node.name = 'x';
+        },
+        'application'
+      ),
+    () =>
+      sandbox.commitCreateTopLevelElement({
+        category: 'application',
+        headerKind: 'system',
+        id: 'zz',
+        name: 'zz',
+        description: ''
+      }),
     () => sandbox.commitDeleteElement('ferry', 'application', [])
-  ]) assert.throws(write, (e) => e.message === message);
-  assert.ok(state.manifestFiles.every((f) => !f.dirty), 'nothing was marked as modified');
+  ])
+    assert.throws(write, (e) => e.message === message);
+  assert.ok(
+    state.manifestFiles.every((f) => !f.dirty),
+    'nothing was marked as modified'
+  );
   // the click on a button that writes says it in the top bar and changes nothing
-  sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (name) => (name === 'data-action' ? 'toggle-element-edit' : null) }), classList: { contains: () => false } } });
+  sandbox.handleAppClick({
+    target: {
+      closest: () => ({ getAttribute: (name) => (name === 'data-action' ? 'toggle-element-edit' : null) }),
+      classList: { contains: () => false }
+    }
+  });
   assert.deepEqual(plain(state.selection.mode), 'view');
   assert.equal(run(sandbox, 'saveStatus.state'), 'denied');
   assert.equal(run(sandbox, 'saveStatus.message'), message);
   // baseline: as before
   sandbox.drawPlateau('baseline');
   assert.equal(sandbox.readOnlyPlateauMessage(), null);
-  sandbox.commitElementEdit('ferry', (node) => { node.name = 'Ferry company'; }, 'application');
+  sandbox.commitElementEdit(
+    'ferry',
+    (node) => {
+      node.name = 'Ferry company';
+    },
+    'application'
+  );
   assert.equal(state.index.application.get('ferry').name, 'Ferry company');
   assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 1);
 });
@@ -702,14 +1027,20 @@ test('a plateau that cannot be drawn is not written: every writer refuses with o
 test('Write replaces is written on the element of the more recent plateau, with the future as with the past', async () => {
   const files = {
     'app.ferry.yaml': SYSTEM('ferry'),
-    'app.ferry.dock.yaml': 'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry"\n  version: "1"\ncontent:\n  id: "dock"\n  name: "Dock planner"\n  description: "Plans the docks"\n',
+    'app.ferry.dock.yaml':
+      'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry"\n  version: "1"\ncontent:\n  id: "dock"\n  name: "Dock planner"\n  description: "Plans the docks"\n',
     'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: REMOVE\n      target: ferry.dock\n'),
-    'later/app.ferry.harbour.yaml': 'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry"\n  plateau: later\n  version: "1"\ncontent:\n  id: "harbour"\n  name: "Dock planner"\n  description: "Plans the docks"\n'
+    'later/app.ferry.harbour.yaml':
+      'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry"\n  plateau: later\n  version: "1"\ncontent:\n  id: "harbour"\n  name: "Dock planner"\n  description: "Plans the docks"\n'
   };
   for (const how of ['past', 'future']) {
     const { sandbox, state, mem } = await openFiles(files);
-    if (how === 'past') { sandbox.drawPlateau('later'); sandbox.toggleCompareWithPast(); }
-    else { sandbox.toggleCompareWithFuture(); }
+    if (how === 'past') {
+      sandbox.drawPlateau('later');
+      sandbox.toggleCompareWithPast();
+    } else {
+      sandbox.toggleCompareWithFuture();
+    }
     const comparison = sandbox.comparisonState();
     assert.deepEqual(plain(comparison.candidates.map((c) => c.from + '>' + c.to)), ['ferry.dock>ferry.harbour'], how);
     const result = sandbox.acceptCandidate(comparison.candidates[0]);
@@ -735,9 +1066,11 @@ test('Write replaces is written on the element of the more recent plateau, with 
 test('"Not related" sets a pair aside for the two plateaus compared, on any pair', async () => {
   const files = {
     'app.ferry.yaml': SYSTEM('ferry'),
-    'app.ferry.dock.yaml': 'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry"\n  version: "1"\ncontent:\n  id: "dock"\n  name: "Dock planner"\n',
+    'app.ferry.dock.yaml':
+      'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry"\n  version: "1"\ncontent:\n  id: "dock"\n  name: "Dock planner"\n',
     'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: REMOVE\n      target: ferry.dock\n'),
-    'later/app.ferry.harbour.yaml': 'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry"\n  plateau: later\n  version: "1"\ncontent:\n  id: "harbour"\n  name: "Dock planner"\n'
+    'later/app.ferry.harbour.yaml':
+      'header:\n  kind: "archicode.morin.io/container"\n  parent: "ferry"\n  plateau: later\n  version: "1"\ncontent:\n  id: "harbour"\n  name: "Dock planner"\n'
   };
   const { sandbox } = await openFiles(files);
   sandbox.drawPlateau('later');
@@ -792,7 +1125,11 @@ test('a comparison with a plateau chosen on the band is read as it stands to the
   sandbox.compareWithPlateau('baseline'); // an ancestor that is not the parent: the base
   assert.deepEqual(plain(state.layers.compare), { mode: 'other', other: 'baseline', chosen: true });
   sandbox.drawPlateau('inhouse');
-  assert.deepEqual(plain(state.layers.compare), { mode: 'past', other: 'baseline', chosen: false }, 'it is the plateau inhouse overrides now: the past');
+  assert.deepEqual(
+    plain(state.layers.compare),
+    { mode: 'past', other: 'baseline', chosen: false },
+    'it is the plateau inhouse overrides now: the past'
+  );
 });
 
 test('the relationships of the table of expected/changes.json are the ones of the Changes panel, with a label change as one row', async () => {
@@ -803,7 +1140,11 @@ test('the relationships of the table of expected/changes.json are the ones of th
     if (how === 'past') sandbox.toggleCompareWithPast();
     else sandbox.compareWithPlateau(other);
     const comparison = sandbox.comparisonState();
-    const labelBefore = new Map(comparison.changes.filter((c) => c.thing === 'relationship' && c.change === 'changed').map((c) => [c.layer + '|' + c.reference + '|' + c.destination + '|' + c.label, c.before && c.before.label]));
+    const labelBefore = new Map(
+      comparison.changes
+        .filter((c) => c.thing === 'relationship' && c.change === 'changed')
+        .map((c) => [c.layer + '|' + c.reference + '|' + c.destination + '|' + c.label, c.before && c.before.label])
+    );
     const got = [];
     for (const layer of ['application', 'technology']) {
       for (const element of comparison.layers[layer]) {
@@ -811,7 +1152,15 @@ test('the relationships of the table of expected/changes.json are the ones of th
           if (r.change === 'none' || r.change === undefined) continue;
           const before = labelBefore.get(r.layer + '|' + r.from + '|' + r.destination + '|' + r.label);
           const labelChanged = r.change === 'changed' && before !== undefined && before !== r.label;
-          got.push([r.layer, r.from, r.destination, labelChanged ? before : r.label, labelChanged ? 'label-changed' : r.change].join('|'));
+          got.push(
+            [
+              r.layer,
+              r.from,
+              r.destination,
+              labelChanged ? before : r.label,
+              labelChanged ? 'label-changed' : r.change
+            ].join('|')
+          );
         }
       }
     }
@@ -825,23 +1174,43 @@ test('what an edit of baseline changes is seen by the plateaus that stand on it:
   sandbox.drawPlateau('inhouse');
   assert.equal(state.index.application.get('commerce.gateway').name, 'API gateway');
   sandbox.drawPlateau('baseline');
-  sandbox.commitElementEdit('shop.web', (node) => { node.name = 'Storefront'; }, 'application', { confirmed: true }); // (run 0082: a plateau with plateaus on top of it asks first)
+  sandbox.commitElementEdit(
+    'shop.web',
+    (node) => {
+      node.name = 'Storefront';
+    },
+    'application',
+    { confirmed: true }
+  ); // (run 0082: a plateau with plateaus on top of it asks first)
   assert.equal(state.index.application.get('shop.web').name, 'Storefront');
   sandbox.drawPlateau('saas');
   assert.equal(state.index.application.get('shop.web').name, 'Storefront', 'saas inherits the new name');
-  assert.equal(state.index.application.get('shop.web').description, 'Headless storefront on the commerce platform.', 'and keeps what its patch sets');
+  assert.equal(
+    state.index.application.get('shop.web').description,
+    'Headless storefront on the commerce platform.',
+    'and keeps what its patch sets'
+  );
   const steps = run(sandbox, 'layerCache.counters.steps');
-  assert.ok(steps <= 4, 'the cache of the new tree: baseline, saas (resolved on the way), the other plateaus when they are asked for: ' + steps);
+  assert.ok(
+    steps <= 4,
+    'the cache of the new tree: baseline, saas (resolved on the way), the other plateaus when they are asked for: ' +
+      steps
+  );
 });
 
 test('a plateau a patch of an earlier layer cannot be built on is told with the earlier layer, as the command line stops there', async () => {
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry', '  relationships:\n    - destination: "lost"\n'),
-    'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n')
+    'later/plateau.yaml': PLATEAU(
+      'later',
+      '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n'
+    )
   });
   sandbox.drawPlateau('later');
   assert.equal(state.layerUndrawable, true);
-  assert.deepEqual(plain(state.layerProblems), ['in the plateau `baseline`, `ferry` has a relationship towards `lost`, which does not exist']);
+  assert.deepEqual(plain(state.layerProblems), [
+    'in the plateau `baseline`, `ferry` has a relationship towards `lost`, which does not exist, in `app.ferry.yaml` at `relationships[0].destination`'
+  ]);
   assert.equal(sandbox.layerModelOf('later', state.workspace.settings).failedAt, 'baseline');
 });
 
@@ -863,13 +1232,23 @@ test('the band keeps the focus where it was: a list of the band is found again a
     const el = { closest: (selector) => (/plateau-band select/.test(selector) ? control(id) : null) };
     assert.equal(sandbox.headerControlSelector(el), '#' + id);
   }
-  const mistakes = { closest: (selector) => (/plateau-band button/.test(selector) ? { getAttribute: (name) => (name === 'data-action' ? 'open-mistakes' : null), id: '' } : null) };
+  const mistakes = {
+    closest: (selector) =>
+      /plateau-band button/.test(selector)
+        ? { getAttribute: (name) => (name === 'data-action' ? 'open-mistakes' : null), id: '' }
+        : null
+  };
   assert.equal(sandbox.headerControlSelector(mistakes), '[data-action="open-mistakes"]');
 });
 
 test('a selection that was a form to create something does not outlive the plateau it was opened in', async () => {
   const { sandbox, state } = await openLayered();
-  state.selection = { kind: 'create', createMode: 'child', category: 'application', parentReference: 'shop.app.catalog' };
+  state.selection = {
+    kind: 'create',
+    createMode: 'child',
+    category: 'application',
+    parentReference: 'shop.app.catalog'
+  };
   sandbox.drawPlateau('saas');
   assert.equal(state.selection.kind, 'none');
 });
@@ -877,8 +1256,10 @@ test('a selection that was a form to create something does not outlive the plate
 test('the fields of a view and of a story are written whatever plateau is drawn: they belong to none', async () => {
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
-    'view.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  name: "First"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n',
-    'story.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  name: "Tale"\n  steps: []\n',
+    'view.yaml':
+      'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  name: "First"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n',
+    'story.yaml':
+      'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  name: "Tale"\n  steps: []\n',
     'later/plateau.yaml': PLATEAU('later')
   });
   run(sandbox, "currentPerspective = 'library'; libraryTab = 'views'; selectedViewId = 'v';");
@@ -886,11 +1267,24 @@ test('the fields of a view and of a story are written whatever plateau is drawn:
     sandbox.drawPlateau(drawn);
     run(sandbox, "currentPerspective = 'library'; libraryTab = 'views'; selectedViewId = 'v';");
     const name = drawn === 'later' ? 'Second' : 'Third';
-    assert.equal(sandbox.editSavedView((view) => { view.name = name; }, false), true, drawn);
-    assert.equal(run(sandbox, "savedViews()[0].name"), name);
-    sandbox.updateStoryField({ getAttribute: (attribute) => ({ 'data-story': 's', 'data-story-field': 'name' }[attribute]), value: 'Other ' + name });
-    assert.equal(run(sandbox, "storiesList()[0].name"), 'Other ' + name);
+    assert.equal(
+      sandbox.editSavedView((view) => {
+        view.name = name;
+      }, false),
+      true,
+      drawn
+    );
+    assert.equal(run(sandbox, 'savedViews()[0].name'), name);
+    sandbox.updateStoryField({
+      getAttribute: (attribute) => ({ 'data-story': 's', 'data-story-field': 'name' })[attribute],
+      value: 'Other ' + name
+    });
+    assert.equal(run(sandbox, 'storiesList()[0].name'), 'Other ' + name);
     assert.notEqual(run(sandbox, 'saveStatus.state'), 'denied', drawn);
   }
-  assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 2, 'the view and the story are the two files written');
+  assert.equal(
+    state.manifestFiles.filter((f) => f.dirty).length,
+    2,
+    'the view and the story are the two files written'
+  );
 });

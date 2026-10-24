@@ -19,11 +19,33 @@ for (const c of DOCUMENT.cases) {
 }
 
 test('the cases cover the classes the plan refuses: empty, `.`, `..`, `/`, `\\`, a control character and what Windows refuses', () => {
-  const sentences = DOCUMENT.cases.map((c) => c.problem).filter((p) => p !== null).join('\n');
-  for (const part of ['is empty', 'is `.`', 'is `..`', 'holds `/`', 'holds `\\`', 'holds a control character', 'holds `<`', 'holds `>`', 'holds `:`', 'holds `"`', 'holds `|`', 'holds `?`', 'holds `*`', 'ends with a dot', 'ends with a space']) {
+  const sentences = DOCUMENT.cases
+    .map((c) => c.problem)
+    .filter((p) => p !== null)
+    .join('\n');
+  for (const part of [
+    'is empty',
+    'is `.`',
+    'is `..`',
+    'holds `/`',
+    'holds `\\`',
+    'holds a control character',
+    'holds `<`',
+    'holds `>`',
+    'holds `:`',
+    'holds `"`',
+    'holds `|`',
+    'holds `?`',
+    'holds `*`',
+    'ends with a dot',
+    'ends with a space'
+  ]) {
     assert.ok(sentences.includes(part), 'no case for: ' + part);
   }
-  assert.ok(DOCUMENT.cases.some((c) => c.problem === null), 'names that are folders are in the cases too');
+  assert.ok(
+    DOCUMENT.cases.some((c) => c.problem === null),
+    'names that are folders are in the cases too'
+  );
 });
 
 test('the editor does not write a facet name that it would refuse when it loads the workspace', () => {

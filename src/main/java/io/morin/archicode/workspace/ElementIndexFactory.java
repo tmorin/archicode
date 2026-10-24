@@ -47,6 +47,13 @@ public class ElementIndexFactory {
      */
     boolean layered;
 
+    /** The file that declares an element, for the sentences that name it (a candidate made of an element already read has none). */
+    private void rememberSource(String reference, String source) {
+        if (reference != null && source != null) {
+            index.sourceByReference.put(reference, source);
+        }
+    }
+
     private void reindexAncestors(String reference) {
         Workspace.Utilities.findParentReference(reference).ifPresent(parentReference -> {
             val removedElement = index.elementByReferenceIndex.remove(parentReference);
@@ -175,9 +182,11 @@ public class ElementIndexFactory {
         val indexedCandidates = new HashSet<ManifestParser.Candidate>();
         for (val candidate : candidates) {
             ElementIndexUtilities.index(candidate, index);
-            Workspace.Utilities.walkDown(candidate.getElement(), (parent, element) ->
-                ElementIndexUtilities.index(parent, element, index)
-            );
+            rememberSource(candidate.getReference(), candidate.getSource());
+            Workspace.Utilities.walkDown(candidate.getElement(), (parent, element) -> {
+                ElementIndexUtilities.index(parent, element, index);
+                rememberSource(index.getReferenceByElement(element), candidate.getSource());
+            });
             indexedCandidates.add(candidate);
         }
         indexedCandidates.forEach(appCandidate -> log.debug("indexAppCandidate {}", appCandidate));

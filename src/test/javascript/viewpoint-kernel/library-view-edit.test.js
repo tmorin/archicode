@@ -43,13 +43,25 @@ content:
 `;
 
 async function startMem(extra) {
-  const page = await startPage({ mem: true, files: Object.assign({ 'manifests/view.api_view.yaml': VIEW_FILE, 'manifests/view.map_view.yaml': MAP_FILE }, extra || {}) });
+  const page = await startPage({
+    mem: true,
+    files: Object.assign(
+      { 'manifests/view.api_view.yaml': VIEW_FILE, 'manifests/view.map_view.yaml': MAP_FILE },
+      extra || {}
+    )
+  });
   return page;
 }
 
 const viewOf = (page, id) => page.sandbox.findSavedView(id);
 const ids = (page) => plain(Object.keys(page.scene().boxes).sort());
-const dirtyFiles = (page) => plain(page.state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath).sort());
+const dirtyFiles = (page) =>
+  plain(
+    page.state.manifestFiles
+      .filter((f) => f.dirty)
+      .map((f) => f.relPath)
+      .sort()
+  );
 const written = (page) => plain(page.mem.writes);
 
 /** The ids of the boxes the kernel computes for an Elements recipe. */
@@ -60,13 +72,22 @@ function expectedBoxes(page, viewpoint, reference, options) {
   const result = page.kernel.compute(page.sandbox.buildKernelInput(viewpoint, reference, { layer, facet }).input);
   const ghosts = page.sandbox.buildDiagramGhosts(result, reference, layer);
   let items = result.items.concat(ghosts.items);
-  if (opts.hideUnlinked) items = page.sandbox.hideUnlinkedItems(items, result.links.concat(ghosts.links), reference).items;
-  return plain(items.filter((item) => !item.ghost).map((item) => item.id).sort());
+  if (opts.hideUnlinked)
+    items = page.sandbox.hideUnlinkedItems(items, result.links.concat(ghosts.links), reference).items;
+  return plain(
+    items
+      .filter((item) => !item.ghost)
+      .map((item) => item.id)
+      .sort()
+  );
 }
 
 /** A control of the form, as the delegated `change` listener meets it. */
 function control(attributes, props) {
-  const el = Object.assign({ tagName: 'SELECT', type: 'select-one', value: '', checked: false, id: attributes.id || '' }, props);
+  const el = Object.assign(
+    { tagName: 'SELECT', type: 'select-one', value: '', checked: false, id: attributes.id || '' },
+    props
+  );
   el.getAttribute = (name) => (name in attributes ? attributes[name] : null);
   el.closest = () => el;
   return el;
@@ -77,13 +98,24 @@ async function change(page, attributes, props) {
   page.sandbox.handleAppChange({ target: control(attributes, props) });
   await page.drawn().catch(() => null);
 }
-const pickViewpoint = (page, value) => change(page, { id: 'view-edit-viewpoint', 'data-view-field': 'viewpoint' }, { value });
+const pickViewpoint = (page, value) =>
+  change(page, { id: 'view-edit-viewpoint', 'data-view-field': 'viewpoint' }, { value });
 const pickLayer = (page, value) => change(page, { id: 'view-edit-layer', 'data-view-field': 'layer' }, { value });
-const typeElement = (page, value) => change(page, { id: 'view-edit-element', 'data-view-field': 'element' }, { tagName: 'INPUT', type: 'text', value });
+const typeElement = (page, value) =>
+  change(page, { id: 'view-edit-element', 'data-view-field': 'element' }, { tagName: 'INPUT', type: 'text', value });
 const pickFacet = (page, value) => change(page, { id: 'view-edit-facet', 'data-view-field': 'facet' }, { value });
-const tick = (page, field, checked) => change(page, { id: 'view-edit-' + field, 'data-view-field': field.replace(/^show-/, 'show:') }, { tagName: 'INPUT', type: 'checkbox', checked });
-const addToList = (page, list, value) => change(page, { id: 'view-edit-add-' + list, 'data-view-list': list }, { tagName: 'INPUT', type: 'text', value });
-const removeFromList = (page, list, reference) => { click(page.sandbox, { 'data-action': 'view-list-remove', 'data-list': list, 'data-ref': reference }); return page.drawn().catch(() => null); };
+const tick = (page, field, checked) =>
+  change(
+    page,
+    { id: 'view-edit-' + field, 'data-view-field': field.replace(/^show-/, 'show:') },
+    { tagName: 'INPUT', type: 'checkbox', checked }
+  );
+const addToList = (page, list, value) =>
+  change(page, { id: 'view-edit-add-' + list, 'data-view-list': list }, { tagName: 'INPUT', type: 'text', value });
+const removeFromList = (page, list, reference) => {
+  click(page.sandbox, { 'data-action': 'view-list-remove', 'data-list': list, 'data-ref': reference });
+  return page.drawn().catch(() => null);
+};
 
 // ============================================================ 1. Each attribute edit redraws, marks modified, writes nothing until the save
 
@@ -91,13 +123,23 @@ test('the panel offers a control for each attribute of an Elements view, holding
   const page = await startMem();
   await openView(page, viewOf(page, 'api_view'));
   const right = page.right();
-  assert.match(right, /<select id="view-edit-viewpoint" data-view-field="viewpoint">[^]*<option value="overview" selected>Overview<\/option>/);
+  assert.match(
+    right,
+    /<select id="view-edit-viewpoint" data-view-field="viewpoint">[^]*<option value="overview" selected>Overview<\/option>/
+  );
   assert.match(right, /<option value="application" selected>Application<\/option>/);
-  assert.match(right, /<input type="text" id="view-edit-element" data-view-field="element" list="archicode-application-references" value="shop\.web\.api"/);
+  assert.match(
+    right,
+    /<input type="text" id="view-edit-element" data-view-field="element" list="archicode-application-references" value="shop\.web\.api"/
+  );
   assert.match(right, /<select id="view-edit-facet" data-view-field="facet"><option value="" selected>None<\/option>/);
   assert.match(right, /id="view-edit-hide-unlinked" data-view-field="hide-unlinked"(?! checked)/);
   assert.doesNotMatch(right, /id="view-edit-show-labels"[^>]* checked/, 'labels: false in the file');
-  assert.match(right, /id="view-edit-show-qualifiers"[^>]* checked/, 'a text the file does not say is drawn as the default says');
+  assert.match(
+    right,
+    /id="view-edit-show-qualifiers"[^>]* checked/,
+    'a text the file does not say is drawn as the default says'
+  );
   assert.match(right, /<div class="muted view-element-name">/, 'the name of the element is read back');
 });
 
@@ -115,7 +157,11 @@ test('changing the viewpoint, the element, the facet, Hide unlinked and a text r
   assert.deepEqual(ids(page), expectedBoxes(page, 'deep', 'shop.web.api'));
   assert.deepEqual(dirtyFiles(page), ['manifests/view.api_view.yaml']);
   assert.match(page.center(), /class="modified-badge"[^>]*>modified</, 'in the header of the page');
-  assert.match(page.sandbox.renderLibraryPerspectiveHtml().left, /class="modified-badge"[^>]*>modified</, 'and in the list');
+  assert.match(
+    page.sandbox.renderLibraryPerspectiveHtml().left,
+    /class="modified-badge"[^>]*>modified</,
+    'and in the list'
+  );
 
   await typeElement(page, 'shop');
   assert.equal(view.properties.element, 'shop');
@@ -132,14 +178,22 @@ test('changing the viewpoint, the element, the facet, Hide unlinked and a text r
 
   const captions = () => (page.scene().html.match(/<text class="dg-label"/g) || []).length;
   await tick(page, 'show-labels', true);
-  assert.equal(view.properties.labels, undefined, 'labels drawn is the default of this diagram: not a choice, not kept');
+  assert.equal(
+    view.properties.labels,
+    undefined,
+    'labels drawn is the default of this diagram: not a choice, not kept'
+  );
   const withLabels = captions();
   await tick(page, 'show-labels', false);
   assert.equal(view.properties.labels, false);
   assert.ok(captions() <= withLabels, 'turning labels off does not add captions');
 
   assert.deepEqual(written(page), writes, 'nothing was written');
-  assert.equal(page.mem.files.get('manifests/view.api_view.yaml').text, VIEW_FILE, 'the file on the disk is what it was');
+  assert.equal(
+    page.mem.files.get('manifests/view.api_view.yaml').text,
+    VIEW_FILE,
+    'the file on the disk is what it was'
+  );
   assert.deepEqual(dirtyFiles(page), ['manifests/view.api_view.yaml'], 'only this manifest is marked');
   assert.equal(page.state.workspace.settingsDirty, false, 'and not .archicode.yaml');
 });
@@ -161,7 +215,10 @@ test('Save all changes writes the manifest of the view and no other file; the ne
   assert.equal(page.sandbox.countUnsavedChanges(), 0);
   const text = page.mem.files.get('manifests/view.api_view.yaml').text;
   assert.ok(text.startsWith('# the architecture review reads this one\n'), 'the comment above the file stays');
-  assert.ok(text.includes('    # the element it is about\n    element: shop.web.api\n'), 'the comment of the properties and the untouched lines stay');
+  assert.ok(
+    text.includes('    # the element it is about\n    element: shop.web.api\n'),
+    'the comment of the properties and the untouched lines stay'
+  );
   assert.match(text, /viewpoint: deep\n/);
   assert.match(text, /facet: rest-only\n/);
   assert.match(text, /hide-unlinked: true\n/);
@@ -172,15 +229,28 @@ test('Save all changes writes the manifest of the view and no other file; the ne
   await again.loadWorkspace(page.mem.handle);
   const reloaded = again.findSavedView('api_view');
   assert.equal(reloaded.viewpoint, 'deep');
-  assert.deepEqual(plain(reloaded.properties), { element: 'shop.web.api', labels: false, facet: 'rest-only', 'hide-unlinked': true, wrap: true });
+  assert.deepEqual(plain(reloaded.properties), {
+    element: 'shop.web.api',
+    labels: false,
+    facet: 'rest-only',
+    'hide-unlinked': true,
+    wrap: true
+  });
 });
 
 test('an edit puts nothing but the view in memory: the Map and Elements keep their state, and another view keeps its own', async () => {
   const page = await startMem();
   const other = addView(page, { id: 'other', name: 'Other', viewpoint: 'deep', properties: { element: 'shop' } });
-  run(page.sandbox, "mapPinned = ['shop.web']; mapHidden = ['customer']; mapOpened = new Set(['shop']); diagramFacet = 'no-smtp'; diagramHideUnlinked = true; elementTab = 'deep';");
+  run(
+    page.sandbox,
+    "mapPinned = ['shop.web']; mapHidden = ['customer']; mapOpened = new Set(['shop']); diagramFacet = 'no-smtp'; diagramHideUnlinked = true; elementTab = 'deep';"
+  );
   page.state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
-  const globals = () => run(page.sandbox, 'JSON.stringify({ sel: AppState.selection, mapPinned, mapHidden, opened: Array.from(mapOpened), diagramFacet, diagramHideUnlinked, diagramShow, elementTab, hash: location.hash })');
+  const globals = () =>
+    run(
+      page.sandbox,
+      'JSON.stringify({ sel: AppState.selection, mapPinned, mapHidden, opened: Array.from(mapOpened), diagramFacet, diagramHideUnlinked, diagramShow, elementTab, hash: location.hash })'
+    );
   const before = globals();
   const otherBefore = JSON.stringify(plain(other));
   await openView(page, viewOf(page, 'api_view'));
@@ -192,7 +262,11 @@ test('an edit puts nothing but the view in memory: the Map and Elements keep the
   click(page.sandbox, { 'data-action': 'toggle-show', 'data-show': 'descriptions' });
   assert.equal(page.sandbox.location.hash, hash, 'the address is the same');
   await page.go('map');
-  assert.equal(globals(), before.replace(/"hash":"[^"]*"/, '"hash":' + JSON.stringify(page.sandbox.location.hash)), 'the Map and Elements keep what they had');
+  assert.equal(
+    globals(),
+    before.replace(/"hash":"[^"]*"/, '"hash":' + JSON.stringify(page.sandbox.location.hash)),
+    'the Map and Elements keep what they had'
+  );
   assert.equal(JSON.stringify(plain(other)), otherBefore);
 });
 
@@ -202,7 +276,12 @@ test('a text equal to the default is not kept, Hide unlinked off is not kept, a 
   await openView(page, view);
   await pickFacet(page, 'rest-only');
   await tick(page, 'hide-unlinked', true);
-  assert.deepEqual(plain(view.properties), { element: 'shop.web.api', labels: false, facet: 'rest-only', 'hide-unlinked': true });
+  assert.deepEqual(plain(view.properties), {
+    element: 'shop.web.api',
+    labels: false,
+    facet: 'rest-only',
+    'hide-unlinked': true
+  });
   await pickFacet(page, '');
   await tick(page, 'hide-unlinked', false);
   assert.deepEqual(plain(view.properties), { element: 'shop.web.api', labels: false });
@@ -210,7 +289,10 @@ test('a text equal to the default is not kept, Hide unlinked off is not kept, a 
   assert.deepEqual(plain(view.properties), { element: 'shop.web.api' });
   await pickFacet(page, ''); // nothing to change: not marked again, nothing redrawn
   await page.sandbox.saveAllChanges();
-  assert.match(page.mem.files.get('manifests/view.api_view.yaml').text, /properties:\n    # the element it is about\n    element: shop\.web\.api\n$/);
+  assert.match(
+    page.mem.files.get('manifests/view.api_view.yaml').text,
+    /properties:\n    # the element it is about\n    element: shop\.web\.api\n$/
+  );
 });
 
 // ============================================================ 2. The pins of a Map view are edited in the panel
@@ -224,11 +306,24 @@ test('a Map view lists its pinned, hidden and opened elements; adding and removi
   assert.match(right, /data-action="view-list-remove" data-list="pinned" data-ref="shop\.web"/);
   assert.match(right, /data-action="view-list-remove" data-list="pinned" data-ref="customer"/);
   assert.doesNotMatch(right, /id="view-edit-element"/, 'a map has pins, not an element');
-  assert.match(right, /<select id="view-edit-layer"[^>]*>.*<option value="application" selected>Application<\/option>/s, 'a map draws a layer: the one of the page Applications here');
+  assert.match(
+    right,
+    /<select id="view-edit-layer"[^>]*>.*<option value="application" selected>Application<\/option>/s,
+    'a map draws a layer: the one of the page Applications here'
+  );
   const mapIds = () => {
-    const input = page.sandbox.buildKernelInput('map', '', { opened: [], pinned: plain(run(page.sandbox, 'libraryDiagramRecipe(findSavedView("map_view")).mapState.pinned')) }).input;
+    const input = page.sandbox.buildKernelInput('map', '', {
+      opened: [],
+      pinned: plain(run(page.sandbox, 'libraryDiagramRecipe(findSavedView("map_view")).mapState.pinned'))
+    }).input;
     input.hidden = plain(run(page.sandbox, 'libraryDiagramRecipe(findSavedView("map_view")).mapState.hidden'));
-    return plain(page.kernel.compute(input).items.filter((item) => !item.ghost).map((item) => item.id).sort());
+    return plain(
+      page.kernel
+        .compute(input)
+        .items.filter((item) => !item.ghost)
+        .map((item) => item.id)
+        .sort()
+    );
   };
   assert.deepEqual(ids(page), mapIds());
 
@@ -249,7 +344,11 @@ test('a Map view lists its pinned, hidden and opened elements; adding and removi
   assert.deepEqual(written(page), ['manifests/view.map_view.yaml']);
   const again = createApp();
   await again.loadWorkspace(page.mem.handle);
-  assert.deepEqual(plain(again.findSavedView('map_view').properties), { pinned: ['shop.web', 'mailer'], labels: true, opened: ['shop'] });
+  assert.deepEqual(plain(again.findSavedView('map_view').properties), {
+    pinned: ['shop.web', 'mailer'],
+    labels: true,
+    opened: ['shop']
+  });
 });
 
 test('a reference that is not an element is refused, says so, and stays in its field; the view is not marked', async () => {
@@ -259,7 +358,11 @@ test('a reference that is not an element is refused, says so, and stays in its f
   assert.equal(page.sandbox.countUnsavedChanges(), 0);
   assert.deepEqual(plain(viewOf(page, 'map_view').properties.pinned), ['shop.web', 'customer']);
   assert.match(page.html(), /role="alert">“nowhere” is not an element of the application layer\./);
-  assert.match(page.html(), /id="view-edit-add-pinned"[^>]* value="nowhere"/, 'what was typed is kept, to be corrected');
+  assert.match(
+    page.html(),
+    /id="view-edit-add-pinned"[^>]* value="nowhere"/,
+    'what was typed is kept, to be corrected'
+  );
   await addToList(page, 'pinned', 'customer');
   assert.match(page.html(), /“customer” is already there\./);
 
@@ -294,7 +397,11 @@ test('Elements to Map pins the element and keeps what the view showed; Map to El
   assert.deepEqual(plain(view.properties), { element: 'shop.web.api', labels: false });
   await pickViewpoint(page, 'map');
   assert.equal(view.viewpoint, 'map');
-  assert.deepEqual(plain(view.properties), { pinned: ['shop.web.api'], qualifiers: true }, 'labels off is a Map\'s default now, qualifiers on is not: the view still shows what it showed');
+  assert.deepEqual(
+    plain(view.properties),
+    { pinned: ['shop.web.api'], qualifiers: true },
+    "labels off is a Map's default now, qualifiers on is not: the view still shows what it showed"
+  );
   const shows = plain(page.sandbox.libraryDiagramRecipe(view).shows);
   assert.equal(shows.labels, false);
   assert.equal(shows.qualifiers, true);
@@ -325,9 +432,13 @@ test('the layer: the element stays when the other layer has it, else the view ne
   assert.equal(page.canvas(), null, 'no canvas');
   const center = page.center();
   assert.match(center, /This view has no element\./);
-  assert.match(center, /id="view-edit-element" data-view-field="element" list="archicode-technology-references" value=""/, 'the form is in the centre, where the message is');
+  assert.match(
+    center,
+    /id="view-edit-element" data-view-field="element" list="archicode-technology-references" value=""/,
+    'the form is in the centre, where the message is'
+  );
   assert.doesNotMatch(center, /undefined/);
-  assert.equal(page.sandbox.viewLabel(view), 'The API', 'the name is the view\'s');
+  assert.equal(page.sandbox.viewLabel(view), 'The API', "the name is the view's");
   assert.doesNotMatch(page.sandbox.describeViewDefinition(view), /undefined/);
   assert.match(page.sandbox.describeViewDefinition(view), /\(no element\)/);
   assert.equal(page.sandbox.renderLibraryPerspectiveHtml().right, null);
@@ -355,7 +466,11 @@ test('a Map view left with only pins that do not exist cannot be drawn and says 
   assert.match(page.sandbox.viewProblem(view), /None of the elements it was pinned on exists any more/);
   assert.equal(page.canvas(), null);
   assert.match(page.center(), /None of the elements it was pinned on exists any more/);
-  assert.match(page.center(), /data-action="view-list-remove" data-list="pinned" data-ref="gone"/, 'and the form lets the reader take the missing pin out');
+  assert.match(
+    page.center(),
+    /data-action="view-list-remove" data-list="pinned" data-ref="gone"/,
+    'and the form lets the reader take the missing pin out'
+  );
   assert.match(page.center(), /pill pill-missing/);
   await removeFromList(page, 'pinned', 'gone');
   assert.equal(page.sandbox.viewProblem(view), null);
@@ -364,7 +479,9 @@ test('a Map view left with only pins that do not exist cannot be drawn and says 
 });
 
 test('a facet that removes the element is said by the diagram, and an unknown facet is listed as not defined', async () => {
-  const page = await startMem({ 'manifests/view.old_facet.yaml': MAP_FILE.replace('map_view', 'old_facet').replace('labels: true', 'facet: gone') });
+  const page = await startMem({
+    'manifests/view.old_facet.yaml': MAP_FILE.replace('map_view', 'old_facet').replace('labels: true', 'facet: gone')
+  });
   await openView(page, viewOf(page, 'old_facet'));
   assert.match(page.right(), /<option value="gone" selected>gone \(not defined\)<\/option>/);
   await pickFacet(page, '');
@@ -373,7 +490,7 @@ test('a facet that removes the element is said by the diagram, and an unknown fa
 
 // ============================================================ 4. The toolbar of the page edits the view
 
-test('Hide unlinked and the text buttons of the toolbar are the same edits as the panel\'s: the view changes, both surfaces agree', async () => {
+test("Hide unlinked and the text buttons of the toolbar are the same edits as the panel's: the view changes, both surfaces agree", async () => {
   const page = await startMem();
   const view = viewOf(page, 'api_view');
   await openView(page, view);
@@ -396,7 +513,12 @@ test('Hide unlinked and the text buttons of the toolbar are the same edits as th
 test('the camera is not an edit: zoom, fit and centre mark nothing', async () => {
   const page = await startMem();
   await openView(page, viewOf(page, 'api_view'));
-  for (const attributes of [{ 'data-action': 'diagram-zoom', 'data-dir': 'in' }, { 'data-action': 'diagram-zoom', 'data-dir': 'fit' }, { 'data-action': 'diagram-recenter' }]) click(page.sandbox, attributes);
+  for (const attributes of [
+    { 'data-action': 'diagram-zoom', 'data-dir': 'in' },
+    { 'data-action': 'diagram-zoom', 'data-dir': 'fit' },
+    { 'data-action': 'diagram-recenter' }
+  ])
+    click(page.sandbox, attributes);
   assert.equal(page.sandbox.countUnsavedChanges(), 0);
 });
 
@@ -431,10 +553,22 @@ test('edit, edit, edit: only the last redraw reaches the canvas, and it is the l
   await openView(page, viewOf(page, 'api_view'));
   const shown = [];
   page.sandbox.__log = (scene) => shown.push(scene.viewKey);
-  run(page.sandbox, 'globalThis.__show = showDiagramScene; showDiagramScene = (scene) => { __log(scene); __show(scene); };');
-  page.sandbox.handleAppChange({ target: control({ id: 'view-edit-viewpoint', 'data-view-field': 'viewpoint' }, { value: 'deep' }) });
-  page.sandbox.handleAppChange({ target: control({ id: 'view-edit-element', 'data-view-field': 'element' }, { tagName: 'INPUT', type: 'text', value: 'shop' }) });
-  page.sandbox.handleAppChange({ target: control({ id: 'view-edit-facet', 'data-view-field': 'facet' }, { value: 'rest-only' }) });
+  run(
+    page.sandbox,
+    'globalThis.__show = showDiagramScene; showDiagramScene = (scene) => { __log(scene); __show(scene); };'
+  );
+  page.sandbox.handleAppChange({
+    target: control({ id: 'view-edit-viewpoint', 'data-view-field': 'viewpoint' }, { value: 'deep' })
+  });
+  page.sandbox.handleAppChange({
+    target: control(
+      { id: 'view-edit-element', 'data-view-field': 'element' },
+      { tagName: 'INPUT', type: 'text', value: 'shop' }
+    )
+  });
+  page.sandbox.handleAppChange({
+    target: control({ id: 'view-edit-facet', 'data-view-field': 'facet' }, { value: 'rest-only' })
+  });
   await page.drawn();
   for (let i = 0; i < 40; i++) await new Promise((resolve) => setImmediate(resolve));
   assert.equal(shown.length, 1, 'the layouts of the first two were superseded: ' + shown.join(', '));
@@ -453,7 +587,11 @@ test('a selected element stays selected through an edit; a selected link goes wh
   const picked = plain(run(page.sandbox, 'libraryPick.selection'));
   assert.equal(picked.kind, 'element');
   await tick(page, 'hide-unlinked', true);
-  assert.deepEqual(plain(run(page.sandbox, 'libraryPick.selection')), picked, 'an element exists whether or not the drawing has its box');
+  assert.deepEqual(
+    plain(run(page.sandbox, 'libraryPick.selection')),
+    picked,
+    'an element exists whether or not the drawing has its box'
+  );
   assert.match(page.right(), /class="library-selection"/);
 
   const link = linksOf(page)[0];
@@ -465,7 +603,8 @@ test('a selected element stays selected through an edit; a selected link goes wh
   await typeElement(page, 'customer');
   const remaining = linksOf(page).map((l) => l['data-from'] + '>' + l['data-to']);
   const sel = plain(run(page.sandbox, 'libraryPick.selection'));
-  if (!remaining.includes(link['data-from'] + '>' + link['data-to'])) assert.ok(!sel || sel.kind !== 'link', 'the link no drawing holds is ended');
+  if (!remaining.includes(link['data-from'] + '>' + link['data-to']))
+    assert.ok(!sel || sel.kind !== 'link', 'the link no drawing holds is ended');
 
   // an undrawable view and back: the pick of the page is kept
   click(page.sandbox, boxesOf(page)[0]);
@@ -484,11 +623,21 @@ test('renaming an element still updates the views that point at it, and the page
   const map = viewOf(page, 'map_view');
   await openView(page, view);
   await pickViewpoint(page, 'deep'); // an edited view, not saved yet
-  page.sandbox.commitElementEdit('shop', (node) => { node.id = 'store'; return { renamedTo: { from: 'shop', to: 'store' } }; });
+  page.sandbox.commitElementEdit('shop', (node) => {
+    node.id = 'store';
+    return { renamedTo: { from: 'shop', to: 'store' } };
+  });
   assert.equal(view.properties.element, 'store.web.api');
   assert.deepEqual(plain(map.properties.pinned), ['store.web', 'customer']);
-  assert.match(page.mem.files.get('manifests/view.api_view.yaml').text, /element: shop\.web\.api/, 'the disk is the old one until the save');
-  assert.match(page.state.manifestFiles.find((f) => f.relPath === 'manifests/view.api_view.yaml').rawText, /element: store\.web\.api/);
+  assert.match(
+    page.mem.files.get('manifests/view.api_view.yaml').text,
+    /element: shop\.web\.api/,
+    'the disk is the old one until the save'
+  );
+  assert.match(
+    page.state.manifestFiles.find((f) => f.relPath === 'manifests/view.api_view.yaml').rawText,
+    /element: store\.web\.api/
+  );
   page.sandbox.render();
   await page.drawn();
   assert.deepEqual(ids(page), expectedBoxes(page, 'deep', 'store.web.api'));
@@ -497,7 +646,11 @@ test('renaming an element still updates the views that point at it, and the page
 
 test('the stories that show an edited view show the edited view', async () => {
   const page = await startMem();
-  page.sandbox.createManifestEntry('story', { id: 'tour', name: 'Tour', steps: [{ view: 'api_view', text: 'the API' }] });
+  page.sandbox.createManifestEntry('story', {
+    id: 'tour',
+    name: 'Tour',
+    steps: [{ view: 'api_view', text: 'the API' }]
+  });
   const view = viewOf(page, 'api_view');
   await openView(page, view);
   await pickViewpoint(page, 'deep');
@@ -518,7 +671,10 @@ test('the stories that show an edited view show the edited view', async () => {
 
 test('a view that still lives in .archicode.yaml is edited in place; saving it rewrites .archicode.yaml, as it already did', async () => {
   const page = await startMem();
-  run(page.sandbox, 'workspaceTopLevel().views = [{ id: "legacy", name: "Old", viewpoint: "overview", layer: "application", properties: { element: "shop" } }]');
+  run(
+    page.sandbox,
+    'workspaceTopLevel().views = [{ id: "legacy", name: "Old", viewpoint: "overview", layer: "application", properties: { element: "shop" } }]'
+  );
   const legacy = viewOf(page, 'legacy');
   await openView(page, legacy);
   assert.match(page.right(), /<code>\.archicode\.yaml<\/code>/);
@@ -528,7 +684,11 @@ test('a view that still lives in .archicode.yaml is edited in place; saving it r
   assert.deepEqual(dirtyFiles(page), [], 'no manifest is marked');
   await page.sandbox.saveAllChanges();
   assert.deepEqual(written(page), ['.archicode.yaml']);
-  assert.match(page.mem.files.get('.archicode.yaml').text, /viewpoint: "deep"/, 'the new value is written in the quotes the file uses');
+  assert.match(
+    page.mem.files.get('.archicode.yaml').text,
+    /viewpoint: "deep"/,
+    'the new value is written in the quotes the file uses'
+  );
 });
 
 // ============================================================ 8. A text committed by leaving it
@@ -540,12 +700,26 @@ test('a text left for another control is applied and lights Save at once, and re
   let renders = 0;
   const focusAsked = [];
   let lit = 0;
-  run(page.sandbox, 'globalThis.__lit = syncSaveAllButtonsInPlace; syncSaveAllButtonsInPlace = () => { __count("lit"); };');
-  page.sandbox.document.getElementById('app').querySelector = (selector) => { focusAsked.push(selector); return null; };
+  run(
+    page.sandbox,
+    'globalThis.__lit = syncSaveAllButtonsInPlace; syncSaveAllButtonsInPlace = () => { __count("lit"); };'
+  );
+  page.sandbox.document.getElementById('app').querySelector = (selector) => {
+    focusAsked.push(selector);
+    return null;
+  };
   run(page.sandbox, 'globalThis.__render = render; render = () => { __count(); __render(); };');
-  page.sandbox.__count = (what) => { if (what === 'lit') lit++; else renders++; };
+  page.sandbox.__count = (what) => {
+    if (what === 'lit') lit++;
+    else renders++;
+  };
   page.sandbox.document.activeElement = { tagName: 'BUTTON' }; // the click that made the field lose the focus is on this button
-  page.sandbox.handleAppChange({ target: control({ id: 'view-edit-element', 'data-view-field': 'element' }, { tagName: 'INPUT', type: 'text', value: 'shop.web' }) });
+  page.sandbox.handleAppChange({
+    target: control(
+      { id: 'view-edit-element', 'data-view-field': 'element' },
+      { tagName: 'INPUT', type: 'text', value: 'shop.web' }
+    )
+  });
   assert.equal(view.properties.element, 'shop.web');
   assert.equal(page.sandbox.countUnsavedChanges(), 1);
   assert.equal(renders, 0, 'the controls are still there for the click that is being made');
@@ -554,7 +728,12 @@ test('a text left for another control is applied and lights Save at once, and re
   assert.equal(renders, 1);
   assert.deepEqual(focusAsked, [], 'and the focus is not pulled back to the field that was left');
   page.sandbox.document.activeElement = undefined;
-  page.sandbox.handleAppChange({ target: control({ id: 'view-edit-element', 'data-view-field': 'element' }, { tagName: 'INPUT', type: 'text', value: 'shop' }) });
+  page.sandbox.handleAppChange({
+    target: control(
+      { id: 'view-edit-element', 'data-view-field': 'element' },
+      { tagName: 'INPUT', type: 'text', value: 'shop' }
+    )
+  });
   assert.equal(renders, 2, 'Enter: at once');
   assert.deepEqual(focusAsked, ['#view-edit-element'], 'and the field keeps the focus');
 });
@@ -565,9 +744,14 @@ test('a text left by a pointer press is redrawn a moment later even when the bro
   await openView(page, view);
   let renders = 0;
   const focusAsked = [];
-  page.sandbox.document.getElementById('app').querySelector = (selector) => { focusAsked.push(selector); return null; };
+  page.sandbox.document.getElementById('app').querySelector = (selector) => {
+    focusAsked.push(selector);
+    return null;
+  };
   run(page.sandbox, 'globalThis.__render = render; render = () => { __count(); __render(); };');
-  page.sandbox.__count = () => { renders++; };
+  page.sandbox.__count = () => {
+    renders++;
+  };
   const field = { id: 'view-edit-element', 'data-view-field': 'element' };
   const text = (value) => control(field, { tagName: 'INPUT', type: 'text', value, contains: (node) => node === field });
   const saveButton = { tagName: 'BUTTON' };
@@ -599,8 +783,15 @@ test('typing in a text field of the form lights Save all changes where it is, be
   const page = await startMem();
   await openView(page, viewOf(page, 'api_view'));
   const save = { disabled: true, title: 'No changes to save.' };
-  page.sandbox.document.querySelector = (selector) => (selector === '[aria-label="Changes"] [data-action="save-all-changes"]' ? save : null);
-  const field = (tagName, type, closes) => ({ tagName, type, id: 'x', matches: () => false, closest: (selector) => (closes && /data-view-field/.test(selector) ? {} : null) });
+  page.sandbox.document.querySelector = (selector) =>
+    selector === '[aria-label="Changes"] [data-action="save-all-changes"]' ? save : null;
+  const field = (tagName, type, closes) => ({
+    tagName,
+    type,
+    id: 'x',
+    matches: () => false,
+    closest: (selector) => (closes && /data-view-field/.test(selector) ? {} : null)
+  });
   page.sandbox.handleAppInput({ target: field('INPUT', 'text', false) });
   assert.equal(save.disabled, true, 'a text elsewhere is not the form of a view');
   page.sandbox.handleAppInput({ target: field('INPUT', 'checkbox', true) });
@@ -645,14 +836,21 @@ test('an edit that is put back leaves the view as saved: not modified, nothing t
   await tick(page, 'show-labels', true);
   assert.equal(page.sandbox.countUnsavedChanges(), 1);
   assert.match(page.html() + page.right(), /modified-badge/);
-  assert.equal(page.state.manifestFiles.find((f) => f.relPath === 'manifests/view.five.yaml').rawText.includes('hide-unlinked'), false);
+  assert.equal(
+    page.state.manifestFiles.find((f) => f.relPath === 'manifests/view.five.yaml').rawText.includes('hide-unlinked'),
+    false
+  );
   await tick(page, 'hide-unlinked', true);
   assert.equal(page.sandbox.countUnsavedChanges(), 1, 'one of the two is still different');
   await tick(page, 'show-labels', false);
   assert.equal(page.sandbox.countUnsavedChanges(), 0, 'both are back: nothing to save');
   assert.deepEqual(dirtyFiles(page), []);
   assert.doesNotMatch(page.right(), /modified-badge/);
-  assert.equal(page.state.manifestFiles.find((f) => f.relPath === 'manifests/view.five.yaml').rawText, FIVE_FILE, 'the text is the one on disk, comment and all');
+  assert.equal(
+    page.state.manifestFiles.find((f) => f.relPath === 'manifests/view.five.yaml').rawText,
+    FIVE_FILE,
+    'the text is the one on disk, comment and all'
+  );
   // the viewpoint too
   await pickViewpoint(page, 'deep');
   assert.equal(page.sandbox.countUnsavedChanges(), 1);
@@ -672,7 +870,12 @@ test('"as saved" is what the last save wrote, not what the folder was opened wit
   await pickViewpoint(page, 'deep');
   assert.equal(page.sandbox.countUnsavedChanges(), 0, 'equal to what was saved');
   // a new view: there is no saved text to come back to
-  const fresh = addView(page, { id: 'fresh', name: 'Fresh', viewpoint: 'detailed', properties: { element: 'shop.web' } });
+  const fresh = addView(page, {
+    id: 'fresh',
+    name: 'Fresh',
+    viewpoint: 'detailed',
+    properties: { element: 'shop.web' }
+  });
   await openView(page, fresh);
   await tick(page, 'show-labels', false);
   await tick(page, 'show-labels', true);
@@ -689,7 +892,11 @@ test('a property that an edit writes again goes back where the editor writes it,
   assert.deepEqual(Object.keys(plain(view.properties)), ['element', 'wrap']);
   await tick(page, 'hide-unlinked', true);
   await tick(page, 'show-labels', false);
-  assert.deepEqual(Object.keys(plain(view.properties)), ['element', 'hide-unlinked', 'labels', 'wrap'], 'the order of the original file');
+  assert.deepEqual(
+    Object.keys(plain(view.properties)),
+    ['element', 'hide-unlinked', 'labels', 'wrap'],
+    'the order of the original file'
+  );
   await page.sandbox.saveAllChanges();
   assert.equal(page.mem.files.get('manifests/view.five.yaml').text, FIVE_FILE, 'the file as it was');
 });
@@ -706,7 +913,15 @@ test('a key the editor does not know keeps its place, and a known one is written
   put('hide-unlinked', true);
   put('wrap', false); // already there: its place stays
   put('mystery', 2); // unknown: last
-  assert.deepEqual(Object.keys(plain(properties)), ['element', 'facet', 'custom', 'hide-unlinked', 'labels', 'wrap', 'mystery']);
+  assert.deepEqual(Object.keys(plain(properties)), [
+    'element',
+    'facet',
+    'custom',
+    'hide-unlinked',
+    'labels',
+    'wrap',
+    'mystery'
+  ]);
   assert.equal(properties.wrap, false);
 });
 
@@ -722,7 +937,12 @@ test('the form is wired: a change listener on the page, a handler for each contr
 });
 
 test('a technology element is the pin of the Map of the technology layer when its view becomes a map; taking a pin out gives the focus to the field to add one', async () => {
-  const page = await startMem({ 'manifests/view.tech.yaml': VIEW_FILE.replace('api_view', 'tech').replace('layer: application', 'layer: technology').replace('shop.web.api', 'prod.cluster').replace('overview', 'deep') });
+  const page = await startMem({
+    'manifests/view.tech.yaml': VIEW_FILE.replace('api_view', 'tech')
+      .replace('layer: application', 'layer: technology')
+      .replace('shop.web.api', 'prod.cluster')
+      .replace('overview', 'deep')
+  });
   const view = viewOf(page, 'tech');
   await openView(page, view);
   await pickViewpoint(page, 'map');
@@ -735,7 +955,22 @@ test('a technology element is the pin of the Map of the technology layer when it
 
   await openView(page, viewOf(page, 'map_view'));
   const asked = [];
-  page.sandbox.document.getElementById('app').querySelector = (selector) => { asked.push(selector); return null; };
+  page.sandbox.document.getElementById('app').querySelector = (selector) => {
+    asked.push(selector);
+    return null;
+  };
   await removeFromList(page, 'pinned', 'customer');
   assert.deepEqual(asked, ['#view-edit-add-pinned']);
+});
+
+test('a view with no `properties` key at all says the same as one with `properties: {}`, for every viewpoint of an element (wave 023, run 0164, #158)', async () => {
+  const page = await startMem();
+  const view = viewOf(page, 'api_view');
+  for (const viewpoint of ['overview', 'detailed', 'deep']) {
+    view.viewpoint = viewpoint;
+    delete view.properties;
+    assert.equal(page.sandbox.viewProblem(view), 'This view has no element.', viewpoint + ' without properties');
+    view.properties = {};
+    assert.equal(page.sandbox.viewProblem(view), 'This view has no element.', viewpoint + ' with properties: {}');
+  }
 });

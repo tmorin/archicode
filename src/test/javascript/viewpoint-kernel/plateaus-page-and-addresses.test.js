@@ -40,7 +40,9 @@ async function openIn(files) {
   await sandbox.loadViewpointKernel();
   assert.equal(state.fatalError, null);
   // The harness has no layout engine, so a page that draws a diagram cannot be drawn whole: `render()` is its last step, which writes the address (`syncHashFromState`).
-  sandbox.render = () => { sandbox.syncHashFromState(); };
+  sandbox.render = () => {
+    sandbox.syncHashFromState();
+  };
   sandbox.render(); // the end of the first drawing: the address says what is on screen
   return { sandbox, state, mem };
 }
@@ -53,7 +55,12 @@ function typeAddress(sandbox, hash) {
   for (const fn of sandbox.__windowListeners.hashchange) fn();
 }
 
-const where = (sandbox, state) => ({ plateau: state.layers.current, compare: run(sandbox, 'layerCompareChoice()'), page: run(sandbox, 'currentPerspective'), hash: sandbox.location.hash });
+const where = (sandbox, state) => ({
+  plateau: state.layers.current,
+  compare: run(sandbox, 'layerCompareChoice()'),
+  page: run(sandbox, 'currentPerspective'),
+  hash: sandbox.location.hash
+});
 
 // ---- the page Plateaus (#99) ----
 
@@ -61,7 +68,11 @@ test('the page is called Plateaus, at #/timeline/plateaus, and #/plateaus is no 
   const { sandbox } = await openLayered();
   assert.equal(run(sandbox, 'PERSPECTIVES.plateaus.label'), 'Plateaus');
   assert.equal(run(sandbox, 'PERSPECTIVES.plateaus.route'), 'timeline/plateaus');
-  assert.equal(run(sandbox, "Object.prototype.hasOwnProperty.call(PERSPECTIVES, 'timeline')"), false, 'no page is called Timeline: Timeline is the perspective');
+  assert.equal(
+    run(sandbox, "Object.prototype.hasOwnProperty.call(PERSPECTIVES, 'timeline')"),
+    false,
+    'no page is called Timeline: Timeline is the perspective'
+  );
   for (const hash of ['#/timeline/plateaus', '#/timeline/plateaus?plateau=saas']) {
     run(sandbox, 'location.hash = ' + JSON.stringify(hash));
     sandbox.syncPerspectiveFromHash();
@@ -74,7 +85,11 @@ test('the page is called Plateaus, at #/timeline/plateaus, and #/plateaus is no 
 
 test('#/timeline alone is no route, it opens the default page, Applications, whatever follows it, and the page then writes #/timeline/applications', async () => {
   const { sandbox, state } = await openLayered();
-  for (const [typed, written] of [['#/timeline', '#/timeline/applications'], ['#/timeline?x=1', '#/timeline/applications'], ['#/timeline/nowhere', '#/timeline/applications']]) {
+  for (const [typed, written] of [
+    ['#/timeline', '#/timeline/applications'],
+    ['#/timeline?x=1', '#/timeline/applications'],
+    ['#/timeline/nowhere', '#/timeline/applications']
+  ]) {
     typeAddress(sandbox, typed);
     assert.equal(run(sandbox, 'currentPerspective'), 'map', typed);
     assert.equal(sandbox.location.hash, written, typed + ' is no route: the default page is written');
@@ -86,11 +101,19 @@ test('the page Plateaus makes a plateau and edits one: the controls are on it an
   const { sandbox } = await openLayered();
   sandbox.drawPlateau('saas');
   const page = sandbox.renderPlateausPageHtml();
-  assert.match(page, /<div class="timeline-writing"[^>]*><span class="band-writing">/, 'in one place, above the list, for the plateau drawn');
+  assert.match(
+    page,
+    /<div class="timeline-writing"[^>]*><span class="band-writing">/,
+    'in one place, above the list, for the plateau drawn'
+  );
   assert.match(page, /writing in: <strong>Buy the commerce platform<\/strong> <code>saas<\/code>/);
   assert.match(page, /data-action="plateau-create" data-plateau="saas"[^>]*>New plateau</);
   assert.match(page, /data-action="plateau-edit" data-plateau="saas"[^>]*>Edit plateau</);
-  assert.doesNotMatch(sandbox.renderPlateauBandHtml(), /band-writing|plateau-create|plateau-edit/, 'and not on the band');
+  assert.doesNotMatch(
+    sandbox.renderPlateauBandHtml(),
+    /band-writing|plateau-create|plateau-edit/,
+    'and not on the band'
+  );
   click(sandbox, { 'data-action': 'plateau-edit', 'data-plateau': 'saas' });
   assert.equal(run(sandbox, 'appDialog').kind, 'plateau-form');
   assert.equal(run(sandbox, 'appDialog').mode, 'edit');
@@ -109,7 +132,16 @@ test('an address that names a plateau draws it: nothing is read from the disk an
   // an unsaved edit of saas (a patch in its manifest): it is not in inhouse, and must still be in saas when the address comes back to it
   sandbox.drawPlateau('saas');
   const inherited = sandbox.layerModelOf('inhouse', workspace.settings).index.application.get('shop.web').name;
-  assert.equal(sandbox.commitElementEdit('shop.web', (n) => { n.name = 'Shop front'; }, 'application'), undefined);
+  assert.equal(
+    sandbox.commitElementEdit(
+      'shop.web',
+      (n) => {
+        n.name = 'Shop front';
+      },
+      'application'
+    ),
+    undefined
+  );
   const dirty = state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath);
   assert.deepEqual(plain(dirty), ['saas/plateau.yaml']);
   mem.failGetFile = 'the disk was read'; // any read of the folder from here on is an error
@@ -117,7 +149,11 @@ test('an address that names a plateau draws it: nothing is read from the disk an
   assert.equal(state.layers.current, 'inhouse', 'the plateau of the address is drawn');
   assert.equal(run(sandbox, 'currentPerspective'), 'files');
   assert.equal(state.fatalError, null);
-  assert.equal(state.index, sandbox.layerModelOf('inhouse', workspace.settings).index, 'what is drawn is the resolution of inhouse');
+  assert.equal(
+    state.index,
+    sandbox.layerModelOf('inhouse', workspace.settings).index,
+    'what is drawn is the resolution of inhouse'
+  );
   assert.equal(state.index.application.get('shop.web').name, inherited);
   assert.equal(sandbox.location.hash, '#/files?plateau=inhouse', 'the page writes its own address back, the same');
   typeAddress(sandbox, '#/files?plateau=saas');
@@ -125,7 +161,11 @@ test('an address that names a plateau draws it: nothing is read from the disk an
   assert.equal(state.index.application.get('shop.web').name, 'Shop front', 'the edit made before is in what is drawn');
   assert.equal(state.workspace, workspace, 'the workspace is the one that was open');
   assert.equal(state.manifestFiles, files, 'and so are its files');
-  assert.deepEqual(plain(state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath)), plain(dirty), 'the edit is still unsaved');
+  assert.deepEqual(
+    plain(state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath)),
+    plain(dirty),
+    'the edit is still unsaved'
+  );
   assert.equal(state.fatalError, null);
 });
 
@@ -133,10 +173,18 @@ test('an address that names no plateau is the root, one that names a plateau tha
   const { sandbox, state } = await openLayered();
   sandbox.drawPlateau('marketplace');
   typeAddress(sandbox, '#/timeline/elements?plateau=nowhere');
-  assert.equal(state.layers.current, 'marketplace', 'there is no such plateau: nothing is drawn but the address is made true');
+  assert.equal(
+    state.layers.current,
+    'marketplace',
+    'there is no such plateau: nothing is drawn but the address is made true'
+  );
   assert.equal(sandbox.location.hash, '#/timeline/elements?plateau=marketplace');
   typeAddress(sandbox, '#/timeline/elements');
-  assert.equal(state.layers.current, 'baseline', 'the page writes no plateau for the root, so an address with none is the root (it is what Back returns to)');
+  assert.equal(
+    state.layers.current,
+    'baseline',
+    'the page writes no plateau for the root, so an address with none is the root (it is what Back returns to)'
+  );
   assert.equal(sandbox.location.hash, '#/timeline/elements');
 });
 
@@ -145,7 +193,12 @@ test('an address that names a comparison draws it, with the plateau, in one go',
   const cases = [
     ['#/timeline/applications?plateau=marketplace&compare=past', 'marketplace', 'past', 'inhouse'],
     ['#/timeline/applications?plateau=marketplace&compare=other%3Asaas', 'marketplace', 'other:saas', 'saas'],
-    ['#/timeline/applications?plateau=inhouse&compare=future%3Amarketplace', 'inhouse', 'future:marketplace', 'marketplace'],
+    [
+      '#/timeline/applications?plateau=inhouse&compare=future%3Amarketplace',
+      'inhouse',
+      'future:marketplace',
+      'marketplace'
+    ],
     ['#/timeline/applications?plateau=saas&compare=past', 'saas', 'past', 'baseline']
   ];
   for (const [hash, plateau, choice, other] of cases) {
@@ -193,7 +246,9 @@ test('a drawing that fails does not leave the next address to be a new entry of 
   const { sandbox } = await openLayered();
   const history = sandbox.__history;
   const real = sandbox.render;
-  sandbox.render = () => { throw new Error('the drawing failed'); };
+  sandbox.render = () => {
+    throw new Error('the drawing failed');
+  };
   assert.throws(() => sandbox.drawPlateau('saas'), /the drawing failed/);
   sandbox.render = real;
   const entries = history.entries.length;
@@ -203,7 +258,11 @@ test('a drawing that fails does not leave the next address to be a new entry of 
 });
 
 test('a workspace with no plateau ignores plateau= and compare=: it has the root only', async () => {
-  const { sandbox, state } = await openIn({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n' });
+  const { sandbox, state } = await openIn({
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
+    'app.ferry.yaml':
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n'
+  });
   typeAddress(sandbox, '#/files?plateau=saas&compare=past');
   assert.deepEqual([state.layers.current, state.layers.compare], ['baseline', null]);
   assert.equal(sandbox.location.hash, '#/files');
@@ -231,19 +290,30 @@ test('choosing a plateau is an entry of the history, and Back and Forward betwee
   chooseOnBand(sandbox, 'plateau', 'saas');
   assert.equal(sandbox.location.hash, '#/timeline/applications?plateau=saas');
   assert.equal(history.entries.length, start + 1, 'one entry for the plateau');
-  assert.deepEqual(history.entries.slice(-2), ['#/timeline/applications', '#/timeline/applications?plateau=saas'], 'the place before is kept, not rewritten');
+  assert.deepEqual(
+    history.entries.slice(-2),
+    ['#/timeline/applications', '#/timeline/applications?plateau=saas'],
+    'the place before is kept, not rewritten'
+  );
   sandbox.render(); // a drawing of the same state adds nothing
   assert.equal(history.entries.length, start + 1);
   click(sandbox, { 'data-action': 'timeline-draw', 'data-plateau': 'inhouse' });
   assert.equal(history.entries.length, start + 2);
   sandbox.history.back();
-  assert.deepEqual([state.layers.current, sandbox.location.hash], ['saas', '#/timeline/applications?plateau=saas'], 'Back draws the plateau before');
+  assert.deepEqual(
+    [state.layers.current, sandbox.location.hash],
+    ['saas', '#/timeline/applications?plateau=saas'],
+    'Back draws the plateau before'
+  );
   assert.equal(history.entries.length, start + 2, 'and adds no entry, nor rewrites one');
   sandbox.history.back();
   assert.deepEqual([state.layers.current, sandbox.location.hash], ['baseline', '#/timeline/applications']);
   sandbox.history.forward();
   sandbox.history.forward();
-  assert.deepEqual([state.layers.current, sandbox.location.hash], ['inhouse', '#/timeline/applications?plateau=inhouse']);
+  assert.deepEqual(
+    [state.layers.current, sandbox.location.hash],
+    ['inhouse', '#/timeline/applications?plateau=inhouse']
+  );
   assert.equal(history.entries.length, start + 2);
 });
 
@@ -265,7 +335,11 @@ test('a comparison chosen on the band does not add an entry (the address does no
   const entries = history.entries.length;
   chooseOnBand(sandbox, 'compare', 'past');
   assert.equal(run(sandbox, 'layerCompareChoice()'), 'past');
-  assert.equal(history.entries.length, entries, 'Past is not in the address: it is a choice of whoever looks, kept for the folder');
+  assert.equal(
+    history.entries.length,
+    entries,
+    'Past is not in the address: it is a choice of whoever looks, kept for the folder'
+  );
   click(sandbox, { 'data-action': 'timeline-changes', 'data-plateau': 'saas' });
   assert.deepEqual([state.layers.current, run(sandbox, 'layerCompareChoice()')], ['saas', 'past']);
   assert.equal(history.entries.length, entries + 1);

@@ -106,6 +106,7 @@
 //!   - a fifth entry point, `states`, says the seven state words once (`relationship`, `identity`, `container`, `states`); the hosts keep no list of their own.
 //!   - the elements of `compare`'s union say `contains_changes` (and `contains_more_than_wording`), additive keys (issue #96, wave 015): the number stays 5.
 //!     `compute` removes them from its input, so they are no free-form field for a facet.
+//!
 //! `compute`, `apply_facet` and `apply_patches` take what they took; their answers say the version, 5, and an item of a comparison gained `contains_changes`.
 //!
 //! The map of the technology layer draws the applications and the dependencies they give (wave 016, run 0114, issue #107; additive, the number stays 5). Given the application
@@ -199,7 +200,9 @@ impl Ord for QSet {
 }
 
 /// A field that is `null` is a field that is not given.
-fn null_as_default<'de, D: serde::Deserializer<'de>, T: Deserialize<'de> + Default>(d: D) -> Result<T, D::Error> {
+fn null_as_default<'de, D: serde::Deserializer<'de>, T: Deserialize<'de> + Default>(
+    d: D,
+) -> Result<T, D::Error> {
     Ok(Option::<T>::deserialize(d)?.unwrap_or_default())
 }
 
@@ -352,12 +355,22 @@ impl Elem {
     /// What `compare` says of the element (`change` among its free-form fields); none when it does not, or when
     /// `compute_json` would have refused it.
     fn change(&self) -> Option<Change> {
-        self.other.get("change").and_then(|c| c.as_str()).and_then(Change::parse)
+        self.other
+            .get("change")
+            .and_then(|c| c.as_str())
+            .and_then(Change::parse)
     }
 
     /// The `natures` of the change, as `compare` lists them (free-form: they only travel).
     fn natures(&self) -> Vec<String> {
-        self.other.get("natures").and_then(|n| n.as_array()).into_iter().flatten().filter_map(|n| n.as_str()).map(str::to_string).collect()
+        self.other
+            .get("natures")
+            .and_then(|n| n.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|n| n.as_str())
+            .map(str::to_string)
+            .collect()
     }
 }
 
@@ -457,7 +470,10 @@ impl OutRel {
 
     /// A relationship of a deployed application.
     fn of_application(from: &str, rel: &Rel) -> OutRel {
-        OutRel { application: true, ..OutRel::of(from, rel) }
+        OutRel {
+            application: true,
+            ..OutRel::of(from, rel)
+        }
     }
 }
 
@@ -510,7 +526,19 @@ struct OutItem {
 
 impl OutItem {
     fn new(id: &str, reference: &str, parent: Option<String>) -> OutItem {
-        OutItem { id: id.to_string(), reference: reference.to_string(), parent, collapsed: false, hidden: 0, expandable: false, stereotypes: Vec::new(), change: None, natures: Vec::new(), context: false, contains_changes: false }
+        OutItem {
+            id: id.to_string(),
+            reference: reference.to_string(),
+            parent,
+            collapsed: false,
+            hidden: 0,
+            expandable: false,
+            stereotypes: Vec::new(),
+            change: None,
+            natures: Vec::new(),
+            context: false,
+            contains_changes: false,
+        }
     }
 }
 
@@ -520,8 +548,20 @@ const TAG_STEREOTYPES: &str = "rendering-stereotypes";
 /// What a diagram says about an element: its qualifiers, as declared, then the words of its `rendering-stereotypes` tag;
 /// nothing twice. Both come from the free-form properties of the element, where a caller that knows them puts them.
 fn stereotypes_of(element: &Elem) -> Vec<String> {
-    let qualifiers = element.other.get("qualifiers").and_then(|q| q.as_array()).into_iter().flatten().filter_map(|q| q.as_str());
-    let tagged = element.other.get("tags").and_then(|t| t.get(TAG_STEREOTYPES)).and_then(|v| v.as_str()).into_iter().flat_map(|v| v.split_whitespace());
+    let qualifiers = element
+        .other
+        .get("qualifiers")
+        .and_then(|q| q.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|q| q.as_str());
+    let tagged = element
+        .other
+        .get("tags")
+        .and_then(|t| t.get(TAG_STEREOTYPES))
+        .and_then(|v| v.as_str())
+        .into_iter()
+        .flat_map(|v| v.split_whitespace());
     let mut out: Vec<String> = Vec::new();
     for stereotype in qualifiers.chain(tagged).filter(|s| !s.is_empty()) {
         if !out.iter().any(|known| known == stereotype) {
@@ -546,10 +586,22 @@ fn push_last(stereotypes: &mut Vec<String>, name: &str) {
 /// in reverse): the computed state has the last word over the same word written by hand, and over any other. A word
 /// that was already there is not repeated, it moves.
 fn add_stereotypes(items: &mut [OutItem], input: &Input) {
-    let main: HashMap<&str, &Elem> = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
-    let apps: HashMap<&str, &Elem> = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    let main: HashMap<&str, &Elem> = input
+        .elements
+        .iter()
+        .map(|e| (e.reference.as_str(), e))
+        .collect();
+    let apps: HashMap<&str, &Elem> = input
+        .app_elements
+        .iter()
+        .map(|e| (e.reference.as_str(), e))
+        .collect();
     for item in items.iter_mut() {
-        let layer = if item.id == item.reference { &main } else { &apps };
+        let layer = if item.id == item.reference {
+            &main
+        } else {
+            &apps
+        };
         if let Some(element) = layer.get(item.reference.as_str()) {
             item.stereotypes = stereotypes_of(element);
         }
@@ -597,7 +649,9 @@ fn down_reference(r: &str) -> String {
 }
 fn is_descendant_of(candidate: &str, reference: &str) -> bool {
     // the segments of `reference` are the first ones of `candidate`, and `candidate` has more (no allocation: this is called for every pair of elements)
-    candidate.len() > reference.len() && candidate.starts_with(reference) && candidate.as_bytes()[reference.len()] == b'.'
+    candidate.len() > reference.len()
+        && candidate.starts_with(reference)
+        && candidate.as_bytes()[reference.len()] == b'.'
 }
 fn starts_with_parts(actual: &[&str], expected: &[&str]) -> bool {
     actual.len() >= expected.len() && actual[..expected.len()] == *expected
@@ -649,7 +703,10 @@ struct Groomed {
 }
 
 fn resolve_local_to(ml: &MetaLink, from_t: usize, to_t: usize) -> usize {
-    if is_ancestor_of(&down_reference(&down_reference_to(&ml.from, from_t)), &ml.to) {
+    if is_ancestor_of(
+        &down_reference(&down_reference_to(&ml.from, from_t)),
+        &ml.to,
+    ) {
         return from_t;
     }
     if down_reference_to(&ml.from, 0) == down_reference_to(&ml.to, 0) {
@@ -671,17 +728,20 @@ fn resolve_local_from(ml: &MetaLink, from_t: usize, to_t: usize) -> usize {
 /// An end that was groomed up to `grouped` is brought back down one level at a time while the item it landed on is open.
 fn open_down(real: &str, grouped: String, expanded: &[String], focal: &str) -> String {
     let mut out = grouped;
-    while out != real
-        && expanded.contains(&out)
-        && out != focal
-        && !is_ancestor_of(&out, focal)
-    {
+    while out != real && expanded.contains(&out) && out != focal && !is_ancestor_of(&out, focal) {
         out = down_reference_to(real, level_from(&out) + 1);
     }
     out
 }
 
-fn groom(metas: &[MetaLink], dir: Direction, from_t: usize, to_t: usize, expanded: &[String], focal: &str) -> Vec<Groomed> {
+fn groom(
+    metas: &[MetaLink],
+    dir: Direction,
+    from_t: usize,
+    to_t: usize,
+    expanded: &[String],
+    focal: &str,
+) -> Vec<Groomed> {
     let mut by_key: BTreeMap<String, Groomed> = BTreeMap::new();
     for ml in metas {
         let (mut local_from, mut local_to) = (from_t, to_t);
@@ -691,7 +751,12 @@ fn groom(metas: &[MetaLink], dir: Direction, from_t: usize, to_t: usize, expande
         }
         let mut gfrom = ml.from.clone();
         if level_from(&ml.from) > local_from {
-            gfrom = open_down(&ml.from, down_reference_to(&ml.from, local_from), expanded, focal);
+            gfrom = open_down(
+                &ml.from,
+                down_reference_to(&ml.from, local_from),
+                expanded,
+                focal,
+            );
         }
         let mut gto = ml.to.clone();
         if level_from(&ml.to) > local_to {
@@ -751,22 +816,41 @@ impl<'a> Shared<'a> {
 
     /// The elements of the application layer by reference.
     fn app_known(&self) -> &Known<'a> {
-        self.app_known.get_or_init(|| self.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect())
+        self.app_known.get_or_init(|| {
+            self.app_elements
+                .iter()
+                .map(|e| (e.reference.as_str(), e))
+                .collect()
+        })
     }
 
     /// The relationships of each element, in the order of the elements: each distinct one once, sorted (what a `BTreeSet` of them gives).
     fn rels(&self) -> &[Vec<&'a Rel>] {
-        self.rels.get_or_init(|| self.elements.iter().map(|e| e.relationships.iter().collect::<BTreeSet<_>>().into_iter().collect()).collect())
+        self.rels.get_or_init(|| {
+            self.elements
+                .iter()
+                .map(|e| {
+                    e.relationships
+                        .iter()
+                        .collect::<BTreeSet<_>>()
+                        .into_iter()
+                        .collect()
+                })
+                .collect()
+        })
     }
 
     /// The dependencies between environments (`derived_dependencies`).
     fn derived(&self) -> &[Derived<'a>] {
-        self.derived.get_or_init(|| derived_dependencies(self.elements, self.app_elements, self.app_known()))
+        self.derived.get_or_init(|| {
+            derived_dependencies(self.elements, self.app_elements, self.app_known())
+        })
     }
 
     /// The dependencies between applications of one environment (`local_dependencies`).
     fn local(&self) -> &[Derived<'a>] {
-        self.local.get_or_init(|| local_dependencies(self.elements, self.app_elements, self.app_known()))
+        self.local
+            .get_or_init(|| local_dependencies(self.elements, self.app_elements, self.app_known()))
     }
 
     fn main_above(&self) -> &HashSet<String> {
@@ -774,12 +858,17 @@ impl<'a> Shared<'a> {
     }
 
     fn apps_above(&self) -> &HashSet<String> {
-        self.apps_above.get_or_init(|| above_changes(self.app_elements))
+        self.apps_above
+            .get_or_init(|| above_changes(self.app_elements))
     }
 }
 
 fn require(known: &Known, dest: &str) -> Result<(), String> {
-    if known.contains_key(dest) { Ok(()) } else { Err(format!("dangling reference: {dest}")) }
+    if known.contains_key(dest) {
+        Ok(())
+    } else {
+        Err(format!("dangling reference: {dest}"))
+    }
 }
 
 /// MetaLinkFinderForEgress: relationships leaving the subtree rooted at `root`.
@@ -790,7 +879,12 @@ fn find_egress(shared: &Shared, root: &str) -> Result<Vec<MetaLink>, String> {
             for r in rels {
                 if !is_descendant_of(&r.destination, root) {
                     require(&shared.known, &r.destination)?;
-                    out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: (*r).clone(), application: None });
+                    out.push(MetaLink {
+                        from: e.reference.clone(),
+                        to: r.destination.clone(),
+                        rel: (*r).clone(),
+                        application: None,
+                    });
                 }
             }
         }
@@ -808,7 +902,12 @@ fn find_ingress(shared: &Shared, root: &str) -> Result<Vec<MetaLink>, String> {
         for r in rels {
             if r.destination == root || is_descendant_of(&r.destination, root) {
                 require(&shared.known, &r.destination)?;
-                out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: (*r).clone(), application: None });
+                out.push(MetaLink {
+                    from: e.reference.clone(),
+                    to: r.destination.clone(),
+                    rel: (*r).clone(),
+                    application: None,
+                });
             }
         }
     }
@@ -826,6 +925,13 @@ fn with_ancestors(refs: impl IntoIterator<Item = String>) -> BTreeSet<String> {
     out
 }
 
+/// What makes two relationships read the same: destination, label, qualifiers and tags.
+type ReadsTheSame<'a> = (
+    &'a String,
+    &'a Option<String>,
+    &'a QSet,
+    &'a BTreeMap<String, String>,
+);
 type Content = (BTreeSet<OutItem>, BTreeSet<OutLink>);
 
 fn to_items(refs: &BTreeSet<String>) -> BTreeSet<OutItem> {
@@ -836,13 +942,21 @@ fn to_items(refs: &BTreeSet<String>) -> BTreeSet<OutItem> {
 
 /// The links of a set of groomed ends: a grouped (synthetic) pair is one link, a natural pair is one link per distinct
 /// relationship. Every end is added to `refs`.
-fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) -> BTreeSet<OutLink> {
+fn emit_links(
+    groomed: &[Groomed],
+    default_label: &str,
+    refs: &mut Vec<String>,
+) -> BTreeSet<OutLink> {
     let mut links: BTreeSet<OutLink> = BTreeSet::new();
     for g in groomed {
         refs.push(g.from.clone());
         refs.push(g.to.clone());
         if !g.synthetic.is_empty() {
-            let qualifiers = g.synthetic.iter().flat_map(|r| r.qualifiers.iter().cloned()).collect();
+            let qualifiers = g
+                .synthetic
+                .iter()
+                .flat_map(|r| r.qualifiers.iter().cloned())
+                .collect();
             let label = if g.synthetic.len() == 1 {
                 g.synthetic
                     .iter()
@@ -877,7 +991,12 @@ fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) 
                     relationships: g
                         .natural_src
                         .iter()
-                        .filter(|o| o.destination == r.destination && o.label == r.label && o.qualifiers == r.qualifiers && o.tags == r.tags)
+                        .filter(|o| {
+                            o.destination == r.destination
+                                && o.label == r.label
+                                && o.qualifiers == r.qualifiers
+                                && o.tags == r.tags
+                        })
                         .cloned()
                         .collect(),
                     change: None,
@@ -902,7 +1021,12 @@ fn overview(input: &Input, shared: &Shared, focal: &str) -> Result<Content, Stri
             dependencies.extend(shared.local());
         }
         for d in dependencies {
-            let meta = MetaLink { from: d.from_node.to_string(), to: d.to_node.to_string(), rel: d.rel.clone(), application: Some(d.source.to_string()) };
+            let meta = MetaLink {
+                from: d.from_node.to_string(),
+                to: d.to_node.to_string(),
+                rel: d.rel.clone(),
+                application: Some(d.source.to_string()),
+            };
             match (within(d.from_node, focal), within(d.to_node, focal)) {
                 (true, false) => egress.push(meta),
                 (false, true) => ingress.push(meta),
@@ -911,8 +1035,22 @@ fn overview(input: &Input, shared: &Shared, focal: &str) -> Result<Content, Stri
         }
     }
     let focal_level = level_from(focal);
-    let mut groomed = groom(&egress, Direction::Egress, focal_level, 0, &input.expanded, focal);
-    groomed.extend(groom(&ingress, Direction::Ingress, 0, focal_level, &input.expanded, focal));
+    let mut groomed = groom(
+        &egress,
+        Direction::Egress,
+        focal_level,
+        0,
+        &input.expanded,
+        focal,
+    );
+    groomed.extend(groom(
+        &ingress,
+        Direction::Ingress,
+        0,
+        focal_level,
+        &input.expanded,
+        focal,
+    ));
 
     let mut refs = vec![focal.to_string()];
     let links = emit_links(&groomed, &input.default_synthetic_label, &mut refs);
@@ -933,14 +1071,20 @@ fn overview(input: &Input, shared: &Shared, focal: &str) -> Result<Content, Stri
 /// "secondary" there), as links between the deployed applications when both boxes are drawn, else between the boxes they land on (`relationships`).
 fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
     let known = &shared.known;
-    for reference in input.pinned.iter().chain(input.opened.iter()).chain(input.hidden.iter()) {
+    for reference in input
+        .pinned
+        .iter()
+        .chain(input.opened.iter())
+        .chain(input.hidden.iter())
+    {
         require(known, reference)?;
     }
     let opened: HashSet<&str> = input.opened.iter().map(String::as_str).collect();
     let within = |x: &str, roots: &[String]| roots.iter().any(|r| x == r || is_descendant_of(x, r));
     let is_hidden = |x: &str| within(x, &input.hidden);
     let in_pinned = |x: &str| within(x, &input.pinned);
-    let open = |node: &str| opened.contains(node) || input.pinned.iter().any(|p| is_ancestor_of(node, p));
+    let open =
+        |node: &str| opened.contains(node) || input.pinned.iter().any(|p| is_ancestor_of(node, p));
     let visible = |e: &str| -> bool {
         let p = parts(e);
         !is_hidden(e) && (1..p.len()).all(|i| open(&p[..i].join(".")))
@@ -971,7 +1115,10 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
             }
         }
     }
-    let deployed_id: HashMap<(&str, &str), &str> = deployed_items.iter().map(|(node, app, id)| ((node.as_str(), app.as_str()), id.as_str())).collect();
+    let deployed_id: HashMap<(&str, &str), &str> = deployed_items
+        .iter()
+        .map(|(node, app, id)| ((node.as_str(), app.as_str()), id.as_str()))
+        .collect();
 
     let mut by_key: BTreeMap<String, Groomed> = BTreeMap::new();
     if draw_links {
@@ -980,7 +1127,9 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
                 if is_hidden(&e.reference) || is_hidden(&r.destination) {
                     continue;
                 }
-                if !input.pinned.is_empty() && !(in_pinned(&e.reference) || in_pinned(&r.destination)) {
+                if !input.pinned.is_empty()
+                    && !(in_pinned(&e.reference) || in_pinned(&r.destination))
+                {
                     continue;
                 }
                 require(known, &r.destination)?;
@@ -989,7 +1138,13 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
                     continue; // inside a closed element
                 }
                 let grouped = from != e.reference || to != r.destination;
-                let g = by_key.entry(format!("{} -> {}", from, to)).or_insert_with(|| Groomed { from: from.clone(), to: to.clone(), ..Default::default() });
+                let g = by_key
+                    .entry(format!("{} -> {}", from, to))
+                    .or_insert_with(|| Groomed {
+                        from: from.clone(),
+                        to: to.clone(),
+                        ..Default::default()
+                    });
                 if grouped {
                     g.synthetic.insert(r.clone());
                     g.synthetic_src.insert(OutRel::of(&e.reference, r));
@@ -1015,18 +1170,28 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
                         None => (project(node), false),
                     }
                 };
-                let ((from, from_app_box), (to, to_app_box)) = (end(d.from_node, d.from_app), end(d.to_node, destination));
+                let ((from, from_app_box), (to, to_app_box)) =
+                    (end(d.from_node, d.from_app), end(d.to_node, destination));
                 if from == to {
                     continue;
                 }
-                let grouped = (!from_app_box && from != d.from_node) || (!to_app_box && to != d.to_node);
-                let g = by_key.entry(format!("{} -> {}", from, to)).or_insert_with(|| Groomed { from: from.clone(), to: to.clone(), ..Default::default() });
+                let grouped =
+                    (!from_app_box && from != d.from_node) || (!to_app_box && to != d.to_node);
+                let g = by_key
+                    .entry(format!("{} -> {}", from, to))
+                    .or_insert_with(|| Groomed {
+                        from: from.clone(),
+                        to: to.clone(),
+                        ..Default::default()
+                    });
                 if grouped {
                     g.synthetic.insert(d.rel.clone());
-                    g.synthetic_src.insert(OutRel::of_application(d.source, d.rel));
+                    g.synthetic_src
+                        .insert(OutRel::of_application(d.source, d.rel));
                 } else {
                     g.natural.insert(d.rel.clone());
-                    g.natural_src.insert(OutRel::of_application(d.source, d.rel));
+                    g.natural_src
+                        .insert(OutRel::of_application(d.source, d.rel));
                 }
             }
         }
@@ -1035,16 +1200,34 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
     let mut refs: Vec<String> = Vec::new();
     let links = emit_links(&groomed, &input.default_synthetic_label, &mut refs);
     // the ends of a link that are boxes of an application are not elements of the layer: they are added as items below
-    let app_ids: HashSet<&str> = deployed_items.iter().map(|(_, _, id)| id.as_str()).collect();
+    let app_ids: HashSet<&str> = deployed_items
+        .iter()
+        .map(|(_, _, id)| id.as_str())
+        .collect();
     refs.retain(|r| !app_ids.contains(r.as_str()));
     if input.pinned.is_empty() {
-        refs.extend(input.elements.iter().filter(|e| visible(&e.reference)).map(|e| e.reference.clone()));
+        refs.extend(
+            input
+                .elements
+                .iter()
+                .filter(|e| visible(&e.reference))
+                .map(|e| e.reference.clone()),
+        );
     } else {
         refs.extend(input.pinned.iter().cloned());
         // the children of what is open inside a pinned element are all shown, linked or not
-        refs.extend(input.elements.iter().filter(|e| in_pinned(&e.reference) && visible(&e.reference)).map(|e| e.reference.clone()));
+        refs.extend(
+            input
+                .elements
+                .iter()
+                .filter(|e| in_pinned(&e.reference) && visible(&e.reference))
+                .map(|e| e.reference.clone()),
+        );
     }
-    let item_refs: BTreeSet<String> = with_ancestors(refs).into_iter().filter(|r| !is_hidden(r)).collect();
+    let item_refs: BTreeSet<String> = with_ancestors(refs)
+        .into_iter()
+        .filter(|r| !is_hidden(r))
+        .collect();
     for r in &item_refs {
         require(known, r)?;
     }
@@ -1057,7 +1240,10 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
 
 /// The map of the technology layer draws the applications deployed on its nodes: it was given the application layer, and `applications` is not false.
 fn applies_applications(input: &Input) -> bool {
-    input.viewpoint == "map" && input.layer == "technology" && !input.app_elements.is_empty() && input.applications.unwrap_or(true)
+    input.viewpoint == "map"
+        && input.layer == "technology"
+        && !input.app_elements.is_empty()
+        && input.applications.unwrap_or(true)
 }
 
 /// The id of the box of each application deployed on each node, in the map of the technology layer: (node, application, id). The id is the last segment of the node and the
@@ -1070,7 +1256,13 @@ fn deployed_ids(input: &Input) -> Vec<(String, String, String)> {
             pairs.push((node.reference.as_str(), app.as_str()));
         }
     }
-    let short = |node: &str, app: &str| format!("{}_{}", parts(node).last().copied().unwrap_or(""), app.replace('.', "_"));
+    let short = |node: &str, app: &str| {
+        format!(
+            "{}_{}",
+            parts(node).last().copied().unwrap_or(""),
+            app.replace('.', "_")
+        )
+    };
     let mut uses: HashMap<String, usize> = HashMap::new();
     for (node, app) in &pairs {
         *uses.entry(short(node, app)).or_default() += 1;
@@ -1097,7 +1289,9 @@ fn deployed_ids(input: &Input) -> Vec<(String, String, String)> {
 fn detailed(input: &Input, shared: &Shared) -> Result<Content, String> {
     let known = &shared.known;
     let focal = input.focal.as_str();
-    let focal_elem = known.get(focal).ok_or_else(|| format!("unknown focal element: {focal}"))?;
+    let focal_elem = known
+        .get(focal)
+        .ok_or_else(|| format!("unknown focal element: {focal}"))?;
     if !focal_elem.parent {
         return Err(format!("the element {focal} is not a parent one"));
     }
@@ -1179,7 +1373,10 @@ fn hosts_of_applications(elements: &[Elem]) -> BTreeMap<&str, BTreeSet<&str>> {
     let mut hosts: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
     for node in elements {
         for app in &node.applications {
-            hosts.entry(app.as_str()).or_default().insert(node.reference.as_str());
+            hosts
+                .entry(app.as_str())
+                .or_default()
+                .insert(node.reference.as_str());
         }
     }
     hosts
@@ -1187,7 +1384,10 @@ fn hosts_of_applications(elements: &[Elem]) -> BTreeMap<&str, BTreeSet<&str>> {
 
 /// The deployed application that `reference` is or is inside (the nearest one when applications are nested), if any: a relationship
 /// towards a component of `shop.app` is a relationship towards the deployed application `shop.app` (issue #139, decision T5).
-fn deployed_application_of<'a>(hosts: &BTreeMap<&'a str, BTreeSet<&'a str>>, reference: &str) -> Option<&'a str> {
+fn deployed_application_of<'a>(
+    hosts: &BTreeMap<&'a str, BTreeSet<&'a str>>,
+    reference: &str,
+) -> Option<&'a str> {
     let mut end = reference.len();
     loop {
         if let Some((app, _)) = hosts.get_key_value(&reference[..end]) {
@@ -1200,7 +1400,10 @@ fn deployed_application_of<'a>(hosts: &BTreeMap<&'a str, BTreeSet<&'a str>>, ref
 /// The relationships that stand for the dependencies of a deployed application: its own and those of everything inside it
 /// (issue #124: a relationship of `shop.app.payments` is a dependency of the node that hosts `shop.app`), each with the element
 /// that declares it. One that ends inside the application itself is internal, not a dependency.
-fn relationships_of_deployed<'a>(app_elements: &'a [Elem], app: &'a str) -> Vec<(&'a str, &'a Rel)> {
+fn relationships_of_deployed<'a>(
+    app_elements: &'a [Elem],
+    app: &'a str,
+) -> Vec<(&'a str, &'a Rel)> {
     let mut out = Vec::new();
     for elem in app_elements.iter().filter(|e| within(&e.reference, app)) {
         for rel in elem.relationships.iter().collect::<BTreeSet<_>>() {
@@ -1218,25 +1421,52 @@ fn relationships_of_deployed<'a>(app_elements: &'a [Elem], app: &'a str) -> Vec<
 /// the second. An environment reaches what it hosts itself first; what it does not host, it finds in the environments
 /// (or the nodes) it `uses`, and nowhere else: an application deployed in several environments is therefore reached
 /// where the environment says so.
-fn derived_dependencies<'a>(elements: &'a [Elem], app_elements: &'a [Elem], app_known: &Known<'a>) -> Vec<Derived<'a>> {
+fn derived_dependencies<'a>(
+    elements: &'a [Elem],
+    app_elements: &'a [Elem],
+    app_known: &Known<'a>,
+) -> Vec<Derived<'a>> {
     let hosts = hosts_of_applications(elements);
-    let scopes: HashMap<&str, &Vec<String>> = elements.iter().filter(|e| !e.uses.is_empty()).map(|e| (e.reference.as_str(), &e.uses)).collect();
+    let scopes: HashMap<&str, &Vec<String>> = elements
+        .iter()
+        .filter(|e| !e.uses.is_empty())
+        .map(|e| (e.reference.as_str(), &e.uses))
+        .collect();
     let mut out = Vec::new();
     for (app, from_nodes) in &hosts {
         if !app_known.contains_key(app) {
             continue;
         }
         for (source, rel) in relationships_of_deployed(app_elements, app) {
-            let Some(to_app) = deployed_application_of(&hosts, &rel.destination) else { continue };
-            let Some(to_nodes) = hosts.get(to_app) else { continue };
+            let Some(to_app) = deployed_application_of(&hosts, &rel.destination) else {
+                continue;
+            };
+            let Some(to_nodes) = hosts.get(to_app) else {
+                continue;
+            };
             for from_node in from_nodes {
                 let environment = environment_of(from_node);
-                if to_nodes.iter().any(|to_node| environment_of(to_node) == environment) {
+                if to_nodes
+                    .iter()
+                    .any(|to_node| environment_of(to_node) == environment)
+                {
                     continue; // hosted by the environment itself
                 }
-                let Some(scope) = scopes.get(environment) else { continue };
-                for to_node in to_nodes.iter().filter(|to_node| scope.iter().any(|used| within(to_node, used))) {
-                    out.push(Derived { from_node, from_app: app, source, to_app, to_node, rel });
+                let Some(scope) = scopes.get(environment) else {
+                    continue;
+                };
+                for to_node in to_nodes
+                    .iter()
+                    .filter(|to_node| scope.iter().any(|used| within(to_node, used)))
+                {
+                    out.push(Derived {
+                        from_node,
+                        from_app: app,
+                        source,
+                        to_app,
+                        to_node,
+                        rel,
+                    });
                 }
             }
         }
@@ -1246,7 +1476,11 @@ fn derived_dependencies<'a>(elements: &'a [Elem], app_elements: &'a [Elem], app_
 
 /// The dependencies between the applications deployed in one environment, on different nodes: the node that hosts the
 /// first depends on the node that hosts the second. Only a view about a flow (`application_links`) draws them.
-fn local_dependencies<'a>(elements: &'a [Elem], app_elements: &'a [Elem], app_known: &Known<'a>) -> Vec<Derived<'a>> {
+fn local_dependencies<'a>(
+    elements: &'a [Elem],
+    app_elements: &'a [Elem],
+    app_known: &Known<'a>,
+) -> Vec<Derived<'a>> {
     let hosts = hosts_of_applications(elements);
     let mut out = Vec::new();
     for (app, from_nodes) in &hosts {
@@ -1254,11 +1488,24 @@ fn local_dependencies<'a>(elements: &'a [Elem], app_elements: &'a [Elem], app_kn
             continue;
         }
         for (source, rel) in relationships_of_deployed(app_elements, app) {
-            let Some(to_app) = deployed_application_of(&hosts, &rel.destination) else { continue };
-            let Some(to_nodes) = hosts.get(to_app) else { continue };
+            let Some(to_app) = deployed_application_of(&hosts, &rel.destination) else {
+                continue;
+            };
+            let Some(to_nodes) = hosts.get(to_app) else {
+                continue;
+            };
             for from_node in from_nodes {
-                for to_node in to_nodes.iter().filter(|to_node| *to_node != from_node && environment_of(to_node) == environment_of(from_node)) {
-                    out.push(Derived { from_node, from_app: app, source, to_app, to_node, rel });
+                for to_node in to_nodes.iter().filter(|to_node| {
+                    *to_node != from_node && environment_of(to_node) == environment_of(from_node)
+                }) {
+                    out.push(Derived {
+                        from_node,
+                        from_app: app,
+                        source,
+                        to_app,
+                        to_node,
+                        rel,
+                    });
                 }
             }
         }
@@ -1291,8 +1538,18 @@ fn deep_technology(input: &Input, shared: &Shared) -> Result<Content, String> {
         .collect();
     let mut node_refs: BTreeSet<String> = tech_refs.into_iter().collect();
     // an environment, or a node, is shown with everything it is made of, whether or not it takes part in a link
-    node_refs.extend(with_ancestors(input.elements.iter().filter(|e| within(&e.reference, focal)).map(|e| e.reference.clone())));
-    node_refs.extend(with_ancestors(derived.iter().flat_map(|d| [d.from_node.to_string(), d.to_node.to_string()])));
+    node_refs.extend(with_ancestors(
+        input
+            .elements
+            .iter()
+            .filter(|e| within(&e.reference, focal))
+            .map(|e| e.reference.clone()),
+    ));
+    node_refs.extend(with_ancestors(
+        derived
+            .iter()
+            .flat_map(|d| [d.from_node.to_string(), d.to_node.to_string()]),
+    ));
     for r in &node_refs {
         require(known, r)?;
     }
@@ -1302,7 +1559,9 @@ fn deep_technology(input: &Input, shared: &Shared) -> Result<Content, String> {
     // node of the view): they are then all named after the whole path of their node.
     let mut deployed: Vec<(&String, &String, String)> = Vec::new();
     for r in &node_refs {
-        let node = known.get(r.as_str()).ok_or_else(|| format!("dangling reference: {r}"))?;
+        let node = known
+            .get(r.as_str())
+            .ok_or_else(|| format!("dangling reference: {r}"))?;
         let node_id = parts(r).last().copied().unwrap_or("");
         for app in node.applications.iter().collect::<BTreeSet<_>>() {
             if !app_known.contains_key(app.as_str()) {
@@ -1328,7 +1587,10 @@ fn deep_technology(input: &Input, shared: &Shared) -> Result<Content, String> {
             item_id = format!("{base}_{n}");
         }
         items.insert(OutItem::new(&item_id, app, Some((*r).clone())));
-        by_app.entry((*app).clone()).or_default().push((item_id.clone(), (*r).clone()));
+        by_app
+            .entry((*app).clone())
+            .or_default()
+            .push((item_id.clone(), (*r).clone()));
         item_of.insert(((*r).clone(), (*app).clone()), item_id);
     }
     for (app, from_items) in &by_app {
@@ -1346,9 +1608,17 @@ fn deep_technology(input: &Input, shared: &Shared) -> Result<Content, String> {
                         links.insert(OutLink {
                             from: from_id.clone(),
                             to: to_id.clone(),
-                            label: if input.application_links { rel.label.clone() } else { None },
+                            label: if input.application_links {
+                                rel.label.clone()
+                            } else {
+                                None
+                            },
                             synthetic: false,
-                            qualifiers: if input.application_links { rel.qualifiers.clone() } else { QSet::default() },
+                            qualifiers: if input.application_links {
+                                rel.qualifiers.clone()
+                            } else {
+                                QSet::default()
+                            },
                             tags: rel.tags.clone(),
                             secondary: !input.application_links,
                             relationships: BTreeSet::from([OutRel::of_application(source, rel)]),
@@ -1383,10 +1653,26 @@ fn deep_technology(input: &Input, shared: &Shared) -> Result<Content, String> {
 
 /// Two links that look the same (same ends, caption and kind) are one link standing for all their relationships.
 fn merge_links(links: impl IntoIterator<Item = OutLink>) -> Vec<OutLink> {
-    type Key = (String, String, Option<String>, bool, QSet, BTreeMap<String, String>, bool);
+    type Key = (
+        String,
+        String,
+        Option<String>,
+        bool,
+        QSet,
+        BTreeMap<String, String>,
+        bool,
+    );
     let mut merged: BTreeMap<Key, OutLink> = BTreeMap::new();
     for l in links {
-        let key = (l.from.clone(), l.to.clone(), l.label.clone(), l.synthetic, l.qualifiers.clone(), l.tags.clone(), l.secondary);
+        let key = (
+            l.from.clone(),
+            l.to.clone(),
+            l.label.clone(),
+            l.synthetic,
+            l.qualifiers.clone(),
+            l.tags.clone(),
+            l.secondary,
+        );
         match merged.get_mut(&key) {
             Some(existing) => existing.relationships.extend(l.relationships),
             None => {
@@ -1399,11 +1685,18 @@ fn merge_links(links: impl IntoIterator<Item = OutLink>) -> Vec<OutLink> {
 
 /// Folds the items listed in `input.collapsed`: what is inside them disappears and the links that reached inside now
 /// reach the folded item, as one grouped link per pair of ends (the caption rule of a grouped link applies).
-fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Vec<OutItem>, Vec<OutLink>) {
+fn collapse(
+    items: BTreeSet<OutItem>,
+    links: Vec<OutLink>,
+    input: &Input,
+) -> (Vec<OutItem>, Vec<OutLink>) {
     if input.collapsed.is_empty() {
         return (items.into_iter().collect(), links);
     }
-    let parent_of: HashMap<String, Option<String>> = items.iter().map(|i| (i.id.clone(), i.parent.clone())).collect();
+    let parent_of: HashMap<String, Option<String>> = items
+        .iter()
+        .map(|i| (i.id.clone(), i.parent.clone()))
+        .collect();
     // the focal item must stay visible: a fold on one of its enclosing items is ignored
     let mut protected: HashSet<String> = HashSet::new();
     let mut cur = parent_of.get(&input.focal).cloned().flatten();
@@ -1411,7 +1704,11 @@ fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Ve
         protected.insert(p.clone());
         cur = parent_of.get(&p).cloned().flatten();
     }
-    let folded: HashSet<&String> = input.collapsed.iter().filter(|c| parent_of.contains_key(*c) && !protected.contains(*c)).collect();
+    let folded: HashSet<&String> = input
+        .collapsed
+        .iter()
+        .filter(|c| parent_of.contains_key(*c) && !protected.contains(*c))
+        .collect();
     // the outermost folded item at or above `id`, or `id` itself
     let rep = |id: &str| -> String {
         let mut out = id.to_string();
@@ -1456,13 +1753,25 @@ fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Ve
             out.extend(group.into_iter().map(|(l, _)| l));
             continue;
         }
-        let relationships: BTreeSet<OutRel> = group.iter().flat_map(|(l, _)| l.relationships.iter().cloned()).collect();
-        let qualifiers: QSet = group.iter().flat_map(|(l, _)| l.qualifiers.iter().cloned()).collect();
+        let relationships: BTreeSet<OutRel> = group
+            .iter()
+            .flat_map(|(l, _)| l.relationships.iter().cloned())
+            .collect();
+        let qualifiers: QSet = group
+            .iter()
+            .flat_map(|(l, _)| l.qualifiers.iter().cloned())
+            .collect();
         // like the overview: relationships that read the same (whoever declares them) count once
-        let distinct: BTreeSet<(&String, &Option<String>, &QSet, &BTreeMap<String, String>)> =
-            relationships.iter().map(|r| (&r.destination, &r.label, &r.qualifiers, &r.tags)).collect();
+        let distinct: BTreeSet<ReadsTheSame> = relationships
+            .iter()
+            .map(|r| (&r.destination, &r.label, &r.qualifiers, &r.tags))
+            .collect();
         let label = if distinct.len() == 1 {
-            relationships.iter().next().and_then(|r| r.label.clone()).filter(|l| !l.trim().is_empty())
+            relationships
+                .iter()
+                .next()
+                .and_then(|r| r.label.clone())
+                .filter(|l| !l.trim().is_empty())
         } else {
             None
         }
@@ -1485,16 +1794,31 @@ fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Ve
 /// A view that hides what is unlinked (`hide_unlinked`, technology layer) keeps what the links go through: the ends of the links,
 /// what encloses them and the focal element; the boxes with no link are left out.
 fn keep_the_flow(items: BTreeSet<OutItem>, links: BTreeSet<OutLink>, focal: &str) -> Content {
-    let parents: HashMap<&str, &str> = items.iter().filter_map(|i| i.parent.as_deref().map(|p| (i.id.as_str(), p))).collect();
+    let parents: HashMap<&str, &str> = items
+        .iter()
+        .filter_map(|i| i.parent.as_deref().map(|p| (i.id.as_str(), p)))
+        .collect();
     let mut keep: HashSet<String> = HashSet::new();
-    let mut pending: Vec<&str> = links.iter().filter(|l| !l.secondary).flat_map(|l| [l.from.as_str(), l.to.as_str()]).chain([focal]).collect();
+    let mut pending: Vec<&str> = links
+        .iter()
+        .filter(|l| !l.secondary)
+        .flat_map(|l| [l.from.as_str(), l.to.as_str()])
+        .chain([focal])
+        .collect();
     while let Some(id) = pending.pop() {
         if keep.insert(id.to_string()) {
             pending.extend(parents.get(id).copied());
         }
     }
-    let kept = items.iter().filter(|i| keep.contains(&i.id)).cloned().collect();
-    let links = links.into_iter().filter(|l| keep.contains(&l.from) && keep.contains(&l.to)).collect();
+    let kept = items
+        .iter()
+        .filter(|i| keep.contains(&i.id))
+        .cloned()
+        .collect();
+    let links = links
+        .into_iter()
+        .filter(|l| keep.contains(&l.from) && keep.contains(&l.to))
+        .collect();
     (kept, links)
 }
 
@@ -1502,7 +1826,11 @@ fn keep_the_flow(items: BTreeSet<OutItem>, links: BTreeSet<OutLink>, focal: &str
 /// all `none` (or no change given) is `none`, and any other mixture is `changed`: a link that groups a new relationship
 /// and an unchanged one has grown, and one that groups a new and a removed one has been replaced by something else.
 fn aggregate(relationships: &BTreeSet<OutRel>) -> Change {
-    let all = |wanted: Change| relationships.iter().all(|r| r.change.unwrap_or(Change::None) == wanted);
+    let all = |wanted: Change| {
+        relationships
+            .iter()
+            .all(|r| r.change.unwrap_or(Change::None) == wanted)
+    };
     if relationships.is_empty() || all(Change::None) {
         Change::None
     } else if all(Change::New) {
@@ -1529,7 +1857,12 @@ fn above_changes(elements: &[Elem]) -> HashSet<String> {
 
 /// A comparison: tells each item and each link what changed (`change`, `natures`, `contains-changes`). Then, for `only_changes`,
 /// leaves out the rest.
-fn annotate(mut items: Vec<OutItem>, mut links: Vec<OutLink>, input: &Input, shared: &Shared) -> (Vec<OutItem>, Vec<OutLink>) {
+fn annotate(
+    mut items: Vec<OutItem>,
+    mut links: Vec<OutLink>,
+    input: &Input,
+    shared: &Shared,
+) -> (Vec<OutItem>, Vec<OutLink>) {
     if input.compared {
         let (main, apps) = (&shared.known, shared.app_known());
         let (main_above, apps_above) = (shared.main_above(), shared.apps_above());
@@ -1540,7 +1873,8 @@ fn annotate(mut items: Vec<OutItem>, mut links: Vec<OutLink>, input: &Input, sha
             item.change = Some(change);
             item.natures = element.map(|e| e.natures()).unwrap_or_default();
             // an element that changed says so itself; a container is not `changed` because of what is inside it
-            item.contains_changes = change == Change::None && if main_layer { main_above } else { apps_above }.contains(&item.reference);
+            item.contains_changes = change == Change::None
+                && if main_layer { main_above } else { apps_above }.contains(&item.reference);
         }
         for link in links.iter_mut() {
             link.change = Some(aggregate(&link.relationships));
@@ -1556,14 +1890,36 @@ fn annotate(mut items: Vec<OutItem>, mut links: Vec<OutLink>, input: &Input, sha
 /// ends of the links that are drawn, a folded item that hides changes, the focal item, and what encloses all of them. An
 /// item kept for none of its own changes is `context`. A link is kept for its own change only: the unchanged links between
 /// the items that stay are left out.
-fn keep_changes(items: Vec<OutItem>, links: Vec<OutLink>, input: &Input) -> (Vec<OutItem>, Vec<OutLink>) {
-    let parents: HashMap<&str, &str> = items.iter().filter_map(|i| i.parent.as_deref().map(|p| (i.id.as_str(), p))).collect();
+fn keep_changes(
+    items: Vec<OutItem>,
+    links: Vec<OutLink>,
+    input: &Input,
+) -> (Vec<OutItem>, Vec<OutLink>) {
+    let parents: HashMap<&str, &str> = items
+        .iter()
+        .filter_map(|i| i.parent.as_deref().map(|p| (i.id.as_str(), p)))
+        .collect();
     let mut keep: HashSet<String> = HashSet::new();
     let mut pending: Vec<&str> = Vec::new();
-    pending.extend(items.iter().filter(|i| is_change(i.change) || (i.collapsed && i.contains_changes)).map(|i| i.id.as_str()));
-    pending.extend(links.iter().filter(|l| is_change(l.change) && !l.secondary).flat_map(|l| [l.from.as_str(), l.to.as_str()]));
+    pending.extend(
+        items
+            .iter()
+            .filter(|i| is_change(i.change) || (i.collapsed && i.contains_changes))
+            .map(|i| i.id.as_str()),
+    );
+    pending.extend(
+        links
+            .iter()
+            .filter(|l| is_change(l.change) && !l.secondary)
+            .flat_map(|l| [l.from.as_str(), l.to.as_str()]),
+    );
     if input.viewpoint != "map" {
-        pending.extend(items.iter().filter(|i| i.id == input.focal).map(|i| i.id.as_str()));
+        pending.extend(
+            items
+                .iter()
+                .filter(|i| i.id == input.focal)
+                .map(|i| i.id.as_str()),
+        );
     }
     while let Some(id) = pending.pop() {
         if keep.insert(id.to_string()) {
@@ -1579,7 +1935,10 @@ fn keep_changes(items: Vec<OutItem>, links: Vec<OutLink>, input: &Input) -> (Vec
             i
         })
         .collect();
-    let links = links.into_iter().filter(|l| is_change(l.change) && keep.contains(&l.from) && keep.contains(&l.to)).collect();
+    let links = links
+        .into_iter()
+        .filter(|l| is_change(l.change) && keep.contains(&l.from) && keep.contains(&l.to))
+        .collect();
     (kept, links)
 }
 
@@ -1598,11 +1957,12 @@ fn build_in(input: &Input, shared: &Shared) -> Result<(Vec<OutItem>, Vec<OutLink
         "deep" => deep(input, shared).map(|(c, _)| c),
         other => Err(format!("unsupported viewpoint: {other}")),
     }?;
-    let (items, links) = if input.hide_unlinked && input.layer == "technology" && input.viewpoint != "map" {
-        keep_the_flow(items, links, &input.focal)
-    } else {
-        (items, links)
-    };
+    let (items, links) =
+        if input.hide_unlinked && input.layer == "technology" && input.viewpoint != "map" {
+            keep_the_flow(items, links, &input.focal)
+        } else {
+            (items, links)
+        };
     let (items, links) = collapse(items, merge_links(links), input);
     Ok(annotate(items, links, input, shared))
 }
@@ -1611,12 +1971,22 @@ fn build_in(input: &Input, shared: &Shared) -> Result<(Vec<OutItem>, Vec<OutLink
 /// has children, that is not folded. Whether opening it (`expanded`, or `opened` in the map) changes anything is asked
 /// to the view itself, so that a box is never offered when the focal element, a fold or the links make it a no-op.
 fn mark_expandable(items: &mut [OutItem], links: &[OutLink], input: &mut Input) {
-    let with_children: HashSet<String> = input.elements.iter().filter(|e| e.reference.contains('.')).map(|e| down_reference(&e.reference)).collect();
+    let with_children: HashSet<String> = input
+        .elements
+        .iter()
+        .filter(|e| e.reference.contains('.'))
+        .map(|e| down_reference(&e.reference))
+        .collect();
     let shown_parents: HashSet<String> = items.iter().filter_map(|i| i.parent.clone()).collect();
     let map = input.viewpoint == "map";
     // the map of the technology layer: a node that hosts applications has children to show too
     let hosts: HashSet<String> = if applies_applications(input) {
-        input.elements.iter().filter(|e| !e.applications.is_empty()).map(|e| e.reference.clone()).collect()
+        input
+            .elements
+            .iter()
+            .filter(|e| !e.applications.is_empty())
+            .map(|e| e.reference.clone())
+            .collect()
     } else {
         HashSet::new()
     };
@@ -1624,13 +1994,25 @@ fn mark_expandable(items: &mut [OutItem], links: &[OutLink], input: &mut Input) 
     // the lists of boxes to open change from one try to the next, the elements do not
     let shared = Shared::new(&input.elements, &input.app_elements);
     for item in items.iter_mut() {
-        if item.collapsed || item.id != item.reference || !(with_children.contains(&item.id) || hosts.contains(&item.id)) || shown_parents.contains(&item.id) {
+        if item.collapsed
+            || item.id != item.reference
+            || !(with_children.contains(&item.id) || hosts.contains(&item.id))
+            || shown_parents.contains(&item.id)
+        {
             continue;
         }
-        let opened = if map { &mut input.opened } else { &mut input.expanded };
+        let opened = if map {
+            &mut input.opened
+        } else {
+            &mut input.expanded
+        };
         opened.push(item.id.clone());
         let opens = build_in(input, &shared);
-        let opened = if map { &mut input.opened } else { &mut input.expanded };
+        let opened = if map {
+            &mut input.opened
+        } else {
+            &mut input.expanded
+        };
         opened.pop();
         item.expandable = matches!(opens, Ok((i, l)) if i != shown || l != links);
     }
@@ -1641,7 +2023,11 @@ fn mark_expandable(items: &mut [OutItem], links: &[OutLink], input: &mut Input) 
 fn check_changes(input: &mut Input) -> Result<(), String> {
     // `compare` says `contains_changes` on the elements of its union, and `compute` works the state out for the elements it is given (after the
     // facets): the key is not a free-form field here, a facet does not see it and it does not travel (contract 5, issue #96)
-    for element in input.elements.iter_mut().chain(input.app_elements.iter_mut()) {
+    for element in input
+        .elements
+        .iter_mut()
+        .chain(input.app_elements.iter_mut())
+    {
         element.other.remove("contains_changes");
         element.other.remove("contains_more_than_wording");
     }
@@ -1659,7 +2045,10 @@ fn check_changes(input: &mut Input) -> Result<(), String> {
             if let Some(change) = &rel.change {
                 // a relationship is new, changed or removed; moved, split and merged are for elements
                 if Change::parse(change).is_none_or(Change::is_identity) {
-                    return Err(format!("invalid change: \"{change}\" in a relationship of {}", element.reference));
+                    return Err(format!(
+                        "invalid change: \"{change}\" in a relationship of {}",
+                        element.reference
+                    ));
                 }
                 input.compared = true;
             }
@@ -1705,8 +2094,10 @@ pub fn quiet_json(input: &str) -> String {
                 .as_object_mut()
                 .and_then(|object| object.remove("focals"))
                 .ok_or_else(|| "invalid input: missing field `focals`".to_string())?;
-            let focals = serde_json::from_value::<Vec<QuietFocal>>(focals).map_err(|e| format!("invalid input: {e}"))?;
-            let mut input = serde_json::from_value::<Input>(value).map_err(|e| format!("invalid input: {e}"))?;
+            let focals = serde_json::from_value::<Vec<QuietFocal>>(focals)
+                .map_err(|e| format!("invalid input: {e}"))?;
+            let mut input = serde_json::from_value::<Input>(value)
+                .map_err(|e| format!("invalid input: {e}"))?;
             let through_facet = input.facet.is_some();
             prepare(&mut input)?;
             let default_viewpoint = input.viewpoint.clone();
@@ -1714,9 +2105,15 @@ pub fn quiet_json(input: &str) -> String {
             let shared = Shared::new(&input.elements, &input.app_elements);
             let mut quiet: Vec<String> = Vec::new();
             for focal in focals {
-                input.viewpoint = if focal.viewpoint.is_empty() { default_viewpoint.clone() } else { focal.viewpoint };
+                input.viewpoint = if focal.viewpoint.is_empty() {
+                    default_viewpoint.clone()
+                } else {
+                    focal.viewpoint
+                };
                 if input.viewpoint == "map" {
-                    return Err("the map has no focal element: nothing to ask quiet about".to_string());
+                    return Err(
+                        "the map has no focal element: nothing to ask quiet about".to_string()
+                    );
                 }
                 input.focal = focal.reference.clone();
                 let nothing_to_draw = match build_in(&input, &shared) {
@@ -1739,17 +2136,23 @@ pub fn compute_json(input: &str) -> String {
         .map_err(|e| format!("invalid input: {e}"))
         .and_then(|mut input| {
             let warnings = prepare(&mut input)?;
-            let (mut items, links) = build(&input).map_err(|e| {
+            let (mut items, links) = build(&input).inspect_err(|_| {
                 dangling = dangling_in_lists(&input);
-                e
             })?;
             if input.viewpoint != "deep" {
                 mark_expandable(&mut items, &links, &mut input);
             }
             add_stereotypes(&mut items, &input);
-            Ok(Output { version: CONTRACT_VERSION, items, links, warnings })
+            Ok(Output {
+                version: CONTRACT_VERSION,
+                items,
+                links,
+                warnings,
+            })
         })
-        .and_then(|out| serde_json::to_string(&out).map_err(|e| format!("cannot write the view: {e}")));
+        .and_then(|out| {
+            serde_json::to_string(&out).map_err(|e| format!("cannot write the view: {e}"))
+        });
     result.unwrap_or_else(|e| {
         let mut out = serde_json::json!({ "error": e });
         if !dangling.is_empty() {
@@ -1767,7 +2170,11 @@ fn dangling_in_lists(input: &Input) -> Vec<String> {
     if input.viewpoint != "map" {
         return Vec::new();
     }
-    let known: HashSet<&str> = input.elements.iter().map(|e| e.reference.as_str()).collect();
+    let known: HashSet<&str> = input
+        .elements
+        .iter()
+        .map(|e| e.reference.as_str())
+        .collect();
     let mut seen: HashSet<&str> = HashSet::new();
     input
         .pinned
@@ -1791,6 +2198,9 @@ pub extern "C" fn alloc(len: usize) -> *mut u8 {
     ptr
 }
 
+/// # Safety
+///
+/// `ptr` and `len` must be the pointer and the capacity of a buffer that `alloc` returned for `len` and that nothing has freed.
 #[no_mangle]
 pub unsafe extern "C" fn dealloc(ptr: *mut u8, len: usize) {
     drop(Vec::from_raw_parts(ptr, 0, len));
@@ -1811,30 +2221,50 @@ unsafe fn respond(ptr: *const u8, len: usize, f: fn(&str) -> String) -> usize {
 }
 
 /// The viewpoint kernel: see `compute_json`.
+///
+/// # Safety
+///
+/// `ptr` must point to `len` bytes that the caller owns and can read for the whole call (the buffer of `alloc`).
 #[no_mangle]
 pub unsafe extern "C" fn compute(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, compute_json)
 }
 
 /// The facets: see `apply_facet_json`.
+///
+/// # Safety
+///
+/// `ptr` must point to `len` bytes that the caller owns and can read for the whole call (the buffer of `alloc`).
 #[no_mangle]
 pub unsafe extern "C" fn apply_facet(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, apply_facet_json)
 }
 
 /// The comparison of two plateaus: see `compare_json`.
+///
+/// # Safety
+///
+/// `ptr` must point to `len` bytes that the caller owns and can read for the whole call (the buffer of `alloc`).
 #[no_mangle]
 pub unsafe extern "C" fn compare(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, compare_json)
 }
 
 /// Which elements have nothing to draw (contract 5, issue #81): see `quiet_json`.
+///
+/// # Safety
+///
+/// `ptr` must point to `len` bytes that the caller owns and can read for the whole call (the buffer of `alloc`).
 #[no_mangle]
 pub unsafe extern "C" fn quiet(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, quiet_json)
 }
 
 /// The patches of a plateau: see `apply_patches_json`.
+///
+/// # Safety
+///
+/// `ptr` must point to `len` bytes that the caller owns and can read for the whole call (the buffer of `alloc`).
 #[no_mangle]
 pub unsafe extern "C" fn apply_patches(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, apply_patches_json)
@@ -1842,6 +2272,10 @@ pub unsafe extern "C" fn apply_patches(ptr: *const u8, len: usize) -> usize {
 
 /// The seven state words (contract 5): see `states_json`. The input is not read (not even checked to be UTF-8), so it takes the same two arguments as
 /// the other entry points and any caller may send anything.
+///
+/// # Safety
+///
+/// Nothing is read from `_ptr`; the one requirement is that the host calls it as it calls the others, from a single thread.
 #[no_mangle]
 pub unsafe extern "C" fn states(_ptr: *const u8, _len: usize) -> usize {
     #[allow(static_mut_refs)]
@@ -1851,6 +2285,11 @@ pub unsafe extern "C" fn states(_ptr: *const u8, _len: usize) -> usize {
     }
 }
 
+/// The address of the bytes the last call left; `RESULT` is read after the call that wrote it, never during one.
+///
+/// # Safety
+///
+/// Call it from the single thread of the module, and read the bytes before the next entry point runs.
 #[no_mangle]
 pub unsafe extern "C" fn result_ptr() -> *const u8 {
     #[allow(static_mut_refs)]
@@ -1890,7 +2329,11 @@ mod tests {
     }
 
     fn link<'a>(out: &'a Value, from: &str, to: &str) -> Option<&'a Value> {
-        out["links"].as_array().unwrap().iter().find(|l| l["from"] == from && l["to"] == to)
+        out["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|l| l["from"] == from && l["to"] == to)
     }
 
     fn link_between(out: &Value, from: &str, to: &str) -> bool {
@@ -1898,11 +2341,20 @@ mod tests {
     }
 
     fn has_item(out: &Value, id: &str) -> bool {
-        out["items"].as_array().unwrap().iter().any(|i| i["id"] == id)
+        out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i["id"] == id)
     }
 
     fn ids(out: &Value) -> Vec<String> {
-        out["items"].as_array().unwrap().iter().map(|i| i["id"].as_str().unwrap().to_string()).collect()
+        out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["id"].as_str().unwrap().to_string())
+            .collect()
     }
 
     #[test]
@@ -1924,25 +2376,59 @@ mod tests {
     fn a_grouped_link_lists_every_relationship_it_stands_for() {
         let out = run("overview", "sys", &[]);
         let l = link(&out, "sys", "other").expect("sys groups what its children send to other");
-        assert_eq!(l["label"], "calls", "identical relationships count once, as in Java");
-        assert_eq!(l["relationships"].as_array().unwrap().len(), 2, "but the two declaring elements are both listed");
+        assert_eq!(
+            l["label"], "calls",
+            "identical relationships count once, as in Java"
+        );
+        assert_eq!(
+            l["relationships"].as_array().unwrap().len(),
+            2,
+            "but the two declaring elements are both listed"
+        );
     }
 
     #[test]
     fn deep_keeps_every_relationship_ungrouped() {
         let out = run("deep", "sys", &[]);
-        assert!(link(&out, "sys.a", "sys.b").is_some() && link(&out, "sys.a", "other.b.c").is_some() && link(&out, "ext", "sys.b").is_some());
-        assert_eq!(ids(&out), ["ext", "other", "other.b", "other.b.c", "sys", "sys.a", "sys.b"]);
+        assert!(
+            link(&out, "sys.a", "sys.b").is_some()
+                && link(&out, "sys.a", "other.b.c").is_some()
+                && link(&out, "ext", "sys.b").is_some()
+        );
+        assert_eq!(
+            ids(&out),
+            [
+                "ext",
+                "other",
+                "other.b",
+                "other.b.c",
+                "sys",
+                "sys.a",
+                "sys.b"
+            ]
+        );
     }
 
     #[test]
     fn folding_hides_the_inside_and_regroups_the_links() {
         let out = run("deep", "sys", &["sys"]);
         assert_eq!(ids(&out), ["ext", "other", "other.b", "other.b.c", "sys"]);
-        let sys = out["items"].as_array().unwrap().iter().find(|i| i["id"] == "sys").unwrap();
-        assert_eq!((sys["collapsed"].as_bool(), sys["hidden"].as_u64()), (Some(true), Some(2)));
-        assert!(link(&out, "sys.a", "sys.b").is_none(), "a link that is now inside the folded item disappears");
-        let l = link(&out, "sys", "other.b.c").expect("links that reached inside now reach the folded item");
+        let sys = out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == "sys")
+            .unwrap();
+        assert_eq!(
+            (sys["collapsed"].as_bool(), sys["hidden"].as_u64()),
+            (Some(true), Some(2))
+        );
+        assert!(
+            link(&out, "sys.a", "sys.b").is_none(),
+            "a link that is now inside the folded item disappears"
+        );
+        let l = link(&out, "sys", "other.b.c")
+            .expect("links that reached inside now reach the folded item");
         assert_eq!(l["synthetic"], true);
         assert_eq!(l["label"], "calls");
         assert!(link(&out, "ext", "sys").is_some());
@@ -1980,9 +2466,19 @@ mod tests {
     #[test]
     fn an_item_with_hidden_children_says_it_can_be_opened() {
         let out = run_expanded("sys.a", &[]);
-        let other = out["items"].as_array().unwrap().iter().find(|i| i["id"] == "other").unwrap();
+        let other = out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == "other")
+            .unwrap();
         assert_eq!(other["expandable"], true);
-        let focal = out["items"].as_array().unwrap().iter().find(|i| i["id"] == "sys.a").unwrap();
+        let focal = out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == "sys.a")
+            .unwrap();
         assert_eq!(focal["expandable"], false);
     }
 
@@ -2005,7 +2501,12 @@ mod tests {
         let base = ids(&run_expanded("sys.a", &[]));
         assert_eq!(ids(&run_expanded("sys.a", &["sys.a", "sys"])), base);
         let out = run_expanded("sys", &[]);
-        let sys = out["items"].as_array().unwrap().iter().find(|i| i["id"] == "sys").unwrap();
+        let sys = out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == "sys")
+            .unwrap();
         assert_eq!(sys["expandable"], false);
     }
 
@@ -2017,9 +2518,18 @@ mod tests {
 
     #[test]
     fn mistakes_are_reported_not_thrown() {
-        assert!(run("detailed", "sys.a", &[])["error"].as_str().unwrap().contains("not a parent"));
-        assert!(run("overview", "ghost", &[])["error"].as_str().unwrap().contains("ghost"));
-        assert!(run("sideways", "sys", &[])["error"].as_str().unwrap().contains("unsupported viewpoint"));
+        assert!(run("detailed", "sys.a", &[])["error"]
+            .as_str()
+            .unwrap()
+            .contains("not a parent"));
+        assert!(run("overview", "ghost", &[])["error"]
+            .as_str()
+            .unwrap()
+            .contains("ghost"));
+        assert!(run("sideways", "sys", &[])["error"]
+            .as_str()
+            .unwrap()
+            .contains("unsupported viewpoint"));
         assert!(compute_json("{").contains("invalid input"));
     }
 
@@ -2036,7 +2546,12 @@ mod tests {
     }
 
     fn labels(out: &Value) -> Vec<Option<String>> {
-        out["links"].as_array().unwrap().iter().map(|l| l["label"].as_str().map(String::from)).collect()
+        out["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| l["label"].as_str().map(String::from))
+            .collect()
     }
 
     fn remove(path: &str) -> Value {
@@ -2045,24 +2560,59 @@ mod tests {
 
     #[test]
     fn a_facet_removes_the_relationships_its_filter_matches() {
-        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(@.qualifiers[?(@ == 'REST' || @ == 'x')])]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$.application..relationships[?(@.qualifiers[?(@ == 'REST' || @ == 'x')])]"),
+        );
         assert_eq!(labels(&out), [None, Some("writes".to_string())]);
     }
 
     #[test]
-    fn the_standard_forms_of_noneof_and_null_spare_a_relationship_without_qualifiers_and_remove_it() {
-        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(@.qualifiers && !@.qualifiers[?(@ == 'REST')])]"));
+    fn the_standard_forms_of_noneof_and_null_spare_a_relationship_without_qualifiers_and_remove_it()
+    {
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove(
+                "$.application..relationships[?(@.qualifiers && !@.qualifiers[?(@ == 'REST')])]",
+            ),
+        );
         assert_eq!(labels(&out), [None, Some("reads".to_string())]);
-        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(!@.qualifiers)]"));
-        assert_eq!(labels(&out), [Some("reads".to_string()), Some("writes".to_string())]);
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$.application..relationships[?(!@.qualifiers)]"),
+        );
+        assert_eq!(
+            labels(&out),
+            [Some("reads".to_string()), Some("writes".to_string())]
+        );
     }
 
     #[test]
     fn a_facet_can_filter_on_the_label_and_target_a_layer() {
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == 'writes')]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(@.label == 'writes')]"),
+        );
         assert_eq!(out["links"].as_array().unwrap().len(), 2);
-        let out = with_facet("deep", "a", "application", remove("$.technology..relationships[?(@.label == 'writes')]"));
-        assert_eq!(out["links"].as_array().unwrap().len(), 3, "an action aimed at the other layer changes nothing");
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$.technology..relationships[?(@.label == 'writes')]"),
+        );
+        assert_eq!(
+            out["links"].as_array().unwrap().len(),
+            3,
+            "an action aimed at the other layer changes nothing"
+        );
     }
 
     #[test]
@@ -2089,18 +2639,40 @@ mod tests {
             l.sort();
             l
         };
-        assert_eq!(run("$..relationships[?(@.tags['gate-point'] == 'yes')]"), ["no", "none", "other"]);
-        assert_eq!(run("$..relationships[?(@.tags[\"gate-point\"] != 'yes')]"), ["yes"]);
-        assert_eq!(run("$..relationships[?(@.tags.k == 'yes')]"), ["no", "none", "yes"]);
+        assert_eq!(
+            run("$..relationships[?(@.tags['gate-point'] == 'yes')]"),
+            ["no", "none", "other"]
+        );
+        assert_eq!(
+            run("$..relationships[?(@.tags[\"gate-point\"] != 'yes')]"),
+            ["yes"]
+        );
+        assert_eq!(
+            run("$..relationships[?(@.tags.k == 'yes')]"),
+            ["no", "none", "yes"]
+        );
     }
 
     #[test]
     fn what_a_facet_cannot_do_is_an_error_not_a_guess() {
-        for path in ["$.application..relationships[?(@.label =~ /x/)]", "$..relationships[?(@.label == ", "relationships", "$..relationships[?(@.label == 'x' ||)]"] {
+        for path in [
+            "$.application..relationships[?(@.label =~ /x/)]",
+            "$..relationships[?(@.label == ",
+            "relationships",
+            "$..relationships[?(@.label == 'x' ||)]",
+        ] {
             let out = with_facet("deep", "a", "application", remove(path));
-            assert!(error(&out).contains("invalid facet JSONPath"), "{path}: {out}");
+            assert!(
+                error(&out).contains("invalid facet JSONPath"),
+                "{path}: {out}"
+            );
         }
-        let out = with_facet("deep", "a", "application", json!([{ "operator": "KEEP", "json_path": "$..relationships[?(@.label == 'x')]" }]));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            json!([{ "operator": "KEEP", "json_path": "$..relationships[?(@.label == 'x')]" }]),
+        );
         assert!(error(&out).contains("unsupported facet action: KEEP"));
         let out = with_facet("deep", "a", "application", remove("$"));
         assert!(error(&out).contains("whole workspace"), "{out}");
@@ -2116,13 +2688,21 @@ mod tests {
             ]
         });
         let out: Value = serde_json::from_str(&compute_json(&input.to_string())).unwrap();
-        assert_eq!(out["links"][0]["qualifiers"], json!(["UDP:8080", "HTTPs:443"]), "declared order, no duplicate");
+        assert_eq!(
+            out["links"][0]["qualifiers"],
+            json!(["UDP:8080", "HTTPs:443"]),
+            "declared order, no duplicate"
+        );
     }
 
     #[test]
     fn detailed_combines_the_overview_of_each_child() {
         let out = run("detailed", "sys", &[]);
-        assert!(link(&out, "sys.a", "other").is_some() && link(&out, "sys.b", "other").is_some() && link(&out, "ext", "sys.b").is_some());
+        assert!(
+            link(&out, "sys.a", "other").is_some()
+                && link(&out, "sys.b", "other").is_some()
+                && link(&out, "ext", "sys.b").is_some()
+        );
     }
 
     /// The same elements as `run`, through the map.
@@ -2144,18 +2724,38 @@ mod tests {
     }
 
     fn represented(out: &Value) -> usize {
-        out["links"].as_array().unwrap().iter().map(|l| l["relationships"].as_array().unwrap().len()).sum()
+        out["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| l["relationships"].as_array().unwrap().len())
+            .sum()
     }
 
     #[test]
     fn the_map_starts_closed_and_groups_what_is_inside() {
         let out = map_of(&[], &[], &[]);
         assert_eq!(ids(&out), ["ext", "other", "sys"]);
-        assert_eq!(link(&out, "sys", "other").expect("what sys sends to other")["synthetic"], true);
+        assert_eq!(
+            link(&out, "sys", "other").expect("what sys sends to other")["synthetic"],
+            true
+        );
         assert!(link(&out, "ext", "sys").is_some());
-        assert_eq!(out["links"].as_array().unwrap().len(), 2, "what stays inside sys is not drawn");
-        let sys = out["items"].as_array().unwrap().iter().find(|i| i["id"] == "sys").unwrap();
-        assert_eq!(sys["expandable"], true, "a closed element with children can be opened");
+        assert_eq!(
+            out["links"].as_array().unwrap().len(),
+            2,
+            "what stays inside sys is not drawn"
+        );
+        let sys = out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == "sys")
+            .unwrap();
+        assert_eq!(
+            sys["expandable"], true,
+            "a closed element with children can be opened"
+        );
     }
 
     #[test]
@@ -2163,10 +2763,18 @@ mod tests {
         let out = map_of(&["sys"], &[], &[]);
         assert_eq!(ids(&out), ["ext", "other", "sys", "sys.a", "sys.b"]);
         assert_eq!(link(&out, "sys.a", "sys.b").unwrap()["synthetic"], false);
-        assert!(link(&out, "sys.a", "other").is_some() && link(&out, "sys.b", "other").is_some() && link(&out, "ext", "sys.b").is_some());
+        assert!(
+            link(&out, "sys.a", "other").is_some()
+                && link(&out, "sys.b", "other").is_some()
+                && link(&out, "ext", "sys.b").is_some()
+        );
         assert!(link(&out, "sys", "other").is_none());
         let deeper = map_of(&["sys", "other", "other.b"], &[], &[]);
-        assert_eq!(link(&deeper, "sys.a", "other.b.c").unwrap()["synthetic"], false, "opened all the way down, nothing is grouped");
+        assert_eq!(
+            link(&deeper, "sys.a", "other.b.c").unwrap()["synthetic"],
+            false,
+            "opened all the way down, nothing is grouped"
+        );
     }
 
     #[test]
@@ -2174,7 +2782,10 @@ mod tests {
         // 4 declared relationships, one of them (sys.a -> sys.b) inside sys: drawn only once sys is open
         assert_eq!(represented(&map_of(&[], &[], &[])), 3);
         assert_eq!(represented(&map_of(&["sys"], &[], &[])), 4);
-        assert_eq!(represented(&map_of(&["sys", "other", "other.b"], &[], &[])), 4);
+        assert_eq!(
+            represented(&map_of(&["sys", "other", "other.b"], &[], &[])),
+            4
+        );
     }
 
     #[test]
@@ -2182,19 +2793,35 @@ mod tests {
         let out = map_of(&[], &["sys.a"], &[]);
         assert_eq!(ids(&out), ["other", "sys", "sys.a", "sys.b"]);
         assert!(link(&out, "sys.a", "other").is_some() && link(&out, "sys.a", "sys.b").is_some());
-        assert!(link(&out, "ext", "sys.b").is_none(), "ext does not touch sys.a");
+        assert!(
+            link(&out, "ext", "sys.b").is_none(),
+            "ext does not touch sys.a"
+        );
     }
 
     #[test]
     fn pinning_one_element_with_nothing_open_is_its_overview() {
         let key = |out: &Value| {
-            let mut v: Vec<String> = out["links"].as_array().unwrap().iter()
-                .map(|l| format!("{}|{}|{}|{}", l["from"], l["to"], l["label"], l["synthetic"])).collect();
+            let mut v: Vec<String> = out["links"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|l| {
+                    format!(
+                        "{}|{}|{}|{}",
+                        l["from"], l["to"], l["label"], l["synthetic"]
+                    )
+                })
+                .collect();
             v.sort();
             (ids(out), v)
         };
         for focal in ["sys.a", "sys.b", "other.b.c", "ext"] {
-            assert_eq!(key(&map_of(&[], &[focal], &[])), key(&run("overview", focal, &[])), "{focal}");
+            assert_eq!(
+                key(&map_of(&[], &[focal], &[])),
+                key(&run("overview", focal, &[])),
+                "{focal}"
+            );
         }
     }
 
@@ -2203,12 +2830,18 @@ mod tests {
         let out = map_of(&["sys"], &[], &["other"]);
         assert_eq!(ids(&out), ["ext", "sys", "sys.a", "sys.b"]);
         assert_eq!(out["links"].as_array().unwrap().len(), 2);
-        assert_eq!(ids(&map_of(&["sys"], &[], &["sys.a"])), ["ext", "other", "sys", "sys.b"]);
+        assert_eq!(
+            ids(&map_of(&["sys"], &[], &["sys.a"])),
+            ["ext", "other", "sys", "sys.b"]
+        );
     }
 
     #[test]
     fn the_map_refuses_a_reference_it_does_not_know() {
-        assert!(map_of(&[], &["nope"], &[])["error"].as_str().unwrap().contains("nope"));
+        assert!(map_of(&[], &["nope"], &[])["error"]
+            .as_str()
+            .unwrap()
+            .contains("nope"));
     }
 
     fn compute(input: Value) -> Value {
@@ -2216,39 +2849,103 @@ mod tests {
     }
 
     fn item<'a>(out: &'a Value, id: &str) -> &'a Value {
-        out["items"].as_array().unwrap().iter().find(|i| i["id"] == id).unwrap_or_else(|| panic!("no item {id} in {out}"))
+        out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == id)
+            .unwrap_or_else(|| panic!("no item {id} in {out}"))
     }
 
     fn error(out: &Value) -> &str {
-        out["error"].as_str().unwrap_or_else(|| panic!("expected an error, got {out}"))
+        out["error"]
+            .as_str()
+            .unwrap_or_else(|| panic!("expected an error, got {out}"))
     }
 
     // ---- standard JSONPath: what the first dialect could not say ----
 
     #[test]
     fn a_compound_facet_filter_is_evaluated() {
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == 'reads' || @.label == 'writes')]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(@.label == 'reads' || @.label == 'writes')]"),
+        );
         assert_eq!(labels(&out), [None]);
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == 'reads' && @.label == 'writes')]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(@.label == 'reads' && @.label == 'writes')]"),
+        );
         assert_eq!(out["links"].as_array().unwrap().len(), 3, "nothing is both");
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(!@.label || @.label == 'writes')]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(!@.label || @.label == 'writes')]"),
+        );
         assert_eq!(labels(&out), [Some("reads".to_string())]);
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.qualifiers[?(@ == 'REST')] || @.label == 'writes')]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(@.qualifiers[?(@ == 'REST')] || @.label == 'writes')]"),
+        );
         assert_eq!(labels(&out), [None]);
     }
 
     #[test]
     fn a_facet_can_remove_an_element_and_what_points_at_it_goes_with_it() {
-        let out = with_facet("deep", "a", "application", remove("$.application.elements[?(@.id == 'b')]"));
-        assert!(out.get("error").is_none(), "no more dangling reference: {out}");
-        assert!(out["links"].as_array().unwrap().is_empty(), "the three relationships of a pointed at b: {out}");
-        assert!(out["items"].as_array().unwrap().iter().all(|i| i["id"] != "b"));
-        let out = with_facet("deep", "a", "application", remove("$.application.elements[?(@.id == 'a')]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$.application.elements[?(@.id == 'b')]"),
+        );
+        assert!(
+            out.get("error").is_none(),
+            "no more dangling reference: {out}"
+        );
+        assert!(
+            out["links"].as_array().unwrap().is_empty(),
+            "the three relationships of a pointed at b: {out}"
+        );
+        assert!(out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|i| i["id"] != "b"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$.application.elements[?(@.id == 'a')]"),
+        );
         assert!(!error(&out).is_empty(), "the focal element is gone: {out}");
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(length(@.qualifiers) == 1)]"));
-        assert_eq!(labels(&out), [None], "functions are available: only the relationship without qualifiers is left");
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(match(@.label, 'r.*'))]"));
-        assert!(error(&out).contains("invalid facet JSONPath"), "regular expressions are left out of the module: {out}");
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(length(@.qualifiers) == 1)]"),
+        );
+        assert_eq!(
+            labels(&out),
+            [None],
+            "functions are available: only the relationship without qualifiers is left"
+        );
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(match(@.label, 'r.*'))]"),
+        );
+        assert!(
+            error(&out).contains("invalid facet JSONPath"),
+            "regular expressions are left out of the module: {out}"
+        );
     }
 
     // ---- removing an element removes what points at it ----
@@ -2262,8 +2959,14 @@ mod tests {
     }
 
     fn destinations(workspace: &Value, pointer: &str) -> Vec<String> {
-        let list = workspace.pointer(pointer).and_then(Value::as_array).cloned().unwrap_or_default();
-        list.iter().map(|r| r["destination"].as_str().unwrap().to_string()).collect()
+        let list = workspace
+            .pointer(pointer)
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        list.iter()
+            .map(|r| r["destination"].as_str().unwrap().to_string())
+            .collect()
     }
 
     fn shop() -> Value {
@@ -2282,34 +2985,83 @@ mod tests {
     #[test]
     fn removing_an_element_removes_the_relationships_that_point_at_it_and_at_what_is_inside_it() {
         let kept = after_removing(shop(), "$.application..elements[?(@.id == 'catalog')]");
-        assert_eq!(destinations(&kept, "/application/elements/0/elements/0/relationships"), ["shop.cart", "payments"], "the link to the catalog and to its child are gone, the others stay in order");
-        assert_eq!(destinations(&kept, "/application/elements/1/relationships"), Vec::<String>::new(), "the last one of a list leaves an empty list");
-        let children = kept.pointer("/application/elements/0/elements").unwrap().as_array().unwrap();
-        assert_eq!(children.len(), 2, "web and cart; the catalog went with its child");
-        assert_eq!(destinations(&kept, "/application/elements/0/relationships"), ["payments"], "the system keeps what leads elsewhere");
+        assert_eq!(
+            destinations(&kept, "/application/elements/0/elements/0/relationships"),
+            ["shop.cart", "payments"],
+            "the link to the catalog and to its child are gone, the others stay in order"
+        );
+        assert_eq!(
+            destinations(&kept, "/application/elements/1/relationships"),
+            Vec::<String>::new(),
+            "the last one of a list leaves an empty list"
+        );
+        let children = kept
+            .pointer("/application/elements/0/elements")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        assert_eq!(
+            children.len(),
+            2,
+            "web and cart; the catalog went with its child"
+        );
+        assert_eq!(
+            destinations(&kept, "/application/elements/0/relationships"),
+            ["payments"],
+            "the system keeps what leads elsewhere"
+        );
     }
 
     #[test]
     fn removing_an_element_that_holds_children_removes_what_points_at_any_of_them() {
         let kept = after_removing(shop(), "$.application.elements[?(@.id == 'shop')]");
-        assert_eq!(kept["application"]["elements"].as_array().unwrap().len(), 2, "shop and all that it holds are gone");
-        assert_eq!(destinations(&kept, "/application/elements/0/relationships"), Vec::<String>::new(), "payments pointed at shop.catalog");
-        assert_eq!(destinations(&kept, "/application/elements/1/relationships"), ["ghost"], "see the next test");
+        assert_eq!(
+            kept["application"]["elements"].as_array().unwrap().len(),
+            2,
+            "shop and all that it holds are gone"
+        );
+        assert_eq!(
+            destinations(&kept, "/application/elements/0/relationships"),
+            Vec::<String>::new(),
+            "payments pointed at shop.catalog"
+        );
+        assert_eq!(
+            destinations(&kept, "/application/elements/1/relationships"),
+            ["ghost"],
+            "see the next test"
+        );
     }
 
     #[test]
     fn a_map_that_fails_on_its_lists_names_every_entry_it_cannot_find() {
-        let out = map_of(&["sys", "gone-1", "sys"], &["gone-2", "ext"], &["gone-1", "gone-3", "other"]);
-        assert_eq!(error(&out), "dangling reference: gone-2", "the message is the first one, pinned before opened before hidden");
-        assert_eq!(out["dangling"], json!(["gone-2", "gone-1", "gone-3"]), "all of them, each once, in the order they are checked");
+        let out = map_of(
+            &["sys", "gone-1", "sys"],
+            &["gone-2", "ext"],
+            &["gone-1", "gone-3", "other"],
+        );
+        assert_eq!(
+            error(&out),
+            "dangling reference: gone-2",
+            "the message is the first one, pinned before opened before hidden"
+        );
+        assert_eq!(
+            out["dangling"],
+            json!(["gone-2", "gone-1", "gone-3"]),
+            "all of them, each once, in the order they are checked"
+        );
         // a map whose lists are all known has no such key, and neither has a map that fails for another reason
-        assert!(map_of(&["sys"], &["ext"], &["other"]).get("dangling").is_none());
+        assert!(map_of(&["sys"], &["ext"], &["other"])
+            .get("dangling")
+            .is_none());
         let elsewhere = compute(json!({
             "viewpoint": "map", "layer": "application", "pinned": ["a"],
             "elements": [{ "reference": "a", "relationships": [{ "destination": "z" }] }]
         }));
         assert_eq!(error(&elsewhere), "dangling reference: z");
-        assert!(elsewhere.get("dangling").is_none(), "the lists are not what failed: {elsewhere}");
+        assert!(
+            elsewhere.get("dangling").is_none(),
+            "the lists are not what failed: {elsewhere}"
+        );
         // the other viewpoints have no lists
         let overview = run("overview", "nowhere", &[]);
         assert!(overview.get("dangling").is_none(), "{overview}");
@@ -2318,7 +3070,11 @@ mod tests {
     #[test]
     fn a_reference_that_led_nowhere_before_the_facet_is_left_alone() {
         let kept = after_removing(shop(), "$.application..elements[?(@.id == 'cart')]");
-        assert_eq!(destinations(&kept, "/application/elements/2/relationships"), ["ghost"], "it is still the author's mistake to see");
+        assert_eq!(
+            destinations(&kept, "/application/elements/2/relationships"),
+            ["ghost"],
+            "it is still the author's mistake to see"
+        );
         let out = compute(json!({
             "viewpoint": "deep", "layer": "application", "focal": "a",
             "facet": { "name": "f", "actions": remove("$.application.elements[?(@.id == 'c')]") },
@@ -2334,25 +3090,59 @@ mod tests {
             { "id": "b", "relationships": [{ "destination": "a" }] },
             { "id": "c", "relationships": [{ "destination": "a" }, { "destination": "b" }] }
         ] } });
-        let kept = after_removing(workspace.clone(), "$.application.elements[?(@.id == 'a' || @.id == 'b')]");
-        assert_eq!(kept["application"]["elements"], json!([{ "id": "c", "relationships": [] }]));
+        let kept = after_removing(
+            workspace.clone(),
+            "$.application.elements[?(@.id == 'a' || @.id == 'b')]",
+        );
+        assert_eq!(
+            kept["application"]["elements"],
+            json!([{ "id": "c", "relationships": [] }])
+        );
         // one action after the other: the second one reads what the first left
         let request = json!({ "workspace": workspace, "actions": [
             { "operator": "REMOVE", "json_path": "$.application.elements[?(@.id == 'b')]" },
             { "operator": "REMOVE", "json_path": "$.application.elements[?(@.relationships[?(@.destination == 'b')])]" }
         ] });
         let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
-        assert_eq!(out["workspace"]["application"]["elements"][0]["id"], "a", "a lost its link to b before the second action looked: it stays");
-        assert_eq!(out["workspace"]["application"]["elements"].as_array().unwrap().len(), 2, "{out}");
+        assert_eq!(
+            out["workspace"]["application"]["elements"][0]["id"], "a",
+            "a lost its link to b before the second action looked: it stays"
+        );
+        assert_eq!(
+            out["workspace"]["application"]["elements"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2,
+            "{out}"
+        );
     }
 
     #[test]
     fn a_facet_that_removes_only_relationships_or_nothing_changes_nothing_else() {
         let workspace = shop();
-        let kept = after_removing(workspace.clone(), "$.application..relationships[?(@.destination == 'shop.catalog')]");
-        assert_eq!(destinations(&kept, "/application/elements/0/elements/0/relationships"), ["shop.catalog.items", "shop.cart", "payments"]);
-        assert_eq!(after_removing(workspace.clone(), "$.application..elements[?(@.id == 'nobody')]"), workspace);
-        assert_eq!(after_removing(workspace.clone(), "$.application..relationships[?(@.destination == 'nobody')]"), workspace);
+        let kept = after_removing(
+            workspace.clone(),
+            "$.application..relationships[?(@.destination == 'shop.catalog')]",
+        );
+        assert_eq!(
+            destinations(&kept, "/application/elements/0/elements/0/relationships"),
+            ["shop.catalog.items", "shop.cart", "payments"]
+        );
+        assert_eq!(
+            after_removing(
+                workspace.clone(),
+                "$.application..elements[?(@.id == 'nobody')]"
+            ),
+            workspace
+        );
+        assert_eq!(
+            after_removing(
+                workspace.clone(),
+                "$.application..relationships[?(@.destination == 'nobody')]"
+            ),
+            workspace
+        );
     }
 
     fn deployed_model() -> Value {
@@ -2367,20 +3157,51 @@ mod tests {
 
     #[test]
     fn removing_an_application_removes_the_deployment_on_the_nodes() {
-        let kept = after_removing(deployed_model(), "$.application.elements[?(@.id == 'shop')]");
-        assert_eq!(kept["technology"]["elements"][0]["elements"][0]["applications"], json!(["registry"]), "shop.api and shop.web are not deployed any more");
-        assert_eq!(kept["technology"]["elements"][0]["uses"], json!(["int", "int.a", "registry"]), "a name of the other layer is not a reference to it");
-        assert_eq!(kept["technology"]["elements"][1]["elements"][0]["applications"], json!(["registry"]));
+        let kept = after_removing(
+            deployed_model(),
+            "$.application.elements[?(@.id == 'shop')]",
+        );
+        assert_eq!(
+            kept["technology"]["elements"][0]["elements"][0]["applications"],
+            json!(["registry"]),
+            "shop.api and shop.web are not deployed any more"
+        );
+        assert_eq!(
+            kept["technology"]["elements"][0]["uses"],
+            json!(["int", "int.a", "registry"]),
+            "a name of the other layer is not a reference to it"
+        );
+        assert_eq!(
+            kept["technology"]["elements"][1]["elements"][0]["applications"],
+            json!(["registry"])
+        );
     }
 
     #[test]
     fn removing_an_environment_or_a_node_removes_the_entries_of_uses_that_name_it() {
         let kept = after_removing(deployed_model(), "$.technology.elements[?(@.id == 'int')]");
-        assert_eq!(kept["technology"]["elements"][0]["uses"], json!(["registry"]), "int and int.a, which was inside it");
-        assert_eq!(kept["application"], deployed_model()["application"], "the applications are untouched");
-        let kept = after_removing(deployed_model(), "$.technology.elements[?(@.id == 'int')].elements[?(@.id == 'a')]");
-        assert_eq!(kept["technology"]["elements"][0]["uses"], json!(["int", "registry"]));
-        assert_eq!(kept["technology"]["elements"][0]["elements"][0]["applications"], json!(["shop.api", "shop.web", "registry"]));
+        assert_eq!(
+            kept["technology"]["elements"][0]["uses"],
+            json!(["registry"]),
+            "int and int.a, which was inside it"
+        );
+        assert_eq!(
+            kept["application"],
+            deployed_model()["application"],
+            "the applications are untouched"
+        );
+        let kept = after_removing(
+            deployed_model(),
+            "$.technology.elements[?(@.id == 'int')].elements[?(@.id == 'a')]",
+        );
+        assert_eq!(
+            kept["technology"]["elements"][0]["uses"],
+            json!(["int", "registry"])
+        );
+        assert_eq!(
+            kept["technology"]["elements"][0]["elements"][0]["applications"],
+            json!(["shop.api", "shop.web", "registry"])
+        );
     }
 
     #[test]
@@ -2397,22 +3218,54 @@ mod tests {
         }));
         assert!(out.get("error").is_none(), "{out}");
         assert_eq!(labels(&out), [Some("fills".to_string())]);
-        assert!(out["items"].as_array().unwrap().iter().all(|i| i["reference"] != "s.catalog"));
+        assert!(out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|i| i["reference"] != "s.catalog"));
         // technology layer: the application leaves the node that hosted it
-        let out = environments("dev", json!(["int"]), json!({ "facet": { "name": "f", "actions": remove("$.application.elements[?(@.id == 'ext')]") } }));
+        let out = environments(
+            "dev",
+            json!(["int"]),
+            json!({ "facet": { "name": "f", "actions": remove("$.application.elements[?(@.id == 'ext')]") } }),
+        );
         assert!(out.get("error").is_none(), "{out}");
-        assert!(out["links"].as_array().unwrap().is_empty() && !has_item(&out, "a_ext_registry"), "{out}");
+        assert!(
+            out["links"].as_array().unwrap().is_empty() && !has_item(&out, "a_ext_registry"),
+            "{out}"
+        );
         // an environment that is used and removed
-        let out = environments("dev", json!(["int", "prd"]), json!({ "facet": { "name": "f", "actions": remove("$.technology.elements[?(@.id == 'int')]") } }));
+        let out = environments(
+            "dev",
+            json!(["int", "prd"]),
+            json!({ "facet": { "name": "f", "actions": remove("$.technology.elements[?(@.id == 'int')]") } }),
+        );
         assert!(out.get("error").is_none(), "{out}");
-        assert!(link_between(&out, "app_shop_api", "a_ext_registry") && !has_item(&out, "int.a"), "{out}");
+        assert!(
+            link_between(&out, "app_shop_api", "a_ext_registry") && !has_item(&out, "int.a"),
+            "{out}"
+        );
     }
 
     #[test]
     fn an_operator_inside_a_quoted_literal_is_part_of_the_literal() {
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == 'reads || writes')]"));
-        assert_eq!(out["links"].as_array().unwrap().len(), 3, "nothing is called like that: nothing is removed");
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == \"reads\")]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(@.label == 'reads || writes')]"),
+        );
+        assert_eq!(
+            out["links"].as_array().unwrap().len(),
+            3,
+            "nothing is called like that: nothing is removed"
+        );
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(@.label == \"reads\")]"),
+        );
         assert_eq!(labels(&out), [None, Some("writes".to_string())]);
     }
 
@@ -2426,7 +3279,9 @@ mod tests {
         }));
         assert_eq!(error(&out), "dangling reference: n");
         // the same for the application layer, and for a node that hosts an application nobody declared
-        let out = compute(json!({ "viewpoint": "deep", "layer": "application", "focal": "n.m", "elements": [{ "reference": "n.m" }] }));
+        let out = compute(
+            json!({ "viewpoint": "deep", "layer": "application", "focal": "n.m", "elements": [{ "reference": "n.m" }] }),
+        );
         assert_eq!(error(&out), "dangling reference: n");
         let out = compute(json!({
             "viewpoint": "deep", "layer": "technology", "focal": "n",
@@ -2445,7 +3300,10 @@ mod tests {
                         "viewpoint": viewpoint, "layer": layer, "focal": focal, "elements": elements, "app_elements": elements,
                         "expanded": ["a", "z", "a.b"], "collapsed": ["a", "a.b"], "opened": ["a"], "pinned": [focal], "hidden": ["a.b"]
                     }));
-                    assert!(out.get("error").is_some() || out.get("items").is_some(), "{viewpoint} {layer} {focal}: {out}");
+                    assert!(
+                        out.get("error").is_some() || out.get("items").is_some(),
+                        "{viewpoint} {layer} {focal}: {out}"
+                    );
                 }
             }
         }
@@ -2466,13 +3324,20 @@ mod tests {
             ]
         }));
         let l = link(&out, "sys", "o").unwrap_or_else(|| panic!("{out}"));
-        assert_eq!((l["label"].clone(), l["synthetic"].clone()), (json!("uses"), json!(true)), "the default label");
+        assert_eq!(
+            (l["label"].clone(), l["synthetic"].clone()),
+            (json!("uses"), json!(true)),
+            "the default label"
+        );
         assert_eq!(l["qualifiers"], json!(["x"]));
         let out = compute(json!({
             "viewpoint": "facet", "layer": "application", "focal": "a", "facet": { "actions": null },
             "elements": [{ "reference": "a" }]
         }));
-        assert!(error(&out).contains("unsupported viewpoint"), "a facet without actions is read, then the viewpoint is refused");
+        assert!(
+            error(&out).contains("unsupported viewpoint"),
+            "a facet without actions is read, then the viewpoint is refused"
+        );
         let out = compute(json!({
             "viewpoint": "deep", "layer": "application", "focal": "a", "facet": { "actions": null },
             "elements": [{ "reference": "a" }]
@@ -2493,12 +3358,18 @@ mod tests {
             { "reference": "sys2.c" },
             { "reference": "ext" }
         ]);
-        let deep = compute(json!({ "viewpoint": "deep", "layer": "application", "focal": "sys", "elements": elements }));
+        let deep = compute(
+            json!({ "viewpoint": "deep", "layer": "application", "focal": "sys", "elements": elements }),
+        );
         assert_eq!(ids(&deep), ["ext", "sys", "sys.a"]);
         assert_eq!(deep["links"].as_array().unwrap().len(), 1);
-        let overview = compute(json!({ "viewpoint": "overview", "layer": "application", "focal": "sys", "elements": elements }));
+        let overview = compute(
+            json!({ "viewpoint": "overview", "layer": "application", "focal": "sys", "elements": elements }),
+        );
         assert_eq!(ids(&overview), ["ext", "sys"]);
-        let detailed = compute(json!({ "viewpoint": "detailed", "layer": "application", "focal": "sys", "elements": elements }));
+        let detailed = compute(
+            json!({ "viewpoint": "detailed", "layer": "application", "focal": "sys", "elements": elements }),
+        );
         assert_eq!(ids(&detailed), ["ext", "sys", "sys.a"]);
     }
 
@@ -2520,8 +3391,16 @@ mod tests {
         let out = input(json!([]));
         assert_eq!(item(&out, "other")["expandable"], false);
         let opened = input(json!(["other"]));
-        assert_eq!((ids(&opened), &opened["links"]), (ids(&out), &out["links"]), "and indeed opening it changes nothing");
-        assert_eq!(item(&out, "big")["expandable"], true, "big hides big.x, where a reads");
+        assert_eq!(
+            (ids(&opened), &opened["links"]),
+            (ids(&out), &out["links"]),
+            "and indeed opening it changes nothing"
+        );
+        assert_eq!(
+            item(&out, "big")["expandable"],
+            true,
+            "big hides big.x, where a reads"
+        );
         assert_ne!(input(json!(["big"]))["links"], out["links"]);
     }
 
@@ -2540,7 +3419,11 @@ mod tests {
         };
         let out = input(json!([]));
         assert_eq!(item(&out, "sys.a")["expandable"], false);
-        assert_eq!(item(&out, "other")["expandable"], false, "no relationship reaches other.y");
+        assert_eq!(
+            item(&out, "other")["expandable"],
+            false,
+            "no relationship reaches other.y"
+        );
         assert_eq!(input(json!(["sys.a", "other"]))["links"], out["links"]);
     }
 
@@ -2561,7 +3444,11 @@ mod tests {
         };
         let out = input(json!([]));
         assert_eq!(item(&out, "other")["expandable"], true);
-        assert_eq!(item(&out, "sys.b")["expandable"], false, "it is the focal of its own overview, and no one reaches into it");
+        assert_eq!(
+            item(&out, "sys.b")["expandable"],
+            false,
+            "it is the focal of its own overview, and no one reaches into it"
+        );
         assert_ne!(input(json!(["other"]))["links"], out["links"]);
     }
 
@@ -2588,11 +3475,17 @@ mod tests {
             { "reference": "b" }
         ]);
         for viewpoint in ["overview", "deep"] {
-            let out = compute(json!({ "viewpoint": viewpoint, "layer": "application", "focal": "a", "elements": elements }));
+            let out = compute(
+                json!({ "viewpoint": viewpoint, "layer": "application", "focal": "a", "elements": elements }),
+            );
             let links = out["links"].as_array().unwrap();
             assert_eq!(links.len(), 3, "{viewpoint}: {out}");
             for l in links {
-                assert_eq!(l["relationships"].as_array().unwrap().len(), 1, "{viewpoint}: each link stands for its own relationship");
+                assert_eq!(
+                    l["relationships"].as_array().unwrap().len(),
+                    1,
+                    "{viewpoint}: each link stands for its own relationship"
+                );
                 assert_eq!(l["tags"], l["relationships"][0]["tags"]);
             }
             let mut tags: Vec<String> = links.iter().map(|l| l["tags"].to_string()).collect();
@@ -2609,13 +3502,25 @@ mod tests {
             { "reference": "s.b", "relationships": [{ "destination": "o", "label": "x", "tags": { "k": "2" } }] },
             { "reference": "o" }
         ]);
-        let out = compute(json!({ "viewpoint": "overview", "layer": "application", "focal": "s", "elements": elements }));
+        let out = compute(
+            json!({ "viewpoint": "overview", "layer": "application", "focal": "s", "elements": elements }),
+        );
         let l = link(&out, "s", "o").unwrap();
-        assert_eq!(l["label"], "uses", "two relationships that differ by their tags do not read the same");
-        let tags: Vec<String> = l["relationships"].as_array().unwrap().iter().map(|r| r["tags"].to_string()).collect();
+        assert_eq!(
+            l["label"], "uses",
+            "two relationships that differ by their tags do not read the same"
+        );
+        let tags: Vec<String> = l["relationships"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["tags"].to_string())
+            .collect();
         assert_eq!(tags, ["{\"k\":\"1\"}", "{\"k\":\"2\"}"]);
         // folding regroups them in the same way
-        let out = compute(json!({ "viewpoint": "deep", "layer": "application", "focal": "s", "collapsed": ["s"], "elements": elements }));
+        let out = compute(
+            json!({ "viewpoint": "deep", "layer": "application", "focal": "s", "collapsed": ["s"], "elements": elements }),
+        );
         assert_eq!(link(&out, "s", "o").unwrap()["label"], "uses");
         // and with the same tags they read the same
         let same = json!([
@@ -2624,7 +3529,9 @@ mod tests {
             { "reference": "s.b", "relationships": [{ "destination": "o", "label": "x", "tags": { "k": "1" } }] },
             { "reference": "o" }
         ]);
-        let out = compute(json!({ "viewpoint": "deep", "layer": "application", "focal": "s", "collapsed": ["s"], "elements": same }));
+        let out = compute(
+            json!({ "viewpoint": "deep", "layer": "application", "focal": "s", "collapsed": ["s"], "elements": same }),
+        );
         assert_eq!(link(&out, "s", "o").unwrap()["label"], "x");
     }
 
@@ -2644,48 +3551,75 @@ mod tests {
 
     #[test]
     fn a_deployed_application_item_is_named_after_its_node_and_the_application() {
-        let out = deployment(json!([
-            { "reference": "prod", "parent": true },
-            { "reference": "prod.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.vm" }] },
-            { "reference": "prod.vm", "applications": ["shop.db"] }
-        ]), json!([]));
-        assert_eq!(ids(&out), ["pod_shop_api", "prod", "prod.pod", "prod.vm", "vm_shop_db"]);
+        let out = deployment(
+            json!([
+                { "reference": "prod", "parent": true },
+                { "reference": "prod.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.vm" }] },
+                { "reference": "prod.vm", "applications": ["shop.db"] }
+            ]),
+            json!([]),
+        );
+        assert_eq!(
+            ids(&out),
+            ["pod_shop_api", "prod", "prod.pod", "prod.vm", "vm_shop_db"]
+        );
         assert_eq!(item(&out, "pod_shop_api")["parent"], "prod.pod");
-        assert!(link(&out, "pod_shop_api", "vm_shop_db").unwrap()["secondary"].as_bool().unwrap());
+        assert!(
+            link(&out, "pod_shop_api", "vm_shop_db").unwrap()["secondary"]
+                .as_bool()
+                .unwrap()
+        );
     }
 
     #[test]
     fn nodes_of_the_same_name_hosting_the_same_application_get_distinct_items() {
-        let out = deployment(json!([
-            { "reference": "prod", "parent": true },
-            { "reference": "prod.a", "parent": true },
-            { "reference": "prod.a.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.c.pod" }] },
-            { "reference": "prod.b", "parent": true },
-            { "reference": "prod.b.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.c.pod" }] },
-            { "reference": "prod.c", "parent": true },
-            { "reference": "prod.c.pod", "applications": ["shop.db"] }
-        ]), json!([]));
+        let out = deployment(
+            json!([
+                { "reference": "prod", "parent": true },
+                { "reference": "prod.a", "parent": true },
+                { "reference": "prod.a.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.c.pod" }] },
+                { "reference": "prod.b", "parent": true },
+                { "reference": "prod.b.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.c.pod" }] },
+                { "reference": "prod.c", "parent": true },
+                { "reference": "prod.c.pod", "applications": ["shop.db"] }
+            ]),
+            json!([]),
+        );
         let items = out["items"].as_array().unwrap();
-        let app_items: Vec<(&str, &str)> = items.iter().filter(|i| i["reference"] != i["id"]).map(|i| (i["id"].as_str().unwrap(), i["parent"].as_str().unwrap())).collect();
-        assert_eq!(app_items, [
-            ("pod_shop_db", "prod.c.pod"),
-            ("prod_a_pod_shop_api", "prod.a.pod"),
-            ("prod_b_pod_shop_api", "prod.b.pod"),
-        ], "the unique id is kept, the colliding ones carry the path of their node");
+        let app_items: Vec<(&str, &str)> = items
+            .iter()
+            .filter(|i| i["reference"] != i["id"])
+            .map(|i| (i["id"].as_str().unwrap(), i["parent"].as_str().unwrap()))
+            .collect();
+        assert_eq!(
+            app_items,
+            [
+                ("pod_shop_db", "prod.c.pod"),
+                ("prod_a_pod_shop_api", "prod.a.pod"),
+                ("prod_b_pod_shop_api", "prod.b.pod"),
+            ],
+            "the unique id is kept, the colliding ones carry the path of their node"
+        );
         let all: HashSet<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
         assert_eq!(all.len(), items.len(), "an id is one box");
         // both instances are linked to the database
-        assert!(link(&out, "prod_a_pod_shop_api", "pod_shop_db").is_some() && link(&out, "prod_b_pod_shop_api", "pod_shop_db").is_some());
+        assert!(
+            link(&out, "prod_a_pod_shop_api", "pod_shop_db").is_some()
+                && link(&out, "prod_b_pod_shop_api", "pod_shop_db").is_some()
+        );
     }
 
     #[test]
     fn a_deployed_application_item_never_takes_the_id_of_another_item() {
         // `pod_shop_api` is also the reference of a node of the view
-        let out = deployment(json!([
-            { "reference": "prod", "parent": true },
-            { "reference": "prod.pod", "applications": ["shop.api"], "relationships": [{ "destination": "pod_shop_api" }] },
-            { "reference": "pod_shop_api" }
-        ]), json!([]));
+        let out = deployment(
+            json!([
+                { "reference": "prod", "parent": true },
+                { "reference": "prod.pod", "applications": ["shop.api"], "relationships": [{ "destination": "pod_shop_api" }] },
+                { "reference": "pod_shop_api" }
+            ]),
+            json!([]),
+        );
         let items = out["items"].as_array().unwrap();
         let all: HashSet<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
         assert_eq!(all.len(), items.len());
@@ -2725,56 +3659,108 @@ mod tests {
     #[test]
     fn an_environment_reaches_the_applications_of_the_environments_it_uses() {
         let out = environments("dev", json!(["int"]), json!({}));
-        let link = link(&out, "app_shop_api", "a_ext_registry").expect("the dependency is drawn between the deployed applications");
-        assert!(!link["secondary"].as_bool().unwrap(), "unlike a link inside an environment, it is drawn");
+        let link = link(&out, "app_shop_api", "a_ext_registry")
+            .expect("the dependency is drawn between the deployed applications");
+        assert!(
+            !link["secondary"].as_bool().unwrap(),
+            "unlike a link inside an environment, it is drawn"
+        );
         assert_eq!(link["label"], "reads patients from");
         assert_eq!(link["qualifiers"], json!(["REST"]));
         assert_eq!(link["tags"], json!({ "tcp-port": "443" }));
         assert_eq!(link["relationships"][0]["from"], "shop.api");
-        assert!(link["relationships"][0]["application"].as_bool().unwrap(), "declared in the application layer");
+        assert!(
+            link["relationships"][0]["application"].as_bool().unwrap(),
+            "declared in the application layer"
+        );
         assert_eq!(item(&out, "a_ext_registry")["parent"], "int.a");
-        assert!(link_between(&out, "app_shop_api", "b_ext_registry"), "every host of the application in the used environment");
-        assert!(!has_item(&out, "prd") && !has_item(&out, "prd.a"), "an environment that is not used stays out");
+        assert!(
+            link_between(&out, "app_shop_api", "b_ext_registry"),
+            "every host of the application in the used environment"
+        );
+        assert!(
+            !has_item(&out, "prd") && !has_item(&out, "prd.a"),
+            "an environment that is not used stays out"
+        );
     }
 
     #[test]
     fn the_overview_of_an_environment_shows_the_environments_it_uses() {
         for viewpoint in ["overview", "detailed"] {
             let out = environments("dev", json!(["int"]), json!({ "viewpoint": viewpoint }));
-            let from = if viewpoint == "overview" { "dev" } else { "dev.app" };
-            let link = link(&out, from, "int").unwrap_or_else(|| panic!("{viewpoint}: the dependency is drawn up to the environments"));
-            assert_eq!(link["label"], "reads patients from", "{viewpoint}: it keeps its caption");
+            let from = if viewpoint == "overview" {
+                "dev"
+            } else {
+                "dev.app"
+            };
+            let link = link(&out, from, "int").unwrap_or_else(|| {
+                panic!("{viewpoint}: the dependency is drawn up to the environments")
+            });
+            assert_eq!(
+                link["label"], "reads patients from",
+                "{viewpoint}: it keeps its caption"
+            );
             assert_eq!(link["relationships"][0]["from"], "shop.api");
-            assert!(link["relationships"][0]["application"].as_bool().unwrap(), "{viewpoint}: declared in the application layer");
-            assert!(!has_item(&out, "prd"), "{viewpoint}: an environment that is not used stays out");
+            assert!(
+                link["relationships"][0]["application"].as_bool().unwrap(),
+                "{viewpoint}: declared in the application layer"
+            );
+            assert!(
+                !has_item(&out, "prd"),
+                "{viewpoint}: an environment that is not used stays out"
+            );
         }
         let out = environments("dev", json!([]), json!({ "viewpoint": "overview" }));
-        assert!(out["links"].as_array().unwrap().is_empty(), "nothing is used, nothing is shown");
+        assert!(
+            out["links"].as_array().unwrap().is_empty(),
+            "nothing is used, nothing is shown"
+        );
     }
 
     #[test]
     fn the_overview_of_a_used_environment_shows_who_depends_on_it() {
-        let out = environments("int", json!(["int"]), json!({ "viewpoint": "overview", "elements": [
+        let out = environments(
+            "int",
+            json!(["int"]),
+            json!({ "viewpoint": "overview", "elements": [
             { "reference": "dev", "parent": true, "uses": ["int"] },
             { "reference": "dev.app", "applications": ["shop.api"] },
             { "reference": "int", "parent": true },
             { "reference": "int.a", "applications": ["ext.registry"] }
-        ] }));
-        assert!(link_between(&out, "dev", "int"), "the dependent environment, linked to the one it uses");
+        ] }),
+        );
+        assert!(
+            link_between(&out, "dev", "int"),
+            "the dependent environment, linked to the one it uses"
+        );
     }
 
     #[test]
     fn the_overview_of_a_node_shows_what_leaves_it_and_not_what_stays_inside() {
-        let out = environments("dev.app", json!(["int"]), json!({ "viewpoint": "overview" }));
-        assert!(link_between(&out, "dev.app", "int"), "the node hosting the application depends on the environment");
-        let inside = environments("dev", json!(["int"]), json!({ "viewpoint": "overview", "elements": [
+        let out = environments(
+            "dev.app",
+            json!(["int"]),
+            json!({ "viewpoint": "overview" }),
+        );
+        assert!(
+            link_between(&out, "dev.app", "int"),
+            "the node hosting the application depends on the environment"
+        );
+        let inside = environments(
+            "dev",
+            json!(["int"]),
+            json!({ "viewpoint": "overview", "elements": [
             { "reference": "dev", "parent": true, "uses": ["int"] },
             { "reference": "dev.app", "applications": ["shop.api"] },
             { "reference": "dev.db", "applications": ["ext.registry"] },
             { "reference": "int", "parent": true },
             { "reference": "int.a", "applications": ["ext.registry"] }
-        ] }));
-        assert!(inside["links"].as_array().unwrap().is_empty(), "what the environment hosts itself wins: nothing leaves it");
+        ] }),
+        );
+        assert!(
+            inside["links"].as_array().unwrap().is_empty(),
+            "what the environment hosts itself wins: nothing leaves it"
+        );
     }
 
     #[test]
@@ -2791,7 +3777,17 @@ mod tests {
                 { "reference": "prd.pod" }
             ]
         }));
-        assert_eq!(ids(&out), ["dev", "dev.ns", "dev.ns.quiet", "dev.other", "dev.other.pod"], "all of it, and nothing of the other environment");
+        assert_eq!(
+            ids(&out),
+            [
+                "dev",
+                "dev.ns",
+                "dev.ns.quiet",
+                "dev.other",
+                "dev.other.pod"
+            ],
+            "all of it, and nothing of the other environment"
+        );
         let part = compute(json!({
             "viewpoint": "deep", "layer": "technology", "focal": "dev.ns",
             "elements": [
@@ -2801,11 +3797,16 @@ mod tests {
                 { "reference": "dev.other", "parent": true }
             ]
         }));
-        assert_eq!(ids(&part), ["dev", "dev.ns", "dev.ns.quiet"], "a node is shown with its ancestors and its content, not with its siblings");
+        assert_eq!(
+            ids(&part),
+            ["dev", "dev.ns", "dev.ns.quiet"],
+            "a node is shown with its ancestors and its content, not with its siblings"
+        );
     }
 
     #[test]
-    fn the_applications_of_an_environment_are_linked_without_being_drawn_unless_the_view_is_a_flow() {
+    fn the_applications_of_an_environment_are_linked_without_being_drawn_unless_the_view_is_a_flow()
+    {
         let input = |extra: Value| {
             let mut input = json!({
                 "viewpoint": "deep", "layer": "technology", "focal": "dev",
@@ -2831,21 +3832,42 @@ mod tests {
 
         let plain = input(json!({}));
         let link = link(&plain, "web_shop_web", "api_shop_api").expect("the dependency exists");
-        assert!(link["secondary"].as_bool().unwrap(), "inside an environment it is not drawn");
+        assert!(
+            link["secondary"].as_bool().unwrap(),
+            "inside an environment it is not drawn"
+        );
         assert!(link["label"].is_null());
 
         let flow = input(json!({ "application_links": true }));
-        let drawn: Vec<&Value> = flow["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).collect();
+        let drawn: Vec<&Value> = flow["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|l| !l["secondary"].as_bool().unwrap())
+            .collect();
         assert_eq!(drawn.len(), 2, "one link per relationship, drawn");
-        assert!(drawn.iter().any(|l| l["label"] == "calls" && l["qualifiers"] == json!(["REST"]) && l["tags"] == json!({ "flow": "yes" })));
+        assert!(drawn.iter().any(|l| l["label"] == "calls"
+            && l["qualifiers"] == json!(["REST"])
+            && l["tags"] == json!({ "flow": "yes" })));
         assert_eq!(drawn[0]["relationships"][0]["from"], "shop.web");
-        assert!(drawn[0]["relationships"][0]["application"].as_bool().unwrap());
+        assert!(drawn[0]["relationships"][0]["application"]
+            .as_bool()
+            .unwrap());
 
         let faceted = input(json!({ "facet": { "name": "flow", "actions": [
             { "operator": "REMOVE", "json_path": "$.application..relationships[?(@.tags.flow != 'yes')]" }
         ] } }));
-        let drawn: Vec<&Value> = faceted["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).collect();
-        assert_eq!(drawn.len(), 1, "through a facet the flow is drawn, and only the flow");
+        let drawn: Vec<&Value> = faceted["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|l| !l["secondary"].as_bool().unwrap())
+            .collect();
+        assert_eq!(
+            drawn.len(),
+            1,
+            "through a facet the flow is drawn, and only the flow"
+        );
         assert_eq!(drawn[0]["label"], "calls");
     }
 
@@ -2875,25 +3897,49 @@ mod tests {
         let flow = |viewpoint: &str, focal: &str| flow_with(viewpoint, focal, true);
 
         let shown = flow_with("detailed", "dev", false);
-        assert!(link_between(&shown, "dev.front", "dev.back") && has_item(&shown, "dev.data"), "the option off: the link, and the child with no link");
+        assert!(
+            link_between(&shown, "dev.front", "dev.back") && has_item(&shown, "dev.data"),
+            "the option off: the link, and the child with no link"
+        );
 
         let detailed = flow("detailed", "dev");
-        let link = link(&detailed, "dev.front", "dev.back").expect("the dependency is lifted to the children of the focal element");
+        let link = link(&detailed, "dev.front", "dev.back")
+            .expect("the dependency is lifted to the children of the focal element");
         assert_eq!(link["label"], "calls");
         assert!(link["relationships"][0]["application"].as_bool().unwrap());
-        assert_eq!(ids(&detailed), ["dev", "dev.back", "dev.front"], "the child with no link is left out");
+        assert_eq!(
+            ids(&detailed),
+            ["dev", "dev.back", "dev.front"],
+            "the child with no link is left out"
+        );
 
         let deep = flow("deep", "dev");
-        assert!(link_between(&deep, "web_shop_web", "api_shop_api"), "the applications are linked");
-        assert!(!has_item(&deep, "dev.data") && !has_item(&deep, "db_shop_db"), "what the flow does not go through is left out");
-        assert!(has_item(&deep, "dev.front") && has_item(&deep, "dev.back"), "what encloses the ends is kept");
+        assert!(
+            link_between(&deep, "web_shop_web", "api_shop_api"),
+            "the applications are linked"
+        );
+        assert!(
+            !has_item(&deep, "dev.data") && !has_item(&deep, "db_shop_db"),
+            "what the flow does not go through is left out"
+        );
+        assert!(
+            has_item(&deep, "dev.front") && has_item(&deep, "dev.back"),
+            "what encloses the ends is kept"
+        );
 
         let overview = flow("overview", "dev.front");
-        assert!(link_between(&overview, "dev.front", "dev.back"), "what leaves a node is its dependency on the other nodes");
+        assert!(
+            link_between(&overview, "dev.front", "dev.back"),
+            "what leaves a node is its dependency on the other nodes"
+        );
         assert_eq!(ids(&overview), ["dev", "dev.back", "dev.front"]);
 
         let alone = flow("overview", "dev.data");
-        assert_eq!(ids(&alone), ["dev", "dev.data"], "the focal element is always there, with nothing around it");
+        assert_eq!(
+            ids(&alone),
+            ["dev", "dev.data"],
+            "the focal element is always there, with nothing around it"
+        );
     }
 
     #[test]
@@ -2901,47 +3947,79 @@ mod tests {
         for uses in [json!([]), json!(null)] {
             let out = environments("dev", uses, json!({}));
             assert!(out["links"].as_array().unwrap().is_empty());
-            assert_eq!(ids(&out), ["app_shop_api", "dev", "dev.app"], "the environment is shown with what it is made of, linked to nothing");
+            assert_eq!(
+                ids(&out),
+                ["app_shop_api", "dev", "dev.app"],
+                "the environment is shown with what it is made of, linked to nothing"
+            );
         }
     }
 
     #[test]
     fn an_environment_can_use_a_node_of_another_one_only() {
         let out = environments("dev", json!(["int.b", "prd"]), json!({}));
-        assert!(link_between(&out, "app_shop_api", "b_ext_registry") && link_between(&out, "app_shop_api", "a_ext_registry"));
+        assert!(
+            link_between(&out, "app_shop_api", "b_ext_registry")
+                && link_between(&out, "app_shop_api", "a_ext_registry")
+        );
         assert!(!has_item(&out, "int.a"), "the sibling node is not used");
     }
 
     #[test]
     fn what_an_environment_hosts_itself_wins_over_what_it_uses() {
-        let out = environments("dev", json!(["int"]), json!({
-            "elements": [
-                { "reference": "dev", "parent": true, "uses": ["int"] },
-                { "reference": "dev.app", "applications": ["shop.api"] },
-                { "reference": "dev.db", "applications": ["ext.registry"] },
-                { "reference": "int", "parent": true },
-                { "reference": "int.a", "applications": ["ext.registry"] }
-            ]
-        }));
-        assert!(out["links"].as_array().unwrap().iter().all(|l| l["secondary"].as_bool().unwrap()), "the application is found in the environment: nothing leaves it");
-        assert!(!has_item(&out, "int.a"), "the used environment is not even drawn");
+        let out = environments(
+            "dev",
+            json!(["int"]),
+            json!({
+                "elements": [
+                    { "reference": "dev", "parent": true, "uses": ["int"] },
+                    { "reference": "dev.app", "applications": ["shop.api"] },
+                    { "reference": "dev.db", "applications": ["ext.registry"] },
+                    { "reference": "int", "parent": true },
+                    { "reference": "int.a", "applications": ["ext.registry"] }
+                ]
+            }),
+        );
+        assert!(
+            out["links"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|l| l["secondary"].as_bool().unwrap()),
+            "the application is found in the environment: nothing leaves it"
+        );
+        assert!(
+            !has_item(&out, "int.a"),
+            "the used environment is not even drawn"
+        );
     }
 
     #[test]
     fn the_view_of_a_used_environment_shows_who_depends_on_it() {
         let out = environments("int", json!(["int.a"]), json!({}));
-        let link = link(&out, "app_shop_api", "a_ext_registry").expect("seen from the used environment");
+        let link =
+            link(&out, "app_shop_api", "a_ext_registry").expect("seen from the used environment");
         assert_eq!(link["relationships"][0]["from"], "shop.api");
         assert_eq!(item(&out, "app_shop_api")["parent"], "dev.app");
-        assert!(!link_between(&out, "app_shop_api", "b_ext_registry"), "only what is used is linked");
+        assert!(
+            !link_between(&out, "app_shop_api", "b_ext_registry"),
+            "only what is used is linked"
+        );
     }
 
     #[test]
     fn the_dependencies_between_environments_fold_with_their_nodes() {
-        let out = environments("dev", json!(["int"]), json!({ "collapsed": ["dev.app", "int.a", "int.b"] }));
+        let out = environments(
+            "dev",
+            json!(["int"]),
+            json!({ "collapsed": ["dev.app", "int.a", "int.b"] }),
+        );
         let grouped = link(&out, "dev.app", "int.a").expect("grouped under the folded nodes");
         assert!(grouped["synthetic"].as_bool().unwrap());
-        assert_eq!(grouped["label"], "reads patients from", "the caption of a single relationship is kept");
+        assert_eq!(
+            grouped["label"], "reads patients from",
+            "the caption of a single relationship is kept"
+        );
         assert!(link(&out, "dev.app", "int.b").is_some());
     }
 
@@ -2980,23 +4058,45 @@ mod tests {
     #[test]
     fn the_relationships_of_what_is_inside_a_deployed_application_are_dependencies_of_its_node() {
         let out = descendants("deep", "dev", json!({}));
-        let found = link(&out, "app_shop_app", "a_ext_registry").expect("the box of the container is linked through its component");
+        let found = link(&out, "app_shop_app", "a_ext_registry")
+            .expect("the box of the container is linked through its component");
         assert_eq!(found["label"], "charges");
         assert_eq!(found["qualifiers"], json!(["REST"]));
-        assert_eq!(found["relationships"][0]["from"], "shop.app.payments", "the relationship says who declares it");
+        assert_eq!(
+            found["relationships"][0]["from"], "shop.app.payments",
+            "the relationship says who declares it"
+        );
         assert!(found["relationships"][0]["application"].as_bool().unwrap());
-        assert_eq!(out["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).count(), 1, "the internal and the same-environment ones are no dependency");
+        assert_eq!(
+            out["links"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|l| !l["secondary"].as_bool().unwrap())
+                .count(),
+            1,
+            "the internal and the same-environment ones are no dependency"
+        );
         for viewpoint in ["overview", "detailed"] {
             let out = descendants(viewpoint, "dev", json!({}));
-            let from = if viewpoint == "overview" { "dev" } else { "dev.app" };
-            let l = link(&out, from, "int").unwrap_or_else(|| panic!("{viewpoint}: the node that hosts the container depends on the environment"));
+            let from = if viewpoint == "overview" {
+                "dev"
+            } else {
+                "dev.app"
+            };
+            let l = link(&out, from, "int").unwrap_or_else(|| {
+                panic!("{viewpoint}: the node that hosts the container depends on the environment")
+            });
             assert_eq!(l["relationships"][0]["from"], "shop.app.payments");
         }
     }
 
     #[test]
     fn several_descendants_with_the_same_relationship_fold_into_one_link_as_before() {
-        let out = descendants("deep", "dev", json!({ "app_elements": [
+        let out = descendants(
+            "deep",
+            "dev",
+            json!({ "app_elements": [
             { "reference": "shop", "parent": true },
             { "reference": "shop.app", "relationships": [ { "destination": "ext.registry", "label": "charges", "qualifiers": ["REST"] } ] },
             { "reference": "shop.app.payments", "relationships": [ { "destination": "ext.registry", "label": "charges", "qualifiers": ["REST"] } ] },
@@ -3004,17 +4104,40 @@ mod tests {
             { "reference": "ext", "parent": true },
             { "reference": "ext.registry" },
             { "reference": "ext.other" }
-        ] }));
-        let drawn: Vec<&Value> = out["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).collect();
-        assert_eq!(drawn.len(), 2, "one link per caption, as for any relationships");
-        let charges = drawn.iter().find(|l| l["label"] == "charges").unwrap_or_else(|| panic!("{out}"));
-        assert_eq!(charges["relationships"].as_array().unwrap().len(), 2, "both declarers are listed in the one link");
+        ] }),
+        );
+        let drawn: Vec<&Value> = out["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|l| !l["secondary"].as_bool().unwrap())
+            .collect();
+        assert_eq!(
+            drawn.len(),
+            2,
+            "one link per caption, as for any relationships"
+        );
+        let charges = drawn
+            .iter()
+            .find(|l| l["label"] == "charges")
+            .unwrap_or_else(|| panic!("{out}"));
+        assert_eq!(
+            charges["relationships"].as_array().unwrap().len(),
+            2,
+            "both declarers are listed in the one link"
+        );
     }
 
     #[test]
     fn the_map_of_the_technology_layer_takes_the_dependencies_of_the_descendants() {
         let out = descendants("map", "", json!({ "opened": ["dev", "int"] }));
-        let drawn = out["links"].as_array().unwrap().iter().any(|l| l["relationships"].as_array().unwrap().iter().any(|r| r["from"] == "shop.app.payments" && r["destination"] == "ext.registry"));
+        let drawn = out["links"].as_array().unwrap().iter().any(|l| {
+            l["relationships"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|r| r["from"] == "shop.app.payments" && r["destination"] == "ext.registry")
+        });
         assert!(drawn, "{out}");
     }
 
@@ -3053,39 +4176,76 @@ mod tests {
     }
 
     #[test]
-    fn a_relationship_towards_the_inside_of_a_deployed_application_is_a_dependency_towards_its_node() {
+    fn a_relationship_towards_the_inside_of_a_deployed_application_is_a_dependency_towards_its_node(
+    ) {
         let out = toward_inside("deep", "dev", json!({}));
         let found = link(&out, "app_shop_app", "a_ext_registry").expect("the box of the container is linked to the box of the application that holds the component");
         assert_eq!(found["label"], "charges");
         assert_eq!(found["relationships"][0]["from"], "shop.app.payments");
-        assert_eq!(found["relationships"][0]["destination"], "ext.registry.client", "the relationship says what it ends on");
+        assert_eq!(
+            found["relationships"][0]["destination"], "ext.registry.client",
+            "the relationship says what it ends on"
+        );
         assert!(!found["secondary"].as_bool().unwrap());
-        assert_eq!(out["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).count(), 1, "internal, same-environment and undeployed ends give nothing: {out}");
+        assert_eq!(
+            out["links"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|l| !l["secondary"].as_bool().unwrap())
+                .count(),
+            1,
+            "internal, same-environment and undeployed ends give nothing: {out}"
+        );
         for viewpoint in ["overview", "detailed"] {
             let out = toward_inside(viewpoint, "dev", json!({}));
-            let from = if viewpoint == "overview" { "dev" } else { "dev.app" };
-            let l = link(&out, from, "int").unwrap_or_else(|| panic!("{viewpoint}: the node depends on the environment: {out}"));
+            let from = if viewpoint == "overview" {
+                "dev"
+            } else {
+                "dev.app"
+            };
+            let l = link(&out, from, "int").unwrap_or_else(|| {
+                panic!("{viewpoint}: the node depends on the environment: {out}")
+            });
             assert_eq!(l["relationships"][0]["destination"], "ext.registry.client");
         }
     }
 
     #[test]
     fn the_map_of_the_technology_layer_takes_the_dependencies_towards_the_inside() {
-        let out = toward_inside("map", "", json!({ "opened": ["dev", "int", "dev.app", "int.a"] }));
+        let out = toward_inside(
+            "map",
+            "",
+            json!({ "opened": ["dev", "int", "dev.app", "int.a"] }),
+        );
         let l = link(&out, "app_shop_app", "a_ext_registry").unwrap_or_else(|| panic!("{out}"));
         assert_eq!(l["relationships"][0]["destination"], "ext.registry.client");
         let closed = toward_inside("map", "", json!({ "opened": [] }));
-        assert!(link(&closed, "dev", "int").is_some(), "grouped under the closed boxes: {closed}");
+        assert!(
+            link(&closed, "dev", "int").is_some(),
+            "grouped under the closed boxes: {closed}"
+        );
     }
 
     #[test]
     fn the_secondary_links_read_what_is_inside_the_deployed_element_on_both_ends() {
         let out = toward_inside("deep", "dev", json!({}));
-        let secondary: Vec<&Value> = out["links"].as_array().unwrap().iter().filter(|l| l["secondary"].as_bool().unwrap()).collect();
+        let secondary: Vec<&Value> = out["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|l| l["secondary"].as_bool().unwrap())
+            .collect();
         assert_eq!(secondary.len(), 1, "the component of shop.app towards a component of ext.other, on another node of the environment: {out}");
-        assert_eq!((secondary[0]["from"].as_str(), secondary[0]["to"].as_str()), (Some("app_shop_app"), Some("db_ext_other")));
+        assert_eq!(
+            (secondary[0]["from"].as_str(), secondary[0]["to"].as_str()),
+            (Some("app_shop_app"), Some("db_ext_other"))
+        );
         assert_eq!(secondary[0]["relationships"][0]["from"], "shop.app.cart");
-        assert!(secondary[0]["label"].is_null(), "not drawn, so not captioned");
+        assert!(
+            secondary[0]["label"].is_null(),
+            "not drawn, so not captioned"
+        );
         let flow = toward_inside("deep", "dev", json!({ "application_links": true }));
         let drawn = link(&flow, "app_shop_app", "db_ext_other").expect("a flow draws it");
         assert_eq!(drawn["label"], "stores");
@@ -3100,7 +4260,10 @@ mod tests {
             { "operator": "REMOVE", "json_path": "$.application..relationships[?(@.tags['tcp-port'] == '443')]" }
         ] } });
         let out = environments("dev", json!(["int"]), facet);
-        assert!(out["links"].as_array().unwrap().is_empty(), "nothing is left to derive the dependency from");
+        assert!(
+            out["links"].as_array().unwrap().is_empty(),
+            "nothing is left to derive the dependency from"
+        );
     }
 
     #[test]
@@ -3109,7 +4272,10 @@ mod tests {
             { "operator": "REMOVE", "json_path": "$.technology.elements[?(@.id == 'dev')].uses[?(@ == 'int')]" }
         ] } });
         let out = environments("dev", json!(["int", "prd"]), facet);
-        assert!(link_between(&out, "app_shop_api", "a_ext_registry"), "prd.a");
+        assert!(
+            link_between(&out, "app_shop_api", "a_ext_registry"),
+            "prd.a"
+        );
         assert!(!has_item(&out, "int.a"));
     }
 
@@ -3121,14 +4287,23 @@ mod tests {
 
     // ---- the earlier dialect (Jayway): refused since 0.17, the cases are shared with the Java and the node tests ----
 
-    const DIALECT_CASES: &str = include_str!("../../../../test/javascript/viewpoint-kernel/facet-dialect-cases.json");
+    const DIALECT_CASES: &str =
+        include_str!("../../../../test/javascript/viewpoint-kernel/facet-dialect-cases.json");
 
     #[test]
     fn the_earlier_dialect_is_refused_with_the_standard_form() {
         let cases: Value = serde_json::from_str(DIALECT_CASES).unwrap();
         for case in cases["refused"].as_array().unwrap() {
-            let (id, path, sentence) = (case["id"].as_str().unwrap(), case["path"].as_str().unwrap(), case["error"].as_str().unwrap());
-            assert_eq!(facet::refuse_legacy(path), Err(sentence.to_string()), "{id}");
+            let (id, path, sentence) = (
+                case["id"].as_str().unwrap(),
+                case["path"].as_str().unwrap(),
+                case["error"].as_str().unwrap(),
+            );
+            assert_eq!(
+                facet::refuse_legacy(path),
+                Err(sentence.to_string()),
+                "{id}"
+            );
             // by compute (the editor's way in) and by apply_facet (the CLI's), the same sentence, and nothing is drawn
             let out = with_facet("deep", "a", "application", remove(path));
             assert_eq!(error(&out), sentence, "{id}: {out}");
@@ -3137,13 +4312,22 @@ mod tests {
             assert_eq!(error(&out), sentence, "{id}: {out}");
         }
         for path in cases["accepted"].as_array().unwrap() {
-            assert_eq!(facet::refuse_legacy(path.as_str().unwrap()), Ok(()), "{path}");
+            assert_eq!(
+                facet::refuse_legacy(path.as_str().unwrap()),
+                Ok(()),
+                "{path}"
+            );
         }
     }
 
     #[test]
     fn a_standard_facet_says_no_warning() {
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.qualifiers[?(@ == 'REST')])]"));
+        let out = with_facet(
+            "deep",
+            "a",
+            "application",
+            remove("$..relationships[?(@.qualifiers[?(@ == 'REST')])]"),
+        );
         assert!(out.get("warnings").is_none(), "{out}");
     }
 
@@ -3162,16 +4346,44 @@ mod tests {
         assert_eq!(out["version"], CONTRACT_VERSION);
         assert_eq!(out["warnings"], json!([]));
         let kept = &out["workspace"];
-        assert_eq!(kept["settings"], workspace["settings"], "the rest of the workspace is untouched");
-        assert_eq!(kept["application"]["elements"][0]["relationships"], json!([{ "destination": "t", "label": "x" }]));
-        assert_eq!(kept["application"]["elements"][0]["elements"][0]["relationships"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            kept["settings"], workspace["settings"],
+            "the rest of the workspace is untouched"
+        );
+        assert_eq!(
+            kept["application"]["elements"][0]["relationships"],
+            json!([{ "destination": "t", "label": "x" }])
+        );
+        assert_eq!(
+            kept["application"]["elements"][0]["elements"][0]["relationships"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
         let request = json!({ "workspace": workspace, "actions": remove("$..relationships[?(@.tags['audited'] != 'yes')]") });
         let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
-        assert_eq!(out["workspace"]["application"]["elements"][0]["relationships"], json!([{ "destination": "t", "tags": { "audited": "yes" } }]));
-        assert!(out["workspace"]["application"]["elements"][0]["elements"][0].get("relationships").is_none() || out["workspace"]["application"]["elements"][0]["elements"][0]["relationships"] == json!([]));
+        assert_eq!(
+            out["workspace"]["application"]["elements"][0]["relationships"],
+            json!([{ "destination": "t", "tags": { "audited": "yes" } }])
+        );
+        assert!(
+            out["workspace"]["application"]["elements"][0]["elements"][0]
+                .get("relationships")
+                .is_none()
+                || out["workspace"]["application"]["elements"][0]["elements"][0]["relationships"]
+                    == json!([])
+        );
         let request = json!({ "workspace": workspace, "actions": remove("$.application.elements[?(@.id == 't')]") });
         let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
-        assert_eq!(out["workspace"]["application"]["elements"].as_array().unwrap().len(), 1, "an element can be removed too");
+        assert_eq!(
+            out["workspace"]["application"]["elements"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1,
+            "an element can be removed too"
+        );
         let out: Value = serde_json::from_str(&apply_facet_json(&json!({ "workspace": workspace, "actions": [{ "operator": "KEEP", "json_path": "$" }] }).to_string())).unwrap();
         assert!(error(&out).contains("unsupported facet action"));
     }
@@ -3184,18 +4396,30 @@ mod tests {
         ] } });
         let request = json!({ "workspace": workspace, "actions": remove("$..relationships[?(@.label == '1' || @.label == '3')]") });
         let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
-        assert_eq!(out["workspace"]["application"]["elements"][0]["relationships"], json!([{ "destination": "z", "label": "2" }, { "destination": "z", "label": "4" }]));
+        assert_eq!(
+            out["workspace"]["application"]["elements"][0]["relationships"],
+            json!([{ "destination": "z", "label": "2" }, { "destination": "z", "label": "4" }])
+        );
         let request = json!({ "workspace": workspace, "actions": remove("$..elements[?(@.id == 'b' || @.id == 'z' || @.relationships)]") });
         let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
-        assert_eq!(out["workspace"]["application"]["elements"], json!([{ "id": "c" }]));
+        assert_eq!(
+            out["workspace"]["application"]["elements"],
+            json!([{ "id": "c" }])
+        );
     }
 
     #[test]
     fn the_workspace_keeps_the_order_of_its_keys() {
         let request = r#"{"workspace":{"styles":{"by-tags":{"external":{"b":1},"new":{"a":1},"changed":{"c":1}}},"application":{"elements":[{"id":"z","tags":{"tag-y":"1","tag-a":"2"}}]}},"actions":[]}"#;
         let out = apply_facet_json(request);
-        let at = |needle: &str| out.find(needle).unwrap_or_else(|| panic!("{needle} in {out}"));
-        assert!(at("\"external\"") < at("\"new\"") && at("\"new\"") < at("\"changed\""), "{out}");
+        let at = |needle: &str| {
+            out.find(needle)
+                .unwrap_or_else(|| panic!("{needle} in {out}"))
+        };
+        assert!(
+            at("\"external\"") < at("\"new\"") && at("\"new\"") < at("\"changed\""),
+            "{out}"
+        );
         assert!(at("tag-y") < at("tag-a"), "{out}");
         assert!(at("\"styles\"") < at("\"application\""), "{out}");
     }
@@ -3203,7 +4427,13 @@ mod tests {
     // ---- stereotypes ----
 
     fn stereotypes(out: &Value, id: &str) -> Value {
-        out["items"].as_array().unwrap().iter().find(|i| i["id"] == id).unwrap_or_else(|| panic!("item {id} in {out}"))["stereotypes"].clone()
+        out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == id)
+            .unwrap_or_else(|| panic!("item {id} in {out}"))["stereotypes"]
+            .clone()
     }
 
     fn with_properties(properties: Value) -> Value {
@@ -3211,12 +4441,15 @@ mod tests {
         for (key, value) in properties.as_object().unwrap() {
             element[key] = value.clone();
         }
-        compute(json!({ "viewpoint": "overview", "layer": "application", "focal": "a", "elements": [element, { "reference": "b" }] }))
+        compute(
+            json!({ "viewpoint": "overview", "layer": "application", "focal": "a", "elements": [element, { "reference": "b" }] }),
+        )
     }
 
     #[test]
     fn the_tag_is_a_list_of_stereotypes_and_not_one_of_them() {
-        let out = with_properties(json!({ "tags": { "rendering-stereotypes": "external changed" } }));
+        let out =
+            with_properties(json!({ "tags": { "rendering-stereotypes": "external changed" } }));
         assert_eq!(stereotypes(&out, "a"), json!(["external", "changed"]));
     }
 
@@ -3228,13 +4461,20 @@ mod tests {
 
     #[test]
     fn the_qualifiers_come_first_in_the_order_they_were_declared_and_are_not_split() {
-        let out = with_properties(json!({ "qualifiers": ["Spring Boot", "PostgreSQL"], "tags": { "rendering-stereotypes": "  new\tchanged  " } }));
-        assert_eq!(stereotypes(&out, "a"), json!(["Spring Boot", "PostgreSQL", "new", "changed"]));
+        let out = with_properties(
+            json!({ "qualifiers": ["Spring Boot", "PostgreSQL"], "tags": { "rendering-stereotypes": "  new\tchanged  " } }),
+        );
+        assert_eq!(
+            stereotypes(&out, "a"),
+            json!(["Spring Boot", "PostgreSQL", "new", "changed"])
+        );
     }
 
     #[test]
     fn a_stereotype_is_named_once_wherever_it_comes_from() {
-        let out = with_properties(json!({ "qualifiers": ["external", "external"], "tags": { "rendering-stereotypes": "changed external changed" } }));
+        let out = with_properties(
+            json!({ "qualifiers": ["external", "external"], "tags": { "rendering-stereotypes": "changed external changed" } }),
+        );
         assert_eq!(stereotypes(&out, "a"), json!(["external", "changed"]));
     }
 
@@ -3242,10 +4482,22 @@ mod tests {
     fn an_element_that_says_nothing_has_no_stereotype() {
         let out = with_properties(json!({}));
         assert_eq!(stereotypes(&out, "a"), json!([]));
-        let out = with_properties(json!({ "qualifiers": null, "tags": { "rendering-stereotypes": "", "other": "x" } }));
-        assert_eq!(stereotypes(&out, "a"), json!([]), "empty, or another tag, or a null: nothing");
-        let out = with_properties(json!({ "qualifiers": ["", "q"], "tags": { "rendering-stereotypes": 3 } }));
-        assert_eq!(stereotypes(&out, "a"), json!(["q"]), "an empty qualifier and a tag that is not a text are left out");
+        let out = with_properties(
+            json!({ "qualifiers": null, "tags": { "rendering-stereotypes": "", "other": "x" } }),
+        );
+        assert_eq!(
+            stereotypes(&out, "a"),
+            json!([]),
+            "empty, or another tag, or a null: nothing"
+        );
+        let out = with_properties(
+            json!({ "qualifiers": ["", "q"], "tags": { "rendering-stereotypes": 3 } }),
+        );
+        assert_eq!(
+            stereotypes(&out, "a"),
+            json!(["q"]),
+            "an empty qualifier and a tag that is not a text are left out"
+        );
     }
 
     #[test]
@@ -3263,7 +4515,10 @@ mod tests {
         }));
         assert_eq!(stereotypes(&out, "dev"), json!(["K8s"]));
         assert_eq!(stereotypes(&out, "dev.app"), json!(["not the application"]));
-        assert_eq!(stereotypes(&out, "app_shop_api"), json!(["Quarkus", "external", "changed"]));
+        assert_eq!(
+            stereotypes(&out, "app_shop_api"),
+            json!(["Quarkus", "external", "changed"])
+        );
     }
 
     #[test]
@@ -3311,64 +4566,160 @@ mod tests {
     }
 
     fn link_ids(out: &Value) -> Vec<String> {
-        let mut links: Vec<String> = out["links"].as_array().unwrap().iter().map(|l| format!("{} -> {}", l["from"].as_str().unwrap(), l["to"].as_str().unwrap())).collect();
+        let mut links: Vec<String> = out["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| {
+                format!(
+                    "{} -> {}",
+                    l["from"].as_str().unwrap(),
+                    l["to"].as_str().unwrap()
+                )
+            })
+            .collect();
         links.sort();
         links
     }
 
     #[test]
-    fn the_technology_map_draws_the_applications_inside_the_nodes_that_are_open_and_the_dependencies_they_give() {
+    fn the_technology_map_draws_the_applications_inside_the_nodes_that_are_open_and_the_dependencies_they_give(
+    ) {
         // everything folded: the dependency of an application of `dev` on one of `int` is a link between the environments, and the nodes that host applications can be opened
         let out = technology_map(json!({}));
         assert_eq!(ids(&out), ["dev", "int", "prd"]);
         assert_eq!(link_ids(&out), ["dev -> int"]);
         let dependency = link(&out, "dev", "int").unwrap();
-        assert!(dependency["synthetic"].as_bool().unwrap(), "the ends are the first closed boxes, not the applications: it is grouped");
+        assert!(
+            dependency["synthetic"].as_bool().unwrap(),
+            "the ends are the first closed boxes, not the applications: it is grouped"
+        );
         assert_eq!(dependency["relationships"][0]["from"], "shop.api");
-        assert!(dependency["relationships"][0]["application"].as_bool().unwrap());
+        assert!(dependency["relationships"][0]["application"]
+            .as_bool()
+            .unwrap());
         // opened down to the nodes: the nodes only, then the applications once a node is open
         let out = technology_map(json!({ "opened": ["dev", "int"] }));
-        assert_eq!(ids(&out), ["dev", "dev.app", "int", "int.a", "int.b", "prd"]);
-        assert!(item(&out, "dev.app")["expandable"].as_bool().unwrap(), "a node that hosts applications can be opened");
-        assert!(item(&out, "prd")["expandable"].as_bool().unwrap(), "prd has a node to open");
-        assert_eq!(link_ids(&out), ["dev.app -> int.a", "dev.app -> int.b", "int.a -> int.b"]);
+        assert_eq!(
+            ids(&out),
+            ["dev", "dev.app", "int", "int.a", "int.b", "prd"]
+        );
+        assert!(
+            item(&out, "dev.app")["expandable"].as_bool().unwrap(),
+            "a node that hosts applications can be opened"
+        );
+        assert!(
+            item(&out, "prd")["expandable"].as_bool().unwrap(),
+            "prd has a node to open"
+        );
+        assert_eq!(
+            link_ids(&out),
+            ["dev.app -> int.a", "dev.app -> int.b", "int.a -> int.b"]
+        );
         let out = technology_map(json!({ "opened": ["dev", "int", "dev.app", "int.a"] }));
-        assert_eq!(ids(&out), ["app_shop_api", "app_shop_db", "dev", "dev.app", "int", "int.a", "int.b", "int_a_ext_registry", "prd"]);
+        assert_eq!(
+            ids(&out),
+            [
+                "app_shop_api",
+                "app_shop_db",
+                "dev",
+                "dev.app",
+                "int",
+                "int.a",
+                "int.b",
+                "int_a_ext_registry",
+                "prd"
+            ]
+        );
         assert_eq!(item(&out, "app_shop_api")["parent"], "dev.app");
         assert_eq!(item(&out, "app_shop_api")["reference"], "shop.api");
         assert_eq!(item(&out, "int_a_ext_registry")["parent"], "int.a");
-        assert!(!item(&out, "app_shop_api")["expandable"].as_bool().unwrap(), "an application box has nothing to open");
+        assert!(
+            !item(&out, "app_shop_api")["expandable"].as_bool().unwrap(),
+            "an application box has nothing to open"
+        );
         // an application box is the end of the dependency when it is drawn, the node when it is not (int.b is open: its application is not drawn, the node is open and folded of it)
         let links = link_ids(&out);
-        assert!(links.contains(&"app_shop_api -> int_a_ext_registry".to_string()), "{links:?}");
-        assert!(!links.contains(&"app_shop_api -> app_shop_db".to_string()), "inside an environment the dependencies stay out: {links:?}");
-        assert!(links.contains(&"app_shop_api -> int.b".to_string()), "int.b is a node whose application is not drawn: {links:?}");
-        assert_eq!(link(&out, "app_shop_api", "int_a_ext_registry").unwrap()["label"], "looks up");
-        assert!(!link(&out, "app_shop_api", "int_a_ext_registry").unwrap()["synthetic"].as_bool().unwrap(), "both ends are the boxes of the applications");
-        assert!(!link(&out, "app_shop_api", "int.b").unwrap()["synthetic"].as_bool().unwrap(), "a node is the real end of the dependency when its application is not drawn");
-        assert!(link(&out, "int.a", "int.b").is_some(), "what a node declares is still drawn");
+        assert!(
+            links.contains(&"app_shop_api -> int_a_ext_registry".to_string()),
+            "{links:?}"
+        );
+        assert!(
+            !links.contains(&"app_shop_api -> app_shop_db".to_string()),
+            "inside an environment the dependencies stay out: {links:?}"
+        );
+        assert!(
+            links.contains(&"app_shop_api -> int.b".to_string()),
+            "int.b is a node whose application is not drawn: {links:?}"
+        );
+        assert_eq!(
+            link(&out, "app_shop_api", "int_a_ext_registry").unwrap()["label"],
+            "looks up"
+        );
+        assert!(
+            !link(&out, "app_shop_api", "int_a_ext_registry").unwrap()["synthetic"]
+                .as_bool()
+                .unwrap(),
+            "both ends are the boxes of the applications"
+        );
+        assert!(
+            !link(&out, "app_shop_api", "int.b").unwrap()["synthetic"]
+                .as_bool()
+                .unwrap(),
+            "a node is the real end of the dependency when its application is not drawn"
+        );
+        assert!(
+            link(&out, "int.a", "int.b").is_some(),
+            "what a node declares is still drawn"
+        );
     }
 
     #[test]
     fn the_technology_map_hides_the_applications_or_the_relationships_on_request() {
         let all = json!({ "opened": ["dev", "int", "dev.app", "int.a"] });
-        let without_applications = technology_map(json!({ "opened": ["dev", "int", "dev.app", "int.a"], "applications": false }));
-        assert_eq!(ids(&without_applications), ["dev", "dev.app", "int", "int.a", "int.b", "prd"]);
-        assert_eq!(link_ids(&without_applications), ["dev.app -> int.a", "dev.app -> int.b", "int.a -> int.b"], "the dependencies stay, between the nodes that host the applications");
-        assert!(!item(&without_applications, "dev.app")["expandable"].as_bool().unwrap(), "an open node with no application to show has nothing to open");
+        let without_applications = technology_map(
+            json!({ "opened": ["dev", "int", "dev.app", "int.a"], "applications": false }),
+        );
+        assert_eq!(
+            ids(&without_applications),
+            ["dev", "dev.app", "int", "int.a", "int.b", "prd"]
+        );
+        assert_eq!(
+            link_ids(&without_applications),
+            ["dev.app -> int.a", "dev.app -> int.b", "int.a -> int.b"],
+            "the dependencies stay, between the nodes that host the applications"
+        );
+        assert!(
+            !item(&without_applications, "dev.app")["expandable"]
+                .as_bool()
+                .unwrap(),
+            "an open node with no application to show has nothing to open"
+        );
         let mut without_relationships = all.clone();
         without_relationships["relationships"] = json!(false);
         let out = technology_map(without_relationships);
-        assert!(out["links"].as_array().unwrap().is_empty(), "neither the declared relationships nor the dependencies");
-        assert_eq!(ids(&out).len(), 9, "the boxes are the same with the links or without");
+        assert!(
+            out["links"].as_array().unwrap().is_empty(),
+            "neither the declared relationships nor the dependencies"
+        );
+        assert_eq!(
+            ids(&out).len(),
+            9,
+            "the boxes are the same with the links or without"
+        );
         let mut neither = all.clone();
         neither["relationships"] = json!(false);
         neither["applications"] = json!(false);
         let out = technology_map(neither);
         assert!(out["links"].as_array().unwrap().is_empty());
-        assert_eq!(ids(&out), ["dev", "dev.app", "int", "int.a", "int.b", "prd"]);
+        assert_eq!(
+            ids(&out),
+            ["dev", "dev.app", "int", "int.a", "int.b", "prd"]
+        );
         // null is "not given": both are drawn
-        let drawn = technology_map(json!({ "opened": ["dev", "dev.app"], "applications": null, "relationships": null }));
+        let drawn = technology_map(
+            json!({ "opened": ["dev", "dev.app"], "applications": null, "relationships": null }),
+        );
         assert!(has_item(&drawn, "app_shop_api"));
     }
 
@@ -3376,7 +4727,11 @@ mod tests {
     fn the_technology_map_only_derives_what_the_environment_uses() {
         // `prd` is not used by `dev`: nothing leads to it, and `int` is reached through `uses` only
         let out = technology_map(json!({ "opened": ["dev", "int", "prd", "dev.app"] }));
-        assert!(link_ids(&out).iter().all(|l| !l.contains("prd.")), "{:?}", link_ids(&out));
+        assert!(
+            link_ids(&out).iter().all(|l| !l.contains("prd.")),
+            "{:?}",
+            link_ids(&out)
+        );
         // an environment that uses nothing reaches nothing
         let mut input = json!({ "opened": ["dev", "int", "dev.app"] });
         input["elements"] = json!([
@@ -3386,11 +4741,16 @@ mod tests {
             { "reference": "int.a", "applications": ["ext.registry"] }
         ]);
         let out = technology_map(input);
-        assert!(out["links"].as_array().unwrap().is_empty(), "uses is a scope, never a link: {:?}", link_ids(&out));
+        assert!(
+            out["links"].as_array().unwrap().is_empty(),
+            "uses is a scope, never a link: {:?}",
+            link_ids(&out)
+        );
     }
 
     #[test]
-    fn the_technology_map_changes_nothing_without_the_application_layer_or_in_the_application_layer() {
+    fn the_technology_map_changes_nothing_without_the_application_layer_or_in_the_application_layer(
+    ) {
         // no `app_elements`: the nodes are drawn as they were, with the relationships they declare
         let bare = compute(json!({
             "viewpoint": "map", "layer": "technology", "opened": ["dev", "int", "dev.app"],
@@ -3422,33 +4782,76 @@ mod tests {
         with_keys["app_elements"] = json!([{ "reference": "z" }]);
         assert_eq!(compute(with_keys.clone()), a);
         with_keys["relationships"] = json!(false);
-        assert_eq!(compute(with_keys), a, "`relationships: false` means nothing in the map of the application layer either");
+        assert_eq!(
+            compute(with_keys),
+            a,
+            "`relationships: false` means nothing in the map of the application layer either"
+        );
     }
 
     #[test]
     fn the_technology_map_hides_and_pins_the_nodes_the_applications_are_on() {
-        let out = technology_map(json!({ "opened": ["dev", "int", "dev.app", "int.a"], "hidden": ["int.a"] }));
-        assert!(!has_item(&out, "int_a_ext_registry") && !has_item(&out, "int.a"), "what is inside a hidden node goes with it");
-        assert!(link_ids(&out).iter().all(|l| !l.contains("int.a")), "{:?}", link_ids(&out));
+        let out = technology_map(
+            json!({ "opened": ["dev", "int", "dev.app", "int.a"], "hidden": ["int.a"] }),
+        );
+        assert!(
+            !has_item(&out, "int_a_ext_registry") && !has_item(&out, "int.a"),
+            "what is inside a hidden node goes with it"
+        );
+        assert!(
+            link_ids(&out).iter().all(|l| !l.contains("int.a")),
+            "{:?}",
+            link_ids(&out)
+        );
         assert!(link_between(&out, "app_shop_api", "int.b"));
         // pinned on a node: the applications on it, the links that touch it, the boxes at their other end folded
         let out = technology_map(json!({ "pinned": ["dev.app"], "opened": ["dev.app"] }));
-        assert_eq!(ids(&out), ["app_shop_api", "app_shop_db", "dev", "dev.app", "int"]);
+        assert_eq!(
+            ids(&out),
+            ["app_shop_api", "app_shop_db", "dev", "dev.app", "int"]
+        );
         assert_eq!(link_ids(&out), ["app_shop_api -> int"]);
         // an ancestor of what is pinned is open, its other nodes are not drawn, and neither are their applications
         let out = technology_map(json!({ "pinned": ["int.a"] }));
-        assert!(!has_item(&out, "int_a_ext_registry"), "int.a is pinned, not open");
-        assert_eq!(ids(&out), ["dev", "int", "int.a", "int.b"], "int.b is the other end of what int.a declares");
+        assert!(
+            !has_item(&out, "int_a_ext_registry"),
+            "int.a is pinned, not open"
+        );
+        assert_eq!(
+            ids(&out),
+            ["dev", "int", "int.a", "int.b"],
+            "int.b is the other end of what int.a declares"
+        );
     }
 
     #[test]
     fn a_deployed_application_box_of_the_map_is_named_after_its_node_and_never_takes_another_id() {
         let out = technology_map(json!({ "opened": ["dev", "int", "dev.app", "int.a", "int.b"] }));
-        let apps: Vec<(String, String)> = out["items"].as_array().unwrap().iter().filter(|i| i["id"] != i["reference"]).map(|i| (i["id"].as_str().unwrap().to_string(), i["parent"].as_str().unwrap().to_string())).collect();
+        let apps: Vec<(String, String)> = out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|i| i["id"] != i["reference"])
+            .map(|i| {
+                (
+                    i["id"].as_str().unwrap().to_string(),
+                    i["parent"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect();
         // `ext.registry` is on `int.a` and `prd.a`: the same short id, so both carry the path of their node, drawn or not; the one on `int.b` is alone of its name
-        assert!(apps.contains(&("int_a_ext_registry".to_string(), "int.a".to_string())), "{apps:?}");
-        assert!(apps.contains(&("b_ext_registry".to_string(), "int.b".to_string())), "{apps:?}");
-        assert!(apps.contains(&("app_shop_api".to_string(), "dev.app".to_string())), "{apps:?}");
+        assert!(
+            apps.contains(&("int_a_ext_registry".to_string(), "int.a".to_string())),
+            "{apps:?}"
+        );
+        assert!(
+            apps.contains(&("b_ext_registry".to_string(), "int.b".to_string())),
+            "{apps:?}"
+        );
+        assert!(
+            apps.contains(&("app_shop_api".to_string(), "dev.app".to_string())),
+            "{apps:?}"
+        );
         // the id of a box does not depend on what is open
         let some = technology_map(json!({ "opened": ["dev", "int", "int.a"] }));
         assert!(has_item(&some, "int_a_ext_registry") && !has_item(&some, "b_ext_registry"));
@@ -3487,8 +4890,15 @@ mod tests {
         }));
         assert_eq!(item(&out, "app_shop_api")["change"], "new");
         assert_eq!(item(&out, "a_ext_registry")["change"], "none");
-        assert_eq!(link(&out, "app_shop_api", "a_ext_registry").unwrap()["change"], "new");
-        assert!(item(&out, "app_shop_api")["stereotypes"].as_array().unwrap().iter().any(|s| s == "new"));
+        assert_eq!(
+            link(&out, "app_shop_api", "a_ext_registry").unwrap()["change"],
+            "new"
+        );
+        assert!(item(&out, "app_shop_api")["stereotypes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s == "new"));
         // only what changed, with the boxes around it
         let only = technology_map(json!({
             "opened": ["dev", "int", "dev.app", "int.a"], "only_changes": true,
@@ -3505,7 +4915,17 @@ mod tests {
                 { "reference": "ext.registry", "change": "none" }
             ]
         }));
-        assert_eq!(ids(&only), ["a_ext_registry", "app_shop_api", "dev", "dev.app", "int", "int.a"]);
+        assert_eq!(
+            ids(&only),
+            [
+                "a_ext_registry",
+                "app_shop_api",
+                "dev",
+                "dev.app",
+                "int",
+                "int.a"
+            ]
+        );
         assert!(item(&only, "a_ext_registry")["context"].as_bool().unwrap());
     }
 }
