@@ -220,9 +220,16 @@ public class KernelViewpointFactory implements ViewpointFactory {
 
         val map = viewpoint.equals(MAP);
         // the map has no focal element: every element of the layer is in play, `pinned`, `hidden` and `opened` say which
-        val focal = map ? "" : Objects.requireNonNull(view.getProperties()).path("element").asText("");
+        val focal = map
+            ? ""
+            : Optional.<JsonNode>ofNullable(view.getProperties())
+                  .map(p -> p.path("element").asText(""))
+                  .orElse("");
         if (!map && focal.isBlank()) {
-            throw new ArchiCodeException("the view %s has no element", view.getId());
+            throw new ArchiCodeException(
+                "the view %s has no element: write the reference of one in `properties.element`",
+                view.getId()
+            );
         }
 
         val mainIndex = workspace.resolveMainIndexForView(view);
