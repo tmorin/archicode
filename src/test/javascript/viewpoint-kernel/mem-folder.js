@@ -104,18 +104,18 @@ function memFolder(initial, options) {
           yield [link.split('/').pop(), handle];
         }
       },
-      async getFileHandle(name, options) {
+      async getFileHandle(name, flags) {
         const p = child(name);
         if (!files.has(p)) {
-          if (!(options && options.create) || !dirs.has(dirPath)) throw notFound(p);
+          if (!(flags && flags.create) || !dirs.has(dirPath)) throw notFound(p);
           files.set(p, { text: '', mtime: ++clock });
         }
         return fileHandle(p);
       },
-      async getDirectoryHandle(name, options) {
+      async getDirectoryHandle(name, flags) {
         const p = child(name);
         if (!dirs.has(p)) {
-          if (!(options && options.create)) throw notFound(p);
+          if (!(flags && flags.create)) throw notFound(p);
           dirs.add(p);
         }
         return dirHandle(p);

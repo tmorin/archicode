@@ -343,7 +343,7 @@ test('an element of the plateau compared with is not editable: it has no record 
 // ---- 4. The comparison ----
 
 test('compare is called through the embedded module, once for a pair that does not change; its union is what compute draws', async () => {
-  const { sandbox, state } = await open();
+  const { sandbox } = await open();
   assert.equal(sandbox.comparisonState(), null, 'nothing is compared');
   compareWith(sandbox, 'as-is');
   const first = sandbox.comparisonState();

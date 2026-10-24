@@ -681,23 +681,23 @@ test('what the tree remembers of a row (unfolded, modified) is kept per layer: t
 
   // the fold button of a row says which layer it folds
   assert.match(html('technology'), /data-action="toggle-element" data-ref="shop" data-layer="technology"/);
-  const click = (action, attrs) => {
+  const clickAction = (action, attrs) => {
     const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
     sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
   };
   countRenders(sandbox);
-  click('toggle-element', { 'data-ref': 'shop', 'data-layer': 'technology' });
+  clickAction('toggle-element', { 'data-ref': 'shop', 'data-layer': 'technology' });
   assert.deepEqual(Array.from(state.expanded).sort(), ['application:shop', 'technology:shop']);
-  click('toggle-element', { 'data-ref': 'shop', 'data-layer': 'application' });
+  clickAction('toggle-element', { 'data-ref': 'shop', 'data-layer': 'application' });
   assert.deepEqual(Array.from(state.expanded), ['technology:shop']);
 
   // "Unfold all" of a tree is the unfold of that tree
   state.expanded.clear();
-  click('nav-unfold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
+  clickAction('nav-unfold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
   assert.ok(
     Array.from(state.expanded).length > 0 && Array.from(state.expanded).every((key) => key.startsWith('technology:'))
   );
-  click('nav-fold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
+  clickAction('nav-fold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
   assert.equal(state.expanded.size, 0);
 });
 
@@ -805,7 +805,6 @@ test('leaving a form with text typed and not saved asks first, and staying keeps
 });
 
 test('the manifest files the editor cannot read (TOML, JSON) are named, in Files, and counted in Elements', async () => {
-  const fs = require('node:fs');
   const os = require('node:os');
   const { FIXTURE, makeDirHandle } = require('./harness');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'unread-'));

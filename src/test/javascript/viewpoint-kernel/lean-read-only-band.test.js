@@ -162,7 +162,7 @@ test('the band holds two lists and nothing else, whatever the number of plateaus
   assert.equal(drawn.drawn, 'step8', 'the plateau drawn is selected, however far down the chain it is');
   assert.match(
     drawn.html,
-    /<option value="step8" selected> {6}Step 8 /,
+    /<option value="step8" selected>\u2003{6}Step 8 /,
     'indented by its depth, up to six steps, so that a long chain does not push its names out of the list'
   );
   // nothing, the past that follows the plateau drawn, then the whole tree, in which the plateau drawn is greyed

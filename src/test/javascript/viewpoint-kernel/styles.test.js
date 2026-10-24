@@ -694,7 +694,7 @@ test('nothing is tied to external, new or changed: any stereotype the workspace 
 });
 
 test("the stereotypes are the kernel's: a box the editor adds itself (a ghost) is not styled", async () => {
-  const { sandbox, state, kernel } = await openFixture();
+  const { sandbox, state } = await openFixture();
   state.workspace.styles = {
     'by-tags': { 'shop.nowhere': { 'background-color': 'red' }, external: { 'background-color': 'red' } }
   };

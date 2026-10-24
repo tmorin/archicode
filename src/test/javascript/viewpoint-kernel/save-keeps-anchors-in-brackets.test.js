@@ -29,7 +29,11 @@ function saved(text, edit) {
     app.serializeYamlValue(value, 0),
     'the text reads back as the edit\n' + out
   );
-  assert.equal(/[\u0001-\u0005]/.test(out), false, 'no mark is left');
+  assert.equal(
+    [...out].some((c) => c >= '\u0001' && c <= '\u0005'),
+    false,
+    'no mark is left'
+  );
   return { out, emitted: app.serializeYamlValue(value, 0) };
 }
 
@@ -628,7 +632,11 @@ test('whatever the edit, the text written reads back as the edit, no mark is lef
         app.serializeYamlValue(value, 0),
         'reads back as the edit\n' + text + '\n=>\n' + out
       );
-      assert.equal(/[\u0001-\u0005]/.test(out), false, 'no mark is left');
+      assert.equal(
+        [...out].some((c) => c >= '\u0001' && c <= '\u0005'),
+        false,
+        'no mark is left'
+      );
       // the first line and the comment lines of the file are there, in order, whatever the edit (a save that keeps the layout keeps them; the emitter's text has none)
       if (out !== app.serializeYamlValue(value, 0)) assert.equal(out.split('\n')[0], text.split('\n')[0]);
     }

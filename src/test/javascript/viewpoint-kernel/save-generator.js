@@ -290,7 +290,7 @@ function chooseEdit(root, rand) {
         if (s.node.type === 'map' && !s.node.flow && s.node.slots.length >= 2 && s.node.slots[1].node.block)
           itemMaps.push(s.node);
   });
-  for (let attempt = 0; attempt < 12; attempt++) {
+  for (let tries = 0; tries < 12; tries++) {
     const kind = rand.pick(kinds);
     if (kind === 'first-key') {
       if (itemMaps.length) {
@@ -803,7 +803,10 @@ function run(page, seed, cases, options = {}) {
       read = page.parseYaml(file.text);
     } catch (e) {
       throw new Error(
-        'the generator wrote a file the page cannot read (case ' + n + '): ' + e.message + '\n' + file.text
+        'the generator wrote a file the page cannot read (case ' + n + '): ' + e.message + '\n' + file.text,
+        {
+          cause: e
+        }
       );
     }
     if (!deepSame(read, valueOf(root)))

@@ -4,10 +4,8 @@
 // File System Access API. Nothing touches the disk.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const vm = require('node:vm');
-const { FIXTURE, createApp } = require('./harness');
+const { createApp } = require('./harness');
 
 // ---- an in-memory, writable folder (mem-folder.js) ----
 

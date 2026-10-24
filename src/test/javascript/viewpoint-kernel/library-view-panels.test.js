@@ -7,18 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {
-  run,
-  plain,
-  NONE,
-  fakeLayout,
-  startPage,
-  addView,
-  openView,
-  click,
-  boxesOf,
-  linksOf
-} = require('./library-page');
+const { run, plain, NONE, startPage, addView, openView, click, boxesOf, linksOf } = require('./library-page');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 

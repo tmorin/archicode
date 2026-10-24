@@ -379,7 +379,6 @@ function runAll(P, order = ORDER) {
 // YAML written as the existing examples are: double-quoted scalars, flow lists for short lists, block maps for the rest.
 const q = (s) => JSON.stringify(s);
 const flow = (xs) => '[' + xs.map(q).join(', ') + ']';
-const KINDS = ['person', 'system', 'container', 'component', 'node', 'environment'];
 /** json.dumps of the Python model: ", " and ": " as separators. */
 function pyJson(v) {
   if (Array.isArray(v)) return '[' + v.map(pyJson).join(', ') + ']';
@@ -526,7 +525,7 @@ const entryFile = (e) => `${ENTRY_FOLDER}/${e.kind}.${e.id}.yaml`;
 
 /** The content of an entry with its keys in the order the emitter writes them (the description may order them otherwise); `kind` is the manifest's, not the content's. */
 function entryContent(e) {
-  const props = (p) => {
+  const pickProps = (p) => {
     const out = {};
     for (const k of ['element', 'pinned', 'opened', 'hidden']) if (p[k] !== undefined) out[k] = p[k];
     return out;
@@ -534,7 +533,7 @@ function entryContent(e) {
   const view = (v) => {
     const out = {};
     for (const k of ['viewpoint', 'layer']) if (v[k] !== undefined) out[k] = v[k];
-    out.properties = props(v.properties);
+    out.properties = pickProps(v.properties);
     return out;
   };
   if (e.kind === 'view') {
@@ -671,9 +670,9 @@ function entryFacts(P, S) {
         view = viewById.get(step.view);
         if (!view) problems.push(`${where} names the view ${step.view}, which is not declared`);
       }
-      for (const key of ['at', 'against'])
-        if (step[key] !== undefined && !ORDER.includes(step[key]))
-          problems.push(`${where} says ${key}: ${step[key]}, which is not a plateau`);
+      for (const field of ['at', 'against'])
+        if (step[field] !== undefined && !ORDER.includes(step[field]))
+          problems.push(`${where} says ${field}: ${step[field]}, which is not a plateau`);
       if (step.at !== undefined && step.at === step.against) problems.push(`${where} compares a plateau with itself`);
       if (view)
         for (const n of viewNames(view))

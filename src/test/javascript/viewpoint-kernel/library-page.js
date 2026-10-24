@@ -1,7 +1,6 @@
 'use strict';
 // The page of a view in the Library, played in Node: the real `render()` over the real kernel, a fake layout engine and a fake canvas (runs 0027-0029).
 // `startPage()` opens the fixture workspace; `startPage({ mem: true })` opens it from an in-memory folder, to save and to cancel.
-const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, makeDirHandle, openFixture } = require('./harness');

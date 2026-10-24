@@ -403,7 +403,7 @@ function createApp(options = {}) {
       },
       // adds an entry, and, like a browser, fires no hashchange
       pushState(state, title, url) {
-        const address = url == null ? '#' + hash.replace(/^#/, '') : String(url); // the page may push the address it is on (`location.href`, which this location does not have)
+        const address = url === null || url === undefined ? '#' + hash.replace(/^#/, '') : String(url); // the page may push the address it is on (`location.href`, which this location does not have)
         const i = address.indexOf('#');
         hash = i === -1 ? '' : address.slice(i);
         recordedEntries.splice(recordedAt + 1, Infinity, hash);

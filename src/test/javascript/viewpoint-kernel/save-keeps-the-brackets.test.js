@@ -52,7 +52,11 @@ function save(text, change, page = app) {
   change(value);
   const out = page.patchYamlText(text, value);
   assert.deepEqual(plain(page.parseYaml(out)), value, 'what is written says what the edit says\n' + out);
-  assert.equal(/[\u0001-\u0007]/.test(out), false, 'no mark is left');
+  assert.equal(
+    [...out].some((c) => c >= '\u0001' && c <= '\u0007'),
+    false,
+    'no mark is left'
+  );
   return out;
 }
 
@@ -481,7 +485,7 @@ test('files of every mix of block and flow shapes: every edit reads back, the re
     pick([
       JSON.stringify(w),
       "'" + w.replace(/'/g, "''") + "'",
-      /[,:\[\]#']|^(on|yes|3)$/.test(w) ? JSON.stringify(w) : w
+      /[,:[\]#']|^(on|yes|3)$/.test(w) ? JSON.stringify(w) : w
     ]);
   const make = (depth) => {
     const r = random();
@@ -573,9 +577,13 @@ test('files of every mix of block and flow shapes: every edit reads back, the re
     else delete target[Object.keys(target)[0]];
     const out = app.patchYamlText(text, edited);
     assert.deepEqual(plain(app.parseYaml(out)), edited, 'the edit reads back:\n' + text + '\n--\n' + out);
-    assert.equal(/[\u0001-\u0007]/.test(out), false, 'no mark is left');
+    assert.equal(
+      [...out].some((c) => c >= '\u0001' && c <= '\u0007'),
+      false,
+      'no mark is left'
+    );
     assert.equal(app.patchYamlText(out, plain(edited)), out, 'saving the result again changes nothing:\n' + out);
-    if (/[\[{]/.test(lineDiff(text, out).added.join('\n'))) bracketed++;
+    if (/[[{]/.test(lineDiff(text, out).added.join('\n'))) bracketed++;
   }
   assert.ok(files > 300, 'most of the files are usable');
   assert.ok(bracketed > 100, 'many of the edits keep brackets (' + bracketed + ')');
@@ -629,7 +637,7 @@ test(
       }
       if (value === null || typeof value !== 'object') continue;
       files++;
-      if (/:\s*[\[{][^\]}\s]/.test(text)) withBrackets++;
+      if (/:\s*[[{][^\]}\s]/.test(text)) withBrackets++;
       const edits = [
         (v) => v,
         (v) => {
@@ -685,7 +693,7 @@ test('every collection in brackets of the shipped files, edited: it reads back a
   for (const file of shippedYaml()) {
     const text = fs.readFileSync(file, 'utf8');
     const name = path.relative(REPO, file);
-    if (!/:\s*[\[{][^\]}\s]|^\s*-\s*[\[{][^\]}\s]/m.test(text)) continue;
+    if (!/:\s*[[{][^\]}\s]|^\s*-\s*[[{][^\]}\s]/m.test(text)) continue;
     let model;
     try {
       model = app.parseYamlAsModel(text);
@@ -712,9 +720,13 @@ test('every collection in brackets of the shipped files, edited: it reads back a
         app.serializeYamlValue(edited, 0),
         name + ' ' + trail.join('.') + ' reads back'
       );
-      assert.equal(/[\u0001-\u0007]/.test(out), false, name + ' no mark');
+      assert.equal(
+        [...out].some((c) => c >= '\u0001' && c <= '\u0007'),
+        false,
+        name + ' no mark'
+      );
       edits++;
-      if (lineDiff(text, out).added.some((line) => /[\[{]/.test(line))) kept++;
+      if (lineDiff(text, out).added.some((line) => /[[{]/.test(line))) kept++;
     }
   }
   assert.ok(edits > 200, 'many edits (' + edits + ')');

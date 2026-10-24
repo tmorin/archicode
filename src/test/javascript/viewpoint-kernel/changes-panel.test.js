@@ -330,12 +330,18 @@ test('a row is a button that selects, with everything it needs to find the thing
   const { sandbox, state } = await open('as-is');
   const panel = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
   assert.deepEqual(attributesOf(panel, 'data-ref="shop.web" data-to=') && undefined, undefined);
-  const element = attributesOf(
+  const elementAttrs = attributesOf(
     panel,
     'data-thing="element" data-change="changed" data-layer="application" data-ref="shop.web"'
   );
   assert.deepEqual(
-    [element['data-action'], element['data-thing'], element['data-change'], element['data-layer'], element['data-ref']],
+    [
+      elementAttrs['data-action'],
+      elementAttrs['data-thing'],
+      elementAttrs['data-change'],
+      elementAttrs['data-layer'],
+      elementAttrs['data-ref']
+    ],
     ['select-change', 'element', 'changed', 'application', 'shop.web']
   );
   const link = attributesOf(panel, 'data-thing="relationship" data-change="changed"');
@@ -635,9 +641,9 @@ test("a link: its state, and for each relationship it groups, that relationship'
   );
   assert.match(changed, /<section class="what-changed" aria-label="What changed" data-state="changed">/);
   assert.match(changed, /The relationship it stands for changed\./);
-  const rel = changed.slice(changed.indexOf('<div class="rel-change"'));
+  const relChange = changed.slice(changed.indexOf('<div class="rel-change"'));
   assert.equal(
-    text(rel.slice(0, rel.indexOf('<div class="field-row">'))),
+    text(relChange.slice(0, relChange.indexOf('<div class="field-row">'))),
     '~ changed Changed: label Label − Before browses + After visits'
   );
   const added = sandbox.renderLinkInspectionHtml(

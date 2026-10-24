@@ -246,7 +246,6 @@ test('#37: a change of the model gives a fresh drawing, the one a page without a
     'the new name, not the cached drawing'
   );
   assert.equal(renamed.html, (await drawWithoutCache(ctx, recipe())).html);
-  computes = ctx.count().computes;
 
   // a relationship added: the drawing has one more link
   ctx.sandbox.commitFileEdit(
@@ -665,7 +664,7 @@ test('the changed environment keeps its Before and After under the same label', 
 // ---- 5. The document holds the width of the window at 360 px ----
 
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
-const rem = (text) => Number(/([\d.]+)rem/.exec(text)[1]);
+const rem = (value) => Number(/([\d.]+)rem/.exec(value)[1]);
 /** The declarations of a top-level rule `selector { ... }` of the stylesheet, as written (the first one). */
 const declarationsOf = (selector, css = CSS) => {
   const at = css.indexOf('\n  ' + selector + ' {');
@@ -743,8 +742,8 @@ test('below 40rem the regions are stacked, as wide as the window, with no handle
 
 test('the wide layout is untouched: the rules for the narrow window are inside the media query and nowhere else', () => {
   const outside = CSS.replace(narrowRules(), '');
-  for (const text of ['flex-direction: column; height: auto', 'height: 80vh', 'width: auto !important'])
-    assert.ok(!outside.includes(text), text + ' only in the query');
+  for (const declaration of ['flex-direction: column; height: auto', 'height: 80vh', 'width: auto !important'])
+    assert.ok(!outside.includes(declaration), declaration + ' only in the query');
   assert.match(declarationsOf('.app-shell'), /height:\s*100%/);
   assert.match(declarationsOf('#app'), /height:\s*100vh/);
 });

@@ -14,8 +14,8 @@ const { inPlateau, layeredFiles, openLayered } = require('./layered-folders');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 /** What changed between two texts, line by line (a longest common subsequence): the lines that went and the lines that came, each in order. */
-function lineDiff(before, after) {
-  const a = before.split('\n');
+function lineDiff(original, after) {
+  const a = original.split('\n');
   const b = after.split('\n');
   const table = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
   for (let i = a.length - 1; i >= 0; i--) {

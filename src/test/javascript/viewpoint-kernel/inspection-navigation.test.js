@@ -652,9 +652,12 @@ test('showDiagramScene brings the link into view after the outlines are set, and
     body.indexOf('revealSelectedLink(canvas);') > body.indexOf('applyDiagramScale();'),
     'the scale is the one of the canvas as it is now'
   );
-  const click = HTML.slice(HTML.indexOf("case 'select-link': {"), HTML.indexOf("case 'close-inspection':"));
-  assert.ok(click.indexOf('takeOverDiagramFraming(canvas)') < click.indexOf('selectLink('), 'run 0019: the pin first');
-  assert.ok(click.indexOf('revealLinkAfterDrawing = {') > click.indexOf('selectLink('));
+  const clickCase = HTML.slice(HTML.indexOf("case 'select-link': {"), HTML.indexOf("case 'close-inspection':"));
+  assert.ok(
+    clickCase.indexOf('takeOverDiagramFraming(canvas)') < clickCase.indexOf('selectLink('),
+    'run 0019: the pin first'
+  );
+  assert.ok(clickCase.indexOf('revealLinkAfterDrawing = {') > clickCase.indexOf('selectLink('));
 });
 
 test('the reveal pans a link that is behind the edge by the least it takes, and leaves a visible one where it is', async () => {
@@ -796,10 +799,6 @@ test('a link on its own, even grouping several relationships, is described as be
 // ============================================================ 5. the badges in the header of an element
 
 const STYLED = 'shop.payments'; // tagged `rendering-stereotypes: external`, which the fixture styles
-const headerLabelOf = (center) => {
-  const from = center.indexOf('<div class="element-header-label">') + '<div class="element-header-label">'.length;
-  return center.slice(from, center.indexOf('</span></span></div>', from) + '</span></span>'.length);
-};
 
 async function elementsHeader(reference, tab, mode) {
   const { sandbox, state } = await openFixture();

@@ -510,7 +510,7 @@ function take(system, n, { comps = false } = {}) {
   let free = containersOf(system).filter((c) => !used.has(c) && (!comps || c.children.length > 0));
   if (free.length < n && comps) {
     for (const c of containersOf(system)
-      .filter((c) => !used.has(c) && c.children.length === 0)
+      .filter((candidate) => !used.has(candidate) && candidate.children.length === 0)
       .slice(0, n - free.length))
       addComponents(c, 2);
     free = containersOf(system).filter((c) => !used.has(c) && c.children.length > 0);
@@ -1060,7 +1060,6 @@ const baseRoots = [...persons, ...systems, ...envs];
 const targetAlive = (e) => alive(e) && (e.parent || targetRoots.includes(e));
 const baseSet = new Set();
 for (const r of baseRoots) for (const e of walk(r)) baseSet.add(e);
-const targetCloneOf = (e) => (e.side === 'base' ? T(e) : e);
 function resolve(dest) {
   if (dest.side === 'target') return targetAlive(dest) ? dest : null;
   const options = redirect.get(dest);

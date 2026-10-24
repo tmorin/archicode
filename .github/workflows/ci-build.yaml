@@ -69,6 +69,10 @@ jobs:
       - name: "Check the format"
         # Prettier of .prettierrc.yaml; run `npm run format` to fix
         run: npm run format:check
+      - name: "Lint the JavaScript"
+        # ESLint of eslint.config.mjs on the tests, the generators and the inline scripts of the editor page (extracted
+        # to target/eslint-editor); no baseline, a finding fails the build; run `npm run lint` to see them
+        run: npm run lint
       - name: "Test the viewpoint kernel"
         run: |
           (cd src/main/rust/viewpoint-kernel && cargo test)

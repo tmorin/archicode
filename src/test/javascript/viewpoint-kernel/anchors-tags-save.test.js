@@ -312,7 +312,11 @@ test('whatever the edit, the text written reads back as the edit and the lines i
         app.serializeYamlValue(value, 0),
         'reads back as the edit\n' + text + '\n=>\n' + out
       );
-      assert.equal(/[\u0002\u0003]/.test(out), false, 'no mark is left');
+      assert.equal(
+        [...out].some((c) => c >= '\u0002' && c <= '\u0003'),
+        false,
+        'no mark is left'
+      );
     }
   }
 });
