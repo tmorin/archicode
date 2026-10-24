@@ -1,0 +1,9 @@
+# Prettier formats Java and the JavaScript tests only (npm run format, npm run format:check).
+# The editor page: its script is inline and 23,000 lines long; it waits for #161 (a script file of its own).
+src/main/resources/editor-webapp/standalone.html
+src/site/
+# generated or vendored
+node_modules/
+target/
+src/main/wasm/
+src/main/rust/viewpoint-kernel/target/

@@ -62,6 +62,13 @@ jobs:
         uses: "actions/setup-node@v4"
         with:
           node-version: "22"
+          cache: "npm"
+      - name: "Install the Node.js dependencies"
+        # package-lock.json is committed: the same Prettier on every run
+        run: npm ci
+      - name: "Check the format"
+        # Prettier of .prettierrc.yaml; run `npm run format` to fix
+        run: npm run format:check
       - name: "Test the viewpoint kernel"
         run: |
           (cd src/main/rust/viewpoint-kernel && cargo test)
