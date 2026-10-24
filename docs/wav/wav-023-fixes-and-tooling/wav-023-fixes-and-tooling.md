@@ -194,7 +194,7 @@ wave_manifest:
       slug: rust-fmt-and-clippy
       phase: P1
       depends_on: []
-      run: null
+      run: 0166
       delegation: standard
       likely_paths:
         - 'rust-toolchain.toml'

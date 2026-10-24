@@ -65,7 +65,9 @@ impl From<&PathElement<'_>> for Step {
 }
 
 fn remove_at(doc: &mut Value, steps: &[Step]) {
-    let Some((last, parents)) = steps.split_last() else { return };
+    let Some((last, parents)) = steps.split_last() else {
+        return;
+    };
     let mut node = doc;
     for step in parents {
         node = match (step, node) {
@@ -97,17 +99,24 @@ pub(crate) fn apply(doc: &mut Value, actions: &[Action]) -> Result<Vec<String>, 
     let mut known: Option<RefCounts> = None;
     for action in actions {
         if action.operator != "REMOVE" {
-            return Err(format!("unsupported facet action: {} {}", action.operator, action.json_path));
+            return Err(format!(
+                "unsupported facet action: {} {}",
+                action.operator, action.json_path
+            ));
         }
         refuse_legacy(&action.json_path)?;
-        let parsed = JsonPath::parse(&action.json_path).map_err(|e| format!("invalid facet JSONPath {}: {e}", action.json_path))?;
+        let parsed = JsonPath::parse(&action.json_path)
+            .map_err(|e| format!("invalid facet JSONPath {}: {e}", action.json_path))?;
         let found: Vec<Vec<Step>> = parsed
             .query_located(doc)
             .iter()
             .map(|node| node.location().iter().map(Step::from).collect())
             .collect();
         if found.iter().any(Vec::is_empty) {
-            return Err(format!("a facet cannot remove the whole workspace: {}", action.json_path));
+            return Err(format!(
+                "a facet cannot remove the whole workspace: {}",
+                action.json_path
+            ));
         }
         remove_nodes(doc, found, &mut known);
     }
@@ -141,7 +150,11 @@ pub(crate) struct Removal {
 /// it is read from the document otherwise, and left in `known` for the next removal, so that a run of removals reads the whole document once, not twice for each. When the
 /// removed nodes are elements (the usual patch) the references that leave are those of the subtrees, worked out from them and not by reading the document again. The caller
 /// that changes the references of the document by another way must empty it.
-pub(crate) fn remove_nodes(doc: &mut Value, mut found: Vec<Vec<Step>>, known: &mut Option<RefCounts>) -> Removal {
+pub(crate) fn remove_nodes(
+    doc: &mut Value,
+    mut found: Vec<Vec<Step>>,
+    known: &mut Option<RefCounts>,
+) -> Removal {
     found.sort_unstable_by(|a, b| b.cmp(a));
     found.dedup();
     let mut removal = Removal::default();
@@ -189,17 +202,28 @@ pub(crate) struct RefCounts {
 impl RefCounts {
     pub fn of(doc: &Value) -> RefCounts {
         let mut out = RefCounts::default();
-        for (name, counts) in [("application", &mut out.application), ("technology", &mut out.technology)] {
-            walk_references(doc.get(name).and_then(|l| l.get("elements")), None, &mut |reference| {
-                *counts.entry(reference.to_string()).or_default() += 1;
-            });
+        for (name, counts) in [
+            ("application", &mut out.application),
+            ("technology", &mut out.technology),
+        ] {
+            walk_references(
+                doc.get(name).and_then(|l| l.get("elements")),
+                None,
+                &mut |reference| {
+                    *counts.entry(reference.to_string()).or_default() += 1;
+                },
+            );
         }
         out
     }
 
     /// One holder less of the reference; when it was the last, the reference is gone, and is added to `gone`.
     fn release(&mut self, layer: &'static str, reference: &str, gone: &mut References) {
-        let (counts, left) = if layer == "application" { (&mut self.application, &mut gone.application) } else { (&mut self.technology, &mut gone.technology) };
+        let (counts, left) = if layer == "application" {
+            (&mut self.application, &mut gone.application)
+        } else {
+            (&mut self.technology, &mut gone.technology)
+        };
         if let Some(n) = counts.get_mut(reference) {
             *n -= 1;
             if *n == 0 {
@@ -212,8 +236,18 @@ impl RefCounts {
     /// The references that `self` has and `after` does not have any more.
     fn without(&self, after: &RefCounts) -> References {
         References {
-            application: self.application.keys().filter(|r| !after.application.contains_key(*r)).cloned().collect(),
-            technology: self.technology.keys().filter(|r| !after.technology.contains_key(*r)).cloned().collect(),
+            application: self
+                .application
+                .keys()
+                .filter(|r| !after.application.contains_key(*r))
+                .cloned()
+                .collect(),
+            technology: self
+                .technology
+                .keys()
+                .filter(|r| !after.technology.contains_key(*r))
+                .cloned()
+                .collect(),
         }
     }
 }
@@ -227,7 +261,11 @@ fn subtrees_of(doc: &Value, found: &[Vec<Step>]) -> Option<Vec<(&'static str, St
     }
     let mut out = Vec::new();
     for steps in found {
-        let [Step::Name(layer), Step::Name(elements), Step::Index(first), rest @ ..] = steps.as_slice() else { return None };
+        let [Step::Name(layer), Step::Name(elements), Step::Index(first), rest @ ..] =
+            steps.as_slice()
+        else {
+            return None;
+        };
         let mut tail: &[Step] = rest;
         let layer: &'static str = match layer.as_str() {
             "application" => "application",
@@ -251,7 +289,9 @@ fn subtrees_of(doc: &Value, found: &[Vec<Step>]) -> Option<Vec<(&'static str, St
             return None;
         }
         out.push((layer, reference.clone()));
-        walk_references(node.get("elements"), Some(&reference), &mut |inner| out.push((layer, inner.to_string())));
+        walk_references(node.get("elements"), Some(&reference), &mut |inner| {
+            out.push((layer, inner.to_string()))
+        });
     }
     Some(out)
 }
@@ -264,16 +304,20 @@ fn may_remove_element(steps: &[Step]) -> bool {
     fn in_elements(rest: &[Step]) -> bool {
         match rest {
             [] | [Step::Index(_)] => true,
-            [Step::Index(_), Step::Name(name), tail @ ..] if name == "elements" => in_elements(tail),
+            [Step::Index(_), Step::Name(name), tail @ ..] if name == "elements" => {
+                in_elements(tail)
+            }
             _ => false,
         }
     }
     match steps {
-        [Step::Name(layer), rest @ ..] if layer == "application" || layer == "technology" => match rest {
-            [] => true,
-            [Step::Name(name), tail @ ..] if name == "elements" => in_elements(tail),
-            _ => false,
-        },
+        [Step::Name(layer), rest @ ..] if layer == "application" || layer == "technology" => {
+            match rest {
+                [] => true,
+                [Step::Name(name), tail @ ..] if name == "elements" => in_elements(tail),
+                _ => false,
+            }
+        }
         _ => false,
     }
 }
@@ -296,7 +340,9 @@ fn join_reference(parent: Option<&str>, id: &str) -> String {
 /// inside it). `parent` is the reference of the element that holds the list, none at the top of a layer.
 fn walk_references(nodes: Option<&Value>, parent: Option<&str>, visit: &mut dyn FnMut(&str)) {
     for node in nodes.and_then(Value::as_array).into_iter().flatten() {
-        let Some(object) = node.as_object() else { continue };
+        let Some(object) = node.as_object() else {
+            continue;
+        };
         // one pass over the few keys of the element: cheaper than hashing the two names
         let (mut id, mut inner) = (None, None);
         for (key, value) in object {
@@ -306,7 +352,9 @@ fn walk_references(nodes: Option<&Value>, parent: Option<&str>, visit: &mut dyn 
                 _ => {}
             }
         }
-        let Some(id) = id.and_then(Value::as_str) else { continue };
+        let Some(id) = id.and_then(Value::as_str) else {
+            continue;
+        };
         let reference = join_reference(parent, id);
         walk_references(inner, Some(&reference), visit);
         visit(&reference);
@@ -324,12 +372,19 @@ impl References {
     pub fn of(doc: &Value) -> References {
         let layer = |name: &str| {
             let mut out = HashSet::new();
-            walk_references(doc.get(name).and_then(|l| l.get("elements")), None, &mut |reference| {
-                out.insert(reference.to_string());
-            });
+            walk_references(
+                doc.get(name).and_then(|l| l.get("elements")),
+                None,
+                &mut |reference| {
+                    out.insert(reference.to_string());
+                },
+            );
             out
         };
-        References { application: layer("application"), technology: layer("technology") }
+        References {
+            application: layer("application"),
+            technology: layer("technology"),
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -343,11 +398,22 @@ impl References {
 /// Returns what it took out, in the order of the document.
 fn drop_references_to(doc: &mut Value, gone: &References) -> Vec<Dropped> {
     /// `path` is the reference of the element that holds `nodes` (`nested` false at the top of a layer): a reference is copied out of it only for what is taken out.
-    fn walk(layer: &'static str, nodes: Option<&mut Value>, nested: bool, path: &mut String, same_layer: &HashSet<String>, gone: &References, out: &mut Vec<Dropped>) {
+    fn walk(
+        layer: &'static str,
+        nodes: Option<&mut Value>,
+        nested: bool,
+        path: &mut String,
+        same_layer: &HashSet<String>,
+        gone: &References,
+        out: &mut Vec<Dropped>,
+    ) {
         for node in nodes.and_then(Value::as_array_mut).into_iter().flatten() {
-            let Some(object) = node.as_object_mut() else { continue };
+            let Some(object) = node.as_object_mut() else {
+                continue;
+            };
             // one pass over the few keys of the element: cheaper than hashing the five names
-            let (mut id, mut relationships, mut uses, mut applications, mut inner) = ("", None, None, None, None);
+            let (mut id, mut relationships, mut uses, mut applications, mut inner) =
+                ("", None, None, None, None);
             for (key, value) in object.iter_mut() {
                 match key.as_str() {
                     "id" => id = value.as_str().unwrap_or_default(),
@@ -363,27 +429,54 @@ fn drop_references_to(doc: &mut Value, gone: &References) -> Vec<Dropped> {
                 path.push('.');
             }
             path.push_str(id);
-            let mut take = |field: &'static str, list: Option<&mut Value>, keep: &dyn Fn(&Value) -> bool| {
-                if let Some(Value::Array(list)) = list {
-                    if list.iter().all(|entry| keep(entry)) {
-                        return;
+            let mut take =
+                |field: &'static str, list: Option<&mut Value>, keep: &dyn Fn(&Value) -> bool| {
+                    if let Some(Value::Array(list)) = list {
+                        if list.iter().all(keep) {
+                            return;
+                        }
+                        let (kept, taken): (Vec<Value>, Vec<Value>) = std::mem::take(list)
+                            .into_iter()
+                            .partition(|entry| keep(entry));
+                        *list = kept;
+                        out.extend(taken.into_iter().map(|entry| Dropped {
+                            layer,
+                            holder: path.clone(),
+                            field,
+                            entry,
+                        }));
                     }
-                    let (kept, taken): (Vec<Value>, Vec<Value>) = std::mem::take(list).into_iter().partition(|entry| keep(entry));
-                    *list = kept;
-                    out.extend(taken.into_iter().map(|entry| Dropped { layer, holder: path.clone(), field, entry }));
-                }
-            };
-            take("relationships", relationships, &|r| !r.get("destination").and_then(Value::as_str).is_some_and(|d| same_layer.contains(d)));
-            take("uses", uses, &|u| !u.as_str().is_some_and(|u| gone.technology.contains(u)));
-            take("applications", applications, &|a| !a.as_str().is_some_and(|a| gone.application.contains(a)));
+                };
+            take("relationships", relationships, &|r| {
+                !r.get("destination")
+                    .and_then(Value::as_str)
+                    .is_some_and(|d| same_layer.contains(d))
+            });
+            take("uses", uses, &|u| {
+                !u.as_str().is_some_and(|u| gone.technology.contains(u))
+            });
+            take("applications", applications, &|a| {
+                !a.as_str().is_some_and(|a| gone.application.contains(a))
+            });
             walk(layer, inner, true, path, same_layer, gone, out);
             path.truncate(before);
         }
     }
     let mut out = Vec::new();
-    for (name, same_layer) in [("application", &gone.application), ("technology", &gone.technology)] {
+    for (name, same_layer) in [
+        ("application", &gone.application),
+        ("technology", &gone.technology),
+    ] {
         if let Some(elements) = doc.get_mut(name).and_then(|l| l.get_mut("elements")) {
-            walk(name, Some(elements), false, &mut String::new(), same_layer, gone, &mut out);
+            walk(
+                name,
+                Some(elements),
+                false,
+                &mut String::new(),
+                same_layer,
+                gone,
+                &mut out,
+            );
         }
     }
     out
@@ -461,10 +554,18 @@ fn legacy_at(chars: &[char], at: usize) -> Option<(String, usize)> {
     }
     let rest: String = chars[i..].iter().collect();
     for (word, none) in [("anyof", false), ("noneof", true)] {
-        if let Some(after) = rest.strip_prefix(word).map(str::trim_start).filter(|a| a.starts_with('[')) {
+        if let Some(after) = rest
+            .strip_prefix(word)
+            .map(str::trim_start)
+            .filter(|a| a.starts_with('['))
+        {
             let close = closing_bracket(after)?;
             let items = literals(&after[1..close])?;
-            let test = items.iter().map(|l| format!("@ == {l}")).collect::<Vec<_>>().join(" || ");
+            let test = items
+                .iter()
+                .map(|l| format!("@ == {l}"))
+                .collect::<Vec<_>>()
+                .join(" || ");
             let used = rest.len() - after.len() + close + 1;
             let replacement = match (none, items.is_empty()) {
                 (false, false) => format!("@.{field}[?({test})]"),
@@ -476,10 +577,18 @@ fn legacy_at(chars: &[char], at: usize) -> Option<(String, usize)> {
         }
     }
     for (op, present) in [("==", false), ("!=", true)] {
-        if let Some(after) = rest.strip_prefix(op).map(str::trim_start).and_then(|a| a.strip_prefix("null")) {
+        if let Some(after) = rest
+            .strip_prefix(op)
+            .map(str::trim_start)
+            .and_then(|a| a.strip_prefix("null"))
+        {
             if !after.starts_with(is_ident) {
                 let used = rest.chars().count() - after.chars().count();
-                let replacement = if present { format!("@.{field}") } else { format!("!@.{field}") };
+                let replacement = if present {
+                    format!("@.{field}")
+                } else {
+                    format!("!@.{field}")
+                };
                 return Some((replacement, i + used));
             }
         }
@@ -550,7 +659,10 @@ fn rel_to_value(rel: &Rel) -> Value {
 
 /// The reference of the parent of an element, if that parent is one of the elements.
 fn parent_of<'a>(reference: &'a str, known: &HashSet<&str>) -> Option<&'a str> {
-    reference.rfind('.').map(|i| &reference[..i]).filter(|p| known.contains(p))
+    reference
+        .rfind('.')
+        .map(|i| &reference[..i])
+        .filter(|p| known.contains(p))
 }
 
 /// `{ elements: [...] }`: the elements nested by reference. An element whose parent is not among them is a root,
@@ -559,7 +671,10 @@ fn to_document(elements: &[Elem]) -> Value {
     let known: HashSet<&str> = elements.iter().map(|e| e.reference.as_str()).collect();
     let mut children: HashMap<Option<&str>, Vec<&Elem>> = HashMap::new();
     for e in elements {
-        children.entry(parent_of(&e.reference, &known)).or_default().push(e);
+        children
+            .entry(parent_of(&e.reference, &known))
+            .or_default()
+            .push(e);
     }
     fn nodes(of: Option<&str>, children: &HashMap<Option<&str>, Vec<&Elem>>) -> Vec<Value> {
         children
@@ -582,7 +697,10 @@ fn to_document(elements: &[Elem]) -> Value {
                             node.insert("uses".into(), json!(e.uses));
                         }
                         if !e.relationships.is_empty() {
-                            node.insert("relationships".into(), Value::Array(e.relationships.iter().map(rel_to_value).collect()));
+                            node.insert(
+                                "relationships".into(),
+                                Value::Array(e.relationships.iter().map(rel_to_value).collect()),
+                            );
                         }
                         let kids = nodes(Some(&e.reference), children);
                         if !kids.is_empty() {
@@ -595,28 +713,47 @@ fn to_document(elements: &[Elem]) -> Value {
             .unwrap_or_default()
     }
     let roots = nodes(None, &children);
-    if roots.is_empty() { json!({}) } else { json!({ "elements": roots }) }
+    if roots.is_empty() {
+        json!({})
+    } else {
+        json!({ "elements": roots })
+    }
 }
 
 /// What is left of a document in the elements: the ones still in it, with the relationships they still have and the
 /// environments they still use.
 fn read_document(doc: &Value, elements: &mut Vec<Elem>) -> Result<(), String> {
     type Left = (Vec<Rel>, Vec<String>);
-    fn walk(nodes: Option<&Value>, parent: Option<&str>, left: &mut HashMap<String, Left>) -> Result<(), String> {
+    fn walk(
+        nodes: Option<&Value>,
+        parent: Option<&str>,
+        left: &mut HashMap<String, Left>,
+    ) -> Result<(), String> {
         for node in nodes.and_then(Value::as_array).into_iter().flatten() {
-            let id = node.get("id").and_then(Value::as_str).ok_or("a facet left an element without an id")?;
+            let id = node
+                .get("id")
+                .and_then(Value::as_str)
+                .ok_or("a facet left an element without an id")?;
             let reference = join_reference(parent, id);
             let relationships = match node.get("relationships") {
                 Some(Value::Array(list)) => list
                     .iter()
-                    .map(|r| serde_json::from_value::<Rel>(r.clone()).map_err(|e| format!("a facet left an unreadable relationship of {reference}: {e}")))
+                    .map(|r| {
+                        serde_json::from_value::<Rel>(r.clone()).map_err(|e| {
+                            format!("a facet left an unreadable relationship of {reference}: {e}")
+                        })
+                    })
                     .collect::<Result<Vec<Rel>, String>>()?,
                 _ => Vec::new(),
             };
             let uses = match node.get("uses") {
                 Some(Value::Array(list)) => list
                     .iter()
-                    .map(|u| u.as_str().map(str::to_string).ok_or_else(|| format!("a facet left an unreadable `uses` in {reference}")))
+                    .map(|u| {
+                        u.as_str().map(str::to_string).ok_or_else(|| {
+                            format!("a facet left an unreadable `uses` in {reference}")
+                        })
+                    })
                     .collect::<Result<Vec<String>, String>>()?,
                 _ => Vec::new(),
             };
@@ -686,16 +823,46 @@ mod tests {
             vec![name("application")],
             vec![name("technology"), name("elements")],
             vec![name("application"), name("elements"), Step::Index(2)],
-            vec![name("application"), name("elements"), Step::Index(0), name("elements")],
-            vec![name("technology"), name("elements"), Step::Index(1), name("elements"), Step::Index(3)],
+            vec![
+                name("application"),
+                name("elements"),
+                Step::Index(0),
+                name("elements"),
+            ],
+            vec![
+                name("technology"),
+                name("elements"),
+                Step::Index(1),
+                name("elements"),
+                Step::Index(3),
+            ],
         ] {
             assert!(may_remove_element(&steps));
         }
         // a field of an element (a relationship, a tag, a nested field of a nested element) and anything out of the layers do not
         for steps in [
-            vec![name("application"), name("elements"), Step::Index(0), name("relationships"), Step::Index(1)],
-            vec![name("application"), name("elements"), Step::Index(0), name("tags"), name("zone")],
-            vec![name("technology"), name("elements"), Step::Index(1), name("elements"), Step::Index(0), name("uses")],
+            vec![
+                name("application"),
+                name("elements"),
+                Step::Index(0),
+                name("relationships"),
+                Step::Index(1),
+            ],
+            vec![
+                name("application"),
+                name("elements"),
+                Step::Index(0),
+                name("tags"),
+                name("zone"),
+            ],
+            vec![
+                name("technology"),
+                name("elements"),
+                Step::Index(1),
+                name("elements"),
+                Step::Index(0),
+                name("uses"),
+            ],
             vec![name("application"), name("settings")],
             vec![name("header")],
             vec![],
