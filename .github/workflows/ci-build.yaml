@@ -74,9 +74,31 @@ jobs:
         # to target/eslint-editor); no baseline, a finding fails the build; run `npm run lint` to see them
         run: npm run lint
       - name: "Test the viewpoint kernel"
-        run: |
-          (cd src/main/rust/viewpoint-kernel && cargo test)
-          npm run test:unit
+        run: (cd src/main/rust/viewpoint-kernel && cargo test)
+      - name: "Cover the editor script"
+        # THE run of the node unit suite (`npm run test:unit`, same tests, same output) with V8 coverage on: it fails on a
+        # test, and below the floor of scripts/editor-coverage-floor.json for the share of the editor page's script the
+        # tests run (by area); the report is in target/editor-coverage. Run `npm run test:coverage` to see it
+        run: npm run test:coverage
+      - name: "Keep the editor coverage report"
+        # report.json, report.txt (the figure by area), uncovered-functions.txt and uncovered-lines.txt (the HTML line
+        # numbers of what no test runs); kept when the floor fails too, which is when it is read. 7 days.
+        if: ${{ !cancelled() }}
+        uses: "actions/upload-artifact@v7.0.2"
+        with:
+          name: editor-coverage-report
+          path: |
+            target/editor-coverage/report.json
+            target/editor-coverage/report.txt
+            target/editor-coverage/uncovered-functions.txt
+            target/editor-coverage/uncovered-lines.txt
+          if-no-files-found: warn
+          retention-days: 7
+      - name: "Check the time budget of the kernel"
+        # the one test of the node suite that judges a time (the first `quiet` and `apply_patches` at 591 elements against
+        # 82, as a ratio), skipped in the suite because a ratio is only the kernel's on a quiet machine: it runs here
+        # alone, about 5 seconds; see performance-budget.test.js
+        run: npm run test:timing
       - name: "Check the format of the viewpoint kernel"
         # rustfmt of rust-toolchain.toml; run `cargo fmt` in src/main/rust/viewpoint-kernel to fix
         run: (cd src/main/rust/viewpoint-kernel && cargo fmt --check)

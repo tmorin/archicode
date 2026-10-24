@@ -288,7 +288,7 @@ wave_manifest:
       slug: editor-script-coverage-floor
       phase: P3
       depends_on: [W-6]
-      run: null
+      run: 0173
       delegation: standard
       likely_paths:
         - 'scripts/**'
