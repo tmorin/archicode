@@ -274,7 +274,7 @@ wave_manifest:
       slug: rust-coverage-above-90
       phase: P3
       depends_on: []
-      run: null
+      run: 0172
       delegation: standard
       likely_paths:
         - 'rust-toolchain.toml'

@@ -545,3 +545,84 @@ fn what_a_removal_says_is_gone_is_what_the_document_no_longer_holds() {
         }
     }
 }
+
+/// The error `apply_patches_json` answers for one patch on the shared workspace, with `rank` and `active` added to `shop`.
+fn refusal(patch: Value) -> String {
+    let mut ws = workspace();
+    ws["application"]["elements"][0]["rank"] = json!(3);
+    ws["application"]["elements"][0]["active"] = json!(true);
+    let request = json!({ "workspace": ws, "plateau": "saas", "patches": [patch] });
+    let out: Value = serde_json::from_str(&apply_patches_json(&request.to_string())).unwrap();
+    assert!(out.get("workspace").is_none(), "{out}");
+    out["error"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{out}"))
+        .to_string()
+}
+
+#[test]
+fn a_merge_that_is_not_given_an_object_says_what_it_was_given() {
+    for (value, said) in [
+        (json!(true), "a boolean"),
+        (json!(5), "a number"),
+        (json!("x"), "a text"),
+        (json!([1]), "a list"),
+    ] {
+        assert_eq!(
+            refusal(json!({ "operator": "MERGE", "target": "shop", "field": "tags", "value": value })),
+            format!("plateau saas: patch 1 (MERGE target shop): MERGE merges an object: `value` is {said}")
+        );
+    }
+}
+
+#[test]
+fn a_where_that_is_not_given_an_object_says_what_it_was_given() {
+    let patch = |value: Value| json!({ "operator": "SET", "target": "shop", "field": "relationships", "where": { "destination": "x" }, "value": value });
+    assert_eq!(
+        refusal(patch(json!(5))),
+        "plateau saas: patch 1 (SET target shop): with `where`, `value` is an object (the fields of the relationship to replace), not a number"
+    );
+    // a null value is no value at all
+    assert_eq!(
+        refusal(patch(json!(null))),
+        "plateau saas: patch 1 (SET target shop): needs a `value`"
+    );
+}
+
+#[test]
+fn merge_and_add_name_the_kind_of_the_field_they_cannot_change() {
+    for (field, said) in [
+        ("rank", "a number"),
+        ("active", "a boolean"),
+        ("name", "a text"),
+    ] {
+        assert_eq!(
+            refusal(json!({ "operator": "MERGE", "target": "shop", "field": field, "value": { "a": 1 } })),
+            format!("plateau saas: patch 1 (MERGE target shop): `{field}` of shop is {said}, and MERGE merges an object")
+        );
+        assert_eq!(
+            refusal(json!({ "operator": "ADD", "target": "shop", "field": field, "value": "a" })),
+            format!("plateau saas: patch 1 (ADD target shop): `{field}` of shop is {said}, and ADD appends to a list")
+        );
+    }
+}
+
+#[test]
+fn a_path_that_selects_outside_the_elements_is_refused_with_the_path() {
+    for path in ["$", "$.application"] {
+        assert_eq!(
+            refusal(json!({ "operator": "SET", "json-path": path, "field": "name", "value": "a" })),
+            format!("plateau saas: patch 1 (SET json-path {path}): selects a node outside the elements of the two layers: {path}")
+        );
+    }
+}
+
+#[test]
+fn a_workspace_that_is_a_list_is_refused_before_any_patch() {
+    let request = json!({ "workspace": [1, 2], "plateau": "saas", "patches": [
+        { "operator": "SET", "json-path": "$[0]", "field": "name", "value": "a" }] });
+    assert_eq!(
+        apply_patches_json(&request.to_string()),
+        r#"{"error":"invalid input: `workspace` is a list, not an object"}"#
+    );
+}
