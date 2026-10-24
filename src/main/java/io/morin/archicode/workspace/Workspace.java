@@ -26,6 +26,17 @@ public class Workspace {
     @Builder.Default
     public ViewIndex viewIndex = ViewIndex.builder().build();
 
+    /**
+     * The sentence for a reference that leads nowhere and that an element of the graph holds (a relationship destination, a
+     * {@code uses} entry, a hosted application): the element, the file and the key. Empty when no element holds it.
+     *
+     * @param missing the reference that no element has
+     * @return the sentence, as the layered check tells it, without a plateau
+     */
+    public java.util.Optional<String> danglingSentence(String missing) {
+        return DanglingReferences.about(missing, appIndex, techIndex);
+    }
+
     /** True for the workspace of a facet: its views are about the flow the facet keeps, and are drawn as such. */
     @JsonIgnore
     @Getter

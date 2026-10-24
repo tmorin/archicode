@@ -541,9 +541,9 @@ test('a plateau the command line refuses for a link to nothing is drawn all the 
     'env.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "prod"\n  uses: ["nowhere"]\n  elements:\n    - kind: node\n      id: "vm"\n      applications: ["ferry", "gone"]\n'
   });
   assert.deepEqual(plain(state.layerProblems), [
-    'in the plateau `baseline`, `ferry` has a relationship towards `lost`, which does not exist',
-    'in the plateau `baseline`, `prod` uses `nowhere`, which does not exist',
-    'in the plateau `baseline`, `prod.vm` hosts `gone`, which does not exist'
+    'in the plateau `baseline`, `ferry` has a relationship towards `lost`, which does not exist, in `app.ferry.yaml` at `relationships[1].destination`',
+    'in the plateau `baseline`, `prod` uses `nowhere`, which does not exist, in `env.yaml` at `uses[0]`',
+    'in the plateau `baseline`, `prod.vm` hosts `gone`, which does not exist, in `env.yaml` at `applications[1]`'
   ], 'by element, then by what it points at, as the command line orders them');
   assert.equal(state.layerUndrawable, false);
   assert.ok(state.index.application.has('ferry') && state.index.application.has('dock'), 'it is drawn');
@@ -841,7 +841,7 @@ test('a plateau a patch of an earlier layer cannot be built on is told with the 
   });
   sandbox.drawPlateau('later');
   assert.equal(state.layerUndrawable, true);
-  assert.deepEqual(plain(state.layerProblems), ['in the plateau `baseline`, `ferry` has a relationship towards `lost`, which does not exist']);
+  assert.deepEqual(plain(state.layerProblems), ['in the plateau `baseline`, `ferry` has a relationship towards `lost`, which does not exist, in `app.ferry.yaml` at `relationships[0].destination`']);
   assert.equal(sandbox.layerModelOf('later', state.workspace.settings).failedAt, 'baseline');
 });
 

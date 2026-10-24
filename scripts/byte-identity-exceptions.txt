@@ -1,0 +1,14 @@
+# The error sentences that moved on purpose (T1 exceptions of wave 023). One rule per line: BASE_REGEX <TAB> NEW_REGEX, extended
+# regular expressions on a whole line of the error output. Read by scripts/byte-identity.sh. A wave that moves another sentence
+# adds its lines here, with the run that makes it.
+
+# W-1 (run 0164, #158): a view with no element names the key to write
+^error: the view .* has no element$	^error: the view .* has no element: write the reference of one in `properties.element`$
+
+# W-2 (run 0165, #159): a dangling reference says the element, the file and the key
+# plain workspace, query graph
+^error: unable to find the element .*$	^error: `[^`]+` has a relationship towards `[^`]+`, which does not exist, (in `[^`]+` )?at `relationships\[[0-9]+\]\.destination`( \([0-9]+ more elements? points? at it\))?$
+# plain workspace, the kernel while a view is drawn (a relationship, a uses entry, a hosted application; a map names its view first)
+^error: (the view [^:]+: )?dangling (application )?reference: .*$	^error: (the view [^:]+: )?`[^`]+` (has a relationship towards|uses|hosts) `[^`]+`, which does not exist, (in `[^`]+` )?at `[^`]+`( \([0-9]+ more elements? points? at it\))?$
+# layered workspace, the check of the layer
+^error: in the plateau `[^`]+`, `[^`]+` (has a relationship towards|uses|hosts) `[^`]+`, which does not exist( \([0-9]+ more elements? of the plateau points? at it\))?$	^error: in the plateau `[^`]+`, `[^`]+` (has a relationship towards|uses|hosts) `[^`]+`, which does not exist, (in `[^`]+` )?at `[^`]+`( \([0-9]+ more elements? of the plateau points? at it\))?$

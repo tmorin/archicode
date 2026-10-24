@@ -303,7 +303,7 @@ test('a plateau above whose patch names an element of the deleted plateau refuse
   assert.deepEqual(snapshot(state), before);
   // a relationship towards an element of the deleted plateau is the layer check's sentence
   const linked = await open(Object.assign({}, PILOT, { 'marketplace/application/review.yaml': ELEMENT('system', 'marketplace', '  id: "review"\n  relationships:\n    - destination: "loyalty.points"\n') }));
-  assert.deepEqual(plain(linked.sandbox.plateauDeletion('pilot').breaks), ['in the plateau `marketplace`, `review` has a relationship towards `loyalty.points`, which does not exist']);
+  assert.deepEqual(plain(linked.sandbox.plateauDeletion('pilot').breaks), ['in the plateau `marketplace`, `review` has a relationship towards `loyalty.points`, which does not exist, in `marketplace/application/review.yaml` at `relationships[0].destination`']);
 });
 
 test('a step told at a plateau above that would lose what it draws refuses the delete; a step with no plateau, or a map that keeps one of its pins, does not', async () => {

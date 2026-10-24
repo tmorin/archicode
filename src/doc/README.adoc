@@ -369,17 +369,17 @@ error: the plateau `to-be` is declared twice: in `plateaus/to-be/again.yaml` and
 error: the plateau id `To.Be` in `plateaus/to-be/plateau.to-be.yaml` is not valid: use lowercase letters, digits, `_` and `-`
 error: the reference `customer` is declared in the plateau `to-be` (`plateaus/to-be/customer.yaml`) and again in its ancestor `baseline` (`plateaus/baseline/customer.yaml`)
 error: in the plateau `to-be`, `shopp.cart` is declared under `shopp`, which does not exist
-error: in the plateau `to-be`, `shop.web` has a relationship towards `shop.nowhere`, which does not exist
+error: in the plateau `to-be`, `shop.web` has a relationship towards `shop.nowhere`, which does not exist, in `plateaus/to-be/shop.web.yaml` at `relationships[0].destination`
 error: the view `shop_overview` (`manifests/view.shop_overview.yaml`) names `shopp`, which exists in no plateau
 ----
 
-The first three are about the tree (an `override` that names nothing, a plateau declared by two manifests, an id that is not valid). Two more are told the same way: a plateau that overrides itself, directly or through others (`error: the plateau `to-be` overrides itself`), and a `baseline` manifest that overrides (`error: the plateau `baseline` (`plateaus/baseline/plateau.baseline.yaml`) is the root of the plateaus and cannot override `to-be``). The next three are about a plateau: a reference declared again in an ancestor, an element declared under a parent that does not exist, a relationship that leads nowhere. A mistake in a plateau names the plateau, so that the line says which layer to open. The last one is about no plateau: a view that names an element that exists in none.
+The first three are about the tree (an `override` that names nothing, a plateau declared by two manifests, an id that is not valid). Two more are told the same way: a plateau that overrides itself, directly or through others (`error: the plateau `to-be` overrides itself`), and a `baseline` manifest that overrides (`error: the plateau `baseline` (`plateaus/baseline/plateau.baseline.yaml`) is the root of the plateaus and cannot override `to-be``). The next three are about a plateau: a reference declared again in an ancestor, an element declared under a parent that does not exist, a relationship that leads nowhere. That last line, and its two cousins (an environment that `uses` an environment that is not there, a node that hosts an application that is not there), say the element that holds the reference, the file that declares it and the key of the reference in the element (`relationships[0].destination`, `uses[1]`, `applications[0]`: the place in its list); in a workspace without plateaus the same line is told without the plateau (``error: `shop.web` has a relationship towards `shop.nowhere`, which does not exist, in `manifests/shop.web.yaml` at `relationships[0].destination` ``), by `views generate` and by `query graph`, and the editor tells it in the same words. A mistake in a plateau names the plateau, so that the line says which layer to open. The last one is about no plateau: a view that names an element that exists in none.
 
 *One cause, one line.* When one mistake has many consequences, the tools say the first one (by reference) and count the others. The elements a plateau declares under a parent that is not there are one sentence, whatever the parents are called (here a typo in the `parent` of three manifests): the first one told is a symptom of the missing layer, and a second wrong parent shows once the first is repaired. The elements that point at one reference that is not there are one sentence for each missing reference (here two relationships added towards `shop.nowhere`). The views and the stories that name something that is not there keep one line each, since they are not consequences of one another. When a manifest cannot be read, the command line stops at it, before any layer is built, with one line: the file and what is wrong. The editor draws what it can, and says that same line in place of the consequences the missing elements would leave behind.
 
 ----
 error: in the plateau `to-be`, `shopp.billing` is declared under `shopp`, which does not exist (2 more elements of the plateau are declared under a parent that does not exist)
-error: in the plateau `to-be`, `customer` has a relationship towards `shop.nowhere`, which does not exist (1 more element of the plateau points at it)
+error: in the plateau `to-be`, `customer` has a relationship towards `shop.nowhere`, which does not exist, in `plateaus/to-be/customer.yaml` at `relationships[0].destination` (1 more element of the plateau points at it)
 ----
 
 *Warnings.* These go on, and exit with the code 0:
@@ -2178,7 +2178,7 @@ Every command speaks on its error output in the same way, and keeps its standard
 *Errors.* When a command cannot do what you asked, it prints one line for each problem on the error output, starts it with `error: ` and exits with the code 1. It prints no stack trace. The exit codes are 0 (done), 1 (an error), 2 (a usage error, below) and 3, which only `archicode diff --fail-on` gives, when the comparison holds a change it was asked to fail on (see <<diff>>). The line says what is wrong and where, for instance:
 
 ----
-error: dangling reference: payments
+error: `shop.web` has a relationship towards `payments`, which does not exist, in `manifests/shop.web.yaml` at `relationships[0].destination`
 error: unknown plateau `nope`: the plateaus of this workspace are `baseline` and `to-be`
 error: `manifests/shop.yaml` is not valid: the value has the wrong shape (found an array) at `header` (line 1, column 9)
 error: the workspace file `/work/.archicode.yaml` does not exist (`-w` names another one)

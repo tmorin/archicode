@@ -671,7 +671,7 @@ export const VARIANTS = [
     class: 'error and warning',
     order: ['baseline', 'inhous'],
     mentions: ['inhous', 'commerce.cart', 'parent'],
-    runToday: '**Run** (case N47): `diff --plateau inhous` gives two warnings (the plateau `inhous` exists only through one header; it is one letter from `inhouse`) and the error the document expects, ``in the plateau `inhous`, `commerce.cart` is declared under `commerce`, which does not exist``; `diff --plateau inhouse`, which lacks the cart, gives the same warnings and one line, ``in the plateau `inhouse`, `commerce.checkout` has a relationship towards `commerce.cart`, which does not exist (3 more elements of the plateau point at it)``.',
+    runToday: '**Run** (case N47): `diff --plateau inhous` gives two warnings (the plateau `inhous` exists only through one header; it is one letter from `inhouse`) and the error the document expects, ``in the plateau `inhous`, `commerce.cart` is declared under `commerce`, which does not exist``; `diff --plateau inhouse`, which lacks the cart, gives the same warnings and one line, ``in the plateau `inhouse`, `commerce.checkout` has a relationship towards `commerce.cart`, which does not exist, in `inhouse/application/commerce.checkout.yaml` at `relationships[0].destination` (3 more elements of the plateau point at it)``.',
     mutate: (P) => {
       const e = withoutManifest(P.inhouse, 'commerce.cart');
       P.inhous = new Plateau('inhous', 'inhous', null, 'baseline', 'implicit');

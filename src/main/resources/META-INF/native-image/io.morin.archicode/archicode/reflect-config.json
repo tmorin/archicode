@@ -1692,6 +1692,24 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.workspace.DanglingReferences",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.workspace.DanglingReferences$Problem",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.workspace.ElementIndex",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -2835,6 +2853,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.workspace.LayerLoader$Files",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.workspace.LayerLoader",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -2935,15 +2962,6 @@
   },
   {
     "name": "io.morin.archicode.workspace.LayerLoader$ReplacesAsWritten",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.workspace.LayerLoader$Problem",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,

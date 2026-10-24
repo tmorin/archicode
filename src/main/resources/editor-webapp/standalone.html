@@ -6000,44 +6000,66 @@ function namedByProperties(properties) {
   return Array.from(names).sort(compareUnits);
 }
 
+/** The file that declares an element: the manifest of the nearest root at or above its reference (`state.roots`), or null (an element of .archicode.yaml has none). */
+function layerFileOf(roots, layer, reference) {
+  if (!roots) return null;
+  for (let ref = reference; ref; ref = ref.indexOf('.') === -1 ? '' : ref.slice(0, ref.lastIndexOf('.'))) {
+    const root = roots.get(layer + '|' + ref);
+    if (root) return root.file || null;
+  }
+  return null;
+}
+
 /**
- * What a layer is checked for (`LayerLoader.problems`): a relationship, an entry of `uses` and an application hosted on a node must name an element of the graph.
+ * What a layer is checked for (`LayerLoader.problems`, `DanglingReferences`): a relationship, an entry of `uses` and an application hosted on a node must name an element of the graph.
+ * The sentence says the element, the file that declares it and the key of the reference in it (issue #159); a workspace with no plateau tells it without the plateau, as the command line does.
  * Sorted by element, then by what it points at. What the views and the stories name is not a mistake of a layer: see `entryProblemsOf`.
+ * `options.layered` is whether the workspace has plateaus; `options.roots` is `state.roots`, which knows the file of each manifest.
  */
-function layerProblemsOf(plateau, graph) {
+function layerProblemsOf(plateau, graph, options) {
+  const layered = !options || options.layered !== false;
   const refs = graphReferencesOf(graph);
   const found = [];
-  const in_ = 'in the plateau `' + plateau + '`, ';
+  const in_ = layered ? 'in the plateau `' + plateau + '`, ' : '';
   for (const layer of LAYER_NAMES) {
     for (const [reference, node] of refs[layer]) {
+      const file = layerFileOf(options && options.roots, layer, reference);
+      const told = (verb, other, key) => '`' + reference + '` ' + verb + ' `' + other + '`, which does not exist, ' + (file ? 'in `' + file + '` ' : '') + 'at `' + key + '`';
+      let position = 0;
       for (const rel of Array.isArray(node.relationships) ? node.relationships : []) {
         if (!rel || typeof rel !== 'object') continue;
+        const key = 'relationships[' + position++ + '].destination';
         const destination = kernelStringOf(rel.destination);
-        if (destination !== null && !refs[layer].has(destination)) found.push({ element: reference, other: destination, sentence: in_ + '`' + reference + '` has a relationship towards `' + destination + '`, which does not exist' });
+        if (destination !== null && !refs[layer].has(destination)) found.push({ element: reference, other: destination, sentence: told('has a relationship towards', destination, key) });
       }
       if (node.kind === 'environment') {
+        let at = 0;
         for (const used of kernelStringsOf(node.uses)) {
-          if (!refs[layer].has(used)) found.push({ element: reference, other: used, sentence: in_ + '`' + reference + '` uses `' + used + '`, which does not exist' });
+          const key = 'uses[' + at++ + ']';
+          if (!refs[layer].has(used)) found.push({ element: reference, other: used, sentence: told('uses', used, key) });
         }
       }
       if (node.kind === 'node') {
+        let at = 0;
         for (const application of kernelStringsOf(node.applications)) {
-          if (!refs.application.has(application)) found.push({ element: reference, other: application, sentence: in_ + '`' + reference + '` hosts `' + application + '`, which does not exist' });
+          const key = 'applications[' + at++ + ']';
+          if (!refs.application.has(application)) found.push({ element: reference, other: application, sentence: told('hosts', application, key) });
         }
       }
     }
   }
   found.sort((a, b) => compareUnits(a.element, b.element) || compareUnits(a.other, b.other) || compareUnits(a.sentence, b.sentence));
-  // one sentence for each thing that is missing: the elements that point at it are one cause (`LayerLoader.problems`)
+  // one sentence for each thing that is missing: the elements that point at it are one cause (`DanglingReferences.sentences`)
   const byMissing = new Map();
   for (const problem of found) {
     if (!byMissing.has(problem.other)) byMissing.set(problem.other, []);
     byMissing.get(problem.other).push(problem);
   }
+  const scope = layered ? ' of the plateau' : '';
   const out = new Set();
   for (const group of byMissing.values()) {
     const others = new Set(group.map((p) => p.element)).size - 1;
-    out.add(group[0].sentence + (others === 0 ? '' : ' (' + others + (others === 1 ? ' more element of the plateau points at it)' : ' more elements of the plateau point at it)')));
+    out.add(in_ + group[0].sentence + (others === 0 ? '' : ' (' + others + (others === 1 ? ' more element' + scope + ' points at it)' : ' more elements' + scope + ' point at it)')));
   }
   return Array.from(out);
 }
@@ -6287,7 +6309,7 @@ function resolveLayerStep(parent, node, context) {
   }
 
   // the checks of the layer; told alone when a parent is missing, as the command line tells that first (and stops)
-  if (!mine.length) mine = layerProblemsOf(node.id, state.graph);
+  if (!mine.length) mine = layerProblemsOf(node.id, state.graph, { layered: !!context.layered, roots: state.roots });
   if (!state.problems && mine.length) state.problems = { plateau: node.id, sentences: mine };
   return { state };
 }

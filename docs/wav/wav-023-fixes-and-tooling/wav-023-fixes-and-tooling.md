@@ -176,7 +176,7 @@ wave_manifest:
       slug: dangling-reference-names-its-source
       phase: P0
       depends_on: []
-      run: null
+      run: 0165
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/workspace/**'
@@ -187,6 +187,7 @@ wave_manifest:
         - 'src/test/resources/**'
         - 'src/test/javascript/**'
         - 'src/doc/README.adoc'
+        - 'scripts/**'
         - 'CLAUDE.md'
       focus: 'a dangling reference says the file, the element that declares it and the key, with the words of the layered check, in the command line and in the editor (#159)'
     - id: W-3

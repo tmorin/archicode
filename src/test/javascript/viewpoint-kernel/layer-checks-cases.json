@@ -42,12 +42,12 @@
       },
       "cli": {
         "error": [
-          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist"
+          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination`"
         ]
       },
       "editor": {
         "problems": [
-          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist"
+          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination`"
         ],
         "failedAt": "baseline",
         "drawn": {
@@ -68,12 +68,12 @@
       },
       "cli": {
         "error": [
-          "in the plateau `baseline`, `prod` uses `ghost`, which does not exist"
+          "in the plateau `baseline`, `prod` uses `ghost`, which does not exist, in `manifests/prod.yaml` at `uses[0]`"
         ]
       },
       "editor": {
         "problems": [
-          "in the plateau `baseline`, `prod` uses `ghost`, which does not exist"
+          "in the plateau `baseline`, `prod` uses `ghost`, which does not exist, in `manifests/prod.yaml` at `uses[0]`"
         ],
         "failedAt": "baseline",
         "drawn": {
@@ -95,12 +95,12 @@
       },
       "cli": {
         "error": [
-          "in the plateau `baseline`, `prod.vm` hosts `ghost`, which does not exist"
+          "in the plateau `baseline`, `prod.vm` hosts `ghost`, which does not exist, in `manifests/vm.yaml` at `applications[0]`"
         ]
       },
       "editor": {
         "problems": [
-          "in the plateau `baseline`, `prod.vm` hosts `ghost`, which does not exist"
+          "in the plateau `baseline`, `prod.vm` hosts `ghost`, which does not exist, in `manifests/vm.yaml` at `applications[0]`"
         ],
         "failedAt": "baseline",
         "drawn": {
@@ -179,14 +179,14 @@
       },
       "cli": {
         "error": [
-          "in the plateau `baseline`, `b` has a relationship towards `aaa`, which does not exist (1 more element of the plateau points at it)",
-          "in the plateau `baseline`, `b` has a relationship towards `zzz`, which does not exist"
+          "in the plateau `baseline`, `b` has a relationship towards `aaa`, which does not exist, in `manifests/b.yaml` at `relationships[1].destination` (1 more element of the plateau points at it)",
+          "in the plateau `baseline`, `b` has a relationship towards `zzz`, which does not exist, in `manifests/b.yaml` at `relationships[0].destination`"
         ]
       },
       "editor": {
         "problems": [
-          "in the plateau `baseline`, `b` has a relationship towards `aaa`, which does not exist (1 more element of the plateau points at it)",
-          "in the plateau `baseline`, `b` has a relationship towards `zzz`, which does not exist"
+          "in the plateau `baseline`, `b` has a relationship towards `aaa`, which does not exist, in `manifests/b.yaml` at `relationships[1].destination` (1 more element of the plateau points at it)",
+          "in the plateau `baseline`, `b` has a relationship towards `zzz`, which does not exist, in `manifests/b.yaml` at `relationships[0].destination`"
         ],
         "failedAt": "baseline",
         "drawn": {
@@ -267,12 +267,12 @@
       },
       "cli": {
         "error": [
-          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist"
+          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/p1/a.yaml` at `relationships[0].destination`"
         ]
       },
       "editor": {
         "problems": [
-          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist"
+          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/p1/a.yaml` at `relationships[0].destination`"
         ],
         "failedAt": "p1",
         "drawn": {
@@ -300,12 +300,12 @@
       },
       "cli": {
         "error": [
-          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist"
+          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/p1/a.yaml` at `relationships[0].destination`"
         ]
       },
       "editor": {
         "problems": [
-          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist"
+          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/p1/a.yaml` at `relationships[0].destination`"
         ],
         "failedAt": "p1",
         "drawn": {
@@ -423,12 +423,12 @@
       },
       "cli": {
         "error": [
-          "in the plateau `p1`, `prod.vm` hosts `gone`, which does not exist"
+          "in the plateau `p1`, `prod.vm` hosts `gone`, which does not exist, in `manifests/vm.yaml` at `applications[1]`"
         ]
       },
       "editor": {
         "problems": [
-          "in the plateau `p1`, `prod.vm` hosts `gone`, which does not exist"
+          "in the plateau `p1`, `prod.vm` hosts `gone`, which does not exist, in `manifests/vm.yaml` at `applications[1]`"
         ],
         "failedAt": "p1",
         "drawn": {
@@ -549,12 +549,12 @@
       },
       "cli": {
         "error": [
-          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist"
+          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination`"
         ]
       },
       "editor": {
         "problems": [
-          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist"
+          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination`"
         ],
         "failedAt": "baseline",
         "entryProblems": [

@@ -174,8 +174,16 @@ class AgentWalkIT {
 
         write(folder, "manifests/shop.search.yaml", good + "  relationships:\n    - destination: \"shop.nowhere\"\n");
         val dangling = oneError(run(launcher, folder, "query", "graph"));
-        assertTrue(dangling.contains("shop.nowhere"), dangling);
-        assertTrue(guide.contains("unable to find the element"), "the guide says that sentence");
+        assertTrue(
+            dangling.contains("`shop.nowhere`, which does not exist") &&
+                dangling.contains("manifests/shop.search.yaml") &&
+                dangling.contains("`relationships[0].destination`"),
+            dangling
+        );
+        assertTrue(
+            guide.contains("which does not exist, in `manifests/shop.search.yaml` at"),
+            "the guide says that sentence"
+        );
 
         write(folder, "manifests/shop.search.yaml", good + "  colour: \"red\"\n");
         val unknown = oneError(run(launcher, folder, "query", "graph"));
