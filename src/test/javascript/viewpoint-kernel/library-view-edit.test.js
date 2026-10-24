@@ -739,3 +739,15 @@ test('a technology element is the pin of the Map of the technology layer when it
   await removeFromList(page, 'pinned', 'customer');
   assert.deepEqual(asked, ['#view-edit-add-pinned']);
 });
+
+test('a view with no `properties` key at all says the same as one with `properties: {}`, for every viewpoint of an element (wave 023, run 0164, #158)', async () => {
+  const page = await startMem();
+  const view = viewOf(page, 'api_view');
+  for (const viewpoint of ['overview', 'detailed', 'deep']) {
+    view.viewpoint = viewpoint;
+    delete view.properties;
+    assert.equal(page.sandbox.viewProblem(view), 'This view has no element.', viewpoint + ' without properties');
+    view.properties = {};
+    assert.equal(page.sandbox.viewProblem(view), 'This view has no element.', viewpoint + ' with properties: {}');
+  }
+});
