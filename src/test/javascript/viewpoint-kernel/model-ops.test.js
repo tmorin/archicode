@@ -29,20 +29,30 @@ const ev = (sandbox, code) => vm.runInContext(code, sandbox);
 const manifest = (state, relPath) => state.manifestFiles.find((f) => f.relPath === relPath);
 const sorted = (list) => Array.from(list).sort();
 /** deepStrictEqual across the vm boundary: arrays and objects of the page have another prototype, so both sides go through JSON. */
-const same = (actual, expected, message) => assert.deepStrictEqual(JSON.parse(JSON.stringify(actual)), JSON.parse(JSON.stringify(expected)), message);
+const same = (actual, expected, message) =>
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(actual)), JSON.parse(JSON.stringify(expected)), message);
 
-const SOLUTION = (id, extra) => 'header:\n  kind: "archicode.morin.io/solution"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (extra || '');
-const ENVIRONMENT = (id, extra) => 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (extra || '');
+const SOLUTION = (id, extra) =>
+  'header:\n  kind: "archicode.morin.io/solution"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (extra || '');
+const ENVIRONMENT = (id, extra) =>
+  'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (extra || '');
 
 // ---- 1. delete removes the whole subtree ----
 
 test('deleting a solution removes the manifests attached below it and the links to what is deleted', async () => {
   const { sandbox, state } = await openFixtureMem();
   const impact = sandbox.computeDeleteImpact('shop', 'application');
-  same(sorted(impact.files), ['manifests/app.shop.catalog.yaml', 'manifests/app.shop.web.yaml', 'manifests/app.shop.yaml']);
+  same(sorted(impact.files), [
+    'manifests/app.shop.catalog.yaml',
+    'manifests/app.shop.web.yaml',
+    'manifests/app.shop.yaml'
+  ]);
   assert.ok(impact.deletedReferences.includes('shop.web.frontend'));
   assert.ok(impact.affected.some((a) => a.ownerReference === 'customer' && a.destination === 'shop.web.frontend'));
-  assert.ok(impact.affected.some((a) => a.ownerReference === 'prod.cluster.web.pod-a' && a.destination === 'shop.web.frontend'), 'the deployed applications are listed too');
+  assert.ok(
+    impact.affected.some((a) => a.ownerReference === 'prod.cluster.web.pod-a' && a.destination === 'shop.web.frontend'),
+    'the deployed applications are listed too'
+  );
 
   sandbox.commitDeleteElement('shop', 'application', impact.affected);
 
@@ -52,7 +62,10 @@ test('deleting a solution removes the manifests attached below it and the links 
   assert.equal(state.index.application.get('mailer').relationships.length, 1, 'a link to something that stays is kept');
   assert.equal(state.relationshipStats.dangling, 0, 'no orphan keeps a reference to the deleted solution');
   for (const record of state.index.technology.values()) {
-    assert.ok(record.applications.every((a) => !a.startsWith('shop')), 'no node deploys a deleted application: ' + record.reference);
+    assert.ok(
+      record.applications.every((a) => !a.startsWith('shop')),
+      'no node deploys a deleted application: ' + record.reference
+    );
   }
   assert.ok(state.manifestFiles.every((f) => !f.relPath.includes('app.shop')));
 });
@@ -62,7 +75,11 @@ test('a delete saved to the disk leaves a workspace that reads without a danglin
   sandbox.commitDeleteElement('shop', 'application', []);
   await sandbox.saveAllChanges();
   assert.equal(ev(sandbox, 'saveStatus').state, 'success');
-  same(sorted(mem.removals), ['manifests/app.shop.catalog.yaml', 'manifests/app.shop.web.yaml', 'manifests/app.shop.yaml']);
+  same(sorted(mem.removals), [
+    'manifests/app.shop.catalog.yaml',
+    'manifests/app.shop.web.yaml',
+    'manifests/app.shop.yaml'
+  ]);
   assert.equal(state.pendingFileRemovals.length, 0);
 
   const again = createApp();
@@ -92,7 +109,10 @@ test('deleting a manifest root keeps the siblings attached elsewhere; deleting a
 
 test('a delete forgets the references of the map, the selection and the tree', async () => {
   const { sandbox, state } = await openFixtureMem();
-  ev(sandbox, "mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web']); navActiveKey = 'application:shop.web.api';");
+  ev(
+    sandbox,
+    "mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web']); navActiveKey = 'application:shop.web.api';"
+  );
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'edit' };
   state.expanded.add('application:shop');
   sandbox.commitDeleteElement('shop', 'application', []);
@@ -103,7 +123,14 @@ test('a delete forgets the references of the map, the selection and the tree', a
   assert.equal(state.selection.kind, 'none');
   assert.ok(!state.expanded.has('application:shop'));
   // a later element with the same reference does not inherit a stale pin
-  sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'solution', attachUnderReference: null, id: 'shop', name: null, description: null });
+  sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'solution',
+    attachUnderReference: null,
+    id: 'shop',
+    name: null,
+    description: null
+  });
   same(ev(sandbox, 'mapPinned'), ['mailer']);
 });
 
@@ -111,13 +138,19 @@ test('a delete forgets the references of the map, the selection and the tree', a
 
 test('renaming a solution rewrites the links, the deployed applications and the parent of the attached manifests', async () => {
   const { sandbox, state } = await openFixtureMem();
-  ev(sandbox, "mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web']); navActiveKey = 'application:shop.web.api';");
+  ev(
+    sandbox,
+    "mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web']); navActiveKey = 'application:shop.web.api';"
+  );
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   state.expanded.add('application:shop');
   state.expanded.add('application:shop.web');
   state.dirtyReferences.add('application:shop.catalog');
 
-  sandbox.commitElementEdit('shop', (node) => { node.id = 'store'; return { renamedTo: { from: 'shop', to: 'store' } }; });
+  sandbox.commitElementEdit('shop', (node) => {
+    node.id = 'store';
+    return { renamedTo: { from: 'shop', to: 'store' } };
+  });
 
   assert.ok(state.index.application.has('store.web.api'));
   assert.ok(!state.index.application.has('shop'));
@@ -129,14 +162,25 @@ test('renaming a solution rewrites the links, the deployed applications and the 
     assert.equal(sandbox.parseManifestText(mf.rawText).header.parent, 'store', 'the text to save is regenerated');
   }
   const customer = state.index.application.get('customer');
-  same(customer.relationships.map((r) => r.destination), ['store.web.frontend', 'store.web.edge.gateway']);
+  same(
+    customer.relationships.map((r) => r.destination),
+    ['store.web.frontend', 'store.web.edge.gateway']
+  );
   assert.equal(manifest(state, 'manifests/app.customer.yaml').dirty, true);
   same(state.index.technology.get('prod.cluster.web.pod-a').applications, ['store.web.frontend']);
   same(state.index.technology.get('psp.gateway').applications, ['store.payments']);
-  assert.equal(manifest(state, 'manifests/app.mailer.yaml').dirty, false, 'a file that pointed nowhere near stays clean');
+  assert.equal(
+    manifest(state, 'manifests/app.mailer.yaml').dirty,
+    false,
+    'a file that pointed nowhere near stays clean'
+  );
 
   assert.equal(state.selection.key, 'store.web.api');
-  assert.ok(state.expanded.has('application:store') && state.expanded.has('application:store.web') && !state.expanded.has('application:shop'));
+  assert.ok(
+    state.expanded.has('application:store') &&
+      state.expanded.has('application:store.web') &&
+      !state.expanded.has('application:shop')
+  );
   assert.ok(state.dirtyReferences.has('application:store.catalog') && state.dirtyReferences.has('application:store'));
   assert.equal(ev(sandbox, 'navActiveKey'), 'application:store.web.api');
   same(ev(sandbox, 'mapPinned'), ['store.web.api', 'mailer']);
@@ -146,15 +190,28 @@ test('renaming a solution rewrites the links, the deployed applications and the 
 
 test('renaming a nested element, or a technology node, rewrites only what points at it', async () => {
   const { sandbox, state } = await openFixtureMem();
-  sandbox.commitElementEdit('shop.web.api', (node) => { node.id = 'rest'; return { renamedTo: { from: 'shop.web.api', to: 'shop.web.rest' } }; });
+  sandbox.commitElementEdit('shop.web.api', (node) => {
+    node.id = 'rest';
+    return { renamedTo: { from: 'shop.web.api', to: 'shop.web.rest' } };
+  });
   assert.equal(state.relationshipStats.dangling, 0);
   assert.equal(state.index.application.get('shop.web.frontend').relationships[0].destination, 'shop.web.rest');
   same(state.index.technology.get('prod.cluster.web.pod-b').applications, ['shop.web.rest']);
 
-  sandbox.commitElementEdit('prod.cluster.web', (node) => { node.id = 'ns'; return { renamedTo: { from: 'prod.cluster.web', to: 'prod.cluster.ns' } }; });
+  sandbox.commitElementEdit('prod.cluster.web', (node) => {
+    node.id = 'ns';
+    return { renamedTo: { from: 'prod.cluster.web', to: 'prod.cluster.ns' } };
+  });
   assert.equal(state.relationshipStats.dangling, 0);
-  assert.equal(state.index.technology.get('prod.cluster.ns.pod-a').relationships[0].destination, 'prod.cluster.ns.pod-b');
-  same(state.index.technology.get('prod.cluster.ns.pod-a').applications, ['shop.web.frontend'], 'the applications of a node are application references: untouched');
+  assert.equal(
+    state.index.technology.get('prod.cluster.ns.pod-a').relationships[0].destination,
+    'prod.cluster.ns.pod-b'
+  );
+  same(
+    state.index.technology.get('prod.cluster.ns.pod-a').applications,
+    ['shop.web.frontend'],
+    'the applications of a node are application references: untouched'
+  );
 });
 
 test('a reference is rewritten on the dot boundary only', async () => {
@@ -169,21 +226,56 @@ test('a reference is rewritten on the dot boundary only', async () => {
 
 test('a new manifest takes a free path: beside a renamed element whose file kept its old name, and in any case', async () => {
   const { sandbox, state } = await openFixtureMem();
-  sandbox.commitElementEdit('shop.web', (node) => { node.id = 'site'; return { renamedTo: { from: 'shop.web', to: 'shop.site' } }; });
+  sandbox.commitElementEdit('shop.web', (node) => {
+    node.id = 'site';
+    return { renamedTo: { from: 'shop.web', to: 'shop.site' } };
+  });
   assert.ok(manifest(state, 'manifests/app.shop.web.yaml'), 'the file kept its name');
-  const created = sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', attachUnderReference: 'shop', id: 'web', name: null, description: null });
+  const created = sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'system',
+    attachUnderReference: 'shop',
+    id: 'web',
+    name: null,
+    description: null
+  });
   assert.equal(created.relPath, 'manifests/app.shop.web-2.yaml');
   assert.equal(manifest(state, 'manifests/app.shop.web.yaml').content.id, 'site', 'the other file is untouched');
 
-  const again = sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'person', attachUnderReference: null, id: 'web', name: null, description: null });
+  const again = sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'person',
+    attachUnderReference: null,
+    id: 'web',
+    name: null,
+    description: null
+  });
   assert.equal(again.relPath, 'manifests/app.web.yaml');
 });
 
 test('path collisions are looked for case-insensitively, and a pending new file counts', async () => {
   const { sandbox, state } = await openFixtureMem();
-  const upper = sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'person', attachUnderReference: null, id: 'Customer', name: null, description: null });
-  assert.equal(upper.relPath, 'manifests/app.Customer-2.yaml', 'app.customer.yaml exists, and a case-insensitive disk would call it the same file');
-  const lower = sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'person', attachUnderReference: null, id: 'CUSTOMER', name: null, description: null });
+  const upper = sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'person',
+    attachUnderReference: null,
+    id: 'Customer',
+    name: null,
+    description: null
+  });
+  assert.equal(
+    upper.relPath,
+    'manifests/app.Customer-2.yaml',
+    'app.customer.yaml exists, and a case-insensitive disk would call it the same file'
+  );
+  const lower = sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'person',
+    attachUnderReference: null,
+    id: 'CUSTOMER',
+    name: null,
+    description: null
+  });
   assert.equal(lower.relPath, 'manifests/app.CUSTOMER-3.yaml');
   assert.equal(new Set(state.manifestFiles.map((f) => f.relPath.toLowerCase())).size, state.manifestFiles.length);
 });
@@ -192,7 +284,14 @@ test('a file removed and recreated at the same path is written, not deleted', as
   const { sandbox, state, mem } = await openFixtureMem();
   sandbox.commitDeleteElement('mailer', 'application', []);
   same(state.pendingFileRemovals, ['manifests/app.mailer.yaml']);
-  const created = sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', attachUnderReference: null, id: 'mailer', name: 'New mailer', description: null });
+  const created = sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'system',
+    attachUnderReference: null,
+    id: 'mailer',
+    name: 'New mailer',
+    description: null
+  });
   assert.equal(created.relPath, 'manifests/app.mailer.yaml');
   same(state.pendingFileRemovals, [], 'the removal is dropped: the new file replaces the old one');
   await sandbox.saveAllChanges();
@@ -203,7 +302,14 @@ test('a file removed and recreated at the same path is written, not deleted', as
 
 test('saving refuses to overwrite a file that appeared on disk and that the editor did not know', async () => {
   const { sandbox, state, mem } = await openFixtureMem();
-  sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', attachUnderReference: null, id: 'newone', name: null, description: null });
+  sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'system',
+    attachUnderReference: null,
+    id: 'newone',
+    name: null,
+    description: null
+  });
   mem.put('manifests/app.newone.yaml', 'somebody else wrote this');
   await sandbox.saveAllChanges();
   const status = ev(sandbox, 'saveStatus');
@@ -218,8 +324,14 @@ test('saving refuses to overwrite a file that appeared on disk and that the edit
 
 const TWO_LAYERS = {
   '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
-  'manifests/app.hub.yaml': SOLUTION('hub', '  name: "App side"\n  elements:\n    - kind: "system"\n      id: "core"\n'),
-  'manifests/env.hub.yaml': ENVIRONMENT('hub', '  name: "Env side"\n  elements:\n    - kind: "node"\n      id: "n1"\n      applications:\n        - "hub.core"\n')
+  'manifests/app.hub.yaml': SOLUTION(
+    'hub',
+    '  name: "App side"\n  elements:\n    - kind: "system"\n      id: "core"\n'
+  ),
+  'manifests/env.hub.yaml': ENVIRONMENT(
+    'hub',
+    '  name: "Env side"\n  elements:\n    - kind: "node"\n      id: "n1"\n      applications:\n        - "hub.core"\n'
+  )
 };
 
 test('a reference that exists in both layers is looked up by layer', async () => {
@@ -238,24 +350,46 @@ test('editing, adding a child, renaming and deleting act on the layer of the sel
   const appFile = () => manifest(state, 'manifests/app.hub.yaml');
   state.selection = { kind: 'element', key: 'hub', layer: 'technology', mode: 'edit' };
 
-  sandbox.commitElementEdit('hub', (node) => { node.name = 'Renamed env'; });
+  sandbox.commitElementEdit('hub', (node) => {
+    node.name = 'Renamed env';
+  });
   assert.equal(envFile().content.name, 'Renamed env');
   assert.equal(appFile().content.name, 'App side');
   assert.equal(appFile().dirty, false);
 
-  const child = sandbox.commitCreateChildElement({ parentReference: 'hub', layer: 'technology', kind: 'node', id: 'n2', name: null, description: null });
+  const child = sandbox.commitCreateChildElement({
+    parentReference: 'hub',
+    layer: 'technology',
+    kind: 'node',
+    id: 'n2',
+    name: null,
+    description: null
+  });
   assert.equal(child.ok, true);
   assert.equal(child.layer, 'technology');
-  same(envFile().content.elements.map((e) => e.id), ['n1', 'n2']);
-  same(appFile().content.elements.map((e) => e.id), ['core']);
+  same(
+    envFile().content.elements.map((e) => e.id),
+    ['n1', 'n2']
+  );
+  same(
+    appFile().content.elements.map((e) => e.id),
+    ['core']
+  );
 
-  sandbox.commitElementEdit('hub', (node) => { node.id = 'epr2'; return { renamedTo: { from: 'hub', to: 'epr2' } }; });
+  sandbox.commitElementEdit('hub', (node) => {
+    node.id = 'epr2';
+    return { renamedTo: { from: 'hub', to: 'epr2' } };
+  });
   assert.ok(state.index.technology.has('epr2.n1') && !state.index.technology.has('hub'));
   assert.ok(state.index.application.has('hub'), 'the application element is untouched');
   assert.equal(appFile().dirty, false);
   assert.equal(state.selection.key, 'epr2');
   assert.equal(state.selection.layer, 'technology');
-  same(state.index.technology.get('epr2.n1').applications, ['hub.core'], 'the deployed applications are application references');
+  same(
+    state.index.technology.get('epr2.n1').applications,
+    ['hub.core'],
+    'the deployed applications are application references'
+  );
 
   sandbox.commitDeleteElement('epr2', 'technology', []);
   same(state.pendingFileRemovals, ['manifests/env.hub.yaml']);
@@ -302,16 +436,24 @@ test('the editor does not offer the *-group kinds for a top-level manifest', asy
   const { sandbox } = await openMem(TWO_LAYERS);
   const kinds = ev(sandbox, 'TOP_LEVEL_KIND_OPTIONS');
   const blank = ev(sandbox, 'TOP_LEVEL_BLANK_ATTACH_ALLOWED');
-  for (const list of [...Object.values(kinds), ...Object.values(blank)]) assert.ok(list.every((k) => !k.endsWith('-group')), list.join(','));
+  for (const list of [...Object.values(kinds), ...Object.values(blank)])
+    assert.ok(
+      list.every((k) => !k.endsWith('-group')),
+      list.join(',')
+    );
   same(Array.from(kinds.application), ['person', 'system', 'solution', 'container', 'component']);
 });
 
 test('a container-group manifest is no kind: the editor refuses it with the sentence of the command line', async () => {
-  const group = 'header:\n  kind: "archicode.morin.io/container-group"\n  version: "1"\n  parent: "hub.core"\ncontent:\n  id: "grp"\n';
+  const group =
+    'header:\n  kind: "archicode.morin.io/container-group"\n  version: "1"\n  parent: "hub.core"\ncontent:\n  id: "grp"\n';
   const { state } = await openMem(Object.assign({}, TWO_LAYERS, { 'manifests/app.hub.core.grp.yaml': group }));
   assert.ok(!state.index.application.has('hub.core.grp'));
   const file = state.manifestFiles.find((f) => f.relPath === 'manifests/app.hub.core.grp.yaml');
-  assert.match(file.error, /^unrecognized `header.kind` "archicode.morin.io\/container-group", a group is no kind any more: write its children in the `elements` of its parent \(known: /);
+  assert.match(
+    file.error,
+    /^unrecognized `header.kind` "archicode.morin.io\/container-group", a group is no kind any more: write its children in the `elements` of its parent \(known: /
+  );
 });
 
 // ---- 6. ids ----
@@ -326,15 +468,55 @@ test('an id is a safe name, for a new element and for a rename', async () => {
   assert.equal(sandbox.validateElementIdRename('a.b', 'shop.web', 'application').valid, false);
   assert.match(sandbox.validateElementIdRename('a b', 'shop.web', 'application').error, /space/);
   assert.equal(sandbox.validateElementIdRename('site', 'shop.web', 'application').valid, true);
-  assert.equal(sandbox.validateElementIdRename('web', 'shop.web', 'application').valid, true, 'an id that does not change is fine');
+  assert.equal(
+    sandbox.validateElementIdRename('web', 'shop.web', 'application').valid,
+    true,
+    'an id that does not change is fine'
+  );
 
-  const rejected = sandbox.commitCreateChildElement({ parentReference: 'shop', kind: 'system', id: 'x.y', name: null, description: null });
+  const rejected = sandbox.commitCreateChildElement({
+    parentReference: 'shop',
+    kind: 'system',
+    id: 'x.y',
+    name: null,
+    description: null
+  });
   assert.equal(rejected.ok, false);
   assert.equal(rejected.field, 'id');
   assert.ok(!state.index.application.has('shop.x.y'));
-  assert.throws(() => sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'person', attachUnderReference: null, id: '../evil', name: null, description: null }), /id/i);
-  assert.equal(sandbox.commitCreateChildElement({ parentReference: 'shop', kind: 'system', id: 'ok-1', name: null, description: null }).ok, true);
-  assert.equal(sandbox.commitCreateChildElement({ parentReference: 'shop', kind: 'system', id: 'ok-1', name: null, description: null }).ok, false, 'already used');
+  assert.throws(
+    () =>
+      sandbox.commitCreateTopLevelElement({
+        category: 'application',
+        headerKind: 'person',
+        attachUnderReference: null,
+        id: '../evil',
+        name: null,
+        description: null
+      }),
+    /id/i
+  );
+  assert.equal(
+    sandbox.commitCreateChildElement({
+      parentReference: 'shop',
+      kind: 'system',
+      id: 'ok-1',
+      name: null,
+      description: null
+    }).ok,
+    true
+  );
+  assert.equal(
+    sandbox.commitCreateChildElement({
+      parentReference: 'shop',
+      kind: 'system',
+      id: 'ok-1',
+      name: null,
+      description: null
+    }).ok,
+    false,
+    'already used'
+  );
 });
 
 test('an unchanged id is not judged: a hand-written one the editor would refuse for a new element still saves', async () => {
@@ -350,7 +532,10 @@ test('editing an element that cannot be located fails with a clear message, not 
     () => sandbox.commitElementEdit('nope.nothing', () => {}),
     (e) => e.name === 'Error' && /cannot be found/.test(e.message)
   );
-  assert.throws(() => sandbox.commitDeleteElement('nope.nothing', 'application', []), (e) => e.name === 'Error' && /cannot be found/.test(e.message));
+  assert.throws(
+    () => sandbox.commitDeleteElement('nope.nothing', 'application', []),
+    (e) => e.name === 'Error' && /cannot be found/.test(e.message)
+  );
   assert.equal(sandbox.locateContentNode('nope.nothing'), null);
 });
 
@@ -366,7 +551,7 @@ function fakeForm(sandbox, reference, overrides) {
     const o = (overrides && overrides.rows && overrides.rows[i]) || {};
     const inputs = {
       '.rel-destination-input': input(o.destination !== undefined ? o.destination : String(rel.destination)),
-      '.rel-label-input': input(o.label !== undefined ? o.label : (rel.rawLabel === null ? '' : String(rel.rawLabel))),
+      '.rel-label-input': input(o.label !== undefined ? o.label : rel.rawLabel === null ? '' : String(rel.rawLabel)),
       '.rel-qualifiers-input': input(o.qualifiers !== undefined ? o.qualifiers : qualifiers, qualifiers),
       '.rel-tags-input': input(o.tags !== undefined ? o.tags : tags, tags)
     };
@@ -378,14 +563,30 @@ function fakeForm(sandbox, reference, overrides) {
   });
   const byId = {
     'edit-id-input': { value: overrides && overrides.id !== undefined ? overrides.id : String(record.id) },
-    'edit-name-input': { value: overrides && overrides.name !== undefined ? overrides.name : (record.name === null ? '' : String(record.name)) },
-    'edit-description-input': { value: overrides && overrides.description !== undefined ? overrides.description : (record.description === null ? '' : String(record.description)) }
+    'edit-name-input': {
+      value:
+        overrides && overrides.name !== undefined ? overrides.name : record.name === null ? '' : String(record.name)
+    },
+    'edit-description-input': {
+      value:
+        overrides && overrides.description !== undefined
+          ? overrides.description
+          : record.description === null
+            ? ''
+            : String(record.description)
+    }
   };
   const doc = sandbox.document;
   const original = { getElementById: doc.getElementById, querySelectorAll: doc.querySelectorAll };
   doc.getElementById = (id) => byId[id] || original.getElementById.call(doc, id);
-  doc.querySelectorAll = (selector) => (selector.includes('relationship-edit-row') ? rows : original.querySelectorAll.call(doc, selector));
-  return { rows, restore() { Object.assign(doc, original); } };
+  doc.querySelectorAll = (selector) =>
+    selector.includes('relationship-edit-row') ? rows : original.querySelectorAll.call(doc, selector);
+  return {
+    rows,
+    restore() {
+      Object.assign(doc, original);
+    }
+  };
 }
 
 test('saving the form without touching it changes nothing in the manifests', async () => {
@@ -398,7 +599,10 @@ test('saving the form without touching it changes nothing in the manifests', asy
     form.restore();
     assert.equal(JSON.stringify(sandbox.locateContentNode(reference).mf.content), before, reference);
   }
-  assert.ok(state.manifestFiles.some((f) => f.dirty), 'the commit itself still marks the file to save');
+  assert.ok(
+    state.manifestFiles.some((f) => f.dirty),
+    'the commit itself still marks the file to save'
+  );
 });
 
 test('there is one Save, "Save all changes", and it applies the form on screen before writing', async () => {
@@ -459,7 +663,8 @@ test('a label is written when typed and dropped when emptied', async () => {
 
 const COMMAS = {
   '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
-  'manifests/app.a.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  relationships:\n    - destination: "b"\n      label: "talks"\n      qualifiers:\n        - "A, B"\n        - "C"\n      tags:\n        ports: "80,443"\n        mode: "x"\n',
+  'manifests/app.a.yaml':
+    'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  relationships:\n    - destination: "b"\n      label: "talks"\n      qualifiers:\n        - "A, B"\n        - "C"\n      tags:\n        ports: "80,443"\n        mode: "x"\n',
   'manifests/app.b.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "b"\n'
 };
 
@@ -490,7 +695,10 @@ test('a relationship added through the form carries only what was typed', async 
   const { sandbox } = await openMem(COMMAS);
   const built = sandbox.applyRelationshipDraft({}, { destination: 'b', label: undefined, qualifiers: [], tags: {} });
   same(JSON.parse(JSON.stringify(built)), { destination: 'b' });
-  const full = sandbox.applyRelationshipDraft({}, { destination: 'b', label: 'x', qualifiers: ['Q'], tags: { k: 'v' } });
+  const full = sandbox.applyRelationshipDraft(
+    {},
+    { destination: 'b', label: 'x', qualifiers: ['Q'], tags: { k: 'v' } }
+  );
   same(JSON.parse(JSON.stringify(full)), { destination: 'b', label: 'x', qualifiers: ['Q'], tags: { k: 'v' } });
 });
 
@@ -508,10 +716,13 @@ test('a tag key like __proto__ is kept as a key', async () => {
 
 const NUMBERS = {
   '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
-  'manifests/app.a.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  elements:\n    - kind: "container"\n      id: "c1"\n      relationships:\n        - destination: "p.c2"\n          label: 5\n          qualifiers:\n            - 8080\n            - "x"\n          tags:\n            port: 8080\n            tls: true\n        - destination: 8080\n',
-  'manifests/app.p.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "p"\n  elements:\n    - kind: "container"\n      id: "c2"\n',
+  'manifests/app.a.yaml':
+    'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  elements:\n    - kind: "container"\n      id: "c1"\n      relationships:\n        - destination: "p.c2"\n          label: 5\n          qualifiers:\n            - 8080\n            - "x"\n          tags:\n            port: 8080\n            tls: true\n        - destination: 8080\n',
+  'manifests/app.p.yaml':
+    'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "p"\n  elements:\n    - kind: "container"\n      id: "c2"\n',
   'manifests/app.8080.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: 8080\n',
-  'manifests/env.e.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "e"\n  elements:\n    - kind: "node"\n      id: "n"\n      applications:\n        - "a.c1"\n        - 8080\n'
+  'manifests/env.e.yaml':
+    'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "e"\n  elements:\n    - kind: "node"\n      id: "n"\n      applications:\n        - "a.c1"\n        - 8080\n'
 };
 
 test('numbers and booleans of the YAML reach the kernel as strings, and the diagram is drawn', async () => {
@@ -536,8 +747,10 @@ test('numbers and booleans of the YAML reach the kernel as strings, and the diag
 // ---- 9. the save ----
 
 async function editedCustomer(opened) {
-  const ws = opened || await openFixtureMem();
-  ws.sandbox.commitElementEdit('customer', (node) => { node.name = 'Customer, edited'; });
+  const ws = opened || (await openFixtureMem());
+  ws.sandbox.commitElementEdit('customer', (node) => {
+    node.name = 'Customer, edited';
+  });
   return ws;
 }
 
@@ -568,7 +781,9 @@ test('an edit made while saving stays to be saved', async () => {
   mem.onWrite = async () => {
     if (edited) return;
     edited = true;
-    sandbox.commitElementEdit('customer', (node) => { node.name = 'Customer, edited again'; });
+    sandbox.commitElementEdit('customer', (node) => {
+      node.name = 'Customer, edited again';
+    });
   };
   await sandbox.saveAllChanges();
   const file = manifest(state, 'manifests/app.customer.yaml');
@@ -580,7 +795,11 @@ test('an edit made while saving stays to be saved', async () => {
 
   mem.onWrite = null;
   await sandbox.saveAllChanges();
-  assert.equal(ev(sandbox, 'saveStatus').state, 'success', 'the baseline of the first write is kept, so the second save is not a conflict');
+  assert.equal(
+    ev(sandbox, 'saveStatus').state,
+    'success',
+    'the baseline of the first write is kept, so the second save is not a conflict'
+  );
   assert.match(mem.files.get('manifests/app.customer.yaml').text, /edited again/);
   assert.equal(file.dirty, false);
 });
@@ -598,8 +817,17 @@ test('a failure while checking the files on disk is shown, and nothing is writte
 });
 
 test('a workspace without its manifests directory gets one when the first element is saved', async () => {
-  const { sandbox, mem } = await openMem({ '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' });
-  sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'solution', attachUnderReference: null, id: 'first', name: 'First', description: null });
+  const { sandbox, mem } = await openMem({
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n'
+  });
+  sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'solution',
+    attachUnderReference: null,
+    id: 'first',
+    name: 'First',
+    description: null
+  });
   await sandbox.saveAllChanges();
   assert.equal(ev(sandbox, 'saveStatus').state, 'success');
   assert.ok(mem.dirs.has('manifests'));
@@ -615,7 +843,14 @@ test('a manifests path such as ./manifests is normalised, and read once', async 
   assert.equal(sandbox.normalizeRelDir('./a//b/'), 'a/b');
   assert.equal(sandbox.normalizeRelDir('.'), '');
   assert.equal(sandbox.normalizeRelDir('../x'), null);
-  const created = sandbox.commitCreateTopLevelElement({ category: 'technology', headerKind: 'environment', attachUnderReference: null, id: 'dev', name: null, description: null });
+  const created = sandbox.commitCreateTopLevelElement({
+    category: 'technology',
+    headerKind: 'environment',
+    attachUnderReference: null,
+    id: 'dev',
+    name: null,
+    description: null
+  });
   assert.equal(created.relPath, 'manifests/env.dev.yaml');
 });
 
@@ -634,8 +869,14 @@ test('only .yaml and .yml are manifests, as the CLI reads them', async () => {
 
 const USES = {
   '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
-  'manifests/env.dev.yaml': ENVIRONMENT('dev', '  uses:\n    - "int"\n    - "int.n1"\n  elements:\n    - kind: "node"\n      id: "n"\n'),
-  'manifests/env.int.yaml': ENVIRONMENT('int', '  elements:\n    - kind: "node"\n      id: "n1"\n    - kind: "node"\n      id: "n2"\n'),
+  'manifests/env.dev.yaml': ENVIRONMENT(
+    'dev',
+    '  uses:\n    - "int"\n    - "int.n1"\n  elements:\n    - kind: "node"\n      id: "n"\n'
+  ),
+  'manifests/env.int.yaml': ENVIRONMENT(
+    'int',
+    '  elements:\n    - kind: "node"\n      id: "n1"\n    - kind: "node"\n      id: "n2"\n'
+  ),
   'manifests/env.prd.yaml': ENVIRONMENT('prd', '  elements:\n    - kind: "node"\n      id: "n1"\n')
 };
 
@@ -662,27 +903,42 @@ test('a new used environment has to be an environment or a node, not already use
 
 test('adding and removing a used environment edits the content of the environment', async () => {
   const { sandbox, state } = await openMem(USES);
-  sandbox.commitElementEdit('dev', (node) => { node.uses = node.uses.concat(['prd']); });
+  sandbox.commitElementEdit('dev', (node) => {
+    node.uses = node.uses.concat(['prd']);
+  });
   same(state.index.technology.get('dev').uses, ['int', 'int.n1', 'prd']);
   assert.equal(manifest(state, 'manifests/env.dev.yaml').dirty, true);
   assert.equal(manifest(state, 'manifests/env.prd.yaml').dirty, false);
   assert.match(sandbox.renderElementEditionFormHtml('dev'), /data-action="remove-use"[^>]*data-index="2"/);
-  assert.doesNotMatch(sandbox.renderElementEditionFormHtml('int.n1'), /add-use-input/, 'only an environment has a Uses section');
+  assert.doesNotMatch(
+    sandbox.renderElementEditionFormHtml('int.n1'),
+    /add-use-input/,
+    'only an environment has a Uses section'
+  );
 });
 
 test('renaming an environment or a node rewrites the uses that point to it', async () => {
   const { sandbox, state } = await openMem(USES);
-  sandbox.commitElementEdit('int', (node) => { node.id = 'integration'; return { renamedTo: { from: 'int', to: 'integration' } }; });
+  sandbox.commitElementEdit('int', (node) => {
+    node.id = 'integration';
+    return { renamedTo: { from: 'int', to: 'integration' } };
+  });
   same(state.index.technology.get('dev').uses, ['integration', 'integration.n1']);
   assert.equal(manifest(state, 'manifests/env.dev.yaml').dirty, true);
-  assert.equal(sandbox.parseManifestText(manifest(state, 'manifests/env.dev.yaml').rawText).content.uses[0], 'integration', 'the text to save is regenerated');
+  assert.equal(
+    sandbox.parseManifestText(manifest(state, 'manifests/env.dev.yaml').rawText).content.uses[0],
+    'integration',
+    'the text to save is regenerated'
+  );
   assert.equal(state.relationshipStats.dangling, 0);
 });
 
 test('deleting an environment or a node takes it off the uses, and says so first', async () => {
   const { sandbox, state } = await openMem(USES);
   const impact = sandbox.computeDeleteImpact('int.n1', 'technology');
-  assert.ok(impact.affected.some((a) => a.ownerReference === 'dev' && a.label === 'uses' && a.destination === 'int.n1'));
+  assert.ok(
+    impact.affected.some((a) => a.ownerReference === 'dev' && a.label === 'uses' && a.destination === 'int.n1')
+  );
   sandbox.commitDeleteElement('int.n1', 'technology', impact.affected);
   same(state.index.technology.get('dev').uses, ['int']);
 
@@ -693,24 +949,40 @@ test('deleting an environment or a node takes it off the uses, and says so first
 
 test('the details of an element link to its parent, its children and, for an environment, what it uses', async () => {
   const { sandbox } = await openMem(USES);
-  const link = (ref, layer) => new RegExp('data-action="goto-element" data-ref="' + ref + '" data-layer="' + layer + '"');
+  const link = (ref, layer) =>
+    new RegExp('data-action="goto-element" data-ref="' + ref + '" data-layer="' + layer + '"');
 
   const environment = sandbox.renderElementViewHtml('dev');
-  assert.match(environment, /field-label">Parent<\/span><span class="field-value"><span class="muted">none<\/span>/, 'a root has no parent, and says so');
+  assert.match(
+    environment,
+    /field-label">Parent<\/span><span class="field-value"><span class="muted">none<\/span>/,
+    'a root has no parent, and says so'
+  );
   assert.match(environment, link('dev.n', 'technology'), 'its child');
   assert.match(environment, link('int', 'technology'), 'what it uses');
   assert.match(environment, link('int.n1', 'technology'));
 
   const node = sandbox.renderElementViewHtml('int.n1');
-  assert.match(node, /field-label">Parent<\/span><span class="field-value"><button[^>]*data-ref="int"[^>]*>int<\/button> <span class="element-kind-badge">environment</);
-  assert.match(node, /field-label">Children<\/span><span class="field-value"><span class="muted">none/, 'a leaf has no children, and says so');
+  assert.match(
+    node,
+    /field-label">Parent<\/span><span class="field-value"><button[^>]*data-ref="int"[^>]*>int<\/button> <span class="element-kind-badge">environment</
+  );
+  assert.match(
+    node,
+    /field-label">Children<\/span><span class="field-value"><span class="muted">none/,
+    'a leaf has no children, and says so'
+  );
   assert.doesNotMatch(node, /field-label">Uses/, 'only an environment uses');
 });
 
 test('the details of an element of the application layer link to the application layer', async () => {
   const { sandbox } = await openFixtureMem();
   const html = sandbox.renderElementViewHtml('shop.web');
-  assert.match(html, /data-ref="shop" data-layer="application"/, 'the parent, which a manifest attached with header.parent lands on');
+  assert.match(
+    html,
+    /data-ref="shop" data-layer="application"/,
+    'the parent, which a manifest attached with header.parent lands on'
+  );
   assert.match(html, /data-ref="shop.web.frontend" data-layer="application"/);
 });
 
@@ -728,9 +1000,14 @@ test('the title of the page is the editor, then the folder whose workspace is lo
 });
 
 test('the details of a node link to the applications it hosts, and only to those', async () => {
-  const { sandbox, state } = await openMem(Object.assign({}, TWO_LAYERS, {
-    'manifests/env.big.yaml': ENVIRONMENT('big', '  elements:\n    - kind: "node"\n      id: "a"\n      applications:\n        - "hub.core"\n      elements:\n        - kind: "node"\n          id: "b"\n          applications:\n            - "nowhere"\n')
-  }));
+  const { sandbox, state } = await openMem(
+    Object.assign({}, TWO_LAYERS, {
+      'manifests/env.big.yaml': ENVIRONMENT(
+        'big',
+        '  elements:\n    - kind: "node"\n      id: "a"\n      applications:\n        - "hub.core"\n      elements:\n        - kind: "node"\n          id: "b"\n          applications:\n            - "nowhere"\n'
+      )
+    })
+  );
   const app = (ref) => new RegExp('data-ref="' + ref + '" data-layer="application"');
 
   state.selection = { kind: 'element', key: 'big.a', layer: 'technology', mode: 'view' };
@@ -740,35 +1017,63 @@ test('the details of a node link to the applications it hosts, and only to those
   assert.doesNotMatch(node, /nowhere/, 'not what the nodes inside it host');
 
   state.selection = { kind: 'element', key: 'big.a.b', layer: 'technology', mode: 'view' };
-  assert.match(sandbox.renderElementViewHtml('big.a.b'), /nowhere<span class="dangling-badge">/, 'an application that does not exist is flagged');
+  assert.match(
+    sandbox.renderElementViewHtml('big.a.b'),
+    /nowhere<span class="dangling-badge">/,
+    'an application that does not exist is flagged'
+  );
 
   state.selection = { kind: 'element', key: 'big', layer: 'technology', mode: 'view' };
-  assert.doesNotMatch(sandbox.renderElementViewHtml('big'), /field-label">Applications/, 'an environment hosts nothing itself, the row is not for it');
+  assert.doesNotMatch(
+    sandbox.renderElementViewHtml('big'),
+    /field-label">Applications/,
+    'an environment hosts nothing itself, the row is not for it'
+  );
 
   state.selection = { kind: 'element', key: 'hub', layer: 'application', mode: 'view' };
-  assert.doesNotMatch(sandbox.renderElementViewHtml('hub'), /field-label">Applications/, 'an application element has none');
+  assert.doesNotMatch(
+    sandbox.renderElementViewHtml('hub'),
+    /field-label">Applications/,
+    'an application element has none'
+  );
 });
 
 test('the details of every element follow the same rules: the same rows in the same order, a reference is always a link and its kind', async () => {
-  const { sandbox } = await openMem(Object.assign({}, TWO_LAYERS, {
-    'manifests/env.big.yaml': ENVIRONMENT('big', '  uses:\n    - "hub"\n    - "gone"\n  elements:\n    - kind: "node"\n      id: "a"\n      applications:\n        - "hub.core"\n        - "nowhere"\n')
-  }));
+  const { sandbox } = await openMem(
+    Object.assign({}, TWO_LAYERS, {
+      'manifests/env.big.yaml': ENVIRONMENT(
+        'big',
+        '  uses:\n    - "hub"\n    - "gone"\n  elements:\n    - kind: "node"\n      id: "a"\n      applications:\n        - "hub.core"\n        - "nowhere"\n'
+      )
+    })
+  );
   const labels = (html) => [...html.matchAll(/field-label">([A-Za-z]+)/g)].map((m) => m[1]);
   const base = ['Id', 'Reference', 'Name', 'Description', 'Qualifiers', 'Tags', 'Parent', 'Children'];
 
   assert.deepEqual(labels(sandbox.renderElementViewHtml('big')), base.concat(['Uses', 'Relationships']));
   assert.deepEqual(labels(sandbox.renderElementViewHtml('big.a')), base.concat(['Applications', 'Relationships']));
   assert.deepEqual(labels(sandbox.renderElementViewHtml('hub')), base.concat(['Relationships']));
-  assert.doesNotMatch(sandbox.renderElementViewHtml('big'), /element-quantitative|class="stat"/, 'the counts are in the labels');
+  assert.doesNotMatch(
+    sandbox.renderElementViewHtml('big'),
+    /element-quantitative|class="stat"/,
+    'the counts are in the labels'
+  );
 
   const environment = sandbox.renderElementViewHtml('big');
   assert.match(environment, /field-label">Children <span class="field-count">1</);
   assert.match(environment, /field-label">Uses <span class="field-count">2</);
-  assert.match(environment, /data-ref="hub"[^>]*>hub<\/button> <span class="element-kind-badge">environment</, 'a link, then the kind of what it points at');
+  assert.match(
+    environment,
+    /data-ref="hub"[^>]*>hub<\/button> <span class="element-kind-badge">environment</,
+    'a link, then the kind of what it points at'
+  );
   assert.match(environment, /gone<span class="dangling-badge">dangling/, 'a reference that leads nowhere says so');
 
   const node = sandbox.renderElementViewHtml('big.a');
-  assert.match(node, /data-ref="hub.core" data-layer="application">hub.core<\/button> <span class="element-kind-badge">/);
+  assert.match(
+    node,
+    /data-ref="hub.core" data-layer="application">hub.core<\/button> <span class="element-kind-badge">/
+  );
   assert.match(node, /nowhere<span class="dangling-badge">dangling/);
 });
 
@@ -776,40 +1081,70 @@ test('an element without any relationship has no Overview to open, while Detaile
   const { sandbox, state } = await openMem(USES);
   state.selection = { kind: 'element', key: 'prd', layer: 'technology', mode: 'view' };
   ev(sandbox, "currentPerspective = 'elements'; elementTab = 'details'; diagramFacet = null;");
-  const list = ['details', 'overview', 'detailed', 'deep'].map((tab) => ({ tab, disabled: false, title: '', getAttribute: () => tab }));
+  const list = ['details', 'overview', 'detailed', 'deep'].map((tab) => ({
+    tab,
+    disabled: false,
+    title: '',
+    getAttribute: () => tab
+  }));
   sandbox.document.querySelector = () => ({ querySelectorAll: () => list });
   await sandbox.markElementTabs();
-  assert.deepEqual(list.filter((b) => b.disabled).map((b) => b.tab), ['overview']);
+  assert.deepEqual(
+    list.filter((b) => b.disabled).map((b) => b.tab),
+    ['overview']
+  );
 });
 
 test('the navigation sorts its rows by kind (solution, system, container, component...) then by name, wherever the manifests put them', async () => {
   const { sandbox } = await openMem({
     '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
-    'manifests/sol.yaml': SOLUTION('zeta', '  elements:\n    - kind: "system"\n      id: "b"\n      name: "Beta"\n    - kind: "system"\n      id: "p"\n      name: "Pat"\n    - kind: "system"\n      id: "a"\n      name: "alpha"\n    - kind: "system"\n      id: "c"\n'),
+    'manifests/sol.yaml': SOLUTION(
+      'zeta',
+      '  elements:\n    - kind: "system"\n      id: "b"\n      name: "Beta"\n    - kind: "system"\n      id: "p"\n      name: "Pat"\n    - kind: "system"\n      id: "a"\n      name: "alpha"\n    - kind: "system"\n      id: "c"\n'
+    ),
     'manifests/sol2.yaml': SOLUTION('alpha'),
-    'manifests/env.yaml': ENVIRONMENT('e2', '  elements:\n    - kind: "node"\n      id: "n2"\n    - kind: "node"\n      id: "n1"\n')
+    'manifests/env.yaml': ENVIRONMENT(
+      'e2',
+      '  elements:\n    - kind: "node"\n      id: "n2"\n    - kind: "node"\n      id: "n1"\n'
+    )
   });
-  ev(sandbox, "treeExpandedApplications = true; treeExpandedEnvironments = true;");
+  ev(sandbox, 'treeExpandedApplications = true; treeExpandedEnvironments = true;');
   const rows = (html) => [...html.matchAll(/data-node="([^"]+)"/g)].map((m) => m[1]);
   const kinds = (ref) => ev(sandbox, 'AppState.index.application.get(' + JSON.stringify(ref) + ').kind');
   // top level: both solutions by name; then, once zeta is open, its children by kind then name
   ev(sandbox, "AppState.expanded.add('application:zeta'); AppState.expanded.add('technology:e2');");
   const nav = sandbox.renderElementsNavHtml(true);
-  assert.deepEqual(rows(nav), ['application:alpha', 'application:zeta', 'application:zeta.a', 'application:zeta.b', 'application:zeta.c', 'application:zeta.p', 'technology:e2', 'technology:e2.n1', 'technology:e2.n2']);
+  assert.deepEqual(rows(nav), [
+    'application:alpha',
+    'application:zeta',
+    'application:zeta.a',
+    'application:zeta.b',
+    'application:zeta.c',
+    'application:zeta.p',
+    'technology:e2',
+    'technology:e2.n1',
+    'technology:e2.n2'
+  ]);
   assert.equal(kinds('zeta.p'), 'system');
 });
 
 test('a facet that hides the elements with no link is read, given to the kernel, and written back only when it is on', async () => {
-  const { sandbox, state } = await openMem(Object.assign({}, USES, {
-    '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n  facets:\n    customs:\n      - name: "flow"\n        hide-unlinked: true\n        actions:\n          - operator: "REMOVE"\n            json-path: "$.application..relationships[?(@.tags.x != \'y\')]"\n      - name: "plain"\n        actions: []\n'
-  }));
+  const { sandbox, state } = await openMem(
+    Object.assign({}, USES, {
+      '.archicode.yaml':
+        'settings:\n  manifests:\n    paths:\n      - manifests\n  facets:\n    customs:\n      - name: "flow"\n        hide-unlinked: true\n        actions:\n          - operator: "REMOVE"\n            json-path: "$.application..relationships[?(@.tags.x != \'y\')]"\n      - name: "plain"\n        actions: []\n'
+    })
+  );
   const [flow, plain] = state.workspace.settings.facets.customs;
   assert.equal(flow.hideUnlinked, true);
   assert.equal(plain.hideUnlinked, false);
   assert.equal(sandbox.buildKernelInput('overview', 'dev', { facet: flow }).input.facet.hide_unlinked, true);
   assert.equal(sandbox.buildKernelInput('overview', 'dev', { facet: plain }).input.facet.hide_unlinked, false);
 
-  const written = ev(sandbox, 'JSON.parse(JSON.stringify(serializeManagedSettings(AppState.workspace.settings).facets.customs))');
+  const written = ev(
+    sandbox,
+    'JSON.parse(JSON.stringify(serializeManagedSettings(AppState.workspace.settings).facets.customs))'
+  );
   assert.equal(written[0]['hide-unlinked'], true);
   assert.equal('hideUnlinked' in written[0], false, 'the key of the file, not the one of the model');
   assert.equal('hide-unlinked' in written[1], false, 'nothing written for the default');
@@ -819,18 +1154,26 @@ test('a facet that hides the elements with no link is read, given to the kernel,
 test('Cancel sits with "Save all changes", is enabled by the same things, and gives every unsaved change up', async () => {
   const { sandbox } = await openFixtureMem();
   const group = () => sandbox.renderSaveAllButtonHtml();
-  assert.match(group(), /role="group" aria-label="Changes"><button[^>]* data-action="cancel-changes" disabled[^>]*>Cancel<\/button><button[^>]* data-action="save-all-changes" disabled/);
+  assert.match(
+    group(),
+    /role="group" aria-label="Changes"><button[^>]* data-action="cancel-changes" disabled[^>]*>Cancel<\/button><button[^>]* data-action="save-all-changes" disabled/
+  );
 
   // a change in memory enables both
   const before = JSON.stringify(sandbox.locateContentNode('shop.web.api').node);
-  sandbox.commitElementEdit('shop.web.api', (node) => { node.name = 'Changed'; });
+  sandbox.commitElementEdit('shop.web.api', (node) => {
+    node.name = 'Changed';
+  });
   assert.doesNotMatch(group(), /disabled/);
   assert.equal(sandbox.locateContentNode('shop.web.api').node.name, 'Changed');
 
   // refused: nothing happens
   let answer = false;
   const asked = [];
-  sandbox.confirm = (m) => { asked.push(m); return answer; };
+  sandbox.confirm = (m) => {
+    asked.push(m);
+    return answer;
+  };
   await sandbox.cancelChanges();
   assert.equal(asked.length, 1);
   assert.match(asked[0], /1 modified item/);
@@ -864,14 +1207,24 @@ function storySandbox(sandbox, answers) {
     open.add();
     if (!dialogOpen()) return;
     const answer = answers.shift();
-    if (answer === undefined) { sandbox.closeAppDialog(); return; }
-    sandbox.submitAppDialog(/^\d+$/.test(answer) ? { choice: sandbox.storiesSorted()[Number(answer) - 1].id } : { choice: '__new__', newName: answer });
+    if (answer === undefined) {
+      sandbox.closeAppDialog();
+      return;
+    }
+    sandbox.submitAppDialog(
+      /^\d+$/.test(answer)
+        ? { choice: sandbox.storiesSorted()[Number(answer) - 1].id }
+        : { choice: '__new__', newName: answer }
+    );
   };
   sandbox.nameCurrentView = () => {
     open.name();
     if (!dialogOpen()) return;
     const answer = answers.shift();
-    if (answer === undefined) { sandbox.closeAppDialog(); return; }
+    if (answer === undefined) {
+      sandbox.closeAppDialog();
+      return;
+    }
     sandbox.submitAppDialog({ text: answer });
   };
 }
@@ -880,7 +1233,11 @@ const showApi = (sandbox, state) => {
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   ev(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'");
 };
-const dirtyPaths = (state) => state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath).sort();
+const dirtyPaths = (state) =>
+  state.manifestFiles
+    .filter((f) => f.dirty)
+    .map((f) => f.relPath)
+    .sort();
 
 test('a diagram goes in a story as a step of its own; only a view that was named is pointed at; each is a file', async () => {
   const { sandbox, state } = await openFixtureMem();
@@ -890,7 +1247,11 @@ test('a diagram goes in a story as a step of its own; only a view that was named
   assert.equal(sandbox.currentViewDefinition(), null, 'no diagram on screen, nothing to keep');
 
   showApi(sandbox, state);
-  same(sandbox.currentViewDefinition(), { viewpoint: 'overview', layer: 'application', properties: { element: 'shop.web.api' } });
+  same(sandbox.currentViewDefinition(), {
+    viewpoint: 'overview',
+    layer: 'application',
+    properties: { element: 'shop.web.api' }
+  });
   assert.equal(state.workspace.settingsDirty, false);
 
   sandbox.addCurrentViewToStory();
@@ -918,11 +1279,22 @@ test('a diagram goes in a story as a step of its own; only a view that was named
   assert.equal(story.steps.length, 2);
 
   // the map has its own recipe, sorted so that equal maps are equal text
-  ev(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['customer']; mapOpened = new Set(['shop.web', 'shop'])");
+  ev(
+    sandbox,
+    "currentPerspective = 'map'; mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['customer']; mapOpened = new Set(['shop.web', 'shop'])"
+  );
   sandbox.addCurrentViewToStory();
-  same(story.steps[2], { viewpoint: 'map', layer: 'application', properties: { pinned: ['mailer', 'shop.web.api'], hidden: ['customer'], opened: ['shop', 'shop.web'] } });
+  same(story.steps[2], {
+    viewpoint: 'map',
+    layer: 'application',
+    properties: { pinned: ['mailer', 'shop.web.api'], hidden: ['customer'], opened: ['shop', 'shop.web'] }
+  });
   assert.equal(sandbox.countUnsavedChanges(), 2, 'two files, whatever the number of steps');
-  assert.equal(state.index.application.size, elementsBefore, 'the elements are what they were: a view or a story is not one');
+  assert.equal(
+    state.index.application.size,
+    elementsBefore,
+    'the elements are what they were: a view or a story is not one'
+  );
   assert.equal(file.error, null);
 });
 
@@ -931,11 +1303,17 @@ test('walking a story puts the editor back where each view was saved, and the UR
   storySandbox(sandbox, ['Tour', '1', '1']);
   showApi(sandbox, state);
   sandbox.addCurrentViewToStory();
-  ev(sandbox, "currentPerspective = 'map'; mapPinned = ['mailer']; mapHidden = ['customer']; mapOpened = new Set(['shop']); diagramHideUnlinked = true");
+  ev(
+    sandbox,
+    "currentPerspective = 'map'; mapPinned = ['mailer']; mapHidden = ['customer']; mapOpened = new Set(['shop']); diagramHideUnlinked = true"
+  );
   sandbox.addCurrentViewToStory();
   const storyId = sandbox.storiesList()[0].id;
 
-  ev(sandbox, "currentPerspective = 'files'; mapPinned = []; mapHidden = []; mapOpened = null; diagramHideUnlinked = false");
+  ev(
+    sandbox,
+    "currentPerspective = 'files'; mapPinned = []; mapHidden = []; mapOpened = null; diagramHideUnlinked = false"
+  );
   sandbox.goToStoryStep(storyId, 1);
   assert.equal(ev(sandbox, 'currentPerspective'), 'map');
   same(ev(sandbox, 'mapPinned'), ['mailer']);
@@ -950,7 +1328,11 @@ test('walking a story puts the editor back where each view was saved, and the UR
   assert.equal(ev(sandbox, 'currentPerspective'), 'elements');
   assert.equal(state.selection.key, 'shop.web.api');
   assert.equal(ev(sandbox, 'elementTab'), 'overview');
-  assert.doesNotMatch(sandbox.renderStoryBarHtml(), /data-action="story-(prev|next)"/, 'Previous and Next are the player\'s (wave 021, run 0153), not the bar\'s');
+  assert.doesNotMatch(
+    sandbox.renderStoryBarHtml(),
+    /data-action="story-(prev|next)"/,
+    "Previous and Next are the player's (wave 021, run 0153), not the bar's"
+  );
 
   ev(sandbox, 'activeStory = null');
   sandbox.applyDiagramParamsFromHash();
@@ -975,7 +1357,11 @@ test('the words of a step are typed straight into the story, and only its file i
   assert.ok(mem.files.has('manifests/story.tour.yaml'));
   assert.equal(sandbox.countUnsavedChanges(), 0);
 
-  const field = (name, value, step) => ({ value, getAttribute: (a) => ({ 'data-story': story.id, 'data-story-field': name, 'data-step': step === undefined ? null : String(step) })[a] });
+  const field = (name, value, step) => ({
+    value,
+    getAttribute: (a) =>
+      ({ 'data-story': story.id, 'data-story-field': name, 'data-step': step === undefined ? null : String(step) })[a]
+  });
   sandbox.updateStoryField(field('step-text', 'The API answers.\nIt checks the stock first.', 0));
   sandbox.updateStoryField(field('description', 'How an order travels'));
   sandbox.updateStoryField(field('name', 'The order'));
@@ -989,7 +1375,11 @@ test('the words of a step are typed straight into the story, and only its file i
   const writesBefore = mem.writes.length;
   await sandbox.saveAllChanges();
   same(mem.writes.slice(writesBefore), ['manifests/story.tour.yaml'], 'nothing else is rewritten');
-  assert.equal(mem.files.get('.archicode.yaml').text, workspaceBefore, '.archicode.yaml is not touched, nor its comments');
+  assert.equal(
+    mem.files.get('.archicode.yaml').text,
+    workspaceBefore,
+    '.archicode.yaml is not touched, nor its comments'
+  );
 
   const again = createApp();
   await again.loadWorkspace(mem.handle);
@@ -1012,15 +1402,28 @@ test('steps move, go; a story or a view is deleted with its file; what was never
   sandbox.addCurrentViewToStory(); // step 2: inline map
   const story = sandbox.storiesList()[0];
   const catalogView = sandbox.savedViews()[0].id;
-  same(story.steps.map((s) => s.view || s.viewpoint), ['overview', catalogView, 'map']);
+  same(
+    story.steps.map((s) => s.view || s.viewpoint),
+    ['overview', catalogView, 'map']
+  );
 
   sandbox.moveStoryStep(story.id, 2, -1);
-  same(story.steps.map((s) => s.view || s.viewpoint), ['overview', 'map', catalogView]);
+  same(
+    story.steps.map((s) => s.view || s.viewpoint),
+    ['overview', 'map', catalogView]
+  );
   same(ev(sandbox, 'activeStory'), { id: story.id, step: 1 }, 'the step being told moves with it');
   sandbox.moveStoryStep(story.id, 0, -1);
-  same(story.steps.map((s) => s.view || s.viewpoint), ['overview', 'map', catalogView], 'the first step does not go up');
+  same(
+    story.steps.map((s) => s.view || s.viewpoint),
+    ['overview', 'map', catalogView],
+    'the first step does not go up'
+  );
   sandbox.removeStoryStep(story.id, 0);
-  same(story.steps.map((s) => s.view || s.viewpoint), ['map', catalogView]);
+  same(
+    story.steps.map((s) => s.view || s.viewpoint),
+    ['map', catalogView]
+  );
   same(ev(sandbox, 'activeStory'), { id: story.id, step: 0 });
   sandbox.addStoryStep(story.id, catalogView);
   assert.equal(story.steps.length, 3);
@@ -1030,7 +1433,11 @@ test('steps move, go; a story or a view is deleted with its file; what was never
   sandbox.deleteSavedView(catalogView);
   assert.equal(sandbox.savedViews().length, 0);
   same(state.pendingFileRemovals, []);
-  assert.match(sandbox.renderStoryStepHtml(story, story.steps[1], 1, 3), /Missing view/, 'a step on a deleted view says so');
+  assert.match(
+    sandbox.renderStoryStepHtml(story, story.steps[1], 1, 3),
+    /Missing view/,
+    'a step on a deleted view says so'
+  );
 
   // written, then deleted: the file goes with the next save
   await sandbox.saveAllChanges();
@@ -1050,19 +1457,33 @@ test('renaming or deleting an element: the views and the steps that point at it 
   showApi(sandbox, state);
   sandbox.nameCurrentView(); // a named view on the api
   sandbox.addCurrentViewToStory(); // step 0 points at it
-  ev(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web'])");
+  ev(
+    sandbox,
+    "currentPerspective = 'map'; mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web'])"
+  );
   sandbox.addCurrentViewToStory(); // step 1 carries its own map
   const story = sandbox.storiesList()[0];
   const view = sandbox.savedViews()[0];
   for (const f of state.manifestFiles) f.dirty = false;
 
-  sandbox.commitElementEdit('shop', (node) => { node.id = 'store'; return { renamedTo: { from: 'shop', to: 'store' } }; });
+  sandbox.commitElementEdit('shop', (node) => {
+    node.id = 'store';
+    return { renamedTo: { from: 'shop', to: 'store' } };
+  });
   assert.equal(view.properties.element, 'store.web.api');
   same(story.steps[1].properties.pinned, ['mailer', 'store.web.api']);
   same(story.steps[1].properties.hidden, ['store.catalog']);
   same(story.steps[1].properties.opened, ['store', 'store.web']);
-  assert.ok(dirtyPaths(state).includes('manifests/view.named_api.yaml') && dirtyPaths(state).includes('manifests/story.tour.yaml'), 'the files that follow are written');
-  assert.match(manifest(state, 'manifests/view.named_api.yaml').rawText, /element: store\.web\.api/, 'the text to save follows too');
+  assert.ok(
+    dirtyPaths(state).includes('manifests/view.named_api.yaml') &&
+      dirtyPaths(state).includes('manifests/story.tour.yaml'),
+    'the files that follow are written'
+  );
+  assert.match(
+    manifest(state, 'manifests/view.named_api.yaml').rawText,
+    /element: store\.web\.api/,
+    'the text to save follows too'
+  );
   assert.equal(sandbox.stepProblem(story.steps[0]), null);
 
   sandbox.commitDeleteElement('store', 'application', []);
@@ -1073,7 +1494,11 @@ test('renaming or deleting an element: the views and the steps that point at it 
   assert.equal(ev(sandbox, 'currentPerspective'), 'map', 'the story bar stays, on a diagram: the way on is open');
   const bar = sandbox.renderStoryBarHtml();
   assert.match(bar, /Step 1 cannot be shown/);
-  assert.doesNotMatch(bar, /data-action="story-(prev|next)"/, 'the way on is the player\'s (story-player-modal.test.js)');
+  assert.doesNotMatch(
+    bar,
+    /data-action="story-(prev|next)"/,
+    "the way on is the player's (story-player-modal.test.js)"
+  );
   assert.doesNotMatch(bar, /Back to this step/, 'nothing to go back to');
   assert.match(sandbox.renderLibraryPerspectiveHtml().center, /story-step broken/);
   sandbox.goToStoryStep(story.id, 1);
@@ -1103,7 +1528,11 @@ test('a technology view is kept with its layer, and the Stories page offers the 
   ev(sandbox, "currentPerspective = 'library'");
   const page = sandbox.renderLibraryPerspectiveHtml();
   assert.match(page.left, /data-action="select-story"/);
-  assert.match(page.left, /class="tree-branch-header static"/, 'the heading of the list is the one of the Elements tree');
+  assert.match(
+    page.left,
+    /class="tree-branch-header static"/,
+    'the heading of the list is the one of the Elements tree'
+  );
   assert.doesNotMatch(page.center, /Saved views/, 'the views are a side of their own, not a list under the story');
   assert.match(page.center, /data-action="library-tab" data-tab="views" aria-pressed="false"/);
   assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="library"[^]*Stories/);
@@ -1129,7 +1558,14 @@ test('the Library has a Stories side and a Views side that lead to one another, 
   assert.match(sandbox.currentRouteHash(), /story=/);
 
   // the link opens the Views side on that view, which says which steps show it
-  sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': 'library-go-view', 'data-view': viewId })[a], closest: () => null }) } });
+  sandbox.handleAppClick({
+    target: {
+      closest: () => ({
+        getAttribute: (a) => ({ 'data-action': 'library-go-view', 'data-view': viewId })[a],
+        closest: () => null
+      })
+    }
+  });
   assert.equal(ev(sandbox, 'libraryTab'), 'views');
   page = sandbox.renderLibraryPerspectiveHtml();
   assert.match(page.left, /data-action="select-view"/);
@@ -1153,7 +1589,8 @@ test('the Library has a Stories side and a Views side that lead to one another, 
 
 test('views and stories that older workspaces keep in .archicode.yaml are read and edited there, and "Move to manifests" takes them out', async () => {
   const files = {
-    '.archicode.yaml': '# my workspace\nviews:\n  - id: old_view\n    viewpoint: overview\n    layer: application\n    properties:\n      element: shop\nstories:\n  - id: old_story\n    name: Old\n    steps:\n      - view: old_view\n        text: first\nsettings:\n  manifests:\n    paths:\n      - manifests\n',
+    '.archicode.yaml':
+      '# my workspace\nviews:\n  - id: old_view\n    viewpoint: overview\n    layer: application\n    properties:\n      element: shop\nstories:\n  - id: old_story\n    name: Old\n    steps:\n      - view: old_view\n        text: first\nsettings:\n  manifests:\n    paths:\n      - manifests\n',
     'manifests/app.shop.yaml': SOLUTION('shop')
   };
   const { sandbox, state, mem } = await openMem(files);
@@ -1164,7 +1601,10 @@ test('views and stories that older workspaces keep in .archicode.yaml are read a
   assert.match(sandbox.renderLibraryPerspectiveHtml().center, /1 view and 1 story are still in \.archicode\.yaml/);
 
   // edited where they are: .archicode.yaml is what is written
-  sandbox.updateStoryField({ value: 'changed', getAttribute: (a) => ({ 'data-story': 'old_story', 'data-story-field': 'step-text', 'data-step': '0' })[a] });
+  sandbox.updateStoryField({
+    value: 'changed',
+    getAttribute: (a) => ({ 'data-story': 'old_story', 'data-story-field': 'step-text', 'data-step': '0' })[a]
+  });
   assert.equal(state.workspace.settingsDirty, true);
   assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 0);
 
@@ -1190,17 +1630,25 @@ test('a view or a story manifest is a file like the others: listed, edited as te
   const { sandbox, state } = await openMem({
     '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
     'manifests/app.shop.yaml': SOLUTION('shop'),
-    'manifests/view.v.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  viewpoint: "overview"\n  properties:\n    element: "shop"\n',
-    'manifests/story.s.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  steps:\n    - view: "v"\n'
+    'manifests/view.v.yaml':
+      'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  viewpoint: "overview"\n  properties:\n    element: "shop"\n',
+    'manifests/story.s.yaml':
+      'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  steps:\n    - view: "v"\n'
   });
-  assert.ok(state.manifestFiles.every((f) => f.error === null), 'no "Unrecognized header.kind"');
+  assert.ok(
+    state.manifestFiles.every((f) => f.error === null),
+    'no "Unrecognized header.kind"'
+  );
   same(sorted(state.index.application.keys()), ['shop']);
   assert.equal(sandbox.storiesList().length, 1);
   assert.equal(sandbox.stepProblem(sandbox.storiesList()[0].steps[0]), null);
 
   // edited as raw YAML, it is read again
   sandbox.render = () => {};
-  sandbox.commitFileEdit('manifests/story.s.yaml', 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  name: "Renamed"\n  steps:\n    - view: "v"\n    - view: "nowhere"\n');
+  sandbox.commitFileEdit(
+    'manifests/story.s.yaml',
+    'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  name: "Renamed"\n  steps:\n    - view: "v"\n    - view: "nowhere"\n'
+  );
   assert.equal(sandbox.storiesList()[0].name, 'Renamed');
   assert.match(sandbox.stepProblem(sandbox.storiesList()[0].steps[1]), /“nowhere” does not exist/);
   assert.equal(manifest(state, 'manifests/story.s.yaml').dirty, true);
@@ -1212,7 +1660,11 @@ test('the picker puts a diagram in a story without ever duplicating one, and say
   showApi(sandbox, state);
   sandbox.addCurrentViewToStory();
   assert.equal(ev(sandbox, 'appDialog').kind, 'story-picker');
-  assert.match(sandbox.renderAppDialogHtml(), /role="dialog" aria-modal="true"[^]*name="story-choice" value="__new__" checked/, 'no story yet: the new one is picked');
+  assert.match(
+    sandbox.renderAppDialogHtml(),
+    /role="dialog" aria-modal="true"[^]*name="story-choice" value="__new__" checked/,
+    'no story yet: the new one is picked'
+  );
 
   // a name is needed, and the dialog stays
   sandbox.submitAppDialog({ choice: '__new__', newName: '  ' });
@@ -1243,22 +1695,44 @@ test('the picker puts a diagram in a story without ever duplicating one, and say
 test('the dialogs of the editor: Escape and a click beside close them, Enter in a field submits, the focus comes back', async () => {
   const { sandbox, state } = await openFixtureMem();
   sandbox.render = () => {};
-  const key = (k, target) => { const e = { key: k, target, prevented: false, preventDefault() { this.prevented = true; }, stopPropagation() {} }; sandbox.handleAppDialogKeydown(e); return e; };
+  const key = (k, target) => {
+    const e = {
+      key: k,
+      target,
+      prevented: false,
+      preventDefault() {
+        this.prevented = true;
+      },
+      stopPropagation() {}
+    };
+    sandbox.handleAppDialogKeydown(e);
+    return e;
+  };
   showApi(sandbox, state);
-  sandbox.document.activeElement = { closest: () => ({ getAttribute: (a) => ({ 'data-action': 'add-to-story' })[a] || null }) };
+  sandbox.document.activeElement = {
+    closest: () => ({ getAttribute: (a) => ({ 'data-action': 'add-to-story' })[a] || null })
+  };
   sandbox.addCurrentViewToStory();
   assert.equal(ev(sandbox, 'appDialog').returnFocus, '[data-action="add-to-story"]');
   key('Escape');
   assert.equal(ev(sandbox, 'appDialog'), null);
-  assert.equal(ev(sandbox, 'pendingFocusSelector'), '[data-action="add-to-story"]', 'back on the button that opened it');
+  assert.equal(
+    ev(sandbox, 'pendingFocusSelector'),
+    '[data-action="add-to-story"]',
+    'back on the button that opened it'
+  );
 
   sandbox.addCurrentViewToStory();
-  sandbox.handleAppClick({ target: { classList: { contains: (c) => c === 'app-dialog-backdrop' }, closest: () => null } });
+  sandbox.handleAppClick({
+    target: { classList: { contains: (c) => c === 'app-dialog-backdrop' }, closest: () => null }
+  });
   assert.equal(ev(sandbox, 'appDialog'), null, 'a click beside it');
 
   // a text dialog: Enter submits what is typed, an empty name is refused
   let named = null;
-  sandbox.openTextDialog('Name', 'Name', '', 'OK', (text) => { named = text; });
+  sandbox.openTextDialog('Name', 'Name', '', 'OK', (text) => {
+    named = text;
+  });
   sandbox.document.querySelector = (selector) => (selector === '[data-dialog-text]' ? { value: '   ' } : null);
   key('Enter', { matches: (s) => s === 'input[type="text"]' });
   assert.equal(named, null);
@@ -1283,16 +1757,28 @@ test('the step controls keep the keyboard focus, a removed step can be put back,
   const focus = () => ev(sandbox, 'pendingFocusSelector');
 
   sandbox.moveStoryStep(story.id, 0, 1);
-  assert.equal(focus(), '[data-action="story-step-down"][data-story="tour"][data-step="1"]', 'the same button, on the step that moved');
+  assert.equal(
+    focus(),
+    '[data-action="story-step-down"][data-story="tour"][data-step="1"]',
+    'the same button, on the step that moved'
+  );
   sandbox.moveStoryStep(story.id, 1, 1);
-  assert.equal(focus(), '[data-action="story-step-up"][data-story="tour"][data-step="2"]', 'at the end Down is off: the other button');
+  assert.equal(
+    focus(),
+    '[data-action="story-step-up"][data-story="tour"][data-step="2"]',
+    'at the end Down is off: the other button'
+  );
   sandbox.moveStoryStep(story.id, 2, -1);
   assert.equal(focus(), '[data-action="story-step-up"][data-story="tour"][data-step="1"]');
 
   const before = JSON.stringify(story.steps);
   sandbox.removeStoryStep(story.id, 1);
   assert.equal(story.steps.length, 2);
-  assert.equal(focus(), '[data-action="story-step-remove"][data-story="tour"][data-step="1"]', 'the step that took its place');
+  assert.equal(
+    focus(),
+    '[data-action="story-step-remove"][data-story="tour"][data-step="1"]',
+    'the step that took its place'
+  );
   assert.match(sandbox.renderStoryEditorHtml(story), /Step 2 removed\. <button[^>]*data-action="story-undo"/);
   sandbox.undoRemoveStoryStep();
   assert.equal(JSON.stringify(story.steps), before, 'back where it was');
@@ -1318,8 +1804,15 @@ test('the Stories page opens on a story, in the order of their names; a view of 
   assert.equal(ev(sandbox, 'selectedStoryId'), 'alpha_story', 'a story is open when there is one');
   assert.match(page.center, /element-header-subject">Alpha story/, 'its name is in the header');
   assert.ok(page.left.indexOf('Alpha story') < page.left.indexOf('Zeta story'));
-  assert.ok(page.left.indexOf('story-new') < page.left.indexOf('Alpha story'), '"New story…" is at the top of the list');
-  assert.doesNotMatch(page.center.slice(0, page.center.indexOf('story-body')), /story-delete/, 'Delete is not next to Play');
+  assert.ok(
+    page.left.indexOf('story-new') < page.left.indexOf('Alpha story'),
+    '"New story…" is at the top of the list'
+  );
+  assert.doesNotMatch(
+    page.center.slice(0, page.center.indexOf('story-body')),
+    /story-delete/,
+    'Delete is not next to Play'
+  );
   assert.match(page.center, /class="btn-danger" data-action="story-delete"/);
 
   // a step that carries its own view says so, and can keep it as a named view
@@ -1337,7 +1830,15 @@ test('the Stories page opens on a story, in the order of their names; a view of 
   state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
   sandbox.nameCurrentView(); // the answer left: Catalog
   assert.match(sandbox.renderLibraryPerspectiveHtml().center, /data-story-repair[^]*Choose another view…[^]*Catalog/);
-  sandbox.handleAppInput({ target: { id: 'x', matches: (s) => s === '[data-story-repair]', value: 'catalog', getAttribute: (a) => ({ 'data-story': 'alpha_story', 'data-step': '0' })[a], closest: () => null } });
+  sandbox.handleAppInput({
+    target: {
+      id: 'x',
+      matches: (s) => s === '[data-story-repair]',
+      value: 'catalog',
+      getAttribute: (a) => ({ 'data-story': 'alpha_story', 'data-step': '0' })[a],
+      closest: () => null
+    }
+  });
   assert.equal(story.steps[0].view, 'catalog');
   assert.equal(sandbox.stepProblem(story.steps[0]), null);
 });
@@ -1348,13 +1849,19 @@ test('the story bar shows the words to read, and a box to type in only on reques
   showApi(sandbox, state);
   sandbox.addCurrentViewToStory();
   assert.match(sandbox.renderStoryBarHtml(), /class="story-bar-text"/, 'just added: ready to type');
-  const click = (action) => sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': action })[a] || null }) } });
+  const click = (action) =>
+    sandbox.handleAppClick({
+      target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': action })[a] || null }) }
+    });
   click('story-bar-edit');
   assert.doesNotMatch(sandbox.renderStoryBarHtml(), /<textarea/);
   assert.match(sandbox.renderStoryBarHtml(), /No words for this step yet/);
   assert.match(sandbox.renderStoryBarHtml(), /aria-pressed="false"[^>]*>Edit text/);
 
-  sandbox.updateStoryField({ value: 'The API answers.', getAttribute: (a) => ({ 'data-story': 'tour', 'data-story-field': 'step-text', 'data-step': '0' })[a] });
+  sandbox.updateStoryField({
+    value: 'The API answers.',
+    getAttribute: (a) => ({ 'data-story': 'tour', 'data-story-field': 'step-text', 'data-step': '0' })[a]
+  });
   assert.match(sandbox.renderStoryBarHtml(), /class="story-bar-words">The API answers\./);
   click('story-bar-edit');
   assert.match(sandbox.renderStoryBarHtml(), /<textarea class="story-bar-text"[^>]*>The API answers\./);

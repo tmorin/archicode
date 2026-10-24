@@ -45,7 +45,12 @@ function generate(rand) {
   const slot = (node, key, flowContext) => ({
     id: uid(),
     key,
-    keyQuote: key !== undefined && !flowContext && rand.chance(0.12) ? rand.pick(['"', "'"]) : (key !== undefined && flowContext && rand.chance(0.1) ? '"' : ''),
+    keyQuote:
+      key !== undefined && !flowContext && rand.chance(0.12)
+        ? rand.pick(['"', "'"])
+        : key !== undefined && flowContext && rand.chance(0.1)
+          ? '"'
+          : '',
     node,
     above: !flowContext && rand.chance(0.25) ? [comment('a')].concat(rand.chance(0.2) ? [comment('b')] : []) : [],
     after: null,
@@ -107,7 +112,12 @@ function generate(rand) {
   });
   // the first entry of a map that is an item of a list shares the dash line: what is above it is the item's
   walk(root, (node) => {
-    if (node.type === 'list') for (const s of node.slots) if (s.node.type === 'map' && !s.node.flow && s.node.slots.length > 0) { s.node.slots[0].above = []; s.node.slots[0].blank = false; }
+    if (node.type === 'list')
+      for (const s of node.slots)
+        if (s.node.type === 'map' && !s.node.flow && s.node.slots.length > 0) {
+          s.node.slots[0].above = [];
+          s.node.slots[0].blank = false;
+        }
   });
   return root;
 }
@@ -150,7 +160,15 @@ function write(root) {
           for (const l of body) add(pad(indent + 2) + l, s, { kind: 'block-body', node: child });
         } else add(pad(indent) + keyText(s) + ': ' + scalarToken(child) + after, s, { kind: 'scalar', node: child });
       } else if (child.slots.length === 0 || child.flow) {
-        add(pad(indent) + keyText(s) + ': ' + (child.slots.length === 0 ? (child.type === 'map' ? '{}' : '[]') : flowText(child)) + after, s, { kind: 'flow', node: child });
+        add(
+          pad(indent) +
+            keyText(s) +
+            ': ' +
+            (child.slots.length === 0 ? (child.type === 'map' ? '{}' : '[]') : flowText(child)) +
+            after,
+          s,
+          { kind: 'flow', node: child }
+        );
       } else {
         add(pad(indent) + keyText(s) + ':' + after, s, { kind: 'header', node: child });
         if (child.type === 'map') writeMapEntries(child, indent + 2);
@@ -171,7 +189,14 @@ function write(root) {
           for (const l of body) add(pad(indent + 2) + l, s, { kind: 'block-body', node: child });
         } else add(pad(indent) + '- ' + scalarToken(child) + after, s, { kind: 'scalar', node: child });
       } else if (child.slots.length === 0 || child.flow) {
-        add(pad(indent) + '- ' + (child.slots.length === 0 ? (child.type === 'map' ? '{}' : '[]') : flowText(child)) + after, s, { kind: 'flow', node: child });
+        add(
+          pad(indent) +
+            '- ' +
+            (child.slots.length === 0 ? (child.type === 'map' ? '{}' : '[]') : flowText(child)) +
+            after,
+          s,
+          { kind: 'flow', node: child }
+        );
       } else if (child.type === 'map') {
         // the first entry shares the line of the dash
         const from = lines.length;
@@ -183,7 +208,11 @@ function write(root) {
         line.text = pad(indent) + '- ' + line.text.slice(indent + 2);
         // the entries' comments written before the first line go above the dash: they are inside the item, so they are moved above it
         const moved = lines.splice(from, first - from);
-        lines.splice(from, 0, ...moved.map((l) => Object.assign({}, l, { text: l.text === '' ? '' : pad(indent) + l.text.trim() })));
+        lines.splice(
+          from,
+          0,
+          ...moved.map((l) => Object.assign({}, l, { text: l.text === '' ? '' : pad(indent) + l.text.trim() }))
+        );
         line.itemSlot = s;
       } else {
         add(pad(indent) + '-' + after, s, { kind: 'dash', node: child });
@@ -200,7 +229,13 @@ function write(root) {
 function clone(node, map = new Map()) {
   // a deep copy that keeps the identity of every node and slot by id (`map` finds the copy of a slot)
   if (node.type === 'scalar') return Object.assign({}, node);
-  const copy = Object.assign({}, node, { slots: node.slots.map((s) => { const c = Object.assign({}, s, { node: clone(s.node, map) }); map.set(s, c); return c; }) });
+  const copy = Object.assign({}, node, {
+    slots: node.slots.map((s) => {
+      const c = Object.assign({}, s, { node: clone(s.node, map) });
+      map.set(s, c);
+      return c;
+    })
+  });
   return copy;
 }
 
@@ -211,7 +246,9 @@ function walk(node, visit, parentNode = null, slot = null) {
 
 function allSlots(root) {
   const slots = [];
-  walk(root, (node, parent, slot) => { if (slot) slots.push({ slot, parent }); });
+  walk(root, (node, parent, slot) => {
+    if (slot) slots.push({ slot, parent });
+  });
   return slots;
 }
 
@@ -223,15 +260,43 @@ function chooseEdit(root, rand) {
   const slots = allSlots(root);
   const lists = [];
   const maps = [];
-  walk(root, (node) => { if (node.type === 'list') lists.push(node); if (node.type === 'map') maps.push(node); });
-  const kinds = ['set', 'set', 'add-item', 'add-item', 'remove-item', 'remove-item', 'add-key', 'remove-key', 'wrap', 'wrap', 'unwrap', 'to-scalar', 'reorder', 'first-key', 'first-key', 'first-key'];
+  walk(root, (node) => {
+    if (node.type === 'list') lists.push(node);
+    if (node.type === 'map') maps.push(node);
+  });
+  const kinds = [
+    'set',
+    'set',
+    'add-item',
+    'add-item',
+    'remove-item',
+    'remove-item',
+    'add-key',
+    'remove-key',
+    'wrap',
+    'wrap',
+    'unwrap',
+    'to-scalar',
+    'reorder',
+    'first-key',
+    'first-key',
+    'first-key'
+  ];
   // the maps that are items of a list and whose second key is a block scalar: the first key is the one that changes (#155, L2)
   const itemMaps = [];
-  walk(root, (node) => { if (node.type === 'list') for (const s of node.slots) if (s.node.type === 'map' && !s.node.flow && s.node.slots.length >= 2 && s.node.slots[1].node.block) itemMaps.push(s.node); });
+  walk(root, (node) => {
+    if (node.type === 'list')
+      for (const s of node.slots)
+        if (s.node.type === 'map' && !s.node.flow && s.node.slots.length >= 2 && s.node.slots[1].node.block)
+          itemMaps.push(s.node);
+  });
   for (let attempt = 0; attempt < 12; attempt++) {
     const kind = rand.pick(kinds);
     if (kind === 'first-key') {
-      if (itemMaps.length) { const map = rand.pick(itemMaps); return { kind: rand.chance(0.5) ? 'add-key' : 'remove-key', target: map.id, at: 0, shape: 'first-key' }; }
+      if (itemMaps.length) {
+        const map = rand.pick(itemMaps);
+        return { kind: rand.chance(0.5) ? 'add-key' : 'remove-key', target: map.id, at: 0, shape: 'first-key' };
+      }
     } else if (kind === 'set') {
       const leaves = slots.filter((s) => s.slot.node.type === 'scalar' && !s.slot.node.block);
       if (leaves.length) return { kind, target: rand.pick(leaves).slot.id };
@@ -240,24 +305,36 @@ function chooseEdit(root, rand) {
       return { kind, target: list.id, at: rand.int(list.slots.length + 1), asMap: rand.chance(0.3) };
     } else if (kind === 'remove-item') {
       const nonEmpty = lists.filter((l) => l.slots.length > 0);
-      if (nonEmpty.length) { const list = rand.pick(nonEmpty); return { kind, target: list.id, at: rand.int(list.slots.length) }; }
+      if (nonEmpty.length) {
+        const list = rand.pick(nonEmpty);
+        return { kind, target: list.id, at: rand.int(list.slots.length) };
+      }
     } else if (kind === 'add-key' && maps.length) {
       const map = rand.pick(maps);
       return { kind, target: map.id, at: rand.int(map.slots.length + 1) };
     } else if (kind === 'remove-key') {
       const nonEmpty = maps.filter((m) => m.slots.length > 0);
-      if (nonEmpty.length) { const map = rand.pick(nonEmpty); return { kind, target: map.id, at: rand.int(map.slots.length) }; }
+      if (nonEmpty.length) {
+        const map = rand.pick(nonEmpty);
+        return { kind, target: map.id, at: rand.int(map.slots.length) };
+      }
     } else if (kind === 'wrap' && slots.length) {
       return { kind, target: rand.pick(slots).slot.id, withMap: rand.chance(0.5), oldFirst: rand.chance(0.5) };
     } else if (kind === 'unwrap') {
       const some = slots.filter((s) => s.slot.node.type === 'list' && s.slot.node.slots.length >= 1);
-      if (some.length) { const t = rand.pick(some); return { kind, target: t.slot.id, keep: rand.int(t.slot.node.slots.length) }; }
+      if (some.length) {
+        const t = rand.pick(some);
+        return { kind, target: t.slot.id, keep: rand.int(t.slot.node.slots.length) };
+      }
     } else if (kind === 'to-scalar') {
       const some = slots.filter((s) => s.slot.node.type !== 'scalar');
       if (some.length) return { kind, target: rand.pick(some).slot.id };
     } else if (kind === 'reorder') {
       const many = lists.filter((l) => l.slots.length >= 2);
-      if (many.length) { const list = rand.pick(many); return { kind, target: list.id, reverse: rand.chance(0.5), at: rand.int(list.slots.length - 1) }; }
+      if (many.length) {
+        const list = rand.pick(many);
+        return { kind, target: list.id, reverse: rand.chance(0.5), at: rand.int(list.slots.length - 1) };
+      }
     }
   }
   return null;
@@ -270,7 +347,16 @@ function applyEdit(root, d, uid) {
   const nodes = [];
   walk(tree, (node) => nodes.push(node));
   const fresh = () => ({ type: 'scalar', id: uid(), text: 'n' + uid(), quote: '', block: false });
-  const freshSlot = (key) => ({ id: uid(), key, keyQuote: '', node: fresh(), above: [], after: null, gap: '  ', blank: false });
+  const freshSlot = (key) => ({
+    id: uid(),
+    key,
+    keyQuote: '',
+    node: fresh(),
+    above: [],
+    after: null,
+    gap: '  ',
+    blank: false
+  });
   const slotOf = () => slots.find((s) => s.slot.id === d.target);
   const nodeOf = () => nodes.find((n) => n.id === d.target);
   const kind = d.kind;
@@ -279,13 +365,27 @@ function applyEdit(root, d, uid) {
     if (!target || target.slot.node.type !== 'scalar') return null;
     const old = target.slot.node;
     target.slot.node = fresh();
-    return { tree, kind, description: 'set ' + old.text, changed: [old.id], setOf: target.slot, listItem: target.parent.type === 'list' };
+    return {
+      tree,
+      kind,
+      description: 'set ' + old.text,
+      changed: [old.id],
+      setOf: target.slot,
+      listItem: target.parent.type === 'list'
+    };
   }
   if (kind === 'add-item') {
     const list = nodeOf();
     if (!list || list.type !== 'list') return null;
     const s = freshSlot(undefined);
-    if (d.asMap) s.node = { type: 'map', id: uid(), slots: [freshSlot('n' + uid()), freshSlot('n' + uid())], flow: false, atKey: false };
+    if (d.asMap)
+      s.node = {
+        type: 'map',
+        id: uid(),
+        slots: [freshSlot('n' + uid()), freshSlot('n' + uid())],
+        flow: false,
+        atKey: false
+      };
     list.slots.splice(Math.min(d.at, list.slots.length), 0, s);
     return { tree, kind, description: 'add item at ' + d.at };
   }
@@ -312,10 +412,18 @@ function applyEdit(root, d, uid) {
     const target = slotOf();
     if (!target) return null;
     const old = target.slot.node;
-    const other = d.withMap ? { type: 'map', id: uid(), slots: [freshSlot('n' + uid())], flow: false, atKey: false } : fresh();
+    const other = d.withMap
+      ? { type: 'map', id: uid(), slots: [freshSlot('n' + uid())], flow: false, atKey: false }
+      : fresh();
     const itemOld = { id: uid(), node: old, above: [], after: null, gap: '  ', blank: false };
     const itemNew = { id: uid(), node: other, above: [], after: null, gap: '  ', blank: false };
-    target.slot.node = { type: 'list', id: uid(), slots: d.oldFirst ? [itemOld, itemNew] : [itemNew, itemOld], flow: false, atKey: false };
+    target.slot.node = {
+      type: 'list',
+      id: uid(),
+      slots: d.oldFirst ? [itemOld, itemNew] : [itemNew, itemOld],
+      flow: false,
+      atKey: false
+    };
     return { tree, kind, description: 'wrap a ' + old.type, changed: [], reshaped: target.slot };
   }
   if (kind === 'unwrap') {
@@ -335,7 +443,12 @@ function applyEdit(root, d, uid) {
     const list = nodeOf();
     if (!list || list.type !== 'list' || list.slots.length < 2) return null;
     if (d.reverse) list.slots.reverse();
-    else { const a = Math.min(d.at, list.slots.length - 2); const t = list.slots[a]; list.slots[a] = list.slots[a + 1]; list.slots[a + 1] = t; }
+    else {
+      const a = Math.min(d.at, list.slots.length - 2);
+      const t = list.slots[a];
+      list.slots[a] = list.slots[a + 1];
+      list.slots[a + 1] = t;
+    }
     return { tree, kind, description: 'reorder' };
   }
   return null;
@@ -385,8 +498,10 @@ function check(page, before, file, after, edited, out) {
   // model
   try {
     const read = page.parseYaml(out);
-    if (JSON.stringify(read) !== JSON.stringify(value) && !deepSame(read, value)) fail('model', 'the file does not read back as the edit');
-    else if (page.serializeYamlValue(page.parseYamlAsModel(out), 0) !== page.serializeYamlValue(value, 0)) fail('model', 'the file does not say what the emitter writes for the edit');
+    if (JSON.stringify(read) !== JSON.stringify(value) && !deepSame(read, value))
+      fail('model', 'the file does not read back as the edit');
+    else if (page.serializeYamlValue(page.parseYamlAsModel(out), 0) !== page.serializeYamlValue(value, 0))
+      fail('model', 'the file does not say what the emitter writes for the edit');
   } catch (e) {
     fail('model', 'the result does not parse: ' + e.message);
     return problems;
@@ -398,7 +513,13 @@ function check(page, before, file, after, edited, out) {
   // the slots below a value that changed shape: their lines are written again, deeper or shallower (a node moved into a list); what they must keep is their text, not their place
   const moved = new Set();
   if (edited.reshaped) {
-    const below = (node) => { if (node.type !== 'scalar') for (const s of node.slots) { moved.add(s.id); below(s.node); } };
+    const below = (node) => {
+      if (node.type !== 'scalar')
+        for (const s of node.slots) {
+          moved.add(s.id);
+          below(s.node);
+        }
+    };
     below(edited.reshaped.node);
   }
   // quotes: a scalar or a key that is still in the value as it was, wherever it went
@@ -406,7 +527,9 @@ function check(page, before, file, after, edited, out) {
   const afterNodes = new Set();
   walk(after, (n) => afterNodes.add(n.id));
   const afterLeaves = new Map();
-  walk(after, (n, parent, slot) => { if (n.type === 'scalar') afterLeaves.set(n.id, n); });
+  walk(after, (n, parent, slot) => {
+    if (n.type === 'scalar') afterLeaves.set(n.id, n);
+  });
   walk(before, (n, parent, slot) => {
     if (n.type !== 'scalar' || n.block || unchanged.has(n.id) || !afterLeaves.has(n.id)) return;
     const token = scalarToken(n);
@@ -431,8 +554,16 @@ function check(page, before, file, after, edited, out) {
         else if (!moved.has(id)) {
           const at = outLines.findIndex((l) => l.includes(c));
           let next = at + 1;
-          while (next < outLines.length && (outLines[next].trim() === '' || outLines[next].trim().startsWith('#'))) next++;
-          if (!slotLineOk(outLines, next, current, afterSlots)) fail('comment', 'the comment ' + c + ' is not above the line of its own item or key: ' + JSON.stringify(outLines.slice(at, next + 1)));
+          while (next < outLines.length && (outLines[next].trim() === '' || outLines[next].trim().startsWith('#')))
+            next++;
+          if (!slotLineOk(outLines, next, current, afterSlots))
+            fail(
+              'comment',
+              'the comment ' +
+                c +
+                ' is not above the line of its own item or key: ' +
+                JSON.stringify(outLines.slice(at, next + 1))
+            );
         }
       }
     }
@@ -441,12 +572,23 @@ function check(page, before, file, after, edited, out) {
       const survives = afterNodes.has(slot.node.id); // the slot is gone but the value is still in the file, under another slot (a list unwrapped): its comment may follow it
       const replacedItem = edited.reshaped === current && alive && beforeSlots.get(id).parent.type === 'list'; // `- {a: b}  # why` that becomes `- c`: the comment of a collection in brackets that is gone
       if (n > 1) fail('comment', 'the comment ' + slot.after + ' is written ' + n + ' times');
-      else if (!alive && n === 1 && !reorder && !survives) fail('comment', 'the comment ' + slot.after + ' of a line that goes is on another line: ' + JSON.stringify(outLines[outLines.findIndex((l) => l.includes(slot.after))]));
+      else if (!alive && n === 1 && !reorder && !survives)
+        fail(
+          'comment',
+          'the comment ' +
+            slot.after +
+            ' of a line that goes is on another line: ' +
+            JSON.stringify(outLines[outLines.findIndex((l) => l.includes(slot.after))])
+        );
       else if (alive && !reorder && !replacedItem && !(edited.setOf === current && edited.listItem)) {
         if (n === 0) fail('comment', 'the comment ' + slot.after + ' after a line was lost');
         else {
           const at = outLines.findIndex((l) => l.includes(slot.after));
-          if (!slotLineOk(outLines, at, current, afterSlots)) fail('comment', 'the comment ' + slot.after + ' is on the line of another item or key: ' + JSON.stringify(outLines[at]));
+          if (!slotLineOk(outLines, at, current, afterSlots))
+            fail(
+              'comment',
+              'the comment ' + slot.after + ' is on the line of another item or key: ' + JSON.stringify(outLines[at])
+            );
         }
       }
     }
@@ -463,7 +605,8 @@ function check(page, before, file, after, edited, out) {
       if (line.kind === 'header' && current.node.type !== line.slot.node.type) continue;
       if (line.kind === 'dash') continue;
       const norm = (text) => text.trim().replace(/^- /, '');
-      if (!outLines.some((l) => norm(l) === norm(line.text))) fail('line', 'the line ' + JSON.stringify(line.text) + ' is not in the result as it was');
+      if (!outLines.some((l) => norm(l) === norm(line.text)))
+        fail('line', 'the line ' + JSON.stringify(line.text) + ' is not in the result as it was');
     }
   }
   return problems;
@@ -483,7 +626,12 @@ function slotLineOk(lines, at, slot, afterSlots) {
   if (at >= lines.length) return false;
   const text = lines[at].trim();
   if (slot.key !== undefined) {
-    if (!(text.replace(/^- /, '').startsWith(keyText(slot) + ':') || text.replace(/^- /, '').startsWith(slot.key + ':') || text.startsWith('"' + slot.key + '"'))) return false;
+    if (!(
+      text.replace(/^- /, '').startsWith(keyText(slot) + ':') ||
+      text.replace(/^- /, '').startsWith(slot.key + ':') ||
+      text.startsWith('"' + slot.key + '"')
+    ))
+      return false;
     return true;
   }
   if (!(text === '-' || text.startsWith('- '))) return false;
@@ -512,14 +660,25 @@ function limitOf(root, d) {
     // a comment on an item that is a list (`-  # why`, then its items, or `- [a, b]  # why`): lost, or taken by another item, when the lists around it are nested again, which writes every dash line anew
     const target = slots.find((x) => x.slot.id === d.target);
     let found = false;
-    if (target) walk(target.slot.node, (node, parent, slot) => { if (slot && slot.after && node.type === 'list' && node.slots.length > 0 && parent.type === 'list') found = true; });
+    if (target)
+      walk(target.slot.node, (node, parent, slot) => {
+        if (slot && slot.after && node.type === 'list' && node.slots.length > 0 && parent.type === 'list') found = true;
+      });
     if (found) return 'comment-on-a-dash-when-lists-are-nested-again';
   }
   if (d.kind === 'wrap') {
     // a list in brackets that is an item of a block list, inside the list that is wrapped: the mark of the collection lands on the dash line that stayed, and the list is written in brackets
     const target = slots.find((x) => x.slot.id === d.target);
     let found = false;
-    if (target) walk(target.slot.node, (node) => { if (node.type === 'list' && !node.flow && node.slots.some((s) => s.node.type === 'list' && s.node.flow && s.node.slots.length > 0)) found = true; });
+    if (target)
+      walk(target.slot.node, (node) => {
+        if (
+          node.type === 'list' &&
+          !node.flow &&
+          node.slots.some((s) => s.node.type === 'list' && s.node.flow && s.node.slots.length > 0)
+        )
+          found = true;
+      });
     if (found) return 'wrap-a-list-of-lists-in-brackets';
   }
   return null;
@@ -553,7 +712,9 @@ function attempt(page, root, d) {
 
 function copyTree(n) {
   if (n.type === 'scalar') return Object.assign({}, n);
-  return Object.assign({}, n, { slots: n.slots.map((s) => Object.assign({}, s, { above: s.above.slice(), node: copyTree(s.node) })) });
+  return Object.assign({}, n, {
+    slots: n.slots.map((s) => Object.assign({}, s, { above: s.above.slice(), node: copyTree(s.node) }))
+  });
 }
 
 /** The smallest tree (items and keys taken out, comments, quotes, blank lines and block scalars dropped) for which the same edit still gives a problem of `kind`. */
@@ -573,13 +734,37 @@ function reduce(page, root, d, kind) {
       const { s, n } = slotsOf(t)[i];
       n.slots.splice(n.slots.indexOf(s), 1);
       if ((n.slots.length === 0 && n !== t) || t.slots.length === 0) continue;
-      if (fails(t)) { current = t; progress = true; }
+      if (fails(t)) {
+        current = t;
+        progress = true;
+      }
     }
     if (progress) continue;
     const features = [
-      (s) => { s.above = []; }, (s) => { s.after = null; }, (s) => { s.blank = false; }, (s) => { s.keyQuote = ''; }, (s) => { s.node.quote = ''; },
-      (s) => { if (s.node.type === 'list') s.node.atKey = false; },
-      (s) => { if (s.node.type === 'scalar' && s.node.block) { s.node.block = false; s.node.text = s.node.text.split('\n')[0]; } }
+      (s) => {
+        s.above = [];
+      },
+      (s) => {
+        s.after = null;
+      },
+      (s) => {
+        s.blank = false;
+      },
+      (s) => {
+        s.keyQuote = '';
+      },
+      (s) => {
+        s.node.quote = '';
+      },
+      (s) => {
+        if (s.node.type === 'list') s.node.atKey = false;
+      },
+      (s) => {
+        if (s.node.type === 'scalar' && s.node.block) {
+          s.node.block = false;
+          s.node.text = s.node.text.split('\n')[0];
+        }
+      }
     ];
     for (let i = 0; i < count && !progress; i++) {
       for (const f of features) {
@@ -588,7 +773,11 @@ function reduce(page, root, d, kind) {
         const text = write(t).text;
         f(s);
         if (write(t).text === text) continue;
-        if (fails(t)) { current = t; progress = true; break; }
+        if (fails(t)) {
+          current = t;
+          progress = true;
+          break;
+        }
       }
     }
   }
@@ -598,7 +787,13 @@ function reduce(page, root, d, kind) {
 /** All cases of the generator on `page`: `{ stats, failures }`, each failure with the case's number, the edit, the file and the result. */
 function run(page, seed, cases, options = {}) {
   const failures = [];
-  const stats = { cases: 0, edits: {}, skipped: 0, limits: {}, shapes: { 'block-scalar-item': 0, 'first-key-before-block': 0 } }; // the shapes of #154 and of #155 L2
+  const stats = {
+    cases: 0,
+    edits: {},
+    skipped: 0,
+    limits: {},
+    shapes: { 'block-scalar-item': 0, 'first-key-before-block': 0 }
+  }; // the shapes of #154 and of #155 L2
   for (let n = 0; n < cases; n++) {
     const rand = prng(seed * 100003 + n);
     const root = generate(rand, n);
@@ -607,13 +802,22 @@ function run(page, seed, cases, options = {}) {
     try {
       read = page.parseYaml(file.text);
     } catch (e) {
-      throw new Error('the generator wrote a file the page cannot read (case ' + n + '): ' + e.message + '\n' + file.text);
+      throw new Error(
+        'the generator wrote a file the page cannot read (case ' + n + '): ' + e.message + '\n' + file.text
+      );
     }
-    if (!deepSame(read, valueOf(root))) throw new Error('the generator wrote a file that does not read as its tree (case ' + n + ')\n' + file.text);
+    if (!deepSame(read, valueOf(root)))
+      throw new Error('the generator wrote a file that does not read as its tree (case ' + n + ')\n' + file.text);
     const d = chooseEdit(root, rand);
-    if (d === null || applyEdit(root, d, () => 0) === null) { stats.skipped++; continue; }
+    if (d === null || applyEdit(root, d, () => 0) === null) {
+      stats.skipped++;
+      continue;
+    }
     const limit = limitOf(root, d);
-    if (limit !== null) { stats.limits[limit] = (stats.limits[limit] || 0) + 1; continue; }
+    if (limit !== null) {
+      stats.limits[limit] = (stats.limits[limit] || 0) + 1;
+      continue;
+    }
     stats.cases++;
     if (/^ *(?:- +)*- \|/m.test(file.text)) stats.shapes['block-scalar-item']++;
     if (d.shape === 'first-key') stats.shapes['first-key-before-block']++;

@@ -18,7 +18,9 @@ const { layeredFiles, chooseOnBand, bandOf } = require('./layered-folders');
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
 const LAYERED = path.join(BRIGHTCART, 'layered');
-const COMPARISONS = new Map(JSON.parse(fs.readFileSync(path.join(BRIGHTCART, 'expected', 'comparisons.json'), 'utf8')).map((c) => [c.id, c]));
+const COMPARISONS = new Map(
+  JSON.parse(fs.readFileSync(path.join(BRIGHTCART, 'expected', 'comparisons.json'), 'utf8')).map((c) => [c.id, c])
+);
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const ORDER = ['baseline', 'inhouse', 'marketplace', 'saas'];
@@ -43,7 +45,9 @@ async function openIn(files) {
   await sandbox.loadViewpointKernel();
   assert.equal(state.fatalError, null);
   // the harness has no layout engine: `render()` is the address and nothing else
-  sandbox.render = () => { sandbox.syncHashFromState(); };
+  sandbox.render = () => {
+    sandbox.syncHashFromState();
+  };
   sandbox.render();
   return { sandbox, state };
 }
@@ -55,8 +59,19 @@ function chainFiles(n) {
   const files = {};
   for (let i = 1; i <= n; i++) {
     const id = 'step' + i;
-    plateaus.push({ id, name: 'Step ' + i, horizon: (2026 + Math.floor((i - 1) / 4)) + '-Q' + (((i - 1) % 4) + 1), override: i === 1 ? undefined : 'step' + (i - 1), path: 'plateaus/' + id });
-    files['plateaus/' + id + '/s' + i + '.yaml'] = 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "s' + i + '"\n  name: "Service ' + i + '"\n';
+    plateaus.push({
+      id,
+      name: 'Step ' + i,
+      horizon: 2026 + Math.floor((i - 1) / 4) + '-Q' + (((i - 1) % 4) + 1),
+      override: i === 1 ? undefined : 'step' + (i - 1),
+      path: 'plateaus/' + id
+    });
+    files['plateaus/' + id + '/s' + i + '.yaml'] =
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "s' +
+      i +
+      '"\n  name: "Service ' +
+      i +
+      '"\n';
   }
   return layeredFiles(plateaus, files);
 }
@@ -72,10 +87,17 @@ function countsOf(comparison) {
   return {
     elements: { new: e.new, changed: e.changed, removed: e.removed },
     replacing: { moved: e.moved || 0, split: e.split || 0, merged: e.merged || 0 },
-    relationships: { new: comparison.counts.relationships.new, changed: comparison.counts.relationships.changed, removed: comparison.counts.relationships.removed }
+    relationships: {
+      new: comparison.counts.relationships.new,
+      changed: comparison.counts.relationships.changed,
+      removed: comparison.counts.relationships.removed
+    }
   };
 }
-const wanted = (id) => { const c = COMPARISONS.get(id); return { elements: c.elements, replacing: c.replacing, relationships: c.relationships }; };
+const wanted = (id) => {
+  const c = COMPARISONS.get(id);
+  return { elements: c.elements, replacing: c.replacing, relationships: c.relationships };
+};
 const treeValues = (ids) => ids.map((id) => 'plateau:' + id);
 const greyed = (band) => plain(band.compare.filter((o) => o.disabled).map((o) => o.value));
 
@@ -91,16 +113,34 @@ test('the options of Compare with are Nothing, Past and the whole tree, in the o
   assert.deepEqual(plain(drawn.compare.map((o) => o.value)), ['', 'past'].concat(treeValues(ORDER)));
   assert.equal(drawn.compare[0].label, 'Nothing');
   assert.equal(drawn.compare[1].label, 'Past (follows the plateau drawn)');
-  assert.deepEqual(plain(drawn.compare.slice(2).map((o) => o.label)), plain(drawn.plateaus.map((o) => o.label)), 'the same labels: name, horizon, the mark of a plateau the command line refuses');
+  assert.deepEqual(
+    plain(drawn.compare.slice(2).map((o) => o.label)),
+    plain(drawn.plateaus.map((o) => o.label)),
+    'the same labels: name, horizon, the mark of a plateau the command line refuses'
+  );
   // the same indentation, in both lists: an em space (U+2003) for each step of depth, which an <option> keeps (an ordinary space at the start would be collapsed by a browser)
-  const indentOf = (html, id, value) => (html.match(new RegExp('<option value="' + value(id) + '"[^>]*>(\\u2003*)')) || [])[1].length;
+  const indentOf = (html, id, value) =>
+    (html.match(new RegExp('<option value="' + value(id) + '"[^>]*>(\\u2003*)')) || [])[1].length;
   const left = bandOf(sandbox).html.slice(0, bandOf(sandbox).html.indexOf('<select id="band-compare"'));
   const right = bandOf(sandbox).html.slice(bandOf(sandbox).html.indexOf('<select id="band-compare"'));
-  for (const [id, depth] of [['baseline', 0], ['inhouse', 1], ['marketplace', 2], ['saas', 1]]) {
-    assert.equal(indentOf(left, id, (x) => x), depth, id + ' in Plateau');
-    assert.equal(indentOf(right, id, (x) => 'plateau:' + x), depth, id + ' in Compare with');
+  for (const [id, depth] of [
+    ['baseline', 0],
+    ['inhouse', 1],
+    ['marketplace', 2],
+    ['saas', 1]
+  ]) {
+    assert.equal(
+      indentOf(left, id, (x) => x),
+      depth,
+      id + ' in Plateau'
+    );
+    assert.equal(
+      indentOf(right, id, (x) => 'plateau:' + x),
+      depth,
+      id + ' in Compare with'
+    );
   }
-  assert.ok(!/ {2}/.test(left.replace(/<[^>]*>/g, '')) , 'no run of ordinary spaces is relied on for the indentation');
+  assert.ok(!/ {2}/.test(left.replace(/<[^>]*>/g, '')), 'no run of ordinary spaces is relied on for the indentation');
   assert.ok(!right.includes('optgroup'), 'no group: the tree is the list');
 });
 
@@ -116,7 +156,10 @@ test('the plateau drawn is greyed in the tree wherever it stands, and the greyed
     const band = bandOf(sandbox);
     assert.deepEqual(greyed(band), ['plateau:' + id], id + ' is drawn and greyed');
     assert.equal(band.drawn, id);
-    assert.ok(band.compare.every((o) => o.disabled === (o.value === 'plateau:' + id)), 'and nothing else is: the past and the others can be chosen');
+    assert.ok(
+      band.compare.every((o) => o.disabled === (o.value === 'plateau:' + id)),
+      'and nothing else is: the past and the others can be chosen'
+    );
   }
 });
 
@@ -126,57 +169,149 @@ test('the plateau drawn is greyed at the root, in the middle and at the leaf of 
   for (const id of ['baseline', 'step4', 'step8']) {
     chooseOnBand(sandbox, 'plateau', id);
     const band = bandOf(sandbox);
-    assert.deepEqual(plain(band.compare.map((o) => o.value)), [''].concat(id === 'baseline' ? [] : ['past']).concat(treeValues(ids)), id);
+    assert.deepEqual(
+      plain(band.compare.map((o) => o.value)),
+      [''].concat(id === 'baseline' ? [] : ['past']).concat(treeValues(ids)),
+      id
+    );
     assert.deepEqual(greyed(band), ['plateau:' + id], id);
   }
   // one layer over the root
-  const one = await openIn(layeredFiles([{ id: 'to-be', name: 'To be', horizon: '2027', path: 'plateaus/to-be' }], { 'plateaus/to-be/s.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "s"\n  name: "S"\n' }));
-  assert.deepEqual(plain(bandOf(one.sandbox).compare.map((o) => [o.value, o.disabled])), [['', false], ['plateau:baseline', true], ['plateau:to-be', false]]);
+  const one = await openIn(
+    layeredFiles([{ id: 'to-be', name: 'To be', horizon: '2027', path: 'plateaus/to-be' }], {
+      'plateaus/to-be/s.yaml':
+        'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "s"\n  name: "S"\n'
+    })
+  );
+  assert.deepEqual(plain(bandOf(one.sandbox).compare.map((o) => [o.value, o.disabled])), [
+    ['', false],
+    ['plateau:baseline', true],
+    ['plateau:to-be', false]
+  ]);
   chooseOnBand(one.sandbox, 'plateau', 'to-be');
-  assert.deepEqual(plain(bandOf(one.sandbox).compare.map((o) => [o.value, o.disabled])), [['', false], ['past', false], ['plateau:baseline', false], ['plateau:to-be', true]]);
+  assert.deepEqual(plain(bandOf(one.sandbox).compare.map((o) => [o.value, o.disabled])), [
+    ['', false],
+    ['past', false],
+    ['plateau:baseline', false],
+    ['plateau:to-be', true]
+  ]);
   // no layer: the root is the only plateau, the one drawn, so there is nothing to choose but nothing
-  const none = await openIn({ 'manifests/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n', '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' });
-  assert.deepEqual(plain(bandOf(none.sandbox).compare.map((o) => [o.value, o.selected, o.disabled])), [['', true, false], ['plateau:baseline', false, true]]);
+  const none = await openIn({
+    'manifests/app.shop.yaml':
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n'
+  });
+  assert.deepEqual(plain(bandOf(none.sandbox).compare.map((o) => [o.value, o.selected, o.disabled])), [
+    ['', true, false],
+    ['plateau:baseline', false, true]
+  ]);
 });
 
 // ---- the comparison a choice makes: the one `archicode diff --plateau <drawn> --against <id>` makes ----
 
-const GRANDPARENT = { elements: { new: 38, changed: 3, removed: 6 }, replacing: { moved: 11, split: 2, merged: 1 }, relationships: { new: 35, changed: 1, removed: 9 } }; // diff --plateau marketplace --against baseline
-const COUSIN = { elements: { new: 48, changed: 3, removed: 8 }, replacing: { moved: 4, split: 2, merged: 1 }, relationships: { new: 43, changed: 0, removed: 10 } }; // diff --plateau marketplace --against saas
-const GRANDCHILD = { elements: { new: 38, changed: 3, removed: 6 }, replacing: { moved: 11, split: 2, merged: 1 }, relationships: { new: 35, changed: 1, removed: 9 } }; // the same pair read from the other end: baseline drawn, marketplace chosen
+const GRANDPARENT = {
+  elements: { new: 38, changed: 3, removed: 6 },
+  replacing: { moved: 11, split: 2, merged: 1 },
+  relationships: { new: 35, changed: 1, removed: 9 }
+}; // diff --plateau marketplace --against baseline
+const COUSIN = {
+  elements: { new: 48, changed: 3, removed: 8 },
+  replacing: { moved: 4, split: 2, merged: 1 },
+  relationships: { new: 43, changed: 0, removed: 10 }
+}; // diff --plateau marketplace --against saas
+const GRANDCHILD = {
+  elements: { new: 38, changed: 3, removed: 6 },
+  replacing: { moved: 11, split: 2, merged: 1 },
+  relationships: { new: 35, changed: 1, removed: 9 }
+}; // the same pair read from the other end: baseline drawn, marketplace chosen
 
 const CHOICES = [
   // [what it is, drawn, chosen, the comparison the state holds, the numbers]
   ['the parent', 'marketplace', 'inhouse', { mode: 'past', other: 'inhouse', chosen: false }, wanted('P3'), 'past'],
-  ['the root, which is the parent', 'saas', 'baseline', { mode: 'past', other: 'baseline', chosen: false }, wanted('P1'), 'past'],
-  ['an ancestor that is not the parent', 'marketplace', 'baseline', { mode: 'other', other: 'baseline', chosen: true }, GRANDPARENT, 'plateau:baseline'],
-  ['the only child', 'inhouse', 'marketplace', { mode: 'future', other: 'marketplace', chosen: true }, wanted('P3'), 'plateau:marketplace'],
-  ['one of two children', 'baseline', 'saas', { mode: 'future', other: 'saas', chosen: true }, wanted('P1'), 'plateau:saas'],
-  ['a descendant that is not a child', 'baseline', 'marketplace', { mode: 'future', other: 'marketplace', chosen: true }, GRANDCHILD, 'plateau:marketplace'],
+  [
+    'the root, which is the parent',
+    'saas',
+    'baseline',
+    { mode: 'past', other: 'baseline', chosen: false },
+    wanted('P1'),
+    'past'
+  ],
+  [
+    'an ancestor that is not the parent',
+    'marketplace',
+    'baseline',
+    { mode: 'other', other: 'baseline', chosen: true },
+    GRANDPARENT,
+    'plateau:baseline'
+  ],
+  [
+    'the only child',
+    'inhouse',
+    'marketplace',
+    { mode: 'future', other: 'marketplace', chosen: true },
+    wanted('P3'),
+    'plateau:marketplace'
+  ],
+  [
+    'one of two children',
+    'baseline',
+    'saas',
+    { mode: 'future', other: 'saas', chosen: true },
+    wanted('P1'),
+    'plateau:saas'
+  ],
+  [
+    'a descendant that is not a child',
+    'baseline',
+    'marketplace',
+    { mode: 'future', other: 'marketplace', chosen: true },
+    GRANDCHILD,
+    'plateau:marketplace'
+  ],
   ['a sibling', 'inhouse', 'saas', { mode: 'other', other: 'saas', chosen: true }, wanted('P5'), 'plateau:saas'],
   ['a cousin', 'marketplace', 'saas', { mode: 'other', other: 'saas', chosen: true }, COUSIN, 'plateau:saas']
 ];
 
 for (const [what, drawn, chosen, compare, numbers, shown] of CHOICES) {
-  test('choosing ' + what + ' (' + chosen + ' while ' + drawn + ' is drawn) gives the comparison and the counts of `archicode diff`', async () => {
-    const { sandbox, state } = await openBrightcart();
-    chooseOnBand(sandbox, 'plateau', drawn);
-    chooseOnBand(sandbox, 'compare', 'plateau:' + chosen);
-    assert.deepEqual(plain(state.layers.compare), compare);
-    assert.equal(state.baseline.plateau.id, chosen, 'the plateau compared with is read');
-    const comparison = sandbox.comparisonState();
-    assert.ok(comparison && !comparison.problems, JSON.stringify(comparison && comparison.problems));
-    // the plateau of the command line's --plateau is the later one: the drawn one, but for a future, where the drawn one is the base
-    assert.equal(comparison.target.id, compare.mode === 'future' ? chosen : drawn);
-    assert.equal(comparison.base.id, compare.mode === 'future' ? drawn : chosen);
-    assert.deepEqual(countsOf(comparison), numbers);
-    const html = sandbox.renderChangesPanelHtml(comparison);
-    for (const [n, label] of [[numbers.elements.new, 'new'], [numbers.elements.removed, 'removed']]) assert.ok(html.includes('<span class="change-count">' + n + '</span> ' + label), 'the panel says ' + n + ' ' + label);
-    // the list says what is compared: the entry of the plateau, or Past when the comparison follows the plateau drawn
-    const band = bandOf(sandbox);
-    assert.equal(band.compared, shown);
-    assert.deepEqual(greyed(band), ['plateau:' + drawn], 'the plateau drawn stays greyed, and the one compared with is not');
-  });
+  test(
+    'choosing ' +
+      what +
+      ' (' +
+      chosen +
+      ' while ' +
+      drawn +
+      ' is drawn) gives the comparison and the counts of `archicode diff`',
+    async () => {
+      const { sandbox, state } = await openBrightcart();
+      chooseOnBand(sandbox, 'plateau', drawn);
+      chooseOnBand(sandbox, 'compare', 'plateau:' + chosen);
+      assert.deepEqual(plain(state.layers.compare), compare);
+      assert.equal(state.baseline.plateau.id, chosen, 'the plateau compared with is read');
+      const comparison = sandbox.comparisonState();
+      assert.ok(comparison && !comparison.problems, JSON.stringify(comparison && comparison.problems));
+      // the plateau of the command line's --plateau is the later one: the drawn one, but for a future, where the drawn one is the base
+      assert.equal(comparison.target.id, compare.mode === 'future' ? chosen : drawn);
+      assert.equal(comparison.base.id, compare.mode === 'future' ? drawn : chosen);
+      assert.deepEqual(countsOf(comparison), numbers);
+      const html = sandbox.renderChangesPanelHtml(comparison);
+      for (const [n, label] of [
+        [numbers.elements.new, 'new'],
+        [numbers.elements.removed, 'removed']
+      ])
+        assert.ok(
+          html.includes('<span class="change-count">' + n + '</span> ' + label),
+          'the panel says ' + n + ' ' + label
+        );
+      // the list says what is compared: the entry of the plateau, or Past when the comparison follows the plateau drawn
+      const band = bandOf(sandbox);
+      assert.equal(band.compared, shown);
+      assert.deepEqual(
+        greyed(band),
+        ['plateau:' + drawn],
+        'the plateau drawn stays greyed, and the one compared with is not'
+      );
+    }
+  );
 }
 
 test('choosing the plateau that is already compared with does not stop the comparison: a list chooses, it does not toggle', async () => {
@@ -229,14 +364,20 @@ test('the entry Past follows the plateau drawn, and a plateau of the tree stays 
 
 test('the old addresses open, and the list says what they mean in the new words', async () => {
   const { sandbox, state } = await openBrightcart();
-  const at = (hash) => { typeAddress(sandbox, hash); return bandOf(sandbox); };
+  const at = (hash) => {
+    typeAddress(sandbox, hash);
+    return bandOf(sandbox);
+  };
   // compare=past follows the plateau drawn
   let band = at('#/timeline/applications?plateau=marketplace&compare=past');
   assert.deepEqual([band.drawn, band.compared, state.baseline.plateau.id], ['marketplace', 'past', 'inhouse']);
   assert.equal(run(sandbox, 'layerCompareChoice()'), 'past');
   // compare=future with one plateau on top of the drawn one: it follows, and the list selects that plateau in the tree
   band = at('#/timeline/applications?plateau=inhouse&compare=future');
-  assert.deepEqual([band.drawn, band.compared, state.baseline.plateau.id], ['inhouse', 'plateau:marketplace', 'marketplace']);
+  assert.deepEqual(
+    [band.drawn, band.compared, state.baseline.plateau.id],
+    ['inhouse', 'plateau:marketplace', 'marketplace']
+  );
   assert.equal(run(sandbox, 'layerCompareChoice()'), 'future', 'and the page writes what it was given');
   assert.ok(!band.compare.some((o) => o.value === 'future'), 'there is no entry for the future');
   // compare=future:<id> and compare=other:<id>
@@ -260,12 +401,22 @@ test('a future with several plateaus on top of the drawn one, from an address, i
   const { sandbox, state } = await openBrightcart();
   typeAddress(sandbox, '#/timeline/applications?compare=future');
   const asking = bandOf(sandbox);
-  assert.deepEqual(plain(asking.compare.map((o) => [o.value, o.selected, o.disabled])), [['', false, false], ['future', true, true], ['plateau:baseline', false, true], ['plateau:inhouse', false, false], ['plateau:marketplace', false, false], ['plateau:saas', false, false]]);
+  assert.deepEqual(plain(asking.compare.map((o) => [o.value, o.selected, o.disabled])), [
+    ['', false, false],
+    ['future', true, true],
+    ['plateau:baseline', false, true],
+    ['plateau:inhouse', false, false],
+    ['plateau:marketplace', false, false],
+    ['plateau:saas', false, false]
+  ]);
   assert.equal(asking.compare[1].label, 'Choose a future plateau');
   assert.equal(sandbox.comparisonState(), null, 'nothing is compared until one is chosen');
   chooseOnBand(sandbox, 'compare', 'plateau:inhouse');
   assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: 'inhouse', chosen: true });
-  assert.ok(!bandOf(sandbox).compare.some((o) => o.value === 'future'), 'the entry that asked is gone once the choice is made');
+  assert.ok(
+    !bandOf(sandbox).compare.some((o) => o.value === 'future'),
+    'the entry that asked is gone once the choice is made'
+  );
   assert.equal(bandOf(sandbox).compared, 'plateau:inhouse');
   assert.equal(sandbox.comparisonState().target.id, 'inhouse');
   // the same, then Nothing
@@ -301,7 +452,11 @@ test('a tree that is blocked, or a plateau compared with that is gone from the t
   chooseOnBand(sandbox, 'plateau', 'marketplace');
   chooseOnBand(sandbox, 'compare', 'plateau:saas');
   state.layers.blocked = 'blocked for the test';
-  assert.deepEqual(plain(bandOf(sandbox).compare.map((o) => o.value)), [''], 'nothing to choose from while the plateaus are blocked');
+  assert.deepEqual(
+    plain(bandOf(sandbox).compare.map((o) => o.value)),
+    [''],
+    'nothing to choose from while the plateaus are blocked'
+  );
   state.layers.blocked = null;
   state.layers.compare = { mode: 'other', other: 'gone', chosen: true };
   const band = bandOf(sandbox);

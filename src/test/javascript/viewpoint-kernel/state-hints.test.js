@@ -14,9 +14,21 @@ const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 
 const FIXTURE = path.resolve(__dirname, '../../resources/plateau-state-hints');
-const EXPECTED = fs.readFileSync(path.resolve(__dirname, '../../resources/state-hints/expected-sentences.txt'), 'utf8').split('\n').filter(Boolean);
+const EXPECTED = fs
+  .readFileSync(path.resolve(__dirname, '../../resources/state-hints/expected-sentences.txt'), 'utf8')
+  .split('\n')
+  .filter(Boolean);
 const plain = (value) => JSON.parse(JSON.stringify(value));
-const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+const text = (html) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 /** The editor on the invented library, `after` drawn, compared with `before` when `compare` is true. */
 async function open(compare) {
@@ -33,7 +45,8 @@ async function open(compare) {
   return { sandbox, state };
 }
 
-const inspection = (sandbox, reference, layer) => sandbox.inspectionPanelHtml({ kind: 'element', key: reference, layer: layer || 'application', mode: 'view' }, 'map');
+const inspection = (sandbox, reference, layer) =>
+  sandbox.inspectionPanelHtml({ kind: 'element', key: reference, layer: layer || 'application', mode: 'view' }, 'map');
 
 test('the editor tells, word for word, what the command line tells, for every state word and both layers', async () => {
   const { sandbox } = await open(true);
@@ -41,14 +54,22 @@ test('the editor tells, word for word, what the command line tells, for every st
   assert.deepEqual(plain(hints.map((hint) => hint.sentence)), EXPECTED);
   // the fixture says each of the seven words, some as a qualifier, in both layers: the file proves every case, not only the first
   const said = new Set(hints.map((hint) => hint.word));
-  for (const word of ['new', 'changed', 'removed', 'moved', 'split', 'merged', 'contains-changes']) assert.ok(said.has(word), word + ' is said by the fixture');
-  assert.ok(EXPECTED.some((s) => s.includes('(qualifier)')) && EXPECTED.some((s) => s.includes('`rendering-stereotypes` tag)')));
+  for (const word of ['new', 'changed', 'removed', 'moved', 'split', 'merged', 'contains-changes'])
+    assert.ok(said.has(word), word + ' is said by the fixture');
+  assert.ok(
+    EXPECTED.some((s) => s.includes('(qualifier)')) && EXPECTED.some((s) => s.includes('`rendering-stereotypes` tag)'))
+  );
   assert.ok(hints.some((hint) => hint.layer === 'technology') && hints.some((hint) => hint.layer === 'application'));
   // the vault is only in the baseline and carries `new`: neither the command line nor the editor tell the words of an element the plateau drawn does not have
-  assert.ok(!hints.some((hint) => hint.reference === 'library.vault') && !EXPECTED.some((s) => s.includes('library.vault')));
+  assert.ok(
+    !hints.some((hint) => hint.reference === 'library.vault') && !EXPECTED.some((s) => s.includes('library.vault'))
+  );
   // the hints of one element are those of the whole list that are about it
   const state = sandbox.comparisonState();
-  assert.deepEqual(plain(sandbox.stateWordHintsFor(state, 'application', 'library.loans')), plain(hints.filter((hint) => hint.reference === 'library.loans')));
+  assert.deepEqual(
+    plain(sandbox.stateWordHintsFor(state, 'application', 'library.loans')),
+    plain(hints.filter((hint) => hint.reference === 'library.loans'))
+  );
   assert.deepEqual(plain(sandbox.stateWordHintsFor(state, 'application', 'library.vault')), []);
 });
 
@@ -67,7 +88,9 @@ test('the inspection of an element says it, and only for the words that disagree
   const catalog = text(inspection(sandbox, 'library.catalog'));
   assert.ok(catalog.includes('carries `changed`') && !catalog.includes('carries `contains-changes`'));
   // a technology element: the same sentence
-  assert.ok(text(inspection(sandbox, 'prod.cluster', 'technology')).includes(EXPECTED.find((s) => s.includes('`prod.cluster`'))));
+  assert.ok(
+    text(inspection(sandbox, 'prod.cluster', 'technology')).includes(EXPECTED.find((s) => s.includes('`prod.cluster`')))
+  );
   // the report that agrees with its word (split) and the room that agrees (merged, after the qualifier that does not): nothing for the agreeing ones
   assert.ok(!text(inspection(sandbox, 'library.report-a')).includes('carries'));
   assert.ok(text(inspection(sandbox, 'library.room')).includes('carries `changed` (qualifier)'));
@@ -77,11 +100,17 @@ test('the inspection of an element says it, and only for the words that disagree
 test('the Changes panel lists them in a section of their own, and counts them', async () => {
   const { sandbox } = await open(true);
   const panel = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
-  assert.ok(!panel.includes('changes-warnings-section'), 'the warnings of the kernel are another list, and this fixture has none');
+  assert.ok(
+    !panel.includes('changes-warnings-section'),
+    'the warnings of the kernel are another list, and this fixture has none'
+  );
   const start = panel.indexOf('class="changes-state-words"');
   assert.ok(start > 0);
   const section = panel.slice(start, panel.indexOf('</section>', start));
-  assert.ok(section.includes('Hand-written states <span class="field-count">' + EXPECTED.length + '</span>'), section.slice(0, 300));
+  assert.ok(
+    section.includes('Hand-written states <span class="field-count">' + EXPECTED.length + '</span>'),
+    section.slice(0, 300)
+  );
   const items = Array.from(section.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)).map((m) => text(m[1]));
   assert.deepEqual(items, EXPECTED);
 });
@@ -93,7 +122,11 @@ test('the wording toggle does not change what is told: the words are compared wi
   state.hideWording = true;
   vm.runInContext('AppState.hideWording = true;', sandbox);
   const quiet = sandbox.comparisonState();
-  assert.equal(quiet.records.get('application|library.loans').change, 'none', 'the loans are set aside, the drawing has them unchanged');
+  assert.equal(
+    quiet.records.get('application|library.loans').change,
+    'none',
+    'the loans are set aside, the drawing has them unchanged'
+  );
   assert.deepEqual(plain(sandbox.stateWordHintsOf(quiet).map((hint) => hint.sentence)), plain(before));
 });
 

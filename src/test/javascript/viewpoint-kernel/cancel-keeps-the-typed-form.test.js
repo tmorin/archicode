@@ -29,8 +29,17 @@ function walk(dir, base, out) {
 }
 
 const BRIGHTCART = walk(LAYERED, LAYERED, {});
-const system = (id, plateau) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' + (plateau ? '  plateau: "' + plateau + '"\n' : '') + 'content:\n  id: "' + id + '"\n  name: "' + id + '"\n';
-const FORK_ON_COMMERCE = Object.assign({}, BRIGHTCART, { 'saas/application/commerce.yaml': system('commerce', 'saas') });
+const system = (id, plateau) =>
+  'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' +
+  (plateau ? '  plateau: "' + plateau + '"\n' : '') +
+  'content:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  id +
+  '"\n';
+const FORK_ON_COMMERCE = Object.assign({}, BRIGHTCART, {
+  'saas/application/commerce.yaml': system('commerce', 'saas')
+});
 
 async function open(files, drawn) {
   const mem = memFolder(files);
@@ -58,37 +67,85 @@ function giveForm(sandbox, reference) {
   const form = { fields: {}, draws: 0 };
   const field = (id, tag, value, extra) => {
     const attributes = Object.assign({}, extra && extra.attributes);
-    return Object.assign({
-      id, tagName: tag, type: 'text', className: '', value, defaultValue: value,
-      getAttribute: (name) => (name in attributes ? attributes[name] : null),
-      closest: (selector) => (selector === '[data-index]' && extra && extra.row !== undefined ? { getAttribute: () => String(extra.row) } : null)
-    }, extra && extra.props);
+    return Object.assign(
+      {
+        id,
+        tagName: tag,
+        type: 'text',
+        className: '',
+        value,
+        defaultValue: value,
+        getAttribute: (name) => (name in attributes ? attributes[name] : null),
+        closest: (selector) =>
+          selector === '[data-index]' && extra && extra.row !== undefined
+            ? { getAttribute: () => String(extra.row) }
+            : null
+      },
+      extra && extra.props
+    );
   };
   const draw = () => {
     const record = sandbox.findElementRecord(reference, sandbox.layerOfReference(reference) || 'application');
     form.draws++;
-    if (!record) { form.fields = {}; return; } // the element is gone (renamed): the page draws another form
+    if (!record) {
+      form.fields = {};
+      return;
+    } // the element is gone (renamed): the page draws another form
     form.fields = {
       'edit-id-input': field('edit-id-input', 'INPUT', String(record.id)),
-      'edit-name-input': field('edit-name-input', 'INPUT', record.name === null || record.name === undefined ? '' : String(record.name)),
-      'edit-description-input': field('edit-description-input', 'TEXTAREA', record.description === null || record.description === undefined ? '' : String(record.description)),
-      'add-qualifier-input': field('add-qualifier-input', 'INPUT', '', { attributes: { placeholder: 'new qualifier' } }),
-      'rel-label': field('', 'INPUT', '', { props: { className: 'rel-label-input' }, row: 0, attributes: { placeholder: 'label' } })
+      'edit-name-input': field(
+        'edit-name-input',
+        'INPUT',
+        record.name === null || record.name === undefined ? '' : String(record.name)
+      ),
+      'edit-description-input': field(
+        'edit-description-input',
+        'TEXTAREA',
+        record.description === null || record.description === undefined ? '' : String(record.description)
+      ),
+      'add-qualifier-input': field('add-qualifier-input', 'INPUT', '', {
+        attributes: { placeholder: 'new qualifier' }
+      }),
+      'rel-label': field('', 'INPUT', '', {
+        props: { className: 'rel-label-input' },
+        row: 0,
+        attributes: { placeholder: 'label' }
+      })
     };
   };
   let html = '';
-  Object.defineProperty(app, 'innerHTML', { get: () => html, set: (v) => { html = v; draw(); }, configurable: true });
+  Object.defineProperty(app, 'innerHTML', {
+    get: () => html,
+    set: (v) => {
+      html = v;
+      draw();
+    },
+    configurable: true
+  });
   draw();
   const formElement = { querySelectorAll: () => Object.values(form.fields) };
-  const original = { getElementById: doc.getElementById, querySelector: doc.querySelector, querySelectorAll: doc.querySelectorAll };
+  const original = {
+    getElementById: doc.getElementById,
+    querySelector: doc.querySelector,
+    querySelectorAll: doc.querySelectorAll
+  };
   doc.getElementById = (name) => form.fields[name] || original.getElementById.call(doc, name);
-  doc.querySelector = (selector) => (selector === '.element-edition-form' ? formElement : original.querySelector.call(doc, selector));
-  doc.querySelectorAll = (selector) => (selector.includes('relationship-edit-row') ? [] : original.querySelectorAll.call(doc, selector));
+  doc.querySelector = (selector) =>
+    selector === '.element-edition-form' ? formElement : original.querySelector.call(doc, selector);
+  doc.querySelectorAll = (selector) =>
+    selector.includes('relationship-edit-row') ? [] : original.querySelectorAll.call(doc, selector);
   const state = sandbox.__state();
-  state.selection = Object.assign({}, state.selection, { kind: 'element', key: reference, mode: 'edit', layer: sandbox.layerOfReference(reference) || 'application' });
+  state.selection = Object.assign({}, state.selection, {
+    kind: 'element',
+    key: reference,
+    mode: 'edit',
+    layer: sandbox.layerOfReference(reference) || 'application'
+  });
   return {
     form,
-    type(id, value) { form.fields[id].value = value; },
+    type(id, value) {
+      form.fields[id].value = value;
+    },
     value: (id) => form.fields[id].value,
     values: () => Object.fromEntries(Object.entries(form.fields).map(([id, f]) => [id, f.value]))
   };
@@ -98,7 +155,12 @@ const dialogOf = (sandbox) => run(sandbox, 'appDialog');
 const kept = (sandbox) => run(sandbox, 'keptElementForm');
 const draftTyped = (sandbox) => run(sandbox, 'draftTyped');
 
-const TYPED = { 'edit-id-input': 'billing', 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description', 'add-qualifier-input': 'later' };
+const TYPED = {
+  'edit-id-input': 'billing',
+  'edit-name-input': 'Typed name',
+  'edit-description-input': 'Typed description',
+  'add-qualifier-input': 'later'
+};
 function typeAll(screen, typed) {
   for (const [id, value] of Object.entries(typed)) screen.type(id, value);
 }
@@ -109,7 +171,12 @@ test('layer-confirm: the form is back as typed after the dialog opens and after 
   const { sandbox } = await open(BRIGHTCART, 'baseline');
   const screen = giveForm(sandbox, 'mailer');
   const model = screen.values();
-  typeAll(screen, { 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description', 'add-qualifier-input': 'later', 'edit-id-input': 'mailer' });
+  typeAll(screen, {
+    'edit-name-input': 'Typed name',
+    'edit-description-input': 'Typed description',
+    'add-qualifier-input': 'later',
+    'edit-id-input': 'mailer'
+  });
   const typed = screen.values();
   assert.notDeepEqual(typed, model);
   assert.equal(sandbox.commitElementWithDraft('mailer', null), false, 'the save waits for the answer');
@@ -131,7 +198,11 @@ test('layer-confirm: nothing is written, and typing again then saving opens the 
   sandbox.commitElementWithDraft('mailer', null);
   sandbox.closeAppDialog();
   assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 0, 'Cancel writes nothing');
-  assert.equal(sandbox.findElementRecord('mailer', 'application').name, 'Mail provider', 'the model has the name it had');
+  assert.equal(
+    sandbox.findElementRecord('mailer', 'application').name,
+    'Mail provider',
+    'the model has the name it had'
+  );
   assert.equal(sandbox.commitElementWithDraft('mailer', null), false);
   assert.equal(dialogOf(sandbox).kind, 'layer-confirm', 'the form still holds the typed name, so the same dialog');
   sandbox.closeAppDialog();
@@ -149,7 +220,13 @@ test('layer-confirm: Escape and a click beside the dialog give the form back as 
   assert.deepEqual(screen.values(), typed);
   sandbox.commitElementWithDraft('mailer', null);
   assert.equal(dialogOf(sandbox).kind, 'layer-confirm');
-  sandbox.handleAppClick({ target: { classList: { contains: (name) => name === 'app-dialog-backdrop' }, closest: () => null, getAttribute: () => null } });
+  sandbox.handleAppClick({
+    target: {
+      classList: { contains: (name) => name === 'app-dialog-backdrop' },
+      closest: () => null,
+      getAttribute: () => null
+    }
+  });
   assert.equal(dialogOf(sandbox), null, 'a click beside the dialog closes it');
   assert.deepEqual(screen.values(), typed);
 });
@@ -174,7 +251,12 @@ test('layer-confirm: saying yes still writes what was typed, and keeps no copy',
 test('rename-siblings: Cancel gives back the id, the name and the description as typed', async () => {
   const { sandbox, state } = await open(FORK_ON_COMMERCE, 'inhouse');
   const screen = giveForm(sandbox, 'commerce');
-  typeAll(screen, { 'edit-id-input': 'billing', 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description', 'add-qualifier-input': 'later' });
+  typeAll(screen, {
+    'edit-id-input': 'billing',
+    'edit-name-input': 'Typed name',
+    'edit-description-input': 'Typed description',
+    'add-qualifier-input': 'later'
+  });
   const typed = screen.values();
   assert.equal(typed['edit-id-input'], 'billing');
   assert.equal(sandbox.commitElementWithDraft('commerce', null), false);
@@ -194,7 +276,10 @@ test('rename-siblings: Rename anyway renames, and the form does not come back wi
   sandbox.commitElementWithDraft('commerce', null);
   assert.equal(dialogOf(sandbox).kind, 'rename-siblings');
   const out = [];
-  for (let i = 0; i < 4 && dialogOf(sandbox); i++) { out.push(dialogOf(sandbox).kind); sandbox.submitAppDialog({}); }
+  for (let i = 0; i < 4 && dialogOf(sandbox); i++) {
+    out.push(dialogOf(sandbox).kind);
+    sandbox.submitAppDialog({});
+  }
   assert.deepEqual(out, ['rename-siblings', 'layer-confirm'].slice(0, out.length));
   assert.equal(dialogOf(sandbox), null);
   assert.equal(state.index.application.has('billing'), true);
@@ -245,11 +330,18 @@ test('a dialog of another kind, or a form that is not in edition, keeps nothing'
 test('a refused write keeps the id, the name and the description as typed, next to the sentence', async () => {
   const { sandbox, state } = await open(FORK_ON_COMMERCE, 'saas');
   const screen = giveForm(sandbox, 'shop.web');
-  typeAll(screen, { 'edit-id-input': 'front', 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description' });
+  typeAll(screen, {
+    'edit-id-input': 'front',
+    'edit-name-input': 'Typed name',
+    'edit-description-input': 'Typed description'
+  });
   const typed = screen.values();
   assert.equal(sandbox.commitElementWithDraft('shop.web', null), false);
   assert.equal(dialogOf(sandbox), null, 'no dialog is open');
-  assert.match(state.saveStatus ? state.saveStatus.message : run(sandbox, 'saveStatus').message, /^Not written: `shop\.web` is declared in the plateau `baseline`, and a patch never changes an id/);
+  assert.match(
+    state.saveStatus ? state.saveStatus.message : run(sandbox, 'saveStatus').message,
+    /^Not written: `shop\.web` is declared in the plateau `baseline`, and a patch never changes an id/
+  );
   assert.deepEqual(screen.values(), typed, 'the form holds what was typed');
   assert.equal(draftTyped(sandbox), true, 'and Save all changes is lit for it');
   assert.equal(kept(sandbox), null, 'the copy is gone once the form is back');
@@ -259,7 +351,11 @@ test('a refused write keeps the id, the name and the description as typed, next 
 test('an error of the write keeps the fields as typed', async () => {
   const { sandbox } = await open(BRIGHTCART, 'baseline');
   const screen = giveForm(sandbox, 'mailer');
-  typeAll(screen, { 'edit-id-input': 'mailer', 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description' });
+  typeAll(screen, {
+    'edit-id-input': 'mailer',
+    'edit-name-input': 'Typed name',
+    'edit-description-input': 'Typed description'
+  });
   const typed = screen.values();
   run(sandbox, 'commitElementEdit = function commitElementEdit() { throw new Error("disk full"); }');
   assert.equal(sandbox.commitElementWithDraft('mailer', null), false);
@@ -286,13 +382,19 @@ test('the typed values are not kept once the write succeeds', async () => {
 test('layer-confirm: a write that the yes then fails on gives the typed fields back, next to the sentence', async () => {
   const { sandbox, state } = await open(BRIGHTCART, 'baseline');
   const screen = giveForm(sandbox, 'mailer');
-  typeAll(screen, { 'edit-id-input': 'mailer', 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description' });
+  typeAll(screen, {
+    'edit-id-input': 'mailer',
+    'edit-name-input': 'Typed name',
+    'edit-description-input': 'Typed description'
+  });
   const typed = screen.values();
   sandbox.commitElementWithDraft('mailer', null);
   assert.equal(dialogOf(sandbox).kind, 'layer-confirm');
   assert.deepEqual(screen.values(), typed, 'behind the dialog');
   const dialog = dialogOf(sandbox);
-  dialog.onConfirm = () => { throw new Error('disk full'); };
+  dialog.onConfirm = () => {
+    throw new Error('disk full');
+  };
   const version = run(sandbox, 'modelVersion');
   sandbox.submitAppDialog({});
   assert.equal(dialogOf(sandbox), null);

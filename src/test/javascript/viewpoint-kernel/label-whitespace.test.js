@@ -29,7 +29,12 @@ function untidyFixture() {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'archicode-labels-'));
   folders.push(folder);
   fs.cpSync(FIXTURE, folder, { recursive: true });
-  replaceIn(folder, 'plateaus/20_to-be/plateau.yaml', '    - operator: ADD\n      target: "customer"', '    - operator: SET\n      target: "shop.web"\n      field: relationships\n      where: {destination: "shop.api", label: "calls"}\n      value: {label: "calls "}\n    - operator: ADD\n      target: "customer"');
+  replaceIn(
+    folder,
+    'plateaus/20_to-be/plateau.yaml',
+    '    - operator: ADD\n      target: "customer"',
+    '    - operator: SET\n      target: "shop.web"\n      field: relationships\n      where: {destination: "shop.api", label: "calls"}\n      value: {label: "calls "}\n    - operator: ADD\n      target: "customer"'
+  );
   replaceIn(folder, 'plateaus/20_to-be/shop.mobile.yaml', 'label: "calls"', 'label: ""');
   replaceIn(folder, 'plateaus/20_to-be/plateau.yaml', 'label: "orders on"', 'label: "orders on "');
   replaceIn(folder, 'plateaus/10_as-is/shop.yaml', 'label: "delegates to"', 'label: "delegates to "');
@@ -55,14 +60,16 @@ test('spaces around a label, or an empty label, change nothing to the comparison
   const comparison = sandbox.comparisonState();
   assert.equal(comparison.problems, undefined);
   assert.deepEqual(plain(comparison.counts), EXPECTED.counts);
-  const rows = (list) => list.map((row) => [row.thing, row.layer, row.reference, row.destination || '', row.change].join('|'));
+  const rows = (list) =>
+    list.map((row) => [row.thing, row.layer, row.reference, row.destination || '', row.change].join('|'));
   assert.deepEqual(rows(plain(comparison.changes)), rows(EXPECTED.changes));
 });
 
 test('the union carries the labels the kernel compares, so that the drawing and a facet read the same words', async () => {
   const { sandbox } = await open(untidyFixture());
   const { input } = sandbox.buildKernelInput('map', '', { opened: ['shop'] });
-  const rel = (from, destination) => input.elements.find((e) => e.reference === from).relationships.find((r) => r.destination === destination);
+  const rel = (from, destination) =>
+    input.elements.find((e) => e.reference === from).relationships.find((r) => r.destination === destination);
   assert.equal(rel('customer', 'shop.mobile').label, 'orders on');
   assert.equal(rel('customer', 'shop.mobile').change, 'new');
   assert.equal(rel('shop.web', 'shop.api').label, 'calls');
@@ -76,13 +83,32 @@ test('the union carries the labels the kernel compares, so that the drawing and 
 test('a facet that selects on change sees the new relationship whose label has a space, and the others stay', async () => {
   const { sandbox } = await open(untidyFixture());
   const kernel = await sandbox.loadViewpointKernel();
-  const facet = { name: 'without-new', actions: [{ operator: 'REMOVE', jsonPath: "$..relationships[?(@.change == 'new')]" }] };
-  const ends = (options) => kernel.compute(sandbox.buildKernelInput('map', '', Object.assign({ opened: ['shop'] }, options)).input).links.map((link) => link.from + '>' + link.to);
+  const facet = {
+    name: 'without-new',
+    actions: [{ operator: 'REMOVE', jsonPath: "$..relationships[?(@.change == 'new')]" }]
+  };
+  const ends = (options) =>
+    kernel
+      .compute(sandbox.buildKernelInput('map', '', Object.assign({ opened: ['shop'] }, options)).input)
+      .links.map((link) => link.from + '>' + link.to);
   const all = ends({});
   const kept = ends({ facet });
-  assert.ok(all.some((end) => end === 'customer>shop.mobile'), all.join(', '));
-  assert.ok(!kept.some((end) => end === 'customer>shop.mobile'), 'new, with a space in its label: gone with the facet: ' + kept.join(', '));
+  assert.ok(
+    all.some((end) => end === 'customer>shop.mobile'),
+    all.join(', ')
+  );
+  assert.ok(
+    !kept.some((end) => end === 'customer>shop.mobile'),
+    'new, with a space in its label: gone with the facet: ' + kept.join(', ')
+  );
   assert.ok(!kept.some((end) => end === 'shop.mobile>shop.api'), 'new, with no label: gone too');
-  assert.ok(kept.some((end) => end === 'customer>shop.web'), 'the others stay');
-  assert.equal(kept.filter((end) => end === 'shop.api>shop.legacy').length, all.filter((end) => end === 'shop.api>shop.legacy').length, 'the removed one is there once');
+  assert.ok(
+    kept.some((end) => end === 'customer>shop.web'),
+    'the others stay'
+  );
+  assert.equal(
+    kept.filter((end) => end === 'shop.api>shop.legacy').length,
+    all.filter((end) => end === 'shop.api>shop.legacy').length,
+    'the removed one is there once'
+  );
 });

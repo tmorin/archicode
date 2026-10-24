@@ -17,7 +17,10 @@ function notFound(p) {
  * `isSameEntry` compares the folders they stand for.
  */
 function memFolder(initial, options) {
-  const links = Object.entries((options && options.links) || {}).map(([link, target]) => [link, target === '.' ? '' : target]);
+  const links = Object.entries((options && options.links) || {}).map(([link, target]) => [
+    link,
+    target === '.' ? '' : target
+  ]);
   const markLinks = !(options && options.markLinks === false);
   const files = new Map(); // path -> { text, mtime }
   const dirs = new Set(['']);
@@ -27,8 +30,13 @@ function memFolder(initial, options) {
     const parts = p.split('/').slice(0, -1);
     for (let i = 1; i <= parts.length; i++) dirs.add(parts.slice(0, i).join('/'));
   };
-  mem.mkdir = (p) => { addDirs(p + '/x'); };
-  mem.put = (p, text) => { addDirs(p); files.set(p, { text, mtime: ++clock }); };
+  mem.mkdir = (p) => {
+    addDirs(p + '/x');
+  };
+  mem.put = (p, text) => {
+    addDirs(p);
+    files.set(p, { text, mtime: ++clock });
+  };
   for (const [p, text] of Object.entries(initial)) mem.put(p, text);
 
   const fileHandle = (p) => ({
@@ -39,13 +47,21 @@ function memFolder(initial, options) {
       const f = files.get(p);
       if (!f) throw notFound(p);
       // a file that starts with a byte-order mark is a real File, as a browser gives it: `text()` drops the mark and the bytes still have it (#119)
-      if (f.text.charCodeAt(0) === 0xfeff) return new File([Buffer.from(f.text, 'utf8')], p.split('/').pop(), { lastModified: f.mtime });
-      return { lastModified: f.mtime, async text() { return f.text; } };
+      if (f.text.charCodeAt(0) === 0xfeff)
+        return new File([Buffer.from(f.text, 'utf8')], p.split('/').pop(), { lastModified: f.mtime });
+      return {
+        lastModified: f.mtime,
+        async text() {
+          return f.text;
+        }
+      };
     },
     async createWritable() {
       let buffer = '';
       return {
-        async write(data) { buffer += data; },
+        async write(data) {
+          buffer += data;
+        },
         async close() {
           if (mem.onWrite) await mem.onWrite(p);
           mem.writes.push(p);
@@ -60,15 +76,26 @@ function memFolder(initial, options) {
       kind: 'directory',
       name: dirPath.split('/').pop() || 'ws',
       __path: dirPath,
-      async isSameEntry(other) { return !!other && other.__path === dirPath; },
-      async queryPermission() { return 'granted'; },
-      async requestPermission() { return 'granted'; },
+      async isSameEntry(other) {
+        return !!other && other.__path === dirPath;
+      },
+      async queryPermission() {
+        return 'granted';
+      },
+      async requestPermission() {
+        return 'granted';
+      },
       async *entries() {
         for (const p of Array.from(files.keys())) {
-          if (p.slice(0, p.lastIndexOf('/') === -1 ? 0 : p.lastIndexOf('/')) === dirPath && (p.indexOf('/') === -1) === (dirPath === '')) yield [p.split('/').pop(), fileHandle(p)];
+          if (
+            p.slice(0, p.lastIndexOf('/') === -1 ? 0 : p.lastIndexOf('/')) === dirPath &&
+            (p.indexOf('/') === -1) === (dirPath === '')
+          )
+            yield [p.split('/').pop(), fileHandle(p)];
         }
         for (const d of Array.from(dirs)) {
-          if (d !== '' && d.slice(0, d.lastIndexOf('/') === -1 ? 0 : d.lastIndexOf('/')) === dirPath) yield [d.split('/').pop(), dirHandle(d)];
+          if (d !== '' && d.slice(0, d.lastIndexOf('/') === -1 ? 0 : d.lastIndexOf('/')) === dirPath)
+            yield [d.split('/').pop(), dirHandle(d)];
         }
         for (const [link, target] of links) {
           if (link.slice(0, link.lastIndexOf('/') === -1 ? 0 : link.lastIndexOf('/')) !== dirPath) continue;

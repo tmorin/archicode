@@ -22,8 +22,18 @@ const run = (sandbox, code) => vm.runInContext(code, sandbox);
 // ---- an invented ferry company in three plateaus ----
 
 const element = (kind, parent, id, name, extra) =>
-  'header:\n  kind: "archicode.morin.io/' + kind + '"\n' + (parent ? '  parent: "' + parent + '"\n' : '') + '  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n' + (extra || '');
-const rel = (destination, label) => '  relationships:\n    - destination: "' + destination + '"\n      label: "' + label + '"\n';
+  'header:\n  kind: "archicode.morin.io/' +
+  kind +
+  '"\n' +
+  (parent ? '  parent: "' + parent + '"\n' : '') +
+  '  version: "1"\ncontent:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  name +
+  '"\n' +
+  (extra || '');
+const rel = (destination, label) =>
+  '  relationships:\n    - destination: "' + destination + '"\n      label: "' + label + '"\n';
 
 const FLEET_NOW = {
   'app.fleet.yaml': element('system', null, 'fleet', 'Fleet'),
@@ -37,9 +47,17 @@ const FLEET_NEXT = {
   'app.fleet.ferry.yaml': element('container', 'fleet', 'ferry', 'Ferry log'),
   'app.fleet.beacon.yaml': element('container', 'fleet', 'beacon', 'Beacon feed')
 };
-const FLEET_LATER = Object.assign({}, FLEET_NEXT, { 'app.fleet.ferry.yaml': element('container', 'fleet', 'ferry', 'Ferry log, v2') });
-const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
-const FILES = Object.assign({}, folder('10_now', FLEET_NOW), folder('20_next', FLEET_NEXT), folder('30_later', FLEET_LATER));
+const FLEET_LATER = Object.assign({}, FLEET_NEXT, {
+  'app.fleet.ferry.yaml': element('container', 'fleet', 'ferry', 'Ferry log, v2')
+});
+const folder = (dir, files) =>
+  Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
+const FILES = Object.assign(
+  {},
+  folder('10_now', FLEET_NOW),
+  folder('20_next', FLEET_NEXT),
+  folder('30_later', FLEET_LATER)
+);
 const PLATEAU_LIST = [
   { id: 'now', path: 'plateaus/10_now' },
   { id: 'next', path: 'plateaus/20_next' },
@@ -51,21 +69,38 @@ const PLATEAU_LIST = [
  * with a spy on the kernel's `compare` and on `JSON.stringify`.
  */
 async function open(compareTo = 'now') {
-  const { sandbox, state, mem } = await openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, FILES, '  current: later\n'), {});
+  const { sandbox, state, mem } = await openLayered(
+    createApp,
+    memFolder,
+    layeredFiles(PLATEAU_LIST, FILES, '  current: later\n'),
+    {}
+  );
   if (compareTo) compareWith(sandbox, compareTo);
   // the spies: `compares` counts the calls of the kernel's `compare`; `serialised` keeps what `JSON.stringify` returned, from the sandbox's own `JSON`
-  run(sandbox, `
+  run(
+    sandbox,
+    `
     globalThis.__spy = { compares: 0, serialised: [] };
     const kernel = loadedKernel;
     const compare = kernel.compare;
     kernel.compare = function (input) { __spy.compares++; return compare.call(this, input); };
     const stringify = JSON.stringify;
     JSON.stringify = function (...args) { const text = stringify.apply(this, args); __spy.serialised.push(typeof text === 'string' ? text : ''); return text; };
-  `);
+  `
+  );
   const spy = {
-    get compares() { return run(sandbox, '__spy.compares'); },
+    get compares() {
+      return run(sandbox, '__spy.compares');
+    },
     /** What was serialised since the last call, and whether any of it holds an element of a model. */
-    takeModelSerialisations() { return JSON.parse(run(sandbox, 'JSON.stringify(__spy.serialised.splice(0).filter((t) => t.includes(\'"reference"\') && t.includes(\'fleet.\')).length)')); }
+    takeModelSerialisations() {
+      return JSON.parse(
+        run(
+          sandbox,
+          "JSON.stringify(__spy.serialised.splice(0).filter((t) => t.includes('\"reference\"') && t.includes('fleet.')).length)"
+        )
+      );
+    }
   };
   spy.takeModelSerialisations(); // drop what the set-up serialised
   return { sandbox, state, mem, spy };
@@ -103,7 +138,10 @@ test('what the test looks for is real: serialising the input of the comparison i
 test('a load asks again, once, and a plain render after it does not', async () => {
   const { sandbox, state, mem, spy } = await open();
   const first = sandbox.comparisonState();
-  mem.put('plateaus/30_later/app.fleet.radio.yaml', inPlateau('later', element('container', 'fleet', 'radio', 'Radio desk'))); // the radio desk is back in the plateau drawn
+  mem.put(
+    'plateaus/30_later/app.fleet.radio.yaml',
+    inPlateau('later', element('container', 'fleet', 'radio', 'Radio desk'))
+  ); // the radio desk is back in the plateau drawn
   const before = spy.compares;
   await sandbox.loadWorkspace(mem.handle); // the folder is read again
   assert.equal(state.layers.compare && state.layers.compare.other, 'now', 'the comparison is remembered by the folder');
@@ -131,10 +169,19 @@ test('an edit of the plateau drawn asks again: a rename, a created element, a de
   };
   const before = spy.compares;
 
-  sandbox.commitElementEdit('fleet.dock', (node) => { node.name = 'Dock planner, v2'; });
+  sandbox.commitElementEdit('fleet.dock', (node) => {
+    node.name = 'Dock planner, v2';
+  });
   step('rename', (s) => assert.equal(changed(s), 2, 'the dock planner and the ferry log'));
 
-  const created = sandbox.commitCreateChildElement({ parentReference: 'fleet', layer: 'application', kind: 'container', id: 'pier', name: 'Pier camera', description: '' });
+  const created = sandbox.commitCreateChildElement({
+    parentReference: 'fleet',
+    layer: 'application',
+    kind: 'container',
+    id: 'pier',
+    name: 'Pier camera',
+    description: ''
+  });
   assert.equal(created.ok, true);
   step('creation', (s) => assert.equal(s.counts.elements.new, 2, 'the beacon feed and the pier camera'));
 
@@ -142,7 +189,10 @@ test('an edit of the plateau drawn asks again: a rename, a created element, a de
   sandbox.commitDeleteElement('fleet.pier', 'application', impact.affected);
   step('deletion', (s) => assert.equal(s.counts.elements.new, 1));
 
-  sandbox.commitFileEdit('plateaus/30_later/app.fleet.beacon.yaml', inPlateau('later', element('container', 'fleet', 'beacon', 'Beacon feed, v2')));
+  sandbox.commitFileEdit(
+    'plateaus/30_later/app.fleet.beacon.yaml',
+    inPlateau('later', element('container', 'fleet', 'beacon', 'Beacon feed, v2'))
+  );
   step('edit of a file', (s) => assert.equal(s.counts.elements.new, 1));
 
   assert.equal(spy.compares - before, 4, 'one compare per edit, and none for the reads in between');
@@ -152,13 +202,17 @@ test('an edit of the plateau drawn asks again: a rename, a created element, a de
 test('an edit of the settings moves the version too (the models are rebuilt from them)', async () => {
   const { sandbox } = await open();
   const before = run(sandbox, 'modelVersion');
-  sandbox.commitSettingsEdit((settings) => { settings.relationships.defaultSyntheticLabel = 'uses'; });
+  sandbox.commitSettingsEdit((settings) => {
+    settings.relationships.defaultSyntheticLabel = 'uses';
+  });
   assert.ok(run(sandbox, 'modelVersion') > before);
 });
 
 test('Cancel (the folder is read again from disk) asks again, and what was edited is gone from the answer', async () => {
   const { sandbox, state, spy } = await open();
-  sandbox.commitElementEdit('fleet.dock', (node) => { node.name = 'Dock planner, v2'; });
+  sandbox.commitElementEdit('fleet.dock', (node) => {
+    node.name = 'Dock planner, v2';
+  });
   assert.equal(changed(sandbox.comparisonState()), 2);
   const before = spy.compares;
   await sandbox.loadWorkspace(state.folder.handle);
@@ -185,7 +239,10 @@ test('a change of the comparison on the band asks again, and the folder read aga
   assert.equal(sandbox.comparisonState().base.id, 'next');
   assert.equal(spy.compares - before, 1, 'a comparison turned off and on again is computed again');
 
-  mem.put('plateaus/20_next/app.fleet.ferry.yaml', inPlateau('next', element('container', 'fleet', 'ferry', 'Ferry log, v2'))); // the folder of the other plateau changes on disk
+  mem.put(
+    'plateaus/20_next/app.fleet.ferry.yaml',
+    inPlateau('next', element('container', 'fleet', 'ferry', 'Ferry log, v2'))
+  ); // the folder of the other plateau changes on disk
   before = spy.compares;
   assert.equal(changed(sandbox.comparisonState()), 1, 'the page does not watch the disk');
   assert.equal(spy.compares - before, 0);
@@ -213,7 +270,11 @@ test('the version decides: a record changed in place is seen once `modelsChanged
   const { sandbox, state, spy } = await open();
   const first = sandbox.comparisonState();
   state.index.application.get('fleet.dock').name = 'Dock planner, changed in place';
-  assert.equal(sandbox.comparisonState().layers, first.layers, 'no bump, no new answer: the models are not read to find out');
+  assert.equal(
+    sandbox.comparisonState().layers,
+    first.layers,
+    'no bump, no new answer: the models are not read to find out'
+  );
   sandbox.modelsChanged();
   const before = spy.compares;
   const second = sandbox.comparisonState();
@@ -229,7 +290,10 @@ test('a model that is replaced without the bump is not served from the cache eit
   run(sandbox, 'AppState.index = Object.assign({}, AppState.index);');
   assert.notEqual(sandbox.comparisonState().layers, first.layers);
   assert.equal(spy.compares - before, 1);
-  run(sandbox, 'AppState.baseline = Object.assign({}, AppState.baseline, { index: Object.assign({}, AppState.baseline.index) });');
+  run(
+    sandbox,
+    'AppState.baseline = Object.assign({}, AppState.baseline, { index: Object.assign({}, AppState.baseline.index) });'
+  );
   assert.equal(sandbox.comparisonState().layers === first.layers, false);
   assert.equal(spy.compares - before, 2);
 });
@@ -243,9 +307,18 @@ test('every place of the page that replaces a model calls modelsChanged() right 
   });
   assert.ok(assignments.length >= 6, 'the loads and the rebuild assign the models (found ' + assignments.length + ')');
   for (const i of assignments) {
-    assert.ok(script.slice(i, i + 8).some((line) => /\bmodelsChanged\(\)/.test(line)), 'line ' + (i + 1) + ' of the script assigns a model and does not call modelsChanged() within 8 lines: ' + script[i].trim().slice(0, 100));
+    assert.ok(
+      script.slice(i, i + 8).some((line) => /\bmodelsChanged\(\)/.test(line)),
+      'line ' +
+        (i + 1) +
+        ' of the script assigns a model and does not call modelsChanged() within 8 lines: ' +
+        script[i].trim().slice(0, 100)
+    );
   }
   // a new AppState is new models; the cache is not keyed on anything else
   assert.match(script.join('\n'), /function createInitialAppState\(\) \{\s*modelsChanged\(\);/);
-  assert.doesNotMatch(script.join('\n'), /comparisonCache\.key|const key = JSON\.stringify\(input\);\s*\n\s*if \(!comparisonCache/);
+  assert.doesNotMatch(
+    script.join('\n'),
+    /comparisonCache\.key|const key = JSON\.stringify\(input\);\s*\n\s*if \(!comparisonCache/
+  );
 });

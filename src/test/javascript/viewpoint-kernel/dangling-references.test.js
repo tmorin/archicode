@@ -28,7 +28,12 @@ for (const c of DOCUMENT.cases) {
     assert.deepEqual(plain(model.problems), c.editor.problems, 'the sentences');
     // the command line tells the same sentences, whichever command it fails on (and one it does not fail on is not a mistake of the page either)
     for (const [command, lines] of Object.entries(c.cli)) {
-      if (lines !== null) assert.deepEqual(lines, c.editor.problems.filter((line) => lines.includes(line)), command + ': the page tells what the command line tells');
+      if (lines !== null)
+        assert.deepEqual(
+          lines,
+          c.editor.problems.filter((line) => lines.includes(line)),
+          command + ': the page tells what the command line tells'
+        );
     }
     // the page draws what it can all the same, so that the mistake can be repaired
     assert.equal(model.undrawable, false);

@@ -9,11 +9,20 @@ const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
 
-const view = (id, viewpoint, layer, properties) => 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  viewpoint: "' + viewpoint + '"\n  layer: ' + layer + '\n  properties:\n' + properties;
+const view = (id, viewpoint, layer, properties) =>
+  'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "' +
+  id +
+  '"\n  viewpoint: "' +
+  viewpoint +
+  '"\n  layer: ' +
+  layer +
+  '\n  properties:\n' +
+  properties;
 const FILES = {
   '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["manifests"]\n',
   'manifests/shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n',
-  'manifests/prod.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "prod"\n  name: "Production"\n',
+  'manifests/prod.yaml':
+    'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "prod"\n  name: "Production"\n',
   'manifests/v-title.yaml': view('v_title', 'overview', 'Technology', '    element: "prod"\n'),
   'manifests/v-upper.yaml': view('v_upper', 'detailed', 'TECHNOLOGY', '    element: "prod"\n'),
   'manifests/v-map.yaml': view('v_map', 'map', '"Technology"', '    pinned: ["prod"]\n'),
@@ -35,10 +44,16 @@ async function open() {
 
 test('the layer of a view is the technology layer in any case, and the application layer for anything else', async () => {
   const { sandbox } = await open();
-  for (const spelled of ['technology', 'Technology', 'TECHNOLOGY', 'tEcHnOlOgY']) assert.equal(sandbox.viewLayerOf({ layer: spelled }), 'technology', spelled);
-  for (const spelled of ['application', 'Application', 'APPLICATION', undefined, null, '', 7, 'nope']) assert.equal(sandbox.viewLayerOf({ layer: spelled }), 'application', String(spelled));
+  for (const spelled of ['technology', 'Technology', 'TECHNOLOGY', 'tEcHnOlOgY'])
+    assert.equal(sandbox.viewLayerOf({ layer: spelled }), 'technology', spelled);
+  for (const spelled of ['application', 'Application', 'APPLICATION', undefined, null, '', 7, 'nope'])
+    assert.equal(sandbox.viewLayerOf({ layer: spelled }), 'application', String(spelled));
   assert.equal(sandbox.viewLayerOf(undefined), 'application');
-  assert.equal(sandbox.entryLayerOf('Technology'), sandbox.viewLayerOf({ layer: 'Technology' }), 'the check of the names and the rest of the page read it the same way');
+  assert.equal(
+    sandbox.entryLayerOf('Technology'),
+    sandbox.viewLayerOf({ layer: 'Technology' }),
+    'the check of the names and the rest of the page read it the same way'
+  );
 });
 
 test('a view of the technology layer in capitals can be drawn: no problem, the page it opens, its recipe, its definition', async () => {
@@ -51,9 +66,17 @@ test('a view of the technology layer in capitals can be drawn: no problem, the p
     assert.equal(recipe.layer, 'technology', id);
     assert.equal(sandbox.canonicalViewDefinition(saved).layer, 'technology', id);
   }
-  assert.equal(sandbox.libraryDiagramRecipe(sandbox.findSavedView('v_title')).record.reference, 'prod', 'the element is looked up in the technology layer');
+  assert.equal(
+    sandbox.libraryDiagramRecipe(sandbox.findSavedView('v_title')).record.reference,
+    'prod',
+    'the element is looked up in the technology layer'
+  );
   assert.equal(sandbox.applySavedView(sandbox.findSavedView('v_map')), null);
-  assert.equal(vm.runInContext('currentPerspective', sandbox), 'environments', 'a map of the technology layer is the page Environments');
+  assert.equal(
+    vm.runInContext('currentPerspective', sandbox),
+    'environments',
+    'a map of the technology layer is the page Environments'
+  );
   assert.equal(sandbox.applySavedView(sandbox.findSavedView('v_upper')), null);
   assert.equal(vm.runInContext('currentPerspective', sandbox), 'elements');
   assert.equal(state.selection.layer, 'technology');
@@ -82,8 +105,16 @@ test('what is written is not changed because of the case: the layer is rewritten
   assert.equal(sandbox.setViewLayer(map, 'application'), true, 'a change of layer is a change');
   assert.equal(map.layer, 'application');
   const title = sandbox.findSavedView('v_title');
-  assert.equal(sandbox.rewriteRecipeReferences(title, 'prod', 'live', 'technology'), true, 'a rename in the technology layer follows a view of Technology');
+  assert.equal(
+    sandbox.rewriteRecipeReferences(title, 'prod', 'live', 'technology'),
+    true,
+    'a rename in the technology layer follows a view of Technology'
+  );
   assert.equal(title.properties.element, 'live');
-  assert.equal(sandbox.rewriteRecipeReferences(sandbox.findSavedView('v_upper'), 'prod', 'live', 'application'), false, 'and not one of the application layer');
+  assert.equal(
+    sandbox.rewriteRecipeReferences(sandbox.findSavedView('v_upper'), 'prod', 'live', 'application'),
+    false,
+    'and not one of the application layer'
+  );
   assert.deepEqual(mem.writes, [], 'nothing was saved by reading them');
 });

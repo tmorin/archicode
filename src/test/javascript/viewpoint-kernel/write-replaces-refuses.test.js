@@ -14,7 +14,11 @@ const { memFolder } = require('./mem-folder');
 
 const DOCUMENT = JSON.parse(fs.readFileSync(path.join(__dirname, 'compose-replaces-cases.json'), 'utf8'));
 const plain = (value) => JSON.parse(JSON.stringify(value));
-const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const text = (html) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 async function open(files, plateau, against) {
   const mem = memFolder(files);
@@ -32,21 +36,34 @@ async function open(files, plateau, against) {
 
 // R07 with the name of n set to A: a is removed by p1 (which also has b, replacing a), p2 adds n named like a
 const R07 = DOCUMENT.cases.find((c) => c.id === 'R07').files;
-const NAMED_A = Object.assign({}, R07, { 'manifests/p2/n.yaml': R07['manifests/p2/n.yaml'].replace('name: "N"', 'name: "A"') });
-const SENTENCE = '“a” is not an element of “p1”, the plateau “p2” builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. ' +
+const NAMED_A = Object.assign({}, R07, {
+  'manifests/p2/n.yaml': R07['manifests/p2/n.yaml'].replace('name: "N"', 'name: "A"')
+});
+const SENTENCE =
+  '“a” is not an element of “p1”, the plateau “p2” builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. ' +
   'Compare “p2” with “p1”, or write the entry in the layer that still has “a” (a plateau that overrides one that holds it); nothing was written.';
 
 test('R07 with n named A: the pair (a, n) is listed, its button is off with the reason, and the writer refuses with the same sentence and writes nothing', async () => {
   const { sandbox, state, mem } = await open(NAMED_A, 'p2', 'baseline');
   const view = sandbox.comparisonState();
-  assert.deepEqual(plain(view.candidates).map((c) => [c.from, c.to]), [['a', 'n']], 'the kernel proposes it');
+  assert.deepEqual(
+    plain(view.candidates).map((c) => [c.from, c.to]),
+    [['a', 'n']],
+    'the kernel proposes it'
+  );
   const panel = sandbox.renderChangesPanelHtml(view);
-  assert.match(panel, /<button type="button" data-action="accept-candidate"[^>]* disabled title="[^"]*builds on[^"]*"[^>]*>Write replaces<\/button>/);
+  assert.match(
+    panel,
+    /<button type="button" data-action="accept-candidate"[^>]* disabled title="[^"]*builds on[^"]*"[^>]*>Write replaces<\/button>/
+  );
   assert.match(text(panel), /“a” is not an element of “p1”, the plateau “p2” builds on/);
   const before = Object.fromEntries(Array.from(mem.files, ([p, f]) => [p, f.text]));
   const result = plain(sandbox.acceptCandidate({ layer: 'application', from: 'a', to: 'n' }));
   assert.deepEqual(result, { ok: false, message: SENTENCE });
-  assert.match(sandbox.renderChangesPanelHtml(sandbox.comparisonState()), /<p class="changes-message" role="alert">“a” is not an element of “p1”/);
+  assert.match(
+    sandbox.renderChangesPanelHtml(sandbox.comparisonState()),
+    /<p class="changes-message" role="alert">“a” is not an element of “p1”/
+  );
   assert.equal(state.dirtyReferences.size, 0);
   assert.deepEqual(plain(state.manifestFiles.filter((f) => f.dirty)), [], 'no file is marked modified');
   assert.deepEqual(plain(mem.writes), []);
@@ -55,10 +72,15 @@ test('R07 with n named A: the pair (a, n) is listed, its button is off with the 
 
 test('R07 compared with p1 (one layer): the pair the layer can hold has its button on, and the plateau below is where the entry is written', async () => {
   // p1 has b, p2 has n named B: compared with p1, b is removed and n new; b is an element of p1, the plateau p2 builds on
-  const files = Object.assign({}, R07, { 'manifests/p2/n.yaml': R07['manifests/p2/n.yaml'].replace('name: "N"', 'name: "B"') });
+  const files = Object.assign({}, R07, {
+    'manifests/p2/n.yaml': R07['manifests/p2/n.yaml'].replace('name: "N"', 'name: "B"')
+  });
   const { sandbox, state } = await open(files, 'p2', 'p1');
   const view = sandbox.comparisonState();
-  assert.deepEqual(plain(view.candidates).map((c) => [c.from, c.to]), [['b', 'n']]);
+  assert.deepEqual(
+    plain(view.candidates).map((c) => [c.from, c.to]),
+    [['b', 'n']]
+  );
   const panel = sandbox.renderChangesPanelHtml(view);
   assert.doesNotMatch(panel, / disabled/);
   assert.deepEqual(plain(sandbox.acceptCandidate({ layer: 'application', from: 'b', to: 'n' })), { ok: true });
@@ -81,7 +103,11 @@ test('a split and a merge are written one pair at a time and each from is checke
   });
   const { sandbox, state } = await open(files, 'p2', 'baseline');
   const view = sandbox.comparisonState();
-  assert.equal(sandbox.replacesLayerProblem('application', 'a', view) !== null, true, 'a: a layer in between removed it');
+  assert.equal(
+    sandbox.replacesLayerProblem('application', 'a', view) !== null,
+    true,
+    'a: a layer in between removed it'
+  );
   assert.equal(sandbox.replacesLayerProblem('application', 'k', view), null, 'k: still in p1');
   assert.equal(plain(sandbox.acceptCandidate({ layer: 'application', from: 'a', to: 'n' })).ok, false);
   assert.equal(state.dirtyReferences.size, 0);
@@ -90,7 +116,8 @@ test('a split and a merge are written one pair at a time and each from is checke
 test('a workspace without plateaus is not affected: the check finds nothing to build on', async () => {
   const files = {
     '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["manifests/**"]\n',
-    'manifests/a.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  name: "A"\n'
+    'manifests/a.yaml':
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  name: "A"\n'
   };
   const mem = memFolder(files);
   const sandbox = createApp({});
@@ -98,7 +125,13 @@ test('a workspace without plateaus is not affected: the check finds nothing to b
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  assert.equal(sandbox.replacesLayerProblem('application', 'a', { target: { id: 'baseline', name: '' }, base: { id: 'baseline' } }), null);
+  assert.equal(
+    sandbox.replacesLayerProblem('application', 'a', {
+      target: { id: 'baseline', name: '' },
+      base: { id: 'baseline' }
+    }),
+    null
+  );
   assert.equal(sandbox.replacesLayerProblem('application', 'a', null), null);
 });
 
@@ -119,9 +152,15 @@ test('Brightcart, saas compared with baseline: both pairs are on, and writing on
   const { sandbox, state, mem } = await open(files, 'saas', 'baseline');
   const view = sandbox.comparisonState();
   const pairs = plain(view.candidates).map((c) => [c.from, c.to]);
-  assert.deepEqual(pairs, [['partners.tax-live', 'partners.commerce-live'], ['sandbox.tax-sandbox', 'sandbox.commerce-sandbox']]);
+  assert.deepEqual(pairs, [
+    ['partners.tax-live', 'partners.commerce-live'],
+    ['sandbox.tax-sandbox', 'sandbox.commerce-sandbox']
+  ]);
   assert.doesNotMatch(sandbox.renderChangesPanelHtml(view), / disabled/);
-  assert.deepEqual(plain(sandbox.acceptCandidate({ layer: 'technology', from: 'partners.tax-live', to: 'partners.commerce-live' })), { ok: true });
+  assert.deepEqual(
+    plain(sandbox.acceptCandidate({ layer: 'technology', from: 'partners.tax-live', to: 'partners.commerce-live' })),
+    { ok: true }
+  );
   const dirty = plain(state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath));
   assert.equal(dirty.length, 1);
   assert.ok(dirty[0].startsWith('saas/'), dirty[0]);

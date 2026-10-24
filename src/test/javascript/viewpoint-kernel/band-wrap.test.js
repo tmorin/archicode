@@ -16,22 +16,43 @@ const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/ed
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** Four plateaus, siblings over `baseline`, with the long names of the Brightcart fixture (see layered-folders.js). */
-const NAMES = ['Monolith kept as it is today', 'Buy the commerce platform and keep the back office', 'Build commerce services in house', 'Open a marketplace of sellers and partners'];
+const NAMES = [
+  'Monolith kept as it is today',
+  'Buy the commerce platform and keep the back office',
+  'Build commerce services in house',
+  'Open a marketplace of sellers and partners'
+];
 const IDS = ['saas', 'inhouse', 'marketplace', 'monolith'];
 const SHOP = 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n';
 const PLATEAUS = IDS.map((id, i) => ({ id, name: NAMES[i], path: 'plateaus/' + id }));
-const LONG_NAMES = layeredFiles(PLATEAUS, Object.fromEntries(IDS.map((id) => ['plateaus/' + id + '/app.shop.yaml', SHOP])));
+const LONG_NAMES = layeredFiles(
+  PLATEAUS,
+  Object.fromEntries(IDS.map((id) => ['plateaus/' + id + '/app.shop.yaml', SHOP]))
+);
 
 /** The rules of the top level of the stylesheet whose selectors are class names joined by descendant combinators (the ones the header uses), in source order. */
 function simpleRules() {
   const rules = [];
   for (const m of CSS.matchAll(/(?<=^|\})\s*([^{}@]+)\{([^{}]*)\}/g)) {
-    const declarations = Object.fromEntries(m[2].split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
-      const i = d.indexOf(':');
-      return [d.slice(0, i).trim(), d.slice(i + 1).replace('!important', '').trim()];
-    }));
+    const declarations = Object.fromEntries(
+      m[2]
+        .split(';')
+        .map((d) => d.trim())
+        .filter(Boolean)
+        .map((d) => {
+          const i = d.indexOf(':');
+          return [
+            d.slice(0, i).trim(),
+            d
+              .slice(i + 1)
+              .replace('!important', '')
+              .trim()
+          ];
+        })
+    );
     for (const selector of m[1].split(',').map((x) => x.trim())) {
-      if (/^(\.[\w-]+)(\s+\.[\w-]+)*$/.test(selector)) rules.push({ chain: selector.split(/\s+/).map((c) => c.slice(1)), declarations, index: rules.length });
+      if (/^(\.[\w-]+)(\s+\.[\w-]+)*$/.test(selector))
+        rules.push({ chain: selector.split(/\s+/).map((c) => c.slice(1)), declarations, index: rules.length });
     }
   }
   return rules;
@@ -39,17 +60,19 @@ function simpleRules() {
 
 /** The declarations that apply to an element of the header: `chain` lists its ancestors and itself, each as the classes it carries. Specificity (classes), then source order. */
 function computed(chain) {
-  const matching = simpleRules().filter((rule) => {
-    const classes = rule.chain.map((c) => c);
-    let at = chain.length - 1;
-    if (!chain[at].includes(classes[classes.length - 1])) return false;
-    for (let i = classes.length - 2; i >= 0; i--) {
-      at--;
-      while (at >= 0 && !chain[at].includes(classes[i])) at--;
-      if (at < 0) return false;
-    }
-    return true;
-  }).sort((a, b) => a.chain.length - b.chain.length || a.index - b.index);
+  const matching = simpleRules()
+    .filter((rule) => {
+      const classes = rule.chain.map((c) => c);
+      let at = chain.length - 1;
+      if (!chain[at].includes(classes[classes.length - 1])) return false;
+      for (let i = classes.length - 2; i >= 0; i--) {
+        at--;
+        while (at >= 0 && !chain[at].includes(classes[i])) at--;
+        if (at < 0) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => a.chain.length - b.chain.length || a.index - b.index);
   return Object.assign({}, ...matching.map((rule) => rule.declarations));
 }
 
@@ -57,10 +80,22 @@ function computed(chain) {
 function simpleRulesFor(selector) {
   const out = {};
   for (const m of CSS.matchAll(/(?<=^|\})\s*([^{}@]+)\{([^{}]*)\}/g)) {
-    if (!m[1].split(',').map((x) => x.trim()).includes(selector)) continue;
-    for (const d of m[2].split(';').map((x) => x.trim()).filter(Boolean)) {
+    if (
+      !m[1]
+        .split(',')
+        .map((x) => x.trim())
+        .includes(selector)
+    )
+      continue;
+    for (const d of m[2]
+      .split(';')
+      .map((x) => x.trim())
+      .filter(Boolean)) {
       const i = d.indexOf(':');
-      out[d.slice(0, i).trim()] = d.slice(i + 1).replace('!important', '').trim();
+      out[d.slice(0, i).trim()] = d
+        .slice(i + 1)
+        .replace('!important', '')
+        .trim();
     }
   }
   return out;
@@ -82,7 +117,11 @@ test('what the band holds takes what is left of the row and no more, so that it 
   const field = computed(FIELD);
   assert.match(field['display'], /flex/);
   assert.equal(field['min-width'], '0', 'a field may be narrower than its content');
-  assert.match(field['flex'], /^1 1 /, 'it grows and shrinks from a basis, so a row holds the two lists when the window is wide and one under the other when it is not');
+  assert.match(
+    field['flex'],
+    /^1 1 /,
+    'it grows and shrinks from a basis, so a row holds the two lists when the window is wide and one under the other when it is not'
+  );
   assert.match(field['max-width'], /rem$/, 'and a very wide window does not stretch it');
   const rules = simpleRulesFor('.band-field select');
   assert.equal(rules['min-width'], '0');
@@ -95,7 +134,10 @@ test('the perspective tabs keep their size, and the header holds neither the pla
   const { sandbox, state } = await openLayered(createApp, memFolder, LONG_NAMES, { drawn: 'inhouse' });
   assert.equal(state.fatalError, null);
   const header = sandbox.renderTopPanelHtml();
-  assert.doesNotMatch(header, /plateau-switch|plateau-tabs|compare-control|id="compare-to"|data-action="set-plateau"|reload-baseline/);
+  assert.doesNotMatch(
+    header,
+    /plateau-switch|plateau-tabs|compare-control|id="compare-to"|data-action="set-plateau"|reload-baseline/
+  );
   assert.match(header, /class="perspective-tabs/);
 });
 
@@ -107,7 +149,17 @@ test('on four plateaus with long names the band is two lists, the plateau drawn 
   const plateau = band.slice(band.indexOf('id="band-plateau"'), band.indexOf('</select>'));
   for (const id of ['baseline'].concat(IDS)) assert.match(plateau, new RegExp('<option value="' + id + '"'), id);
   assert.match(plateau, /<option value="inhouse" selected>/, 'the plateau drawn is the one selected');
-  for (const gone of ['band-tree', 'band-node', 'band-draw', 'data-action="compare-past"', 'data-action="compare-future"', 'data-action="compare-plateau"', 'band-writing', 'band-status', 'set-changes-only']) {
+  for (const gone of [
+    'band-tree',
+    'band-node',
+    'band-draw',
+    'data-action="compare-past"',
+    'data-action="compare-future"',
+    'data-action="compare-plateau"',
+    'band-writing',
+    'band-status',
+    'set-changes-only'
+  ]) {
     assert.ok(!band.includes(gone), gone + ' is not on the band');
   }
   assert.ok(Math.max(...NAMES.map((n) => n.length)) >= 30, 'the names are as long as the issue says');

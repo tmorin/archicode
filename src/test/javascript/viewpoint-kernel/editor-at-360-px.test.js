@@ -35,7 +35,14 @@ const narrow = () => {
 /** The declarations of every rule of `css` whose selector list has `selector` as one of its selectors, joined. */
 const declarationsFor = (css, selector) => {
   const found = [];
-  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) if (m[1].split(',').map((x) => x.trim()).includes(selector)) found.push(m[2]);
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g))
+    if (
+      m[1]
+        .split(',')
+        .map((x) => x.trim())
+        .includes(selector)
+    )
+      found.push(m[2]);
   return found.join(';');
 };
 
@@ -53,7 +60,11 @@ test('the buttons in the header of the form of an element wrap instead of going 
   // a rule on the form, not in the window query: the header is told by the width of the centre, not by the window (header.test.js, "the strip is gone"), and a row that fits does not wrap
   const css = declarationsFor(CSS, '.element-edition-form .element-header-actions');
   assert.match(css, /flex-wrap:\s*wrap/);
-  assert.match(css, /flex-shrink:\s*1/, 'the group may be narrower than its buttons side by side (it is flex-shrink: 0 in the other headers)');
+  assert.match(
+    css,
+    /flex-shrink:\s*1/,
+    'the group may be narrower than its buttons side by side (it is flex-shrink: 0 in the other headers)'
+  );
   assert.match(css, /min-width:\s*0/);
   assert.match(css, /max-width:\s*100%/);
   assert.equal(declarationsFor(narrow(), '.element-header-actions'), '', 'the window query does not name the header');
@@ -62,10 +73,11 @@ test('the buttons in the header of the form of an element wrap instead of going 
 });
 
 test('the form of an element is the one that holds the header with Delete, Move, Add child and Back to view', () => {
-  const form = HTML.slice(HTML.indexOf("let html = '<div class=\"element-edition-form\">';"));
+  const form = HTML.slice(HTML.indexOf('let html = \'<div class="element-edition-form">\';'));
   const header = form.slice(0, form.indexOf('// TDD-0010 DEC-4: a pending delete'));
   assert.match(header, /html \+= renderElementHeaderHtml\(/);
-  for (const action of ['request-delete-element', 'open-move-dialog', 'open-create-child-form', 'toggle-element-edit']) assert.ok(header.includes(action), action);
+  for (const action of ['request-delete-element', 'open-move-dialog', 'open-create-child-form', 'toggle-element-edit'])
+    assert.ok(header.includes(action), action);
 });
 
 test('at 360 px the list of saved views under a story is never wider than its row', () => {
@@ -81,7 +93,11 @@ test('at 360 px the references and the paths that Confirm delete lists break whe
 test('the wide layout is untouched: the three rows keep their declarations outside the query', () => {
   const outside = CSS.replace(narrow(), '');
   assert.match(declarationsFor(outside, '.edition-add-row'), /display:\s*flex/);
-  assert.doesNotMatch(declarationsFor(outside, '.edition-add-row'), /flex-wrap/, 'the row of fields does not wrap in a wide window');
+  assert.doesNotMatch(
+    declarationsFor(outside, '.edition-add-row'),
+    /flex-wrap/,
+    'the row of fields does not wrap in a wide window'
+  );
   assert.doesNotMatch(declarationsFor(outside, '.story-add select'), /max-width/);
   assert.doesNotMatch(declarationsFor(outside, '.delete-confirmation li'), /overflow-wrap/);
 });

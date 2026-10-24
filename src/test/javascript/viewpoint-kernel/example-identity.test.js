@@ -18,11 +18,15 @@ function quotedTable() {
   const start = MANUAL.indexOf('[source,text]\n----\ncomparing to-be (To be) with baseline (As is)');
   assert.ok(start > 0, 'the manual quotes the table of the example under `diff`');
   const block = MANUAL.slice(start, MANUAL.indexOf('\n----\n', start + 30)).split('\n');
-  const rows = block.filter((line) => /^(new|changed|removed|moved|split|merged) {2,}element /.test(line)).map((line) => {
-    const cells = line.split(/ {2,}/);
-    return [cells[0], cells[3]];
-  });
-  const candidates = block.filter((line) => /^application {2}shop\./.test(line)).map((line) => line.split(/ {2,}/).slice(1, 3));
+  const rows = block
+    .filter((line) => /^(new|changed|removed|moved|split|merged) {2,}element /.test(line))
+    .map((line) => {
+      const cells = line.split(/ {2,}/);
+      return [cells[0], cells[3]];
+    });
+  const candidates = block
+    .filter((line) => /^application {2}shop\./.test(line))
+    .map((line) => line.split(/ {2,}/).slice(1, 3));
   const counts = block.find((line) => line.startsWith('replacing'));
   return { rows, candidates, counts };
 }
@@ -56,7 +60,15 @@ test('the editor reads the same moved, split and merged elements and the same ca
   const rows = comparison.changes.filter((row) => row.thing === 'element').map((row) => [row.change, row.reference]);
   assert.deepEqual(plain(rows), quoted.rows);
   assert.equal(quoted.counts, 'replacing     2 moved, 2 split, 1 merged');
-  assert.deepEqual(plain(comparison.counts.elements), { new: 2, changed: 2, removed: 2, moved: 2, split: 2, merged: 1, wording_only: 1 });
+  assert.deepEqual(plain(comparison.counts.elements), {
+    new: 2,
+    changed: 2,
+    removed: 2,
+    moved: 2,
+    split: 2,
+    merged: 1,
+    wording_only: 1
+  });
   assert.deepEqual(plain(comparison.candidates.map((c) => [c.from, c.to])), quoted.candidates);
 });
 
@@ -64,10 +76,15 @@ test('what moved with its child, and what points at it, is one change and no oth
   const { sandbox } = await editorOnTheExample();
   await sandbox.compareWithPlateau('baseline');
   const comparison = sandbox.comparisonState();
-  const byReference = (reference) => comparison.changes.find((row) => row.thing === 'element' && row.reference === reference);
+  const byReference = (reference) =>
+    comparison.changes.find((row) => row.thing === 'element' && row.reference === reference);
   assert.deepEqual(plain(byReference('warehouse.inventory').replaces), ['shop.inventory']);
   assert.deepEqual(plain(byReference('warehouse.inventory.levels').replaces), ['shop.inventory.levels']);
   assert.deepEqual(plain(byReference('shop.billing').replaces), ['shop.invoices', 'shop.receipts']);
   assert.equal(byReference('shop.inventory'), undefined, 'a replaced element is not a removed one');
-  assert.equal(byReference('warehouse.picking'), undefined, 'a relationship that follows the moved element is no change of the element that declares it');
+  assert.equal(
+    byReference('warehouse.picking'),
+    undefined,
+    'a relationship that follows the moved element is no change of the element that declares it'
+  );
 });

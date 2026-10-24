@@ -42,7 +42,11 @@ test('a flow draws the node of the container towards the node of the database th
   assert.ok(links.includes('app-vm_shop_app -> db-vm_shop_db : reads and writes'), links.join('\n'));
   assert.ok(links.includes('app-vm_shop_app -> db-vm_shop_db : queries'), links.join('\n'));
   const found = out.links.find((l) => l.label === 'queries' && l.from === 'app-vm_shop_app');
-  assert.deepEqual(found.relationships.map((r) => r.from), ['shop.app.search'], 'the link says which component declares the relationship');
+  assert.deepEqual(
+    found.relationships.map((r) => r.from),
+    ['shop.app.search'],
+    'the link says which component declares the relationship'
+  );
 });
 
 test('a flow draws the node of the caller towards the node whose container holds the component it calls', async () => {
@@ -59,11 +63,20 @@ test('a flow draws the node of the caller towards the node whose container holds
 test('a relationship between two components of one container is internal, in the deep viewpoint and in the lifted ones', async () => {
   const { sandbox, kernel } = await editor();
   const out = draw(sandbox, kernel, 'deep', 'prod.dc', true);
-  assert.ok(!out.links.some((l) => l.from === 'app-vm_shop_app' && l.to === 'app-vm_shop_app'), 'no loop on the box of the container');
+  assert.ok(
+    !out.links.some((l) => l.from === 'app-vm_shop_app' && l.to === 'app-vm_shop_app'),
+    'no loop on the box of the container'
+  );
   const overview = draw(sandbox, kernel, 'overview', 'prod.dc.admin-vm', true);
-  assert.ok(overview.links.some((l) => l.from === 'prod.dc.admin-vm' && l.to === 'prod.dc.app-vm'), labelled(overview).join('\n'));
+  assert.ok(
+    overview.links.some((l) => l.from === 'prod.dc.admin-vm' && l.to === 'prod.dc.app-vm'),
+    labelled(overview).join('\n')
+  );
   const detailed = draw(sandbox, kernel, 'detailed', 'prod.dc', true);
-  assert.ok(detailed.links.some((l) => l.from === 'prod.dc.app-vm' && l.to === 'prod.dc.db-vm'), labelled(detailed).join('\n'));
+  assert.ok(
+    detailed.links.some((l) => l.from === 'prod.dc.app-vm' && l.to === 'prod.dc.db-vm'),
+    labelled(detailed).join('\n')
+  );
 });
 
 test('a view that is not about a flow draws none of them', async () => {

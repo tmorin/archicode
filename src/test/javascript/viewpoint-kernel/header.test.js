@@ -102,11 +102,19 @@ test('the actions of the Elements diagram header: Facet, the "⋯" and its overf
   const moreButton = actions.indexOf(dataAction('toggle-header-menu'));
   const overflow = actions.indexOf('<div class="header-overflow" id="header-overflow"');
   const maximize = actions.indexOf(dataAction('toggle-maximize'));
-  for (const [name, at] of Object.entries({ facet, more, moreButton, overflow, maximize })) assert.notEqual(at, -1, name + ' is in the row');
-  assert.ok(facet < more && more < moreButton && moreButton < overflow, 'Facet, then the holder with the "⋯" button, then the overflow');
+  for (const [name, at] of Object.entries({ facet, more, moreButton, overflow, maximize }))
+    assert.notEqual(at, -1, name + ' is in the row');
+  assert.ok(
+    facet < more && more < moreButton && moreButton < overflow,
+    'Facet, then the holder with the "⋯" button, then the overflow'
+  );
   const closed = overflowOf(actions);
   assert.ok(closed.end < maximize, 'Maximize comes after the overflow closes: it stays in the row');
-  assert.equal(actions.indexOf(dataAction('toggle-maximize'), closed.start), maximize, 'and there is no Maximize inside the overflow');
+  assert.equal(
+    actions.indexOf(dataAction('toggle-maximize'), closed.start),
+    maximize,
+    'and there is no Maximize inside the overflow'
+  );
   assert.ok(facet < closed.start, 'Facet is before the overflow');
 
   const inside = closed.inner;
@@ -116,12 +124,22 @@ test('the actions of the Elements diagram header: Facet, the "⋯" and its overf
   assert.equal(count(inside, dataAction('diagram-export')), 2);
   assert.equal(count(inside, dataAction('diagram-export') + ' data-format="png"'), 1);
   assert.equal(count(inside, dataAction('diagram-export') + ' data-format="svg"'), 1);
-  for (const absent of ['diagram-facet-select', dataAction('toggle-maximize'), 'viewpoint-switch', dataAction('set-element-tab'), dataAction('toggle-header-menu'), dataAction('open-as-diagram')]) {
+  for (const absent of [
+    'diagram-facet-select',
+    dataAction('toggle-maximize'),
+    'viewpoint-switch',
+    dataAction('set-element-tab'),
+    dataAction('toggle-header-menu'),
+    dataAction('open-as-diagram')
+  ]) {
     assert.ok(!inside.includes(absent), 'the overflow does not hold ' + absent);
   }
   // the row outside the overflow holds nothing but Facet, the "⋯" holder and Maximize
   const rest = actions.slice(0, closed.start) + actions.slice(closed.end);
-  assert.deepEqual(buttons(rest).map((b) => b.match(/data-action="([^"]+)"/)[1]), ['toggle-header-menu', 'toggle-maximize']);
+  assert.deepEqual(
+    buttons(rest).map((b) => b.match(/data-action="([^"]+)"/)[1]),
+    ['toggle-header-menu', 'toggle-maximize']
+  );
 });
 
 test('the actions of the Map header have the same structure; the way to the other perspective follows the selection', async () => {
@@ -135,12 +153,17 @@ test('the actions of the Map header have the same structure; the way to the othe
   assert.ok(actions.indexOf('class="header-more"') < moreButton && moreButton < overflow);
   const closed = overflowOf(actions);
   assert.ok(closed.end < maximize, 'Maximize is after the overflow');
-  assert.equal(count(closed.inner, dataAction('open-as-diagram')), 1, 'with a selection, Open in Elements is in the overflow');
+  assert.equal(
+    count(closed.inner, dataAction('open-as-diagram')),
+    1,
+    'with a selection, Open in Elements is in the overflow'
+  );
   assert.ok(!closed.inner.includes(dataAction('show-on-map')), 'and Show on map is not');
   assert.equal(count(closed.inner, dataAction('name-view')), 1);
   assert.equal(count(closed.inner, dataAction('add-to-story')), 1);
   assert.equal(count(closed.inner, dataAction('diagram-export')), 2);
-  for (const absent of ['diagram-facet-select', dataAction('toggle-maximize'), dataAction('toggle-header-menu')]) assert.ok(!closed.inner.includes(absent), 'the overflow does not hold ' + absent);
+  for (const absent of ['diagram-facet-select', dataAction('toggle-maximize'), dataAction('toggle-header-menu')])
+    assert.ok(!closed.inner.includes(absent), 'the overflow does not hold ' + absent);
 
   const none = await mapPage(false);
   const bare = headerOf(none.center()).actions;
@@ -149,7 +172,10 @@ test('the actions of the Map header have the same structure; the way to the othe
   assert.equal(count(bareOverflow.inner, dataAction('name-view')), 1, 'Story is still in the overflow');
   assert.equal(count(bareOverflow.inner, dataAction('add-to-story')), 1);
   assert.equal(count(bareOverflow.inner, dataAction('diagram-export')), 2, 'and so is Download');
-  assert.ok(bare.indexOf('id="diagram-facet-select"') < bare.indexOf('class="header-more"') && bareOverflow.end < bare.indexOf(dataAction('toggle-maximize')));
+  assert.ok(
+    bare.indexOf('id="diagram-facet-select"') < bare.indexOf('class="header-more"') &&
+      bareOverflow.end < bare.indexOf(dataAction('toggle-maximize'))
+  );
 });
 
 test('every control of a diagram header is in the page once: no copy for the narrow state', async () => {
@@ -164,7 +190,8 @@ test('every control of a diagram header is in the page once: no copy for the nar
   for (const [html, opener, label] of cases) {
     const { header } = headerOf(html);
     if (opener) assert.equal(count(header, dataAction(opener)), 1, label + ': ' + opener);
-    for (const name of ['name-view', 'add-to-story', 'toggle-maximize', 'toggle-header-menu']) assert.equal(count(header, dataAction(name)), 1, label + ': ' + name);
+    for (const name of ['name-view', 'add-to-story', 'toggle-maximize', 'toggle-header-menu'])
+      assert.equal(count(header, dataAction(name)), 1, label + ': ' + name);
     assert.equal(count(header, dataAction('diagram-export')), 2, label + ': png and svg');
     assert.equal(count(header, dataAction('diagram-export') + ' data-format="png"'), 1, label + ': png');
     assert.equal(count(header, dataAction('diagram-export') + ' data-format="svg"'), 1, label + ': svg');
@@ -189,13 +216,28 @@ test('the "⋯" button and its menu say what they are, and the open state is wri
   assert.match(button, /class="header-more-button"/);
   const controls = button.match(/aria-controls="([^"]+)"/)[1];
   assert.equal(controls, 'header-overflow');
-  assert.equal(controls, closed.match(/<div class="header-overflow" id="([^"]+)"/)[1], 'it controls the id of the overflow');
-  assert.match(closed, /<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="false">/);
+  assert.equal(
+    controls,
+    closed.match(/<div class="header-overflow" id="([^"]+)"/)[1],
+    'it controls the id of the overflow'
+  );
+  assert.match(
+    closed,
+    /<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="false">/
+  );
 
   run(sandbox, 'headerMenuOpen = true');
   const open = headerOf(center()).actions;
-  assert.match(buttons(open).find((b) => b.includes(dataAction('toggle-header-menu'))), /\baria-expanded="true"/, 'a redraw keeps the menu open: the button says so');
-  assert.match(open, /<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="true">/, 'and so does the menu');
+  assert.match(
+    buttons(open).find((b) => b.includes(dataAction('toggle-header-menu'))),
+    /\baria-expanded="true"/,
+    'a redraw keeps the menu open: the button says so'
+  );
+  assert.match(
+    open,
+    /<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="true">/,
+    'and so does the menu'
+  );
   run(sandbox, 'headerMenuOpen = false');
   assert.match(headerOf(center()).actions, /data-open="false"/);
 });
@@ -205,7 +247,10 @@ test('the Map header has the same button and menu attributes', async () => {
   run(sandbox, 'headerMenuOpen = true');
   const { actions } = headerOf(center());
   const button = buttons(actions).find((b) => b.includes(dataAction('toggle-header-menu')));
-  assert.match(button, /aria-haspopup="true"[^>]*aria-expanded="true"[^>]*aria-controls="header-overflow"[^>]*aria-label="More actions"/);
+  assert.match(
+    button,
+    /aria-haspopup="true"[^>]*aria-expanded="true"[^>]*aria-controls="header-overflow"[^>]*aria-label="More actions"/
+  );
   assert.match(actions, /id="header-overflow" role="group" aria-label="More actions" data-open="true"/);
 });
 
@@ -220,7 +265,11 @@ test('a control that loses its word in the compact state keeps its name: with-ic
   ];
   const checkAll = (html, actions, label) => {
     const withIcon = buttons(headerOf(html).header).filter((b) => /class="[^"]*\bwith-icon\b/.test(b));
-    assert.deepEqual(withIcon.map((b) => b.match(/data-action="([^"]+)"/)[1]).sort(), actions.slice().sort(), label + ': the controls with an icon');
+    assert.deepEqual(
+      withIcon.map((b) => b.match(/data-action="([^"]+)"/)[1]).sort(),
+      actions.slice().sort(),
+      label + ': the controls with an icon'
+    );
     for (const b of withIcon) {
       const name = b.match(/data-action="([^"]+)"/)[1];
       assert.match(b, /\btitle="[^"]+"/, name + ' has a title');
@@ -233,12 +282,18 @@ test('a control that loses its word in the compact state keeps its name: with-ic
   };
   for (const [html, actions] of expected) checkAll(html, actions, html === expected[0][0] ? 'Elements' : 'Map');
 
-  const labelOfMaximize = (html) => buttons(html).find((b) => b.includes(dataAction('toggle-maximize'))).match(/<span class="control-label">([^<]+)<\/span>/)[1];
+  const labelOfMaximize = (html) =>
+    buttons(html)
+      .find((b) => b.includes(dataAction('toggle-maximize')))
+      .match(/<span class="control-label">([^<]+)<\/span>/)[1];
   assert.equal(labelOfMaximize(elements.center()), 'Maximize');
   run(elements.sandbox, 'diagramMaximized = true');
   const restored = elements.center();
   assert.equal(labelOfMaximize(restored), 'Restore', 'maximized: the word says Restore');
-  assert.match(buttons(restored).find((b) => b.includes(dataAction('toggle-maximize'))), /aria-label="Restore"/);
+  assert.match(
+    buttons(restored).find((b) => b.includes(dataAction('toggle-maximize'))),
+    /aria-label="Restore"/
+  );
 });
 
 // ============================================================ 6. the headers that are not diagram headers
@@ -247,7 +302,13 @@ test('the Details tab and the edit form are not diagram headers: no "⋯", no ov
   const details = await elementsPage('details');
   const view = details.center();
   const { header, actions } = headerOf(view);
-  for (const part of ['header-more', 'header-overflow', 'toggle-header-menu', 'diagram-facet-select', 'toggle-maximize']) {
+  for (const part of [
+    'header-more',
+    'header-overflow',
+    'toggle-header-menu',
+    'diagram-facet-select',
+    'toggle-maximize'
+  ]) {
     assert.ok(!header.includes(part), 'Details: no ' + part);
   }
   const showOnMap = buttons(actions).find((b) => b.includes(dataAction('show-on-map')));
@@ -260,7 +321,13 @@ test('the Details tab and the edit form are not diagram headers: no "⋯", no ov
 
   const edit = await elementsPage('details', 'edit');
   const form = headerOf(edit.center());
-  for (const part of ['header-more', 'header-overflow', 'toggle-header-menu', 'diagram-facet-select', 'toggle-maximize']) {
+  for (const part of [
+    'header-more',
+    'header-overflow',
+    'toggle-header-menu',
+    'diagram-facet-select',
+    'toggle-maximize'
+  ]) {
     assert.ok(!form.header.includes(part), 'Edit form: no ' + part);
   }
   assert.ok(form.actions.includes(dataAction('toggle-element-edit')), 'the edit form is the one that has Back to view');
@@ -269,9 +336,16 @@ test('the Details tab and the edit form are not diagram headers: no "⋯", no ov
 // ============================================================ 7. the stylesheet
 
 test('the centre panel is the container, and the three states are container queries, widest first', () => {
-  assert.ok(CSS_NO_COMMENTS.includes('.center-panel { container: center / inline-size; }'), 'the centre panel is a container of its inline size');
+  assert.ok(
+    CSS_NO_COMMENTS.includes('.center-panel { container: center / inline-size; }'),
+    'the centre panel is a container of its inline size'
+  );
   const queries = CSS_NO_COMMENTS.match(/@container[^{]*/g).map((q) => q.trim());
-  assert.deepEqual(queries, [QUERY(85), QUERY(60), QUERY(46)].map((q) => q), 'exactly three container queries: 85rem, 60rem, 46rem, in that order');
+  assert.deepEqual(
+    queries,
+    [QUERY(85), QUERY(60), QUERY(46)].map((q) => q),
+    'exactly three container queries: 85rem, 60rem, 46rem, in that order'
+  );
   const at = [85, 60, 46].map((rem) => CSS_NO_COMMENTS.indexOf(QUERY(rem)));
   assert.ok(at[0] < at[1] && at[1] < at[2], 'a narrower state comes after the wider one, so that it wins');
 });
@@ -285,9 +359,16 @@ test('the container queries come after the base rules they override (a query add
   assert.notEqual(row, -1, 'the base rule of the row');
   assert.ok(header < first, 'the base .element-header rule is before the first query');
   assert.ok(row < first, 'the base .element-header-actions rule is before the first query');
-  assert.match(CSS_NO_COMMENTS.slice(row, row + 100), /flex-shrink: 0;/, 'the row is the one whose children do not shrink');
+  assert.match(
+    CSS_NO_COMMENTS.slice(row, row + 100),
+    /flex-shrink: 0;/,
+    'the row is the one whose children do not shrink'
+  );
   for (const rem of [85, 60, 46]) {
-    assert.ok(CSS_NO_COMMENTS.indexOf(QUERY(rem)) > header && CSS_NO_COMMENTS.indexOf(QUERY(rem)) > row, rem + 'rem is after both');
+    assert.ok(
+      CSS_NO_COMMENTS.indexOf(QUERY(rem)) > header && CSS_NO_COMMENTS.indexOf(QUERY(rem)) > row,
+      rem + 'rem is after both'
+    );
   }
   const baseHolder = CSS_NO_COMMENTS.indexOf('.header-more, .header-overflow { display: contents; }');
   const baseButton = CSS_NO_COMMENTS.indexOf('.header-more-button { display: none; }');
@@ -307,13 +388,24 @@ test('the compact state hides the words of the icon controls and leaves the over
 test('the minimal state shows the "⋯" button and turns the overflow into a popup that opens with data-open', () => {
   const minimal = blockOf(CSS_NO_COMMENTS, QUERY(60));
   assert.match(ruleOf(minimal, '.element-header .header-more-button'), /display: inline-flex;/);
-  assert.match(ruleOf(minimal, '.header-more'), /display: block; position: relative;/, 'the popup hangs from its holder');
+  assert.match(
+    ruleOf(minimal, '.header-more'),
+    /display: block; position: relative;/,
+    'the popup hangs from its holder'
+  );
   const popup = ruleOf(minimal, '.header-overflow');
   assert.match(popup, /position: absolute;/);
   assert.match(popup, /display: none;/, 'closed unless the button says so');
   assert.equal(ruleOf(minimal, '.header-overflow[data-open="true"]'), 'display: flex;');
-  assert.match(ruleOf(minimal, '.element-header:has(.header-overflow[data-open="true"])'), /z-index: 5;/, 'the header is raised above the chips of the map while the menu is open');
-  assert.ok(minimal.indexOf('.header-overflow {') < minimal.indexOf('.header-overflow[data-open="true"]'), 'the open rule comes after the closed one');
+  assert.match(
+    ruleOf(minimal, '.element-header:has(.header-overflow[data-open="true"])'),
+    /z-index: 5;/,
+    'the header is raised above the chips of the map while the menu is open'
+  );
+  assert.ok(
+    minimal.indexOf('.header-overflow {') < minimal.indexOf('.header-overflow[data-open="true"]'),
+    'the open rule comes after the closed one'
+  );
 });
 
 test('the "⋯" button keeps its 2rem and no padding: its rule is more specific than ".element-header button", which has !important too', () => {
@@ -326,7 +418,10 @@ test('the "⋯" button keeps its 2rem and no padding: its rule is more specific 
   const more = ruleOf(minimal, '.element-header .header-more-button');
   assert.match(more, /width: 2rem;/);
   assert.match(more, /padding: 0 !important;/);
-  assert.ok(!rulesOf(minimal).some((r) => r.selector === '.header-more-button' && /padding/.test(r.body)), 'no weaker rule of the same name is left');
+  assert.ok(
+    !rulesOf(minimal).some((r) => r.selector === '.header-more-button' && /padding/.test(r.body)),
+    'no weaker rule of the same name is left'
+  );
 });
 
 test('the tight state gives the header two rows instead of overflowing', () => {
@@ -339,13 +434,15 @@ test('the tight state gives the header two rows instead of overflowing', () => {
 
 test('the strip is gone: nothing scrolls inside the actions row, and the header does not answer to the window', () => {
   for (const rule of rulesOf(CSS_NO_COMMENTS)) {
-    if (rule.selector.includes('element-header-actions')) assert.ok(!rule.body.includes('overflow-x'), rule.selector + ' has no overflow-x');
+    if (rule.selector.includes('element-header-actions'))
+      assert.ok(!rule.body.includes('overflow-x'), rule.selector + ' has no overflow-x');
   }
   assert.ok(!/\.element-header-actions[^{}]*\{[^{}]*overflow-x/.test(CSS_NO_COMMENTS));
   const windowQueries = CSS_NO_COMMENTS.match(/@media\s*\(\s*max-width[^{]*\{/g) || [];
   for (const head of windowQueries) {
     const body = blockOf(CSS_NO_COMMENTS, head);
-    for (const name of ['.element-header', '.maximize-label', '.element-header-actions']) assert.ok(!body.includes(name), head + ' does not mention ' + name);
+    for (const name of ['.element-header', '.maximize-label', '.element-header-actions'])
+      assert.ok(!body.includes(name), head + ' does not mention ' + name);
   }
   assert.ok(!CSS_NO_COMMENTS.includes('.maximize-label'), 'the word of Maximize is a control-label now');
 });
@@ -362,11 +459,22 @@ test('the block of the header uses the colours of the theme only: var(--...) and
   assert.ok(block.includes('@container'), 'it is the block of the states');
   assert.doesNotMatch(block, /#[0-9a-fA-F]{3,8}\b/, 'no hexadecimal colour');
   assert.doesNotMatch(block, /\b(rgb|hsl|hsla)\(/, 'no other colour function');
-  for (const m of block.matchAll(/[^;{}]*\brgba\([^)]*\)[^;{}]*/g)) assert.match(m[0], /box-shadow:/, 'rgba only in a shadow: ' + m[0].trim());
-  const colours = Array.from(block.matchAll(/(?:^|[;{\s])(?:background|color|border(?:-top|-bottom)?(?:-color)?)\s*:\s*([^;}]+)/g)).map((m) => m[1].trim());
+  for (const m of block.matchAll(/[^;{}]*\brgba\([^)]*\)[^;{}]*/g))
+    assert.match(m[0], /box-shadow:/, 'rgba only in a shadow: ' + m[0].trim());
+  const colours = Array.from(
+    block.matchAll(/(?:^|[;{\s])(?:background|color|border(?:-top|-bottom)?(?:-color)?)\s*:\s*([^;}]+)/g)
+  ).map((m) => m[1].trim());
   assert.ok(colours.length > 5, 'the block does colour things');
-  for (const value of colours) assert.doesNotMatch(value, /^(white|black|red|blue|green|gray|grey|#)/, 'a theme token, not a fixed colour: ' + value);
-  assert.ok(block.includes('var(--bg)') && block.includes('var(--border)') && block.includes('var(--accent)'), 'the tokens of the theme');
+  for (const value of colours)
+    assert.doesNotMatch(
+      value,
+      /^(white|black|red|blue|green|gray|grey|#)/,
+      'a theme token, not a fixed colour: ' + value
+    );
+  assert.ok(
+    block.includes('var(--bg)') && block.includes('var(--border)') && block.includes('var(--accent)'),
+    'the tokens of the theme'
+  );
 });
 
 // ============================================================ 8. the menu, with fake elements
@@ -377,32 +485,70 @@ async function menuPage() {
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramMaximized = false;");
   const log = { renders: 0 };
-  sandbox.render = () => { log.renders++; };
-  const control = (action, extra) => Object.assign({
-    attrs: {}, focused: 0, disabled: false,
-    setAttribute(k, v) { this.attrs[k] = v; },
-    focus() { this.focused++; sandbox.document.activeElement = this; },
-    closest(selector) { return selector === '[data-action]' ? { getAttribute: (name) => (name === 'data-action' ? action : null) } : null; }
-  }, extra);
+  sandbox.render = () => {
+    log.renders++;
+  };
+  const control = (action, extra) =>
+    Object.assign(
+      {
+        attrs: {},
+        focused: 0,
+        disabled: false,
+        setAttribute(k, v) {
+          this.attrs[k] = v;
+        },
+        focus() {
+          this.focused++;
+          sandbox.document.activeElement = this;
+        },
+        closest(selector) {
+          return selector === '[data-action]'
+            ? { getAttribute: (name) => (name === 'data-action' ? action : null) }
+            : null;
+        }
+      },
+      extra
+    );
   const button = control('toggle-header-menu');
-  const menu = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } };
+  const menu = {
+    attrs: {},
+    setAttribute(k, v) {
+      this.attrs[k] = v;
+    }
+  };
   const first = control('show-on-map');
-  sandbox.document.querySelector = (selector) => ({
-    '.header-more-button': button,
-    '.header-overflow': menu,
-    '.header-overflow button:not(:disabled)': first
-  })[selector] || null;
+  sandbox.document.querySelector = (selector) =>
+    ({
+      '.header-more-button': button,
+      '.header-overflow': menu,
+      '.header-overflow button:not(:disabled)': first
+    })[selector] || null;
   const open = () => run(sandbox, 'headerMenuOpen');
   /** A click as handleAppClick reads it: the nearest data-action, and whether it landed inside the overflow. */
   const click = (action, { inside = false, detail = 1 } = {}) => {
     const target = action ? { getAttribute: (name) => (name === 'data-action' ? action : null) } : null;
     sandbox.handleAppClick({
-      target: { closest: (selector) => (selector === '[data-action]' ? target : inside && selector === '.header-overflow' ? {} : null) },
-      detail, preventDefault() {}, stopPropagation() {}
+      target: {
+        closest: (selector) =>
+          selector === '[data-action]' ? target : inside && selector === '.header-overflow' ? {} : null
+      },
+      detail,
+      preventDefault() {},
+      stopPropagation() {}
     });
   };
   const key = (k) => {
-    const e = { key: k, prevented: 0, stopped: 0, preventDefault() { this.prevented++; }, stopImmediatePropagation() { this.stopped++; } };
+    const e = {
+      key: k,
+      prevented: 0,
+      stopped: 0,
+      preventDefault() {
+        this.prevented++;
+      },
+      stopImmediatePropagation() {
+        this.stopped++;
+      }
+    };
     sandbox.handleHeaderMenuKeydown(e);
     return e;
   };
@@ -477,7 +623,11 @@ test('a click on an item closes the menu and puts the focus on the "⋯" button'
     const before = button.focused;
     sandbox.setHeaderMenuOpen(true);
     state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
-    try { click(action, { inside: true }); } catch (e) { /* what the action does is not this test's */ }
+    try {
+      click(action, { inside: true });
+    } catch (e) {
+      /* what the action does is not this test's */
+    }
     assert.equal(open(), false, action + ': closed');
     assert.equal(button.focused, before + 1, action + ': the focus is on the button');
   }
@@ -502,7 +652,10 @@ test('Escape closes the open menu, and only that; with the menu closed it is lef
   assert.equal(open(), true, 'another key does not close it');
   assert.equal(other.prevented + other.stopped, 0);
   assert.ok(run(sandbox, 'typeof handleHeaderMenuKeydown') === 'function');
-  assert.ok((sandbox.__documentListeners.keydown || []).includes(sandbox.handleHeaderMenuKeydown), 'it listens on the document');
+  assert.ok(
+    (sandbox.__documentListeners.keydown || []).includes(sandbox.handleHeaderMenuKeydown),
+    'it listens on the document'
+  );
 });
 
 test('a menu left open while the panel grew wide again does not swallow Escape: the "⋯" button is not drawn, the key is the page\'s', async () => {
@@ -527,21 +680,45 @@ test('opening the help closes the "⋯" menu', async () => {
 test('headerControlSelector finds the "⋯" button, an item of the menu and a download format again after a redraw', async () => {
   const { sandbox } = await openFixture();
   const control = (attrs) => ({ id: '', closest: () => ({ id: '', getAttribute: (name) => attrs[name] || null }) });
-  assert.equal(sandbox.headerControlSelector(control({ 'data-action': 'toggle-header-menu' })), '[data-action="toggle-header-menu"]');
-  assert.equal(sandbox.headerControlSelector(control({ 'data-action': 'add-to-story' })), '[data-action="add-to-story"]');
-  assert.equal(sandbox.headerControlSelector(control({ 'data-action': 'diagram-export', 'data-format': 'png' })), '[data-action="diagram-export"][data-format="png"]');
-  assert.equal(sandbox.headerControlSelector(control({ 'data-action': 'diagram-export', 'data-format': 'svg' })), '[data-action="diagram-export"][data-format="svg"]');
+  assert.equal(
+    sandbox.headerControlSelector(control({ 'data-action': 'toggle-header-menu' })),
+    '[data-action="toggle-header-menu"]'
+  );
+  assert.equal(
+    sandbox.headerControlSelector(control({ 'data-action': 'add-to-story' })),
+    '[data-action="add-to-story"]'
+  );
+  assert.equal(
+    sandbox.headerControlSelector(control({ 'data-action': 'diagram-export', 'data-format': 'png' })),
+    '[data-action="diagram-export"][data-format="png"]'
+  );
+  assert.equal(
+    sandbox.headerControlSelector(control({ 'data-action': 'diagram-export', 'data-format': 'svg' })),
+    '[data-action="diagram-export"][data-format="svg"]'
+  );
   assert.equal(sandbox.headerControlSelector({ closest: () => null }), null);
 });
 
 test('the headers are among the places whose controls get their focus back', () => {
   const source = HTML.slice(HTML.indexOf('function headerControlSelector'), HTML.indexOf('function resolveNavActive'));
-  assert.ok(source.includes("'.element-header button, .element-header select"), 'the buttons of the header, the "⋯" and the items among them');
+  assert.ok(
+    source.includes("'.element-header button, .element-header select"),
+    'the buttons of the header, the "⋯" and the items among them'
+  );
 });
 
 test('focusControl focuses a drawn control itself, and a hidden one through the "⋯" button when there is one on screen', async () => {
   const { sandbox } = await openFixture();
-  const fake = (extra) => Object.assign({ focused: [], focus(options) { this.focused.push(options); } }, extra);
+  const fake = (extra) =>
+    Object.assign(
+      {
+        focused: [],
+        focus(options) {
+          this.focused.push(options);
+        }
+      },
+      extra
+    );
 
   const visible = fake({ getClientRects: () => [{}] });
   sandbox.focusControl(visible);
@@ -551,7 +728,10 @@ test('focusControl focuses a drawn control itself, and a hidden one through the 
   const shown = fake({ getClientRects: () => [{}] });
   const hidden = fake({
     getClientRects: () => [],
-    closest: (selector) => (selector === '.header-more' ? { querySelector: (inner) => (inner === '.header-more-button' ? shown : null) } : null)
+    closest: (selector) =>
+      selector === '.header-more'
+        ? { querySelector: (inner) => (inner === '.header-more-button' ? shown : null) }
+        : null
   });
   sandbox.focusControl(hidden);
   assert.equal(hidden.focused.length, 0, 'an item that is not drawn is not focused');
@@ -576,15 +756,25 @@ test('focusControl focuses a drawn control itself, and a hidden one through the 
 
   const plain = fake({});
   sandbox.focusControl(plain);
-  assert.equal(plain.focused.length, 1, 'an element that cannot tell whether it is drawn (a fake of the harness) is focused itself');
+  assert.equal(
+    plain.focused.length,
+    1,
+    'an element that cannot tell whether it is drawn (a fake of the harness) is focused itself'
+  );
 });
 
 test('the control that gets the focus back after a redraw is focused through focusControl', () => {
-  const at = HTML.indexOf('const focusedControl = focusedScopeRef ? null : headerControlSelector(document.activeElement);');
+  const at = HTML.indexOf(
+    'const focusedControl = focusedScopeRef ? null : headerControlSelector(document.activeElement);'
+  );
   assert.notEqual(at, -1);
   const after = HTML.slice(at, at + 2500);
   assert.match(after, /focusControl\(/, 'the restoration goes through focusControl');
-  assert.match(HTML, /const wanted = app\.querySelector\(pendingFocusSelector\);\s*if \(wanted && !wanted\.disabled\) focusControl\(wanted\);/, 'so does the return from a dialog (pendingFocusSelector)');
+  assert.match(
+    HTML,
+    /const wanted = app\.querySelector\(pendingFocusSelector\);\s*if \(wanted && !wanted\.disabled\) focusControl\(wanted\);/,
+    'so does the return from a dialog (pendingFocusSelector)'
+  );
 });
 
 test('an item of the menu that opens a dialog hands the "⋯" button to the dialog as the place to come back to', async () => {
@@ -599,7 +789,11 @@ test('an item of the menu that opens a dialog hands the "⋯" button to the dial
   const dialog = run(sandbox, 'appDialog');
   assert.ok(dialog, 'the dialog is open');
   assert.equal(dialog.kind, 'story-picker');
-  assert.equal(dialog.returnFocus, '[data-action="toggle-header-menu"]', 'it comes back to the "⋯", not to an item that is hidden again');
+  assert.equal(
+    dialog.returnFocus,
+    '[data-action="toggle-header-menu"]',
+    'it comes back to the "⋯", not to an item that is hidden again'
+  );
 });
 
 test('the dialog returns the focus to the item itself when the menu is not in use (wide header)', async () => {
@@ -607,18 +801,30 @@ test('the dialog returns the focus to the item itself when the menu is not in us
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   sandbox.document.activeElement = control('add-to-story');
   click('add-to-story', { inside: true });
-  assert.equal(run(sandbox, 'appDialog').returnFocus, '[data-action="add-to-story"]', 'no menu open: the control that opened the dialog');
+  assert.equal(
+    run(sandbox, 'appDialog').returnFocus,
+    '[data-action="add-to-story"]',
+    'no menu open: the control that opened the dialog'
+  );
 });
 
 // ============================================================ the toolbar and the status line of a diagram in a narrow centre
 
 test('a narrow centre: the groups of the diagram toolbar wrap inside it, and the hint and the legend of the status line never exceed it', () => {
-  const rule = (selector) => { const m = new RegExp('\\n\\s*' + selector.replace(/[.#]/g, '\\$&') + ' \\{([^}]*)\\}').exec(CSS_NO_COMMENTS); assert.ok(m, selector + ' has a rule'); return m[1]; };
+  const rule = (selector) => {
+    const m = new RegExp('\\n\\s*' + selector.replace(/[.#]/g, '\\$&') + ' \\{([^}]*)\\}').exec(CSS_NO_COMMENTS);
+    assert.ok(m, selector + ' has a rule');
+    return m[1];
+  };
   const group = rule('.diagram-tools .button-group');
   assert.match(group, /flex-wrap: wrap/, 'four buttons of "Show" were 262 px in a toolbar of 238');
   assert.match(group, /max-width: 100%/, 'a group is never wider than the toolbar');
   assert.match(rule('.diagram-tools'), /flex-wrap: wrap/, 'the toolbar itself wraps (unchanged)');
-  assert.match(rule('#diagram-hint'), /max-width: 100%/, 'the hint (flex: none) wraps its text in a status line narrower than it');
+  assert.match(
+    rule('#diagram-hint'),
+    /max-width: 100%/,
+    'the hint (flex: none) wraps its text in a status line narrower than it'
+  );
   const legend = rule('.dg-legend');
   assert.match(legend, /max-width: 100%/);
   assert.match(legend, /flex-wrap: wrap/, 'and so does the legend');

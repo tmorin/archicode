@@ -21,7 +21,12 @@ function makeFileHandle(absPath) {
     async getFile() {
       const stat = fs.statSync(absPath);
       const text = fs.readFileSync(absPath, 'utf8');
-      return { lastModified: stat.mtimeMs, async text() { return text; } };
+      return {
+        lastModified: stat.mtimeMs,
+        async text() {
+          return text;
+        }
+      };
     }
   };
 }
@@ -31,9 +36,15 @@ function makeDirHandle(absPath) {
     kind: 'directory',
     name: path.basename(absPath),
     __path: absPath,
-    async isSameEntry(other) { return !!other && other.__path === absPath; },
-    async queryPermission() { return 'granted'; },
-    async requestPermission() { return 'granted'; },
+    async isSameEntry(other) {
+      return !!other && other.__path === absPath;
+    },
+    async queryPermission() {
+      return 'granted';
+    },
+    async requestPermission() {
+      return 'granted';
+    },
     async getFileHandle(name) {
       const p = path.join(absPath, name);
       if (!fs.existsSync(p)) throw notFound(p);
@@ -79,18 +90,28 @@ function fakeIndexedDB(options = {}) {
   const later = (fn) => setTimeout(fn, 0);
   // a browser stores a clone: the record is a new object, the handle in it an equivalent handle (here, the same one)
   const copy = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.assign({}, v) : v);
-  const unclonable = (v) => !!v && typeof v === 'object' && (v.unclonable === true || Object.values(v).some((x) => x && x.unclonable === true));
+  const unclonable = (v) =>
+    !!v && typeof v === 'object' && (v.unclonable === true || Object.values(v).some((x) => x && x.unclonable === true));
   const sortedKeys = (map) => Array.from(map.keys()).sort();
 
   function connection(db) {
     let closed = false;
     const conn = {
-      get version() { return db.version; },
+      get version() {
+        return db.version;
+      },
       objectStoreNames: { contains: (s) => db.stores.has(s) },
-      createObjectStore(s) { db.stores.set(s, new Map()); return {}; },
+      createObjectStore(s) {
+        db.stores.set(s, new Map());
+        return {};
+      },
       onversionchange: null,
-      close() { closed = true; },
-      get closed() { return closed; },
+      close() {
+        closed = true;
+      },
+      get closed() {
+        return closed;
+      },
       transaction(storeName, mode = 'readonly') {
         if (closed) throw domError('InvalidStateError', 'the connection is closed');
         if (!db.stores.has(storeName)) throw domError('NotFoundError', 'no object store ' + storeName);
@@ -112,7 +133,18 @@ function fakeIndexedDB(options = {}) {
     let scheduled = false;
     const slot = { storeName, mode, tryStart };
     db.running = (db.running || []).concat([slot]); // unfinished transactions, in creation order
-    const tx = { mode, error: null, oncomplete: null, onerror: null, onabort: null, objectStore, abort() { if (done) throw domError('InvalidStateError'); end(null); } };
+    const tx = {
+      mode,
+      error: null,
+      oncomplete: null,
+      onerror: null,
+      onabort: null,
+      objectStore,
+      abort() {
+        if (done) throw domError('InvalidStateError');
+        end(null);
+      }
+    };
     function conflicts(other) {
       return other.storeName === storeName && (mode === 'readwrite' || other.mode === 'readwrite');
     }
@@ -152,7 +184,8 @@ function fakeIndexedDB(options = {}) {
       later(() => {
         scheduled = false;
         if (done) return;
-        if (queue.length === 0) { // nothing left to do: the transaction commits
+        if (queue.length === 0) {
+          // nothing left to do: the transaction commits
           done = true;
           const hold = options.holdCommit ? options.holdCommit({ mode, keys: keys.slice() }) : null;
           if (hold && typeof hold.then === 'function') hold.then(() => later(commit));
@@ -161,16 +194,36 @@ function fakeIndexedDB(options = {}) {
         }
         const { req, op } = queue.shift();
         let result;
-        try { result = op(); } catch (e) {
+        try {
+          result = op();
+        } catch (e) {
           req.error = e;
           let prevented = false;
-          try { if (req.onerror) req.onerror({ target: req, preventDefault() { prevented = true; } }); } catch (thrown) { prevented = false; }
-          if (!prevented) { end(e); return; }
+          try {
+            if (req.onerror)
+              req.onerror({
+                target: req,
+                preventDefault() {
+                  prevented = true;
+                }
+              });
+          } catch (thrown) {
+            prevented = false;
+          }
+          if (!prevented) {
+            end(e);
+            return;
+          }
           pump();
           return;
         }
         req.result = result;
-        try { if (req.onsuccess) req.onsuccess({ target: req }); } catch (e) { end(e); return; }
+        try {
+          if (req.onsuccess) req.onsuccess({ target: req });
+        } catch (e) {
+          end(e);
+          return;
+        }
         pump();
       });
     }
@@ -181,15 +234,18 @@ function fakeIndexedDB(options = {}) {
       pump();
       return req;
     }
-    function writable() { if (mode !== 'readwrite') throw domError('ReadOnlyError'); }
+    function writable() {
+      if (mode !== 'readwrite') throw domError('ReadOnlyError');
+    }
     function objectStore(s) {
       if (s !== storeName) throw domError('NotFoundError', 'not in this transaction: ' + s);
       return {
         get: (key) => request(() => copy(staged.get(key))),
-        getAll: () => request(() => {
-          if (options.failGetAll) throw domError('DataError', 'a stored value could not be read');
-          return sortedKeys(staged).map((k) => copy(staged.get(k)));
-        }),
+        getAll: () =>
+          request(() => {
+            if (options.failGetAll) throw domError('DataError', 'a stored value could not be read');
+            return sortedKeys(staged).map((k) => copy(staged.get(k)));
+          }),
         getAllKeys: () => request(() => sortedKeys(staged)),
         put(value, key) {
           writable();
@@ -225,22 +281,38 @@ function fakeIndexedDB(options = {}) {
     open(name, version) {
       calls.push({ op: 'open', name, version });
       const req = { result: null, error: null, onsuccess: null, onerror: null, onupgradeneeded: null, onblocked: null };
-      const fail = (error) => { req.error = error; if (req.onerror) req.onerror({ target: req }); };
+      const fail = (error) => {
+        req.error = error;
+        if (req.onerror) req.onerror({ target: req });
+      };
       later(() => {
-        if (options.failOpen) { fail(domError(options.failOpen)); return; }
+        if (options.failOpen) {
+          fail(domError(options.failOpen));
+          return;
+        }
         let db = databases.get(name);
         const wanted = version === undefined ? (db ? db.version : 1) : version;
-        if (db && wanted < db.version) { fail(domError('VersionError', 'the database is newer')); return; }
+        if (db && wanted < db.version) {
+          fail(domError('VersionError', 'the database is newer'));
+          return;
+        }
         if (!db || wanted > db.version) {
           const oldVersion = db ? db.version : 0;
           const before = db ? new Map(Array.from(db.stores, ([k, v]) => [k, new Map(v)])) : null;
-          if (!db) { db = { version: wanted, stores: new Map() }; databases.set(name, db); }
+          if (!db) {
+            db = { version: wanted, stores: new Map() };
+            databases.set(name, db);
+          }
           db.version = wanted;
           req.result = connection(db);
           try {
             if (req.onupgradeneeded) req.onupgradeneeded({ target: req, oldVersion, newVersion: wanted });
-          } catch (e) { // the upgrade aborts: the database is left as it was
-            if (before) { db.version = oldVersion; db.stores = before; } else databases.delete(name);
+          } catch (e) {
+            // the upgrade aborts: the database is left as it was
+            if (before) {
+              db.version = oldVersion;
+              db.stores = before;
+            } else databases.delete(name);
             fail(domError('AbortError', 'the upgrade failed'));
             return;
           }
@@ -253,14 +325,18 @@ function fakeIndexedDB(options = {}) {
     },
     /** Puts a database in place, as an earlier page would have left it: `{ storeName: { key: value } }`. */
     seed(name, version, stores) {
-      databases.set(name, { version, stores: new Map(Object.entries(stores).map(([s, records]) => [s, new Map(Object.entries(records))])) });
+      databases.set(name, {
+        version,
+        stores: new Map(Object.entries(stores).map(([s, records]) => [s, new Map(Object.entries(records))]))
+      });
     },
     /** The database as stored: `{ version, stores: { storeName: { key: value } } }`, or null. */
     dump(name) {
       const db = databases.get(name);
       if (!db) return null;
       const stores = {};
-      for (const [s, records] of db.stores) stores[s] = Object.fromEntries(Array.from(records, ([k, v]) => [k, copy(v)]));
+      for (const [s, records] of db.stores)
+        stores[s] = Object.fromEntries(Array.from(records, ([k, v]) => [k, copy(v)]));
       return { version: db.version, stores };
     }
   };
@@ -269,7 +345,8 @@ function fakeIndexedDB(options = {}) {
 function createApp(options = {}) {
   // `options.html`: the text of another page to run (a test that compares with a released page, git show <tag>:...); `ARCHICODE_EDITOR_HTML`: the path of the page every
   // test runs, to check that a new test fails on an older page (wave 019, run 0139)
-  const html = options.html !== undefined ? options.html : fs.readFileSync(process.env.ARCHICODE_EDITOR_HTML || HTML, 'utf8');
+  const html =
+    options.html !== undefined ? options.html : fs.readFileSync(process.env.ARCHICODE_EDITOR_HTML || HTML, 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/);
   const wasm = html.match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
   if (!script || !wasm) throw new Error('standalone.html: script or embedded kernel not found');
@@ -293,12 +370,26 @@ function createApp(options = {}) {
   };
   const sandbox = {
     console: { log() {}, info() {}, debug() {}, warn: console.warn, error: console.error }, // the editor logs its state
-    window: { addEventListener(type, fn) { (windowListeners[type] = windowListeners[type] || []).push(fn); } },
+    window: {
+      addEventListener(type, fn) {
+        (windowListeners[type] = windowListeners[type] || []).push(fn);
+      }
+    },
     location: {
-      get hash() { return hash; },
-      set hash(v) { hash = v.startsWith('#') ? v : '#' + v; recordedEntries.splice(recordedAt + 1, Infinity, hash); recordedAt = recordedEntries.length - 1; }, // an address typed or assigned is a new entry, like a browser's
-      get search() { return search; },
-      get pathname() { return pathname; }
+      get hash() {
+        return hash;
+      },
+      set hash(v) {
+        hash = v.startsWith('#') ? v : '#' + v;
+        recordedEntries.splice(recordedAt + 1, Infinity, hash);
+        recordedAt = recordedEntries.length - 1;
+      }, // an address typed or assigned is a new entry, like a browser's
+      get search() {
+        return search;
+      },
+      get pathname() {
+        return pathname;
+      }
     },
     history: {
       // like a browser: the url replaces the query and the hash of the address bar
@@ -319,26 +410,40 @@ function createApp(options = {}) {
         recordedAt = recordedEntries.length - 1;
       },
       // Back and Forward: the address of the entry is put back and hashchange fires, as the browser does
-      back() { go(-1); },
-      forward() { go(1); }
+      back() {
+        go(-1);
+      },
+      forward() {
+        go(1);
+      }
     },
     document: {
       documentElement: {
         getAttribute: (name) => (name in rootAttributes ? rootAttributes[name] : null),
-        setAttribute: (name, value) => { rootAttributes[name] = String(value); },
-        removeAttribute: (name) => { delete rootAttributes[name]; }
+        setAttribute: (name, value) => {
+          rootAttributes[name] = String(value);
+        },
+        removeAttribute: (name) => {
+          delete rootAttributes[name];
+        }
       },
       getElementById(id) {
         if (id === 'app') return appEl;
         if (id === 'viewpoint-kernel-wasm') return { textContent: wasm[1] };
         return null;
       },
-      querySelectorAll() { return []; },
+      querySelectorAll() {
+        return [];
+      },
       querySelector(selector) {
         // the page served by `editor serve` carries the token of the server in a <meta>
-        return options.serverToken && selector === 'meta[name="archicode-server"]' ? { getAttribute: () => options.serverToken } : null;
+        return options.serverToken && selector === 'meta[name="archicode-server"]'
+          ? { getAttribute: () => options.serverToken }
+          : null;
       },
-      addEventListener(type, fn) { (documentListeners[type] = documentListeners[type] || []).push(fn); }
+      addEventListener(type, fn) {
+        (documentListeners[type] = documentListeners[type] || []).push(fn);
+      }
     },
     localStorage: options.localStorage, // absent: the page runs as if the browser refused its storage
     fetch: options.fetch,
@@ -347,12 +452,20 @@ function createApp(options = {}) {
     // the remembered folders: an in-memory IndexedDB of its own per page, unless the test gives one (to share it, or seed it)
     indexedDB: options.indexedDB === undefined ? fakeIndexedDB() : options.indexedDB,
     setTimeout,
-    atob, TextEncoder, TextDecoder, URLSearchParams
+    atob,
+    TextEncoder,
+    TextDecoder,
+    URLSearchParams
   };
   sandbox.window.indexedDB = sandbox.indexedDB;
   sandbox.globalThis = sandbox;
   sandbox.__windowListeners = windowListeners; // what the page registered, to fire by hand
-  sandbox.__history = { entries: recordedEntries, get at() { return recordedAt; } }; // the entries of the history and the one the window is on
+  sandbox.__history = {
+    entries: recordedEntries,
+    get at() {
+      return recordedAt;
+    }
+  }; // the entries of the history and the one the window is on
   sandbox.__documentListeners = documentListeners;
   vm.createContext(sandbox);
   vm.runInContext(script[1], sandbox, { filename: 'standalone.html-script.js' });

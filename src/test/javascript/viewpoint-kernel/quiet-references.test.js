@@ -24,10 +24,13 @@ async function open() {
   await sandbox.loadWorkspace(handle);
   await sandbox.loadViewpointKernel();
   const kernel = run(sandbox, 'loadedKernel');
-  run(sandbox, `
+  run(
+    sandbox,
+    `
     globalThis.__calls = { compute: 0, quiet: 0, compare: 0 };
     { const kernel = loadedKernel; for (const name of ['compute', 'quiet', 'compare']) { const original = kernel[name]; kernel[name] = function (input) { __calls[name]++; return original.call(this, input); }; } }
-  `);
+  `
+  );
   const calls = () => JSON.parse(JSON.stringify(run(sandbox, '__calls')));
   const facet = (name) => state.workspace.settings.facets.customs.find((candidate) => candidate.name === name);
   return { sandbox, state, kernel, calls, facet };
@@ -41,7 +44,12 @@ function oneComputeEach(ctx, facet) {
   const quiet = new Set();
   for (const layer of ['application', 'technology']) {
     for (const [reference, record] of state.index[layer]) {
-      const viewpoint = perspective === 'map' || tab === 'details' || (tab === 'detailed' && run(sandbox, 'LEAF_KINDS').includes(record.kind)) ? 'overview' : tab;
+      const viewpoint =
+        perspective === 'map' ||
+        tab === 'details' ||
+        (tab === 'detailed' && run(sandbox, 'LEAF_KINDS').includes(record.kind))
+          ? 'overview'
+          : tab;
       const input = sandbox.buildKernelInput(viewpoint, reference, { layer, facet }).input;
       const out = kernel.compute(input);
       if (out.error ? !!input.facet : !out.links.some((link) => !link.secondary)) quiet.add(reference);
@@ -54,9 +62,16 @@ const sorted = (set) => Array.from(set).sort();
 
 const ownFacets = [
   { name: 'no-tech', actions: [{ operator: 'REMOVE', jsonPath: '$.technology.elements[*]' }] },
-  { name: 'no-uses-relationships', actions: [{ operator: 'REMOVE', jsonPath: "$.application..relationships[?(@.label == 'uses')]" }] },
+  {
+    name: 'no-uses-relationships',
+    actions: [{ operator: 'REMOVE', jsonPath: "$.application..relationships[?(@.label == 'uses')]" }]
+  },
   { name: 'broken', actions: [{ operator: 'REMOVE', jsonPath: '$.application..elements[?(@.id ==' }] }, // the kernel refuses the facet: one error, which is every element's
-  { name: 'flow-without-unlinked', hideUnlinked: true, actions: [{ operator: 'REMOVE', jsonPath: "$.application..elements[?(@.id == 'agent')]" }] }
+  {
+    name: 'flow-without-unlinked',
+    hideUnlinked: true,
+    actions: [{ operator: 'REMOVE', jsonPath: "$.application..elements[?(@.id == 'agent')]" }]
+  }
 ];
 
 // ---- 1. the same answer as one compute per element ----
@@ -89,7 +104,10 @@ test('#81: the elements found by one call are those found by one compute each, o
     }
   }
   assert.ok(questions >= 4 * 2 * 3 * 7, 'the questions asked: ' + questions);
-  assert.ok(somethingQuiet > questions / 2 && somethingNot > questions / 2, 'the oracle is not trivial: it finds some quiet and some not quiet elements in most questions');
+  assert.ok(
+    somethingQuiet > questions / 2 && somethingNot > questions / 2,
+    'the oracle is not trivial: it finds some quiet and some not quiet elements in most questions'
+  );
 });
 
 test('#81: a facet that takes a whole layer away makes every element of that layer quiet and none of the other, as it did', async () => {
@@ -99,7 +117,10 @@ test('#81: a facet that takes a whole layer away makes every element of that lay
   state.workspace.settings.facets.customs.push(facet);
   sandbox.drawPlateau('marketplace');
   const quiet = sandbox.quietReferencesThroughFacet(ctx.kernel, facet);
-  assert.ok([...state.index.technology.keys()].every((reference) => quiet.has(reference)), 'every element of the layer the facet took away');
+  assert.ok(
+    [...state.index.technology.keys()].every((reference) => quiet.has(reference)),
+    'every element of the layer the facet took away'
+  );
   assert.ok(![...state.index.application.keys()].every((reference) => quiet.has(reference)), 'not the other layer');
   assert.deepEqual(sorted(quiet), sorted(oneComputeEach(ctx, facet)));
 });
@@ -109,18 +130,36 @@ test('#81: the kernel entry says the same on a facet that removes an element, an
   const { sandbox, state } = ctx;
   sandbox.drawPlateau('marketplace');
   const facet = ctx.facet('journey');
-  const input = sandbox.buildKernelInput('overview', state.index.application.keys().next().value, { layer: 'application', facet }).input;
+  const input = sandbox.buildKernelInput('overview', state.index.application.keys().next().value, {
+    layer: 'application',
+    facet
+  }).input;
   delete input.focal;
-  input.focals = [{ reference: 'agent' }, { reference: 'catalog', viewpoint: 'detailed' }, { reference: 'nowhere.at.all' }, { reference: 'shop' }];
+  input.focals = [
+    { reference: 'agent' },
+    { reference: 'catalog', viewpoint: 'detailed' },
+    { reference: 'nowhere.at.all' },
+    { reference: 'shop' }
+  ];
   const answer = ctx.kernel.quiet(input);
   assert.equal(answer.error, undefined);
   assert.equal(answer.version, 5);
   assert.ok(answer.quiet.includes('agent'), 'the facet removed it');
-  assert.ok(answer.quiet.includes('nowhere.at.all'), 'through a facet, a view that cannot be built has nothing to draw');
-  assert.deepEqual(answer.quiet, answer.quiet.filter((reference) => input.focals.some((focal) => focal.reference === reference)), 'only what was asked, in the order asked');
+  assert.ok(
+    answer.quiet.includes('nowhere.at.all'),
+    'through a facet, a view that cannot be built has nothing to draw'
+  );
+  assert.deepEqual(
+    answer.quiet,
+    answer.quiet.filter((reference) => input.focals.some((focal) => focal.reference === reference)),
+    'only what was asked, in the order asked'
+  );
   const without = Object.assign({}, input);
   delete without.facet;
-  assert.ok(!ctx.kernel.quiet(without).quiet.includes('nowhere.at.all'), 'without a facet it has no view, which is not an empty one');
+  assert.ok(
+    !ctx.kernel.quiet(without).quiet.includes('nowhere.at.all'),
+    'without a facet it has no view, which is not an empty one'
+  );
   assert.match(ctx.kernel.quiet(Object.assign({}, input, { focals: undefined })).error, /focals/);
 });
 
@@ -130,7 +169,10 @@ test('#81: a facet the kernel refuses is an error for the whole layer, and every
   const facet = ownFacets.find((candidate) => candidate.name === 'broken');
   state.workspace.settings.facets.customs.push(facet);
   sandbox.drawPlateau('marketplace');
-  const input = sandbox.buildKernelInput('overview', state.index.application.keys().next().value, { layer: 'application', facet }).input;
+  const input = sandbox.buildKernelInput('overview', state.index.application.keys().next().value, {
+    layer: 'application',
+    facet
+  }).input;
   assert.ok(ctx.kernel.compute(input).error, 'compute refuses it, for any element');
   delete input.focal;
   input.focals = [{ reference: 'shop' }];
@@ -159,10 +201,17 @@ test('#81: the calls to the kernel are at most one per layer and no compute, wha
     seen.push({ plateau, elements, quiets });
     sandbox.quietReferencesThroughFacet(ctx.kernel, facet);
     sandbox.quietReferencesThroughFacet(ctx.kernel, facet);
-    assert.deepEqual(ctx.calls(), after, plateau + ': the answer is cached on the version of the models and the facet: nothing is asked again');
+    assert.deepEqual(
+      ctx.calls(),
+      after,
+      plateau + ': the answer is cached on the version of the models and the facet: nothing is asked again'
+    );
   }
   assert.ok(seen[2].elements > seen[0].elements, 'the plateaus grow: ' + JSON.stringify(seen));
-  assert.ok(seen.every((entry) => entry.quiets === seen[0].quiets), 'and the calls do not: ' + JSON.stringify(seen));
+  assert.ok(
+    seen.every((entry) => entry.quiets === seen[0].quiets),
+    'and the calls do not: ' + JSON.stringify(seen)
+  );
 });
 
 test('#81: a change of the model, of the facet or of the tab asks the kernel again, once per layer', async () => {
@@ -170,14 +219,20 @@ test('#81: a change of the model, of the facet or of the tab asks the kernel aga
   const { sandbox } = ctx;
   sandbox.drawPlateau('marketplace');
   const journey = ctx.facet('journey');
-  const asked = (facet) => { const before = ctx.calls().quiet; sandbox.quietReferencesThroughFacet(ctx.kernel, facet); return ctx.calls().quiet - before; };
+  const asked = (facet) => {
+    const before = ctx.calls().quiet;
+    sandbox.quietReferencesThroughFacet(ctx.kernel, facet);
+    return ctx.calls().quiet - before;
+  };
   assert.equal(asked(journey), 2);
   assert.equal(asked(journey), 0);
   assert.equal(asked(ctx.facet('no-externals')), 2, 'another facet');
   assert.equal(asked(journey), 2, 'and back: one entry is kept, the last');
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'detailed';");
   assert.equal(asked(journey), 2, 'another tab');
-  sandbox.commitElementEdit(sandbox.__state().index.application.keys().next().value, (node) => { node.name = 'Renamed'; });
+  sandbox.commitElementEdit(sandbox.__state().index.application.keys().next().value, (node) => {
+    node.name = 'Renamed';
+  });
   assert.equal(asked(journey), 2, 'an edit of the model');
   assert.equal(asked(journey), 0);
 });
@@ -204,13 +259,28 @@ test('#81: the first render of the 82-element marketplace through journey, compa
     assert.ok(Number(process.hrtime.bigint() - t1) / 1e6 < 5, 'the next ones are free');
   }
   const best = Math.min(...times);
-  assert.ok(best < 100, 'the first answer took ' + times.map((ms) => ms.toFixed(1)).join(', ') + ' ms (420 ms in the issue, about 150 ms in this harness before the entry)');
+  assert.ok(
+    best < 100,
+    'the first answer took ' +
+      times.map((ms) => ms.toFixed(1)).join(', ') +
+      ' ms (420 ms in the issue, about 150 ms in this harness before the entry)'
+  );
 });
 
 test('#81: the page asks for the entry and builds no kernel input per element: the source says so', () => {
   const fs = require('node:fs');
-  const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
-  const quiet = HTML.slice(HTML.indexOf('function quietReferencesThroughFacet('), HTML.indexOf('async function markTreeThroughFacet'));
+  const HTML = fs.readFileSync(
+    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
+    'utf8'
+  );
+  const quiet = HTML.slice(
+    HTML.indexOf('function quietReferencesThroughFacet('),
+    HTML.indexOf('async function markTreeThroughFacet')
+  );
   assert.ok(quiet.includes('kernel.quiet(') && !quiet.includes('kernel.compute('), 'one entry, no compute');
-  assert.equal(quiet.split('buildKernelInput(').length - 1, 1, 'one kernel input per layer, built in the loop of the layers and not in the loop of the elements');
+  assert.equal(
+    quiet.split('buildKernelInput(').length - 1,
+    1,
+    'one kernel input per layer, built in the loop of the layers and not in the loop of the elements'
+  );
 });

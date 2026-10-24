@@ -17,7 +17,10 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 /** The row of the table as the contract writes it: what a reviewer needs to recognise it, whatever the side that printed it. */
 function contractRow(row) {
   const out = { thing: row.thing, layer: row.layer, reference: row.reference };
-  if (row.thing === 'relationship') { out.destination = row.destination; out.label = row.label === undefined || row.label === null ? '' : row.label; }
+  if (row.thing === 'relationship') {
+    out.destination = row.destination;
+    out.label = row.label === undefined || row.label === null ? '' : row.label;
+  }
   out.change = row.change;
   out.natures = row.natures || [];
   return out;
@@ -56,15 +59,30 @@ test('hiding the wording-only changes in the editor hides the number the CLI say
   state.hideWording = true;
   const comparison = sandbox.comparisonState();
   assert.equal(comparison.wordingHidden, EXPECTED.hidden_wording_only);
-  assert.equal(comparison.counts.elements.changed, EXPECTED.counts.elements.changed - EXPECTED.hidden_wording_only, 'the editor\'s changed count drops by the wording-only ones');
+  assert.equal(
+    comparison.counts.elements.changed,
+    EXPECTED.counts.elements.changed - EXPECTED.hidden_wording_only,
+    "the editor's changed count drops by the wording-only ones"
+  );
   assert.equal(comparison.changes.length, EXPECTED.changes.length - EXPECTED.hidden_wording_only);
   assert.deepEqual(plain(comparison.counts.relationships), EXPECTED.counts.relationships);
-  const kept = EXPECTED.changes.filter((row) => !(row.thing === 'element' && row.change === 'changed' && row.natures.length === 1 && row.natures[0] === 'description'));
+  const kept = EXPECTED.changes.filter(
+    (row) =>
+      !(
+        row.thing === 'element' &&
+        row.change === 'changed' &&
+        row.natures.length === 1 &&
+        row.natures[0] === 'description'
+      )
+  );
   assert.deepEqual(plain(comparison.changes.map(contractRow)), kept);
 });
 
 test('the contract is the one file: both sides read it and neither copies its numbers', () => {
-  const java = fs.readFileSync(path.resolve(__dirname, '../../java/io/morin/archicode/cli/PlateauComparisonTest.java'), 'utf8');
+  const java = fs.readFileSync(
+    path.resolve(__dirname, '../../java/io/morin/archicode/cli/PlateauComparisonTest.java'),
+    'utf8'
+  );
   assert.match(java, /expected-counts\.json/);
   assert.equal(EXPECTED.changes.length, 15);
 });

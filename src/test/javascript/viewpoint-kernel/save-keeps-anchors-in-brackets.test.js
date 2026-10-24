@@ -24,7 +24,11 @@ function saved(text, edit) {
   const value = app.parseYamlAsModel(text);
   edit(value.content);
   const out = app.patchYamlText(text, value);
-  assert.equal(app.serializeYamlValue(app.parseYamlAsModel(out), 0), app.serializeYamlValue(value, 0), 'the text reads back as the edit\n' + out);
+  assert.equal(
+    app.serializeYamlValue(app.parseYamlAsModel(out), 0),
+    app.serializeYamlValue(value, 0),
+    'the text reads back as the edit\n' + out
+  );
   assert.equal(/[\u0001-\u0005]/.test(out), false, 'no mark is left');
   return { out, emitted: app.serializeYamlValue(value, 0) };
 }
@@ -42,61 +46,126 @@ function edited(text, ...pairs) {
 // ---------------------------------------------------------------------------------------------------------------------
 // 1. An anchor, an alias or a tag inside brackets.
 
-const BRACKETS = HEAD + '  name: Bakery   # the name\n  qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n  tags: {zone: &z north, other: *z, size: !!str 12}\n  description: x\n';
+const BRACKETS =
+  HEAD +
+  '  name: Bakery   # the name\n  qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n  tags: {zone: &z north, other: *z, size: !!str 12}\n  description: x\n';
 
 test('no edit, and an edit elsewhere, keep the brackets with their anchors, aliases and tags byte for byte', () => {
   assert.equal(app.patchYamlText(BRACKETS, app.parseYamlAsModel(BRACKETS)), BRACKETS);
-  assert.equal(saved(BRACKETS, (c) => { c.name = 'Boulangerie'; }).out, edited(BRACKETS, ['name: Bakery', 'name: Boulangerie']));
-  assert.equal(saved(BRACKETS, (c) => { c.description = 'y'; }).out, edited(BRACKETS, ['description: x', 'description: y']));
+  assert.equal(
+    saved(BRACKETS, (c) => {
+      c.name = 'Boulangerie';
+    }).out,
+    edited(BRACKETS, ['name: Bakery', 'name: Boulangerie'])
+  );
+  assert.equal(
+    saved(BRACKETS, (c) => {
+      c.description = 'y';
+    }).out,
+    edited(BRACKETS, ['description: x', 'description: y'])
+  );
 });
 
 test('an edit of an item of the list writes the list as a block: the anchor stays on its item, the alias stays while it says the same, the other lines are the file', () => {
   // the alias's own item
   assert.equal(
-    saved(BRACKETS, (c) => { c.qualifiers[1] = 'rye'; }).out,
-    edited(BRACKETS, ['qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n', 'qualifiers:   # the qualifiers\n    - &a oven\n    - rye\n    - "flour"\n'])
+    saved(BRACKETS, (c) => {
+      c.qualifiers[1] = 'rye';
+    }).out,
+    edited(BRACKETS, [
+      'qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n',
+      'qualifiers:   # the qualifiers\n    - &a oven\n    - rye\n    - "flour"\n'
+    ])
   );
   // another item
   assert.equal(
-    saved(BRACKETS, (c) => { c.qualifiers[2] = 'bran'; }).out,
-    edited(BRACKETS, ['qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n', 'qualifiers:   # the qualifiers\n    - &a oven\n    - *a\n    - "bran"\n'])
+    saved(BRACKETS, (c) => {
+      c.qualifiers[2] = 'bran';
+    }).out,
+    edited(BRACKETS, [
+      'qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n',
+      'qualifiers:   # the qualifiers\n    - &a oven\n    - *a\n    - "bran"\n'
+    ])
   );
 });
 
 test('an edit of the very value that carries the anchor keeps the anchor on it, and the alias is written as the value it had (it would say the new one)', () => {
   assert.equal(
-    saved(BRACKETS, (c) => { c.qualifiers[0] = 'rye'; }).out,
-    edited(BRACKETS, ['qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n', 'qualifiers:   # the qualifiers\n    - &a rye\n    - oven\n    - "flour"\n'])
+    saved(BRACKETS, (c) => {
+      c.qualifiers[0] = 'rye';
+    }).out,
+    edited(BRACKETS, [
+      'qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n',
+      'qualifiers:   # the qualifiers\n    - &a rye\n    - oven\n    - "flour"\n'
+    ])
   );
   // the anchor and its alias edited together: both stay
   assert.equal(
-    saved(BRACKETS, (c) => { c.qualifiers[0] = 'rye'; c.qualifiers[1] = 'rye'; }).out,
-    edited(BRACKETS, ['qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n', 'qualifiers:   # the qualifiers\n    - &a rye\n    - *a\n    - "flour"\n'])
+    saved(BRACKETS, (c) => {
+      c.qualifiers[0] = 'rye';
+      c.qualifiers[1] = 'rye';
+    }).out,
+    edited(BRACKETS, [
+      'qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n',
+      'qualifiers:   # the qualifiers\n    - &a rye\n    - *a\n    - "flour"\n'
+    ])
   );
 });
 
 test('an item added to the list, or removed from it, writes it as a block that keeps the anchor and the alias', () => {
   assert.equal(
-    saved(BRACKETS, (c) => { c.qualifiers.push('bran'); }).out,
-    edited(BRACKETS, ['qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n', 'qualifiers:   # the qualifiers\n    - &a oven\n    - *a\n    - "flour"\n    - "bran"\n'])
+    saved(BRACKETS, (c) => {
+      c.qualifiers.push('bran');
+    }).out,
+    edited(BRACKETS, [
+      'qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n',
+      'qualifiers:   # the qualifiers\n    - &a oven\n    - *a\n    - "flour"\n    - "bran"\n'
+    ])
   );
   assert.equal(
-    saved(BRACKETS, (c) => { c.qualifiers.pop(); }).out,
-    edited(BRACKETS, ['qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n', 'qualifiers:   # the qualifiers\n    - &a oven\n    - *a\n'])
+    saved(BRACKETS, (c) => {
+      c.qualifiers.pop();
+    }).out,
+    edited(BRACKETS, [
+      'qualifiers: [&a oven, *a, "flour"]   # the qualifiers\n',
+      'qualifiers:   # the qualifiers\n    - &a oven\n    - *a\n'
+    ])
   );
   // the item that carries the anchor removed: the alias has nothing to point at, it is its value
   assert.equal(
-    saved(BRACKETS, (c) => { c.qualifiers.splice(0, 1); }).out.includes('*a'),
+    saved(BRACKETS, (c) => {
+      c.qualifiers.splice(0, 1);
+    }).out.includes('*a'),
     false
   );
 });
 
 test('a map in curly brackets: an edit of the alias value, of the anchored value, a key added; the tag stays', () => {
   const head = 'tags: {zone: &z north, other: *z, size: !!str 12}\n';
-  assert.equal(saved(BRACKETS, (c) => { c.tags.other = 'south'; }).out, edited(BRACKETS, [head, 'tags:\n    zone: &z north\n    other: south\n    size: !!str 12\n']));
-  assert.equal(saved(BRACKETS, (c) => { c.tags.zone = 'south'; }).out, edited(BRACKETS, [head, 'tags:\n    zone: &z south\n    other: north\n    size: !!str 12\n']));
-  assert.equal(saved(BRACKETS, (c) => { c.tags.tier = 'gold'; }).out, edited(BRACKETS, [head, 'tags:\n    zone: &z north\n    other: *z\n    size: !!str 12\n    tier: gold\n']));
-  assert.equal(saved(BRACKETS, (c) => { c.tags.size = '13'; }).out, edited(BRACKETS, [head, 'tags:\n    zone: &z north\n    other: *z\n    size: !!str "13"\n']));
+  assert.equal(
+    saved(BRACKETS, (c) => {
+      c.tags.other = 'south';
+    }).out,
+    edited(BRACKETS, [head, 'tags:\n    zone: &z north\n    other: south\n    size: !!str 12\n'])
+  );
+  assert.equal(
+    saved(BRACKETS, (c) => {
+      c.tags.zone = 'south';
+    }).out,
+    edited(BRACKETS, [head, 'tags:\n    zone: &z south\n    other: north\n    size: !!str 12\n'])
+  );
+  assert.equal(
+    saved(BRACKETS, (c) => {
+      c.tags.tier = 'gold';
+    }).out,
+    edited(BRACKETS, [head, 'tags:\n    zone: &z north\n    other: *z\n    size: !!str 12\n    tier: gold\n'])
+  );
+  assert.equal(
+    saved(BRACKETS, (c) => {
+      c.tags.size = '13';
+    }).out,
+    edited(BRACKETS, [head, 'tags:\n    zone: &z north\n    other: *z\n    size: !!str "13"\n'])
+  );
 });
 
 // The shapes of a real workspace: an anchor on an item of a list in brackets and an alias of it later in the file, in another element; a map in brackets whose value is
@@ -133,16 +202,35 @@ const SHAPES = [
 
 test('the shapes of a real workspace: an edit of an element keeps the brackets of every other one, and the aliases that point at the edited one', () => {
   assert.equal(app.patchYamlText(SHAPES, app.parseYamlAsModel(SHAPES)), SHAPES);
-  assert.equal(saved(SHAPES, (c) => { c.elements[1].name = 'Counter'; }).out, edited(SHAPES, ['name: Front', 'name: Counter']));
-  assert.equal(saved(SHAPES, (c) => { c.elements[0].name = 'Big oven'; }).out, edited(SHAPES, ['name: Oven   # hot', 'name: Big oven   # hot']));
-  assert.equal(saved(SHAPES, (c) => { c.elements[1].relationships[0].label = 'sells'; }).out, edited(SHAPES, ['label: bakes', 'label: sells']));
+  assert.equal(
+    saved(SHAPES, (c) => {
+      c.elements[1].name = 'Counter';
+    }).out,
+    edited(SHAPES, ['name: Front', 'name: Counter'])
+  );
+  assert.equal(
+    saved(SHAPES, (c) => {
+      c.elements[0].name = 'Big oven';
+    }).out,
+    edited(SHAPES, ['name: Oven   # hot', 'name: Big oven   # hot'])
+  );
+  assert.equal(
+    saved(SHAPES, (c) => {
+      c.elements[1].relationships[0].label = 'sells';
+    }).out,
+    edited(SHAPES, ['label: bakes', 'label: sells'])
+  );
   // an element added at the end, an element removed: the brackets of the others stay
   assert.equal(
-    saved(SHAPES, (c) => { c.elements.push({ kind: 'container', id: 'van', name: 'Van' }); }).out,
+    saved(SHAPES, (c) => {
+      c.elements.push({ kind: 'container', id: 'van', name: 'Van' });
+    }).out,
     SHAPES + '    - kind: container\n      id: van\n      name: Van\n'
   );
   assert.equal(
-    saved(SHAPES, (c) => { c.elements.splice(2, 1); }).out,
+    saved(SHAPES, (c) => {
+      c.elements.splice(2, 1);
+    }).out,
     edited(SHAPES, ['    - kind: container\n      id: store\n      name: Store\n      qualifiers: [*db]\n', ''])
   );
 });
@@ -150,55 +238,113 @@ test('the shapes of a real workspace: an edit of an element keeps the brackets o
 test('the shapes of a real workspace: an item edited, added or removed in a list in brackets that has an anchor or an alias', () => {
   // a qualifier added to the list that has the aliases: that list is a block, its alias stays
   assert.equal(
-    saved(SHAPES, (c) => { c.elements[1].qualifiers.push('react'); }).out,
-    edited(SHAPES, ['      qualifiers: [*web, typescript]   # same stack\n', '      qualifiers:   # same stack\n        - *web\n        - typescript\n        - react\n'])
+    saved(SHAPES, (c) => {
+      c.elements[1].qualifiers.push('react');
+    }).out,
+    edited(SHAPES, [
+      '      qualifiers: [*web, typescript]   # same stack\n',
+      '      qualifiers:   # same stack\n        - *web\n        - typescript\n        - react\n'
+    ])
   );
   // the anchored qualifier renamed: its anchor stays, the aliases of the other elements are written as the value they had
   assert.equal(
-    saved(SHAPES, (c) => { c.elements[0].qualifiers[0] = 'www'; }).out,
+    saved(SHAPES, (c) => {
+      c.elements[0].qualifiers[0] = 'www';
+    }).out,
     edited(
       SHAPES,
-      ['      qualifiers: [&web web, java, &db "postgres"]\n', '      qualifiers:\n        - &web www\n        - java\n        - &db "postgres"\n'],
-      ['      qualifiers: [*web, typescript]   # same stack\n', '      qualifiers:   # same stack\n        - web\n        - typescript\n']
+      [
+        '      qualifiers: [&web web, java, &db "postgres"]\n',
+        '      qualifiers:\n        - &web www\n        - java\n        - &db "postgres"\n'
+      ],
+      [
+        '      qualifiers: [*web, typescript]   # same stack\n',
+        '      qualifiers:   # same stack\n        - web\n        - typescript\n'
+      ]
     )
   );
   // a qualifier that is not anchored removed: the anchors and the aliases all stay
   assert.equal(
-    saved(SHAPES, (c) => { c.elements[0].qualifiers.splice(1, 1); }).out,
-    edited(SHAPES, ['      qualifiers: [&web web, java, &db "postgres"]\n', '      qualifiers:\n        - &web web\n        - &db "postgres"\n'])
+    saved(SHAPES, (c) => {
+      c.elements[0].qualifiers.splice(1, 1);
+    }).out,
+    edited(SHAPES, [
+      '      qualifiers: [&web web, java, &db "postgres"]\n',
+      '      qualifiers:\n        - &web web\n        - &db "postgres"\n'
+    ])
   );
   // a value of the map that is an alias edited
   assert.equal(
-    saved(SHAPES, (c) => { c.elements[1].tags.tier = 'silver'; }).out,
-    edited(SHAPES, ['      tags: {zone: *zone, tier: *tier}\n', '      tags:\n        zone: *zone\n        tier: silver\n'])
+    saved(SHAPES, (c) => {
+      c.elements[1].tags.tier = 'silver';
+    }).out,
+    edited(SHAPES, [
+      '      tags: {zone: *zone, tier: *tier}\n',
+      '      tags:\n        zone: *zone\n        tier: silver\n'
+    ])
   );
 });
 
 test('brackets over several lines, with comments, nested brackets and a tag inside', () => {
-  const several = HEAD + '  name: Bakery\n  qualifiers: [\n    &a oven,   # the first\n    *a,\n    !!str 12\n  ]\n  properties: {a: &m {x: 1, y: [&q 2, *q]}, b: *m}\n  description: x\n';
+  const several =
+    HEAD +
+    '  name: Bakery\n  qualifiers: [\n    &a oven,   # the first\n    *a,\n    !!str 12\n  ]\n  properties: {a: &m {x: 1, y: [&q 2, *q]}, b: *m}\n  description: x\n';
   assert.equal(app.patchYamlText(several, app.parseYamlAsModel(several)), several);
-  assert.equal(saved(several, (c) => { c.name = 'y'; }).out, edited(several, ['name: Bakery', 'name: y']));
+  assert.equal(
+    saved(several, (c) => {
+      c.name = 'y';
+    }).out,
+    edited(several, ['name: Bakery', 'name: y'])
+  );
   // the list changed: a block, the comment of its brackets under its key
   assert.equal(
-    saved(several, (c) => { c.qualifiers.push('bran'); }).out,
-    edited(several, ['  qualifiers: [\n    &a oven,   # the first\n    *a,\n    !!str 12\n  ]\n', '  qualifiers:\n    # the first\n    - &a oven\n    - *a\n    - !!str 12\n    - bran\n'])
+    saved(several, (c) => {
+      c.qualifiers.push('bran');
+    }).out,
+    edited(several, [
+      '  qualifiers: [\n    &a oven,   # the first\n    *a,\n    !!str 12\n  ]\n',
+      '  qualifiers:\n    # the first\n    - &a oven\n    - *a\n    - !!str 12\n    - bran\n'
+    ])
   );
   // the nested map whose anchor the alias points at, edited
   assert.equal(
-    saved(several, (c) => { c.properties.a.x = 5; }).out,
-    edited(several, ['  properties: {a: &m {x: 1, y: [&q 2, *q]}, b: *m}\n', '  properties:\n    a: &m\n      x: 5\n      y:\n        - &q 2\n        - *q\n    b:\n      x: 1\n      y:\n        - 2\n        - 2\n'])
+    saved(several, (c) => {
+      c.properties.a.x = 5;
+    }).out,
+    edited(several, [
+      '  properties: {a: &m {x: 1, y: [&q 2, *q]}, b: *m}\n',
+      '  properties:\n    a: &m\n      x: 5\n      y:\n        - &q 2\n        - *q\n    b:\n      x: 1\n      y:\n        - 2\n        - 2\n'
+    ])
   );
 });
 
 test('an item of a list in brackets that is a map with an anchor, and its alias', () => {
   const items = HEAD + '  name: Bakery\n  steps: [&s {k: v, w: 1}, *s]\n';
-  assert.equal(saved(items, (c) => { c.name = 'y'; }).out, edited(items, ['name: Bakery', 'name: y']));
-  assert.equal(saved(items, (c) => { c.steps[0].k = 'z'; }).out, edited(items, ['  steps: [&s {k: v, w: 1}, *s]\n', '  steps:\n    - &s\n      k: z\n      w: 1\n    - k: v\n      w: 1\n']));
+  assert.equal(
+    saved(items, (c) => {
+      c.name = 'y';
+    }).out,
+    edited(items, ['name: Bakery', 'name: y'])
+  );
+  assert.equal(
+    saved(items, (c) => {
+      c.steps[0].k = 'z';
+    }).out,
+    edited(items, [
+      '  steps: [&s {k: v, w: 1}, *s]\n',
+      '  steps:\n    - &s\n      k: z\n      w: 1\n    - k: v\n      w: 1\n'
+    ])
+  );
 });
 
 test('the line breaks of the file (CRLF) and its byte-order mark stay', () => {
   const crlf = BRACKETS.replace(/\n/g, '\r\n');
-  assert.equal(saved(crlf, (c) => { c.name = 'y'; }).out, crlf.replace('name: Bakery', 'name: y'));
+  assert.equal(
+    saved(crlf, (c) => {
+      c.name = 'y';
+    }).out,
+    crlf.replace('name: Bakery', 'name: y')
+  );
   const marked = '\ufeff' + BRACKETS;
   assert.equal(app.patchYamlText(marked, app.parseYamlAsModel(marked.slice(1)), false).length > 0, true);
   const value = app.parseYamlAsModel(BRACKETS);
@@ -220,28 +366,66 @@ const TEXTS =
 
 test('a text over several lines, plain or quoted, with a tag that changes what it reads as or with one that does not, stays as written when the edit leaves it alone', () => {
   assert.deepEqual(plain(app.parseYamlAsModel(TEXTS).content), {
-    id: 'bakery', name: 'Bakery', description: 'a plain text over two lines', label: 'a quoted text over two lines', data: 'aGVsbG8=', note: 'some words', size: 'x'
+    id: 'bakery',
+    name: 'Bakery',
+    description: 'a plain text over two lines',
+    label: 'a quoted text over two lines',
+    data: 'aGVsbG8=',
+    note: 'some words',
+    size: 'x'
   });
   assert.equal(app.patchYamlText(TEXTS, app.parseYamlAsModel(TEXTS)), TEXTS);
-  assert.equal(saved(TEXTS, (c) => { c.size = 'y'; }).out, edited(TEXTS, ['size: x', 'size: y']));
-  assert.equal(saved(TEXTS, (c) => { c.name = 'y'; }).out, edited(TEXTS, ['name: Bakery', 'name: y']));
+  assert.equal(
+    saved(TEXTS, (c) => {
+      c.size = 'y';
+    }).out,
+    edited(TEXTS, ['size: x', 'size: y'])
+  );
+  assert.equal(
+    saved(TEXTS, (c) => {
+      c.name = 'y';
+    }).out,
+    edited(TEXTS, ['name: Bakery', 'name: y'])
+  );
 });
 
 test('a text over several lines that the edit changes is one line, with its comment, and its tag when the new value still reads so', () => {
-  assert.equal(saved(TEXTS, (c) => { c.description = 'short'; }).out, edited(TEXTS, ['description: a plain text\n    over two lines   # plain', 'description: short   # plain']));
-  assert.equal(saved(TEXTS, (c) => { c.label = 'short'; }).out, edited(TEXTS, ['label: "a quoted text\n    over two lines"   # quoted', 'label: "short"   # quoted']));
   assert.equal(
-    saved(TEXTS, (c) => { c.data = 'd29ybGQ='; }).out,
+    saved(TEXTS, (c) => {
+      c.description = 'short';
+    }).out,
+    edited(TEXTS, ['description: a plain text\n    over two lines   # plain', 'description: short   # plain'])
+  );
+  assert.equal(
+    saved(TEXTS, (c) => {
+      c.label = 'short';
+    }).out,
+    edited(TEXTS, ['label: "a quoted text\n    over two lines"   # quoted', 'label: "short"   # quoted'])
+  );
+  assert.equal(
+    saved(TEXTS, (c) => {
+      c.data = 'd29ybGQ=';
+    }).out,
     edited(TEXTS, ['data: !!binary aGVs\n    bG8=   #', 'data: !!binary d29ybGQ=   #'])
   );
   // a value the tag cannot read: the tag goes, the text says the value
-  assert.equal(saved(TEXTS, (c) => { c.data = 'not bytes'; }).out, edited(TEXTS, ['data: !!binary aGVs\n    bG8=   #', 'data: not bytes   #']));
+  assert.equal(
+    saved(TEXTS, (c) => {
+      c.data = 'not bytes';
+    }).out,
+    edited(TEXTS, ['data: !!binary aGVs\n    bG8=   #', 'data: not bytes   #'])
+  );
 });
 
 test('a tag that changes a quoted text over several lines into a number stays', () => {
   const text = HEAD + '  ratio: !!float "1\n    "\n  name: x\n';
   assert.equal(app.parseYamlAsModel(text).content.ratio, '1.0');
-  assert.equal(saved(text, (c) => { c.name = 'y'; }).out, edited(text, ['name: x', 'name: y']));
+  assert.equal(
+    saved(text, (c) => {
+      c.name = 'y';
+    }).out,
+    edited(text, ['name: x', 'name: y'])
+  );
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -275,57 +459,119 @@ const DASHES = [
 
 test('an item whose map starts below its dash, with an anchor or none, at the column of its keys or deeper, stays as written', () => {
   assert.equal(app.patchYamlText(DASHES, app.parseYamlAsModel(DASHES)), DASHES);
-  assert.equal(saved(DASHES, (c) => { c.name = 'Boulangerie'; }).out, edited(DASHES, ['name: Bakery', 'name: Boulangerie']));
-  assert.equal(saved(DASHES, (c) => { c.elements[1].name = 'Big oven'; }).out, edited(DASHES, ['name: Oven', 'name: Big oven']));
-  assert.equal(saved(DASHES, (c) => { c.elements[2].name = 'Truck'; }).out, edited(DASHES, ['name: Van', 'name: Truck']));
-  assert.equal(saved(DASHES, (c) => { c.elements[2].id = 'truck'; }).out, edited(DASHES, ['id: van', 'id: truck']));
+  assert.equal(
+    saved(DASHES, (c) => {
+      c.name = 'Boulangerie';
+    }).out,
+    edited(DASHES, ['name: Bakery', 'name: Boulangerie'])
+  );
+  assert.equal(
+    saved(DASHES, (c) => {
+      c.elements[1].name = 'Big oven';
+    }).out,
+    edited(DASHES, ['name: Oven', 'name: Big oven'])
+  );
+  assert.equal(
+    saved(DASHES, (c) => {
+      c.elements[2].name = 'Truck';
+    }).out,
+    edited(DASHES, ['name: Van', 'name: Truck'])
+  );
+  assert.equal(
+    saved(DASHES, (c) => {
+      c.elements[2].id = 'truck';
+    }).out,
+    edited(DASHES, ['id: van', 'id: truck'])
+  );
 });
 
 test('an item whose map starts below its dash: a key added, an item added, an item removed', () => {
-  assert.equal(saved(DASHES, (c) => { c.elements[2].description = 'x'; }).out, edited(DASHES, ['        name: Van\n', '        name: Van\n        description: x\n']));
-  assert.equal(saved(DASHES, (c) => { c.elements.push({ kind: 'container', id: 'cart' }); }).out, edited(DASHES, ['        name: Van\n', '        name: Van\n    - kind: container\n      id: cart\n']));
+  assert.equal(
+    saved(DASHES, (c) => {
+      c.elements[2].description = 'x';
+    }).out,
+    edited(DASHES, ['        name: Van\n', '        name: Van\n        description: x\n'])
+  );
+  assert.equal(
+    saved(DASHES, (c) => {
+      c.elements.push({ kind: 'container', id: 'cart' });
+    }).out,
+    edited(DASHES, ['        name: Van\n', '        name: Van\n    - kind: container\n      id: cart\n'])
+  );
   // the last item removed: its lines go; a comment on a line of its own between two of its keys stays, as it does in any list the aligner follows
-  assert.equal(saved(DASHES, (c) => { c.elements.splice(2, 1); }).out, edited(DASHES, ['    -   # deeper\n        kind: container\n        id: van\n        # its name\n        name: Van\n', '      # its name\n']));
+  assert.equal(
+    saved(DASHES, (c) => {
+      c.elements.splice(2, 1);
+    }).out,
+    edited(DASHES, [
+      '    -   # deeper\n        kind: container\n        id: van\n        # its name\n        name: Van\n',
+      '      # its name\n'
+    ])
+  );
   // an item removed whose first line is the first line of the next one too (`kind: container`): the lines that read the same leave a choice, and the item that goes is the whole
   // item the model says (its dash line, the comment between its dash and its first key, its keys); the next one keeps its own dash line, its comments and its columns (wave 021, run 0154,
   // #151: the aligner used to keep the first of two lines that read the same, so the next item took the dash line, the comments and the columns of the removed one)
   assert.equal(
-    saved(DASHES, (c) => { c.elements.splice(1, 1); }).out,
+    saved(DASHES, (c) => {
+      c.elements.splice(1, 1);
+    }).out,
     edited(DASHES, ['    -\n      # the second one\n      kind: container\n      id: oven\n      name: Oven\n', ''])
   );
 });
 
 test('the anchored item edited: the anchor stays, the alias is written as the value it had; both edited: both stay', () => {
   assert.equal(
-    saved(DASHES, (c) => { c.elements[0].name = 'Boutique'; }).out,
-    edited(DASHES, ['name: Shop', 'name: Boutique'], ['  other: *shop\n', '  other:\n    kind: container\n    id: shop\n    name: Shop\n'])
+    saved(DASHES, (c) => {
+      c.elements[0].name = 'Boutique';
+    }).out,
+    edited(
+      DASHES,
+      ['name: Shop', 'name: Boutique'],
+      ['  other: *shop\n', '  other:\n    kind: container\n    id: shop\n    name: Shop\n']
+    )
   );
-  assert.equal(saved(DASHES, (c) => { c.elements[0].name = 'Boutique'; c.other.name = 'Boutique'; }).out, edited(DASHES, ['name: Shop', 'name: Boutique']));
+  assert.equal(
+    saved(DASHES, (c) => {
+      c.elements[0].name = 'Boutique';
+      c.other.name = 'Boutique';
+    }).out,
+    edited(DASHES, ['name: Shop', 'name: Boutique'])
+  );
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
 // What keeps the fallback, and why.
 
-test('what keeps the fallback (the emitter\'s text, which reads back as the edit), with the reason', () => {
+test("what keeps the fallback (the emitter's text, which reads back as the edit), with the reason", () => {
   const fallback = {
     // the reader takes an anchor or a tag on a key inside brackets, and refuses it on a key of a block: the save would have to write it in a block, which the reader refuses
     'an anchor on a key inside brackets': HEAD + '  tags: {&k zone: north}\n  name: x\n',
     // a single pair in a list (`[a: b]`) is a map the block would write as `- a: b`; with an anchor or an alias in it, it is not written
     'a pair in a list with an anchor': HEAD + '  steps: [&a one: two]\n  name: x\n',
     // a text over several lines inside brackets that has a tag: its tag cannot be put on one line that says the same
-    'a tag on a text over several lines inside brackets': HEAD + '  qualifiers: [!!str some\n    words, *x]\n  name: x\n'.replace(', *x', ', other'),
+    'a tag on a text over several lines inside brackets':
+      HEAD + '  qualifiers: [!!str some\n    words, *x]\n  name: x\n'.replace(', *x', ', other'),
     // an item whose map starts below its dash, inside the map of another such item: only the outer one is followed, the inner layout is not one the aligner follows
-    'an item below its dash inside another': HEAD + '  elements:\n    -\n      id: a\n      elements:\n        -\n          id: b\n  name: x\n'
+    'an item below its dash inside another':
+      HEAD + '  elements:\n    -\n      id: a\n      elements:\n        -\n          id: b\n  name: x\n'
   };
   for (const [form, text] of Object.entries(fallback)) {
-    const { out, emitted } = saved(text, (c) => { c.name = 'y'; });
+    const { out, emitted } = saved(text, (c) => {
+      c.name = 'y';
+    });
     assert.equal(out, emitted, form);
   }
 });
 
 test('the reader is not changed: an anchor or a tag on a key of a block is still refused, the merge key is still a key', () => {
-  assert.throws(() => app.parseYaml('a: &k b: 2\n'), (e) => e.name === 'YamlParseError' && /an anchor or a tag on a key is not supported/.test(e.message));
-  assert.deepEqual(plain(app.parseYaml('base: &b\n  heat: high\n<<: *b\n')), { base: { heat: 'high' }, '<<': { heat: 'high' } });
+  assert.throws(
+    () => app.parseYaml('a: &k b: 2\n'),
+    (e) => e.name === 'YamlParseError' && /an anchor or a tag on a key is not supported/.test(e.message)
+  );
+  assert.deepEqual(plain(app.parseYaml('base: &b\n  heat: high\n<<: *b\n')), {
+    base: { heat: 'high' },
+    '<<': { heat: 'high' }
+  });
   assert.deepEqual(plain(app.parseYaml('tags: {&k zone: north}\n')), { tags: { zone: 'north' } });
 });
 
@@ -333,9 +579,18 @@ test('the reader is not changed: an anchor or a tag on a key of a block is still
 // Whatever the edit.
 
 test('whatever the edit, the text written reads back as the edit, no mark is left, and a line that holds nothing the edit reaches is the line of the file', () => {
-  const corpus = [BRACKETS, SHAPES, TEXTS, DASHES, HEAD + '  qualifiers: [\n    &a oven,   # the first\n    *a\n  ]\n  properties: {a: &m {x: 1}, b: *m}\n  name: n\n'];
+  const corpus = [
+    BRACKETS,
+    SHAPES,
+    TEXTS,
+    DASHES,
+    HEAD + '  qualifiers: [\n    &a oven,   # the first\n    *a\n  ]\n  properties: {a: &m {x: 1}, b: *m}\n  name: n\n'
+  ];
   let seed = 11;
-  const random = (n) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  const random = (n) => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed % n;
+  };
   const paths = (value, prefix, out) => {
     for (const key of Object.keys(value)) {
       const here = prefix.concat(key);
@@ -368,7 +623,11 @@ test('whatever the edit, the text written reads back as the edit, no mark is lef
         else if (!Array.isArray(node)) node['k' + random(3)] = 'added';
       }
       const out = app.patchYamlText(text, value);
-      assert.equal(app.serializeYamlValue(app.parseYamlAsModel(out), 0), app.serializeYamlValue(value, 0), 'reads back as the edit\n' + text + '\n=>\n' + out);
+      assert.equal(
+        app.serializeYamlValue(app.parseYamlAsModel(out), 0),
+        app.serializeYamlValue(value, 0),
+        'reads back as the edit\n' + text + '\n=>\n' + out
+      );
       assert.equal(/[\u0001-\u0005]/.test(out), false, 'no mark is left');
       // the first line and the comment lines of the file are there, in order, whatever the edit (a save that keeps the layout keeps them; the emitter's text has none)
       if (out !== app.serializeYamlValue(value, 0)) assert.equal(out.split('\n')[0], text.split('\n')[0]);
@@ -383,7 +642,12 @@ const PLATEAUS = 'settings:\n  manifests:\n    paths:\n      - plateaus/10_base\
 const MILL = 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "mill"\n  name: "Mill"\n';
 
 async function openMem(files) {
-  const mem = memFolder(Object.assign({ '.archicode.yaml': PLATEAUS }, Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
+  const mem = memFolder(
+    Object.assign(
+      { '.archicode.yaml': PLATEAUS },
+      Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))
+    )
+  );
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -395,10 +659,16 @@ async function openMem(files) {
 test('in the editor, an element of a file with anchors and aliases in brackets is edited and saved: only its line changes', async () => {
   const { mem, sandbox, state } = await openMem({ 'app.bakery.yaml': SHAPES, 'app.mill.yaml': MILL });
   assert.deepEqual(plain(state.manifestFiles.filter((f) => f.error)), []);
-  sandbox.commitElementEdit('bakery.front', (node) => { node.name = 'Counter'; return {}; });
+  sandbox.commitElementEdit('bakery.front', (node) => {
+    node.name = 'Counter';
+    return {};
+  });
   await sandbox.saveAllChanges();
   assert.deepEqual(mem.writes, ['plateaus/10_base/app.bakery.yaml']);
-  assert.equal(mem.files.get('plateaus/10_base/app.bakery.yaml').text, edited(SHAPES, ['name: Front', 'name: Counter']));
+  assert.equal(
+    mem.files.get('plateaus/10_base/app.bakery.yaml').text,
+    edited(SHAPES, ['name: Front', 'name: Counter'])
+  );
 });
 
 test('in the editor, a rename reaches a reference in a file whose items start below their dash and whose texts go over several lines', async () => {
@@ -419,8 +689,14 @@ test('in the editor, a rename reaches a reference in a file whose items start be
   ].join('\n');
   const { mem, sandbox, state } = await openMem({ 'app.bakery.yaml': bakery, 'app.mill.yaml': MILL });
   assert.deepEqual(plain(state.manifestFiles.filter((f) => f.error)), []);
-  sandbox.commitElementEdit('mill', (node) => { node.id = 'granary'; return { renamedTo: { from: 'mill', to: 'granary' } }; });
+  sandbox.commitElementEdit('mill', (node) => {
+    node.id = 'granary';
+    return { renamedTo: { from: 'mill', to: 'granary' } };
+  });
   await sandbox.saveAllChanges();
-  assert.equal(mem.files.get('plateaus/10_base/app.bakery.yaml').text, edited(bakery, ['destination: mill', 'destination: granary']));
+  assert.equal(
+    mem.files.get('plateaus/10_base/app.bakery.yaml').text,
+    edited(bakery, ['destination: mill', 'destination: granary'])
+  );
   assert.equal(mem.files.get('plateaus/10_base/app.mill.yaml').text, edited(MILL, ['id: "mill"', 'id: "granary"']));
 });

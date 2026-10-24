@@ -46,16 +46,27 @@ function workspaceFilesUnderAnotherName() {
     }
   };
   walk(path.join(REPO, 'src/doc/examples'));
-  return found.filter((f) => !f.endsWith('/.archicode.yaml') && !f.includes('/manifests/') && !f.includes('/plateaus/')).sort();
+  return found
+    .filter((f) => !f.endsWith('/.archicode.yaml') && !f.includes('/manifests/') && !f.includes('/plateaus/'))
+    .sort();
 }
 
 /** The exceptions that apply to the editor: workspace -> reason. */
 function exceptions() {
   const result = new Map();
   for (const entry of JSON.parse(fs.readFileSync(EXCEPTIONS, 'utf8')).exceptions) {
-    assert.ok(typeof entry.workspace === 'string' && entry.workspace !== '', 'an exception names a workspace: ' + JSON.stringify(entry));
-    assert.ok(typeof entry.reason === 'string' && entry.reason.trim() !== '', 'the exception for ' + entry.workspace + ' has no reason');
-    assert.ok(Array.isArray(entry.tools) && entry.tools.length > 0 && entry.tools.every((t) => t === 'cli' || t === 'editor'), 'the tools of the exception for ' + entry.workspace + ' are cli, editor or both');
+    assert.ok(
+      typeof entry.workspace === 'string' && entry.workspace !== '',
+      'an exception names a workspace: ' + JSON.stringify(entry)
+    );
+    assert.ok(
+      typeof entry.reason === 'string' && entry.reason.trim() !== '',
+      'the exception for ' + entry.workspace + ' has no reason'
+    );
+    assert.ok(
+      Array.isArray(entry.tools) && entry.tools.length > 0 && entry.tools.every((t) => t === 'cli' || t === 'editor'),
+      'the tools of the exception for ' + entry.workspace + ' are cli, editor or both'
+    );
     if (entry.tools.includes('editor')) result.set(entry.workspace, entry.reason);
   }
   return result;
@@ -69,7 +80,8 @@ function problemsOf(state) {
   for (const f of state.manifestFiles) if (f.error) problems.push('`' + f.relPath + '` is not valid: ' + f.error);
   for (const d of state.duplicateReferences) problems.push(d.message);
   if (state.plateauTree) problems.push(...state.plateauTree.problems, ...state.plateauTree.redeclared); // the tree of the layered plateaus (run 0077)
-  for (const f of state.unreadManifestFiles) problems.push('`' + f + '` is read by the command line and not by the editor');
+  for (const f of state.unreadManifestFiles)
+    problems.push('`' + f + '` is read by the command line and not by the editor');
   if (state.baseline && state.baseline.problem) problems.push(state.baseline.problem);
   return problems;
 }
@@ -87,7 +99,10 @@ async function openEveryPlateau(dir) {
   await sandbox.loadWorkspace(handle);
   await sandbox.loadViewpointKernel();
   const results = [];
-  const ids = state.plateauTree && state.plateauTree.layered && !state.fatalError ? Array.from(state.plateauTree.nodes.keys()) : [];
+  const ids =
+    state.plateauTree && state.plateauTree.layered && !state.fatalError
+      ? Array.from(state.plateauTree.nodes.keys())
+      : [];
   if (ids.length === 0) results.push(['the workspace', problemsOf(state)]);
   for (const id of ids) {
     sandbox.drawPlateau(id);
@@ -106,7 +121,8 @@ test('the repository ships the workspaces this test looks for', () => {
 
 test('an exception names a workspace the repository ships', () => {
   const found = new Set(workspaces().concat(workspaceFilesUnderAnotherName()));
-  for (const workspace of exceptions().keys()) assert.ok(found.has(workspace), 'the exception names no workspace of the repository: ' + workspace);
+  for (const workspace of exceptions().keys())
+    assert.ok(found.has(workspace), 'the exception names no workspace of the repository: ' + workspace);
 });
 
 for (const workspace of workspaces()) {
@@ -126,8 +142,16 @@ for (const workspace of workspaces()) {
 
 test('every plateau of a workspace that has plateaus is opened, each compared with its baseline', async () => {
   const opened = await openEveryPlateau(path.join(REPO, 'src/test/resources/brightcart/layered'));
-  assert.deepEqual(opened.map(([label]) => label).sort(), ['plateau `baseline`', 'plateau `inhouse`', 'plateau `marketplace`', 'plateau `saas`']);
-  assert.deepEqual(opened.flatMap(([, problems]) => problems), []);
+  assert.deepEqual(opened.map(([label]) => label).sort(), [
+    'plateau `baseline`',
+    'plateau `inhouse`',
+    'plateau `marketplace`',
+    'plateau `saas`'
+  ]);
+  assert.deepEqual(
+    opened.flatMap(([, problems]) => problems),
+    []
+  );
 });
 
 for (const file of workspaceFilesUnderAnotherName()) {
@@ -140,7 +164,8 @@ for (const file of workspaceFilesUnderAnotherName()) {
     state.permissionState = 'granted';
     await sandbox.loadWorkspace(mem.handle);
     const problems = problemsOf(state);
-    if (reason !== undefined) assert.ok(problems.length > 0, file + ' is listed as an exception (' + reason + ') but opens');
+    if (reason !== undefined)
+      assert.ok(problems.length > 0, file + ' is listed as an exception (' + reason + ') but opens');
     else assert.deepEqual(problems, [], file + ' does not open in the editor');
   });
 }
@@ -155,29 +180,46 @@ test('the manual includes workspace files under other names', () => {
 function altered(source, alter) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shipped-files-'));
   fs.cpSync(path.join(REPO, source), dir, { recursive: true });
-  const manifest = 'manifests/' + fs.readdirSync(path.join(dir, 'manifests')).filter((n) => n.endsWith('.yaml')).sort()[0];
+  const manifest =
+    'manifests/' +
+    fs
+      .readdirSync(path.join(dir, 'manifests'))
+      .filter((n) => n.endsWith('.yaml'))
+      .sort()[0];
   fs.writeFileSync(path.join(dir, manifest), alter(fs.readFileSync(path.join(dir, manifest), 'utf8')));
   return { dir, manifest };
 }
 
 test('a shipped fixture whose manifest has a kind nobody knows does not open', async () => {
-  const { dir, manifest } = altered('src/test/resources/hyphen-ids', (text) => text.replace(/kind: "archicode\.morin\.io\/\w+"/, 'kind: "archicode.morin.io/nothing"'));
+  const { dir, manifest } = altered('src/test/resources/hyphen-ids', (text) =>
+    text.replace(/kind: "archicode\.morin\.io\/\w+"/, 'kind: "archicode.morin.io/nothing"')
+  );
   try {
     const [[, problems]] = await openEveryPlateau(dir);
-    assert.deepEqual(problems, ['`' + manifest + '` is not valid: unrecognized `header.kind` "archicode.morin.io/nothing" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)']);
+    assert.deepEqual(problems, [
+      '`' +
+        manifest +
+        '` is not valid: unrecognized `header.kind` "archicode.morin.io/nothing" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)'
+    ]);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test('a shipped fixture whose manifest names a plateau opens, and a plateau id that is not valid is told (run 0077)', async () => {
-  const named = altered('src/test/resources/hyphen-ids', (text) => text.replace('version:', 'plateau: later\n  version:'));
-  const wrong = altered('src/test/resources/hyphen-ids', (text) => text.replace('version:', 'plateau: v1.2\n  version:'));
+  const named = altered('src/test/resources/hyphen-ids', (text) =>
+    text.replace('version:', 'plateau: later\n  version:')
+  );
+  const wrong = altered('src/test/resources/hyphen-ids', (text) =>
+    text.replace('version:', 'plateau: v1.2\n  version:')
+  );
   try {
     const [[, problems]] = await openEveryPlateau(named.dir);
     assert.deepEqual(problems, [], 'a plateau that headers name opens');
     const [[, mistakes]] = await openEveryPlateau(wrong.dir);
-    assert.deepEqual(mistakes, ['the plateau id `v1.2` in `' + wrong.manifest + '` is not valid: use lowercase letters, digits, `_` and `-`']);
+    assert.deepEqual(mistakes, [
+      'the plateau id `v1.2` in `' + wrong.manifest + '` is not valid: use lowercase letters, digits, `_` and `-`'
+    ]);
   } finally {
     fs.rmSync(named.dir, { recursive: true, force: true });
     fs.rmSync(wrong.dir, { recursive: true, force: true });

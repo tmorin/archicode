@@ -19,7 +19,10 @@ const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value)); // the page's arrays and objects are of another realm
 const html = (sandbox) => run(sandbox, "document.getElementById('app').innerHTML");
 const records = (idb) => (idb.dump(DB) || { stores: { handles: {} } }).stores.handles;
-const folderRecords = (idb) => Object.entries(records(idb)).filter(([k]) => k.startsWith('folder:')).map(([, v]) => v);
+const folderRecords = (idb) =>
+  Object.entries(records(idb))
+    .filter(([k]) => k.startsWith('folder:'))
+    .map(([, v]) => v);
 const pathOf = (record) => record && record.handle && record.handle.__path;
 
 /** A workspace folder on disk, named `name`, whose workspace calls itself `workspaceName` (none when absent). */
@@ -32,7 +35,10 @@ function workspaceFolder(name, workspaceName) {
 }
 
 function setWorkspaceName(dir, workspaceName) {
-  fs.writeFileSync(path.join(dir, '.archicode.yaml'), 'application:\n  elements: []\n' + (workspaceName ? 'settings:\n  name: ' + workspaceName + '\n' : ''));
+  fs.writeFileSync(
+    path.join(dir, '.archicode.yaml'),
+    'application:\n  elements: []\n' + (workspaceName ? 'settings:\n  name: ' + workspaceName + '\n' : '')
+  );
 }
 
 /** A directory handle on `dir`, as the picker or IndexedDB gives one; `permission` is what the browser answers. */
@@ -50,8 +56,16 @@ function page(idb, picks = []) {
   sandbox.window.showDirectoryPicker = async () => picks.shift();
   const busy = [];
   const render = sandbox.render;
-  sandbox.render = () => { busy.push(run(sandbox, 'landingBusy')); render(); }; // what the "Opening…" said, render by render
-  return { sandbox, state: () => sandbox.__state(), busy: () => busy.filter(Boolean), folders: () => run(sandbox, 'rememberedFolders') };
+  sandbox.render = () => {
+    busy.push(run(sandbox, 'landingBusy'));
+    render();
+  }; // what the "Opening…" said, render by render
+  return {
+    sandbox,
+    state: () => sandbox.__state(),
+    busy: () => busy.filter(Boolean),
+    folders: () => run(sandbox, 'rememberedFolders')
+  };
 }
 
 /** The page after its load: the last folder opened if allowed, else the landing card. */
@@ -80,39 +94,59 @@ test('a folder stored by the earlier version is migrated in place: it gets a rec
   assert.equal(pathOf(folder), shop);
   assert.equal(folder.kind, 'folder');
   assert.equal(folder.name, 'Shop', 'the name of its workspace, read when it opened');
-  assert.equal(stored.stores.handles.workspace.id, folder.id, 'the old record is kept, rewritten with the id of its folder');
-  assert.equal(pathOf(stored.stores.handles.workspace), shop, 'and the same handle: an older copy of the page still opens it');
+  assert.equal(
+    stored.stores.handles.workspace.id,
+    folder.id,
+    'the old record is kept, rewritten with the id of its folder'
+  );
+  assert.equal(
+    pathOf(stored.stores.handles.workspace),
+    shop,
+    'and the same handle: an older copy of the page still opens it'
+  );
   assert.equal(p.state().folder.id, folder.id);
 
   // a second load finds nothing more to migrate
   const again = await load(idb);
   assert.ok(again.state().workspace);
   assert.equal(folderRecords(idb).length, 1);
-  assert.equal(again.busy()[again.busy().length - 1], 'Opening “Shop”…', 'the stored name, before .archicode.yaml is read');
+  assert.equal(
+    again.busy()[again.busy().length - 1],
+    'Opening “Shop”…',
+    'the stored name, before .archicode.yaml is read'
+  );
 });
 
 test('a transaction writes all or nothing, and is reported done only once committed', async () => {
   const idb = fakeIndexedDB();
   const { sandbox } = page(idb);
   // a write queued, then a throw (as `put` throws a DataCloneError): the transaction is aborted, the write is not kept
-  await assert.rejects(sandbox.withArchicodeStore('readwrite', (store) => {
-    store.put({ a: 1 }, 'first');
-    throw new Error('cannot clone');
-  }), /cannot clone/);
+  await assert.rejects(
+    sandbox.withArchicodeStore('readwrite', (store) => {
+      store.put({ a: 1 }, 'first');
+      throw new Error('cannot clone');
+    }),
+    /cannot clone/
+  );
   await new Promise((r) => setTimeout(r, 20)); // long after the transaction would have committed
   assert.deepEqual(records(idb), {});
   // a request that fails asynchronously aborts the writes queued before it
   const failing = fakeIndexedDB({ failPut: (key) => key === 'second' });
   const other = page(failing);
-  await assert.rejects(other.sandbox.withArchicodeStore('readwrite', (store) => {
-    store.put({ a: 1 }, 'first');
-    store.put({ b: 2 }, 'second');
-  }), /no room left/);
+  await assert.rejects(
+    other.sandbox.withArchicodeStore('readwrite', (store) => {
+      store.put({ a: 1 }, 'first');
+      store.put({ b: 2 }, 'second');
+    }),
+    /no room left/
+  );
   assert.deepEqual(records(failing), {});
   // done: resolved with what the work returned, filled by its requests, once the transaction has committed
   const out = await sandbox.withArchicodeStore('readwrite', (store) => {
     const result = {};
-    store.put({ a: 1 }, 'first').onsuccess = (e) => { result.key = e.target.result; };
+    store.put({ a: 1 }, 'first').onsuccess = (e) => {
+      result.key = e.target.result;
+    };
     return result;
   });
   assert.equal(out.key, 'first');
@@ -122,12 +156,17 @@ test('a transaction writes all or nothing, and is reported done only once commit
 test('a stored folder that is already remembered is migrated onto its record, not added twice', async () => {
   const idb = fakeIndexedDB();
   const shop = workspaceFolder('archi');
-  idb.seed(DB, 1, { handles: {
-    'folder:x1': { kind: 'folder', id: 'x1', handle: handleOn(shop), name: 'Shop', openedAt: 5 },
-    workspace: { handle: handleOn(shop) } // an older tab picked the same folder again
-  } });
+  idb.seed(DB, 1, {
+    handles: {
+      'folder:x1': { kind: 'folder', id: 'x1', handle: handleOn(shop), name: 'Shop', openedAt: 5 },
+      workspace: { handle: handleOn(shop) } // an older tab picked the same folder again
+    }
+  });
   await load(idb);
-  assert.deepEqual(folderRecords(idb).map((r) => r.id), ['x1']);
+  assert.deepEqual(
+    folderRecords(idb).map((r) => r.id),
+    ['x1']
+  );
   assert.equal(records(idb).workspace.id, 'x1');
 });
 
@@ -138,7 +177,11 @@ test('a migration that cannot clone the handle writes nothing, and the old recor
   idb.seed(DB, 1, { handles: { workspace: old } });
 
   const p = await load(idb);
-  assert.deepEqual(records(idb), { workspace: old }, 'the transaction was aborted: not one record more, the old one intact');
+  assert.deepEqual(
+    records(idb),
+    { workspace: old },
+    'the transaction was aborted: not one record more, the old one intact'
+  );
   assert.ok(p.state().workspace, 'the folder still opens on load');
   assert.equal(p.folders().length, 1);
   assert.equal(p.folders()[0].legacy, true);
@@ -147,7 +190,11 @@ test('a migration that cannot clone the handle writes nothing, and the old recor
   // closing it cannot remember it either: its old record, the only trace of it, is left alone
   await p.sandbox.closeFolder();
   assert.deepEqual(records(idb), { workspace: old });
-  assert.match(html(p.sandbox), /data-action="open-remembered-folder" data-folder-id=""[^>]*aria-label="Open “archi”"/, 'it is listed');
+  assert.match(
+    html(p.sandbox),
+    /data-action="open-remembered-folder" data-folder-id=""[^>]*aria-label="Open “archi”"/,
+    'it is listed'
+  );
 
   // it opens from the list, and Remove deletes its record and nothing else
   await p.sandbox.openRememberedFolder(p.folders()[0]);
@@ -171,7 +218,10 @@ test('a migration whose write fails later (no room left) leaves the old record a
 test('a stored value that cannot be read back: the last folder still opens, and nothing is written from that view', async () => {
   const idb = fakeIndexedDB({ failGetAll: true });
   const shop = workspaceFolder('archi');
-  const before = { 'folder:x1': { kind: 'folder', id: 'x1', handle: handleOn(shop), name: '', openedAt: 5 }, workspace: { handle: handleOn(shop) } };
+  const before = {
+    'folder:x1': { kind: 'folder', id: 'x1', handle: handleOn(shop), name: '', openedAt: 5 },
+    workspace: { handle: handleOn(shop) }
+  };
   idb.seed(DB, 1, { handles: Object.assign({}, before) });
   const p = await load(idb);
   assert.ok(p.state().workspace);
@@ -205,13 +255,29 @@ test('two folders opened one after the other are both listed when none is open, 
 
   const cfg = p.sandbox.landingScreenConfig();
   assert.equal(cfg.kind, 'first-launch');
-  assert.deepEqual(plain(cfg.folders.map((f) => [f.title, f.folder])), [['infra', null], ['Shop', 'archi']]);
+  assert.deepEqual(plain(cfg.folders.map((f) => [f.title, f.folder])), [
+    ['infra', null],
+    ['Shop', 'archi']
+  ]);
   const card = html(p.sandbox);
-  assert.match(card, /<section class="landing-folders" aria-labelledby="landing-folders-title"><h2 id="landing-folders-title">Remembered folders<\/h2><ul class="landing-folder-list">/);
+  assert.match(
+    card,
+    /<section class="landing-folders" aria-labelledby="landing-folders-title"><h2 id="landing-folders-title">Remembered folders<\/h2><ul class="landing-folder-list">/
+  );
   assert.equal((card.match(/<li class="landing-folder">/g) || []).length, 2);
-  assert.ok(card.indexOf('aria-label="Open “infra”"') < card.indexOf('aria-label="Open “Shop” (folder archi)"'), 'most recent first');
-  assert.match(card, /<span class="landing-folder-name">Shop<\/span><span class="landing-folder-dir"><svg[^]*?<\/svg><span>archi<\/span><\/span>/, 'the name, then the folder');
-  assert.match(card, /<button type="button" class="btn-ghost landing-folder-remove" data-action="forget-folder" data-folder-id="[^"]+" aria-label="Remove “Shop” \(folder archi\) from the list" title="This browser forgets the folder. Nothing is deleted on disk.">Remove from the list<\/button>/);
+  assert.ok(
+    card.indexOf('aria-label="Open “infra”"') < card.indexOf('aria-label="Open “Shop” (folder archi)"'),
+    'most recent first'
+  );
+  assert.match(
+    card,
+    /<span class="landing-folder-name">Shop<\/span><span class="landing-folder-dir"><svg[^]*?<\/svg><span>archi<\/span><\/span>/,
+    'the name, then the folder'
+  );
+  assert.match(
+    card,
+    /<button type="button" class="btn-ghost landing-folder-remove" data-action="forget-folder" data-folder-id="[^"]+" aria-label="Remove “Shop” \(folder archi\) from the list" title="This browser forgets the folder. Nothing is deleted on disk.">Remove from the list<\/button>/
+  );
   assert.match(card, /aria-label="Remove “infra” from the list"/, 'every Remove names its folder');
   assert.match(card, /nothing is deleted on disk/);
   assert.match(card, /data-action="open-folder"/, 'the picker is still there');
@@ -233,7 +299,11 @@ test('the same folder picked twice is one entry', async () => {
   await p.sandbox.openFolder();
   assert.equal(folderRecords(idb).length, 1);
   assert.equal(folderRecords(idb)[0].id, first.id);
-  assert.equal(p.busy()[p.busy().length - 1], 'Opening “Shop”…', 'and its name is known before .archicode.yaml is read');
+  assert.equal(
+    p.busy()[p.busy().length - 1],
+    'Opening “Shop”…',
+    'and its name is known before .archicode.yaml is read'
+  );
   assert.equal(p.folders().length, 1);
 });
 
@@ -249,22 +319,37 @@ test('Remove deletes only the record of that folder, and the last-folder record 
   // the next visit: the browser wants a click for b, so the reopen card shows, with the list
   const ids = Object.fromEntries(folderRecords(idb).map((r) => [pathOf(r), r.id]));
   const p = page(idb);
-  idb.seed(DB, 1, { handles: Object.fromEntries(Object.entries(records(idb)).map(([k, v]) => [k, Object.assign({}, v, { handle: handleOn(pathOf(v), 'prompt') })])) });
+  idb.seed(DB, 1, {
+    handles: Object.fromEntries(
+      Object.entries(records(idb)).map(([k, v]) => [k, Object.assign({}, v, { handle: handleOn(pathOf(v), 'prompt') })])
+    )
+  });
   await p.sandbox.tryAutoReopen();
   const cfg = p.sandbox.landingScreenConfig();
   assert.equal(cfg.kind, 'reopen');
   assert.equal(cfg.title, 'Welcome back');
-  assert.equal(cfg.text, 'Your browser needs your permission to read “infra” again.', 'the wording of the permission is unchanged');
+  assert.equal(
+    cfg.text,
+    'Your browser needs your permission to read “infra” again.',
+    'the wording of the permission is unchanged'
+  );
   assert.deepEqual(plain(cfg.actions.map((x) => x.label)), ['Reopen “infra”', 'Choose another folder']);
   assert.equal(cfg.folders.length, 2, 'every remembered folder, the last one included');
 
   await p.sandbox.forgetFolder(entryOf(p, a));
-  assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:' + ids[b], 'workspace'], 'only the record of archi went');
+  assert.deepEqual(
+    Object.keys(records(idb)).sort(),
+    ['folder:' + ids[b], 'workspace'],
+    'only the record of archi went'
+  );
   assert.equal(records(idb).workspace.id, ids[b]);
   assert.equal(p.sandbox.landingScreenConfig().kind, 'reopen', 'still offering infra');
   assert.equal(p.sandbox.landingScreenConfig().notice, '“Shop” is no longer in the list. Nothing was deleted on disk.');
   assert.match(html(p.sandbox), /<p class="landing-notice" role="status">“Shop” is no longer in the list/);
-  assert.ok(fs.existsSync(path.join(a, '.archicode.yaml')) && fs.existsSync(path.join(a, 'manifests', 'app.s1.yaml')), 'nothing on disk is touched');
+  assert.ok(
+    fs.existsSync(path.join(a, '.archicode.yaml')) && fs.existsSync(path.join(a, 'manifests', 'app.s1.yaml')),
+    'nothing on disk is touched'
+  );
 
   await p.sandbox.forgetFolder(entryOf(p, b));
   assert.deepEqual(records(idb), {}, 'the last folder goes with its pointer');
@@ -275,7 +360,10 @@ test('Remove deletes only the record of that folder, and the last-folder record 
 test('after a Remove the focus goes to the next folder of the list, else the primary button', async () => {
   const idb = fakeIndexedDB();
   const dirs = ['one', 'two', 'three'].map((n) => workspaceFolder(n));
-  const p = await load(idb, dirs.map((d) => handleOn(d)));
+  const p = await load(
+    idb,
+    dirs.map((d) => handleOn(d))
+  );
   for (let i = 0; i < 3; i++) {
     await p.sandbox.openFolder();
     await p.sandbox.closeFolder();
@@ -283,11 +371,23 @@ test('after a Remove the focus goes to the next folder of the list, else the pri
   }
   const focused = [];
   const app = run(p.sandbox, "document.getElementById('app')");
-  app.querySelector = (selector) => ({ focus() { focused.push(selector); } });
+  app.querySelector = (selector) => ({
+    focus() {
+      focused.push(selector);
+    }
+  });
   await p.sandbox.forgetFolder(p.folders()[1]); // two, between three and one
-  assert.equal(focused.pop(), '[data-action="open-remembered-folder"][data-folder-id="' + entryOf(p, dirs[0]).id + '"]', 'the one after it');
+  assert.equal(
+    focused.pop(),
+    '[data-action="open-remembered-folder"][data-folder-id="' + entryOf(p, dirs[0]).id + '"]',
+    'the one after it'
+  );
   await p.sandbox.forgetFolder(p.folders()[1]); // one, the last of the list
-  assert.equal(focused.pop(), '[data-action="open-remembered-folder"][data-folder-id="' + entryOf(p, dirs[2]).id + '"]', 'the one before it');
+  assert.equal(
+    focused.pop(),
+    '[data-action="open-remembered-folder"][data-folder-id="' + entryOf(p, dirs[2]).id + '"]',
+    'the one before it'
+  );
   focused.length = 0;
   await p.sandbox.forgetFolder(p.folders()[0]);
   assert.deepEqual(focused, [], 'none left: the primary button');
@@ -307,11 +407,25 @@ test('Open on a folder of the list asks the permission, then opens it, as the la
   let asked = 0;
   const entry = entryOf(p, a);
   // the person answers the browser's prompt in their own time (#66): the test waits for the opening, not for a delay that a busy machine overruns
-  entry.handle.requestPermission = async (options) => { asked++; assert.deepEqual(plain(options), { mode: 'read' }); await new Promise((r) => setTimeout(r, 150)); return 'granted'; };
+  entry.handle.requestPermission = async (options) => {
+    asked++;
+    assert.deepEqual(plain(options), { mode: 'read' });
+    await new Promise((r) => setTimeout(r, 150));
+    return 'granted';
+  };
   const before = entry.openedAt;
   await new Promise((r) => setTimeout(r, 2)); // two different openedAt
-  p.sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (n) => (n === 'data-action' ? 'open-remembered-folder' : entry.id) }) } });
-  await waitFor(() => p.state().workspace && records(idb).workspace && records(idb).workspace.id === entry.id && records(idb)['folder:' + entry.id].openedAt > before, 'the folder to be opened and remembered as the last one');
+  p.sandbox.handleAppClick({
+    target: { closest: () => ({ getAttribute: (n) => (n === 'data-action' ? 'open-remembered-folder' : entry.id) }) }
+  });
+  await waitFor(
+    () =>
+      p.state().workspace &&
+      records(idb).workspace &&
+      records(idb).workspace.id === entry.id &&
+      records(idb)['folder:' + entry.id].openedAt > before,
+    'the folder to be opened and remembered as the last one'
+  );
   assert.equal(asked, 1, 'the click asks the permission');
   assert.ok(p.state().workspace);
   assert.equal(p.state().folder.id, entry.id);
@@ -339,12 +453,22 @@ test('a refused permission keeps the folder in the list and says so; a vanished 
   assert.equal(cfg.folders[0].problem, 'The browser did not give access to this folder.');
   assert.match(cfg.notice, /“Shop” did not open\. The browser did not give access/);
   // the problem line is the Open button's description, in place of its permission (TDD-0023 DEC-2)
-  assert.match(html(p.sandbox), /aria-describedby="landing-folder-problem-0"[^]*<p class="landing-folder-problem" id="landing-folder-problem-0">The browser did not give access to this folder\.<\/p>/);
+  assert.match(
+    html(p.sandbox),
+    /aria-describedby="landing-folder-problem-0"[^]*<p class="landing-folder-problem" id="landing-folder-problem-0">The browser did not give access to this folder\.<\/p>/
+  );
   assert.doesNotMatch(html(p.sandbox), /landing-folder-state/);
 
-  entry.handle.requestPermission = async () => { const e = new Error('gone'); e.name = 'NotFoundError'; throw e; };
+  entry.handle.requestPermission = async () => {
+    const e = new Error('gone');
+    e.name = 'NotFoundError';
+    throw e;
+  };
   await p.sandbox.openRememberedFolder(entry);
-  assert.equal(p.sandbox.landingScreenConfig().folders[0].problem, 'This folder could not be reached: it may have been moved or deleted.');
+  assert.equal(
+    p.sandbox.landingScreenConfig().folders[0].problem,
+    'This folder could not be reached: it may have been moved or deleted.'
+  );
   assert.equal(JSON.stringify(Object.keys(records(idb))), stored);
 
   // it can still be removed
@@ -402,7 +526,15 @@ test('the name of the workspace is stored with its folder when it opens, and aga
   const getFileHandle = handle.getFileHandle;
   handle.getFileHandle = async (name, options) => {
     const file = await getFileHandle(name, options);
-    file.createWritable = async () => { const parts = []; return { write: async (d) => { parts.push(d); }, close: async () => fs.writeFileSync(path.join(a, name), parts.join('')) }; };
+    file.createWritable = async () => {
+      const parts = [];
+      return {
+        write: async (d) => {
+          parts.push(d);
+        },
+        close: async () => fs.writeFileSync(path.join(a, name), parts.join(''))
+      };
+    };
     return file;
   };
   p.state().workspace.settings.name = 'Shop 3';
@@ -430,43 +562,70 @@ test('a folder whose .archicode.yaml cannot be read: the error card leads back t
   await p.sandbox.openFolder();
   const cfg = p.sandbox.landingScreenConfig();
   assert.equal(cfg.kind, 'error');
-  assert.deepEqual(plain(cfg.actions.map((x) => [x.label, x.action])), [['Choose another folder', 'open-folder'], ['Try again', 'retry-folder'], ['Remembered folders', 'show-folders']]);
+  assert.deepEqual(plain(cfg.actions.map((x) => [x.label, x.action])), [
+    ['Choose another folder', 'open-folder'],
+    ['Try again', 'retry-folder'],
+    ['Remembered folders', 'show-folders']
+  ]);
   const before = Object.keys(records(idb)).sort();
 
   await p.sandbox.showRememberedFolders();
   assert.deepEqual(Object.keys(records(idb)).sort(), before, 'storage untouched');
   const list = p.sandbox.landingScreenConfig();
   assert.equal(list.kind, 'first-launch');
-  assert.equal(list.folders.find((f) => f.title === 'infra').problem, 'Its .archicode.yaml could not be read the last time it was opened.');
+  assert.equal(
+    list.folders.find((f) => f.title === 'infra').problem,
+    'Its .archicode.yaml could not be read the last time it was opened.'
+  );
   assert.equal(list.folders.find((f) => f.title === 'archi').problem, null);
 });
 
 // wave 020, run 0147 (#146): the list notes a folder whose workspace file cannot be had (absent, or under its former name), by the type of the failure; a folder
 // whose file was read and found wrong keeps its own sentence on the card and gets no note about reading
 for (const [what, prepare, problem] of [
-  ['is absent', (dir) => fs.rmSync(path.join(dir, '.archicode.yaml')), 'Its .archicode.yaml could not be read the last time it was opened.'],
-  ['is under its former name', (dir) => fs.renameSync(path.join(dir, '.archicode.yaml'), path.join(dir, 'workspace.yaml')), 'Its .archicode.yaml could not be read the last time it was opened.'],
-  ['has a key that does not exist', (dir) => fs.writeFileSync(path.join(dir, '.archicode.yaml'), 'settings:\n  foo: 1\n'), null]
+  [
+    'is absent',
+    (dir) => fs.rmSync(path.join(dir, '.archicode.yaml')),
+    'Its .archicode.yaml could not be read the last time it was opened.'
+  ],
+  [
+    'is under its former name',
+    (dir) => fs.renameSync(path.join(dir, '.archicode.yaml'), path.join(dir, 'workspace.yaml')),
+    'Its .archicode.yaml could not be read the last time it was opened.'
+  ],
+  [
+    'has a key that does not exist',
+    (dir) => fs.writeFileSync(path.join(dir, '.archicode.yaml'), 'settings:\n  foo: 1\n'),
+    null
+  ]
 ]) {
-  test('a folder whose .archicode.yaml ' + what + ': the list says ' + (problem ? 'it could not be read' : 'nothing about reading'), async () => {
-    const idb = fakeIndexedDB();
-    const a = workspaceFolder('archi');
-    const b = workspaceFolder('infra');
-    const p = await load(idb, [handleOn(a), handleOn(b)]);
-    await p.sandbox.openFolder();
-    await p.sandbox.closeFolder();
-    prepare(b);
-    await p.sandbox.openFolder();
-    assert.equal(p.sandbox.landingScreenConfig().kind, 'error');
-    await p.sandbox.showRememberedFolders();
-    const list = p.sandbox.landingScreenConfig();
-    assert.equal(list.kind, 'first-launch');
-    assert.equal(list.folders.find((f) => f.title === 'infra').problem, problem);
-  });
+  test(
+    'a folder whose .archicode.yaml ' +
+      what +
+      ': the list says ' +
+      (problem ? 'it could not be read' : 'nothing about reading'),
+    async () => {
+      const idb = fakeIndexedDB();
+      const a = workspaceFolder('archi');
+      const b = workspaceFolder('infra');
+      const p = await load(idb, [handleOn(a), handleOn(b)]);
+      await p.sandbox.openFolder();
+      await p.sandbox.closeFolder();
+      prepare(b);
+      await p.sandbox.openFolder();
+      assert.equal(p.sandbox.landingScreenConfig().kind, 'error');
+      await p.sandbox.showRememberedFolders();
+      const list = p.sandbox.landingScreenConfig();
+      assert.equal(list.kind, 'first-launch');
+      assert.equal(list.folders.find((f) => f.title === 'infra').problem, problem);
+    }
+  );
 }
 
 test('with no remembered folder the error card has no way to a list', async () => {
-  const p = await load(fakeIndexedDB({ failOpen: 'UnknownError' }), [handleOn(workspaceFolder('x').replace(/x$/, 'nowhere'))]);
+  const p = await load(fakeIndexedDB({ failOpen: 'UnknownError' }), [
+    handleOn(workspaceFolder('x').replace(/x$/, 'nowhere'))
+  ]);
   await p.sandbox.openFolder();
   assert.equal(p.sandbox.landingScreenConfig().kind, 'error');
   assert.ok(!p.sandbox.landingScreenConfig().actions.some((x) => x.action === 'show-folders'));
@@ -484,43 +643,73 @@ test('a failed storage does not stop a picked folder from opening', async () => 
 // ---- run 0023: the permission of each folder, said before any click ----
 
 /** A folder record as the page stores it. */
-const folderRecord = (id, dir, name, openedAt, permission = 'granted', extra = {}) =>
-  ({ kind: 'folder', id, handle: handleOn(dir, permission, extra), name, openedAt });
+const folderRecord = (id, dir, name, openedAt, permission = 'granted', extra = {}) => ({
+  kind: 'folder',
+  id,
+  handle: handleOn(dir, permission, extra),
+  name,
+  openedAt
+});
 
 /** A promise and the function that settles it. */
 function deferred() {
   let resolve;
-  const promise = new Promise((r) => { resolve = r; });
+  const promise = new Promise((r) => {
+    resolve = r;
+  });
   return { promise, resolve };
 }
 
 test('each remembered folder says what a click will meet, asked without any prompt', async () => {
   const idb = fakeIndexedDB();
-  const thrown = (name) => async () => { const e = new Error(name); e.name = name; throw e; };
-  idb.seed(DB, 1, { handles: {
-    'folder:g': folderRecord('g', workspaceFolder('granted', 'Shop'), 'Shop', 50),
-    'folder:p': folderRecord('p', workspaceFolder('prompt'), '', 40, 'prompt'),
-    'folder:d': folderRecord('d', workspaceFolder('denied'), '', 30, 'denied'),
-    'folder:u': folderRecord('u', workspaceFolder('broken'), '', 20, 'granted', { queryPermission: thrown('SecurityError') }),
-    'folder:n': folderRecord('n', workspaceFolder('gone'), '', 10, 'granted', { queryPermission: thrown('NotFoundError') })
-  } });
+  const thrown = (name) => async () => {
+    const e = new Error(name);
+    e.name = name;
+    throw e;
+  };
+  idb.seed(DB, 1, {
+    handles: {
+      'folder:g': folderRecord('g', workspaceFolder('granted', 'Shop'), 'Shop', 50),
+      'folder:p': folderRecord('p', workspaceFolder('prompt'), '', 40, 'prompt'),
+      'folder:d': folderRecord('d', workspaceFolder('denied'), '', 30, 'denied'),
+      'folder:u': folderRecord('u', workspaceFolder('broken'), '', 20, 'granted', {
+        queryPermission: thrown('SecurityError')
+      }),
+      'folder:n': folderRecord('n', workspaceFolder('gone'), '', 10, 'granted', {
+        queryPermission: thrown('NotFoundError')
+      })
+    }
+  });
   const asked = [];
   for (const record of Object.values(records(idb))) {
     const query = record.handle.queryPermission;
-    record.handle.queryPermission = async (options) => { asked.push(plain(options)); return query(); };
-    record.handle.requestPermission = async () => { throw new Error('no prompt may be shown on load'); };
+    record.handle.queryPermission = async (options) => {
+      asked.push(plain(options));
+      return query();
+    };
+    record.handle.requestPermission = async () => {
+      throw new Error('no prompt may be shown on load');
+    };
   }
   const p = await load(idb);
   const cfg = p.sandbox.landingScreenConfig();
   assert.equal(cfg.kind, 'first-launch');
-  assert.deepEqual(plain(cfg.folders.map((f) => [f.title, f.permission])),
-    [['Shop', 'granted'], ['prompt', 'prompt'], ['denied', 'denied'], ['broken', 'unknown'], ['gone', 'unreachable']]);
+  assert.deepEqual(plain(cfg.folders.map((f) => [f.title, f.permission])), [
+    ['Shop', 'granted'],
+    ['prompt', 'prompt'],
+    ['denied', 'denied'],
+    ['broken', 'unknown'],
+    ['gone', 'unreachable']
+  ]);
   assert.equal(asked.length, 5, 'one query per folder');
   assert.ok(asked.every((o) => o.mode === 'read'));
 
   const card = html(p.sandbox);
   // in words, as the Open button's description; the icon is hidden from assistive technology
-  assert.match(card, /aria-label="Open “Shop” \(folder granted\)" aria-describedby="landing-folder-state-0">[^]*?<span class="landing-folder-state" id="landing-folder-state-0" data-permission="granted"><svg[^>]*aria-hidden="true">[^]*?<\/svg><span>Opens without asking<\/span><\/span><\/button>/);
+  assert.match(
+    card,
+    /aria-label="Open “Shop” \(folder granted\)" aria-describedby="landing-folder-state-0">[^]*?<span class="landing-folder-state" id="landing-folder-state-0" data-permission="granted"><svg[^>]*aria-hidden="true">[^]*?<\/svg><span>Opens without asking<\/span><\/span><\/button>/
+  );
   assert.match(card, /aria-describedby="landing-folder-state-1">[^]*?<span>Will ask for permission<\/span>/);
   assert.match(card, /aria-describedby="landing-folder-state-2">[^]*?<span>Blocked by the browser<\/span>/);
   assert.match(card, /aria-describedby="landing-folder-state-3">[^]*?<span>Could not be checked<\/span>/);
@@ -531,17 +720,25 @@ test('the reopen card lists the states too, the last folder with the answer that
   const idb = fakeIndexedDB();
   const last = folderRecord('x1', workspaceFolder('archi'), '', 50, 'prompt');
   let queried = 0;
-  last.handle.queryPermission = async () => { queried++; return 'prompt'; };
-  idb.seed(DB, 1, { handles: {
-    'folder:x1': last,
-    'folder:x2': folderRecord('x2', workspaceFolder('infra'), '', 10),
-    workspace: { handle: last.handle, id: 'x1' }
-  } });
+  last.handle.queryPermission = async () => {
+    queried++;
+    return 'prompt';
+  };
+  idb.seed(DB, 1, {
+    handles: {
+      'folder:x1': last,
+      'folder:x2': folderRecord('x2', workspaceFolder('infra'), '', 10),
+      workspace: { handle: last.handle, id: 'x1' }
+    }
+  });
   const p = await load(idb);
   const cfg = p.sandbox.landingScreenConfig();
   assert.equal(cfg.kind, 'reopen');
   assert.equal(cfg.text, 'Your browser needs your permission to read “archi” again.', 'the wording is unchanged');
-  assert.deepEqual(plain(cfg.folders.map((f) => [f.title, f.permission])), [['archi', 'prompt'], ['infra', 'granted']]);
+  assert.deepEqual(plain(cfg.folders.map((f) => [f.title, f.permission])), [
+    ['archi', 'prompt'],
+    ['infra', 'granted']
+  ]);
   assert.equal(queried, 1, 'not asked twice');
   assert.match(html(p.sandbox), /data-permission="prompt"/);
 });
@@ -555,7 +752,10 @@ test('the card is drawn before the permissions are known, all asked at once, the
     const record = folderRecord('f' + i, workspaceFolder('folder' + i), '', 100 - i);
     const answer = deferred();
     answers.push(answer);
-    record.handle.queryPermission = () => { asked++; return answer.promise; };
+    record.handle.queryPermission = () => {
+      asked++;
+      return answer.promise;
+    };
     stored['folder:f' + i] = record;
   }
   idb.seed(DB, 1, { handles: stored });
@@ -564,39 +764,65 @@ test('the card is drawn before the permissions are known, all asked at once, the
   const lists = []; // the list of the card, as each draw finds it
   const app = run(p.sandbox, "document.getElementById('app')");
   app.querySelector = (selector) => {
-    if (selector !== '.landing-folder-list') return { focus() { focused.push(selector); } };
+    if (selector !== '.landing-folder-list')
+      return {
+        focus() {
+          focused.push(selector);
+        }
+      };
     lists.push({ scrollTop: 0 });
     return lists[lists.length - 1];
   };
   const loading = p.sandbox.tryAutoReopen();
-  for (let i = 0; i < 200 && (html(p.sandbox).match(/<li class="landing-folder">/g) || []).length < 12; i++) await new Promise((r) => setTimeout(r, 10)); // the card is drawn: as soon as it is, not after a fixed wait that a busy machine overruns
+  for (let i = 0; i < 200 && (html(p.sandbox).match(/<li class="landing-folder">/g) || []).length < 12; i++)
+    await new Promise((r) => setTimeout(r, 10)); // the card is drawn: as soon as it is, not after a fixed wait that a busy machine overruns
   assert.equal(p.sandbox.landingScreenConfig().kind, 'first-launch');
   assert.equal((html(p.sandbox).match(/<li class="landing-folder">/g) || []).length, 12, 'the list is on screen');
   assert.doesNotMatch(html(p.sandbox), /landing-folder-state/, 'no state yet, and none waited for');
   assert.equal(asked, 12, 'every folder asked at once, none waiting for another');
 
   // the user went to the Remove of the third folder meanwhile
-  const control = { id: '', tagName: 'BUTTON', getAttribute: (n) => ({ 'data-action': 'forget-folder', 'data-folder-id': 'f2' })[n] || null };
+  const control = {
+    id: '',
+    tagName: 'BUTTON',
+    getAttribute: (n) => ({ 'data-action': 'forget-folder', 'data-folder-id': 'f2' })[n] || null
+  };
   run(p.sandbox, 'document').activeElement = { closest: () => control };
   // and scrolled the list
   lists.length = 0;
   const scrolled = { scrollTop: 120 };
   app.querySelector = (selector) => {
-    if (selector !== '.landing-folder-list') return { focus() { focused.push(selector); } };
+    if (selector !== '.landing-folder-list')
+      return {
+        focus() {
+          focused.push(selector);
+        }
+      };
     lists.push(lists.length === 0 ? scrolled : { scrollTop: 0 });
     return lists[lists.length - 1];
   };
   answers.forEach((a, i) => a.resolve(i % 2 ? 'prompt' : 'granted'));
   await loading;
   assert.equal((html(p.sandbox).match(/class="landing-folder-state"/g) || []).length, 12);
-  assert.equal(focused.pop(), '[data-action="forget-folder"][data-folder-id="f2"]', 'the focus stays on the control that had it');
+  assert.equal(
+    focused.pop(),
+    '[data-action="forget-folder"][data-folder-id="f2"]',
+    'the focus stays on the control that had it'
+  );
   assert.equal(lists.length, 2, 'drawn once more, once');
   assert.equal(lists[1].scrollTop, 120, 'the list stays where it was scrolled to');
 
   // drawn again while the focus is not on the card: the focus is left alone, not given to the primary button
   const doc = run(p.sandbox, 'document');
   const byId = doc.getElementById;
-  doc.getElementById = (id) => (id === 'landing-primary' ? { focus() { focused.push('#landing-primary'); } } : byId(id));
+  doc.getElementById = (id) =>
+    id === 'landing-primary'
+      ? {
+          focus() {
+            focused.push('#landing-primary');
+          }
+        }
+      : byId(id);
   doc.activeElement = null;
   run(p.sandbox, 'rememberedFolders.forEach((f) => { f.permission = undefined; })');
   focused.length = 0;
@@ -627,7 +853,10 @@ test('two tabs picking the same folder at the same moment end with one record, t
   await one.sandbox.closeFolder();
   await two.sandbox.closeFolder();
   assert.equal(records(idb).workspace, undefined);
-  assert.deepEqual(folderRecords(idb).map((r) => r.id), [kept.id]);
+  assert.deepEqual(
+    folderRecords(idb).map((r) => r.id),
+    [kept.id]
+  );
   assert.equal(one.sandbox.landingScreenConfig().folders.length, 1);
 });
 
@@ -636,12 +865,14 @@ test('records of one folder stored twice are merged on load: the pointer, the st
   const shop = workspaceFolder('archi');
   const twin = workspaceFolder('archi'); // another folder of the same name: never merged
   const pointer = { handle: handleOn(shop, 'prompt'), id: 'a' };
-  idb.seed(DB, 1, { handles: {
-    'folder:a': folderRecord('a', shop, 'Shop', 5, 'prompt'),
-    'folder:b': folderRecord('b', shop, '', 9, 'prompt'),
-    'folder:c': folderRecord('c', twin, 'Twin', 7, 'prompt'),
-    workspace: pointer
-  } });
+  idb.seed(DB, 1, {
+    handles: {
+      'folder:a': folderRecord('a', shop, 'Shop', 5, 'prompt'),
+      'folder:b': folderRecord('b', shop, '', 9, 'prompt'),
+      'folder:c': folderRecord('c', twin, 'Twin', 7, 'prompt'),
+      workspace: pointer
+    }
+  });
   const p = await load(idb);
   assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:a', 'folder:c', 'workspace']);
   assert.equal(records(idb)['folder:a'].name, 'Shop', 'the stored name, not the empty one of the newer record');
@@ -651,17 +882,22 @@ test('records of one folder stored twice are merged on load: the pointer, the st
   assert.ok(!idb.calls.some((c) => c.key === 'workspace'), 'a merge never writes the last-folder record');
   const cfg = p.sandbox.landingScreenConfig();
   assert.equal(cfg.kind, 'reopen');
-  assert.deepEqual(plain(cfg.folders.map((f) => [f.id, f.title])), [['a', 'Shop'], ['c', 'Twin']]);
+  assert.deepEqual(plain(cfg.folders.map((f) => [f.id, f.title])), [
+    ['a', 'Shop'],
+    ['c', 'Twin']
+  ]);
   assert.equal(p.state().folder.id, 'a');
 });
 
 test('without a pointer, the most recently opened record is kept, with the name a record had', async () => {
   const idb = fakeIndexedDB();
   const shop = workspaceFolder('archi');
-  idb.seed(DB, 1, { handles: {
-    'folder:a': folderRecord('a', shop, 'Shop', 5),
-    'folder:b': folderRecord('b', shop, '', 9)
-  } });
+  idb.seed(DB, 1, {
+    handles: {
+      'folder:a': folderRecord('a', shop, 'Shop', 5),
+      'folder:b': folderRecord('b', shop, '', 9)
+    }
+  });
   await load(idb);
   assert.deepEqual(Object.keys(records(idb)), ['folder:b']);
   assert.equal(records(idb)['folder:b'].name, 'Shop');
@@ -675,10 +911,12 @@ test('a merge that fails writes nothing, and the folder is still one row, whose 
   ]) {
     const idb = fakeIndexedDB(options);
     const shop = workspaceFolder('archi');
-    idb.seed(DB, 1, { handles: {
-      'folder:a': folderRecord('a', shop, 'Shop', 5),
-      'folder:b': folderRecord('b', shop, '', 9, 'granted', extra)
-    } });
+    idb.seed(DB, 1, {
+      handles: {
+        'folder:a': folderRecord('a', shop, 'Shop', 5),
+        'folder:b': folderRecord('b', shop, '', 9, 'granted', extra)
+      }
+    });
     const before = idb.dump(DB);
     const p = await load(idb);
     await new Promise((r) => setTimeout(r, 20)); // long after the transaction would have committed
@@ -703,7 +941,10 @@ test('a merge that finds the records changed since it read them writes nothing; 
   const isSameEntry = b.handle.isSameEntry;
   b.handle.isSameEntry = async (other) => {
     // another tab notes a new name between the read and the merge
-    if (once) { once = false; idb.seed(DB, 1, { handles: Object.assign({}, changed) }); }
+    if (once) {
+      once = false;
+      idb.seed(DB, 1, { handles: Object.assign({}, changed) });
+    }
     return isSameEntry(other);
   };
   a.handle.isSameEntry = b.handle.isSameEntry;
@@ -726,12 +967,19 @@ test('a merge skipped because the pointer moved to another record of the folder:
   const isSameEntry = b.handle.isSameEntry;
   a.handle.isSameEntry = b.handle.isSameEntry = async (other) => {
     // another tab makes `a` the last folder between the read and the merge, which would have deleted it
-    if (once) { once = false; idb.seed(DB, 1, { handles: { 'folder:a': a, 'folder:b': b, workspace: { handle: a.handle, id: 'a' } } }); }
+    if (once) {
+      once = false;
+      idb.seed(DB, 1, { handles: { 'folder:a': a, 'folder:b': b, workspace: { handle: a.handle, id: 'a' } } });
+    }
     return isSameEntry(other);
   };
   idb.seed(DB, 1, { handles: { 'folder:a': a, 'folder:b': b } });
   const p = await load(idb);
-  assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:a', 'folder:b', 'workspace'], 'nothing merged, the pointer intact');
+  assert.deepEqual(
+    Object.keys(records(idb)).sort(),
+    ['folder:a', 'folder:b', 'workspace'],
+    'nothing merged, the pointer intact'
+  );
   assert.equal(p.folders().length, 1, 'listed once');
   assert.deepEqual(plain([p.folders()[0].id, p.folders()[0].others]), ['b', ['a']]);
   await p.sandbox.forgetFolder(p.folders()[0]);
@@ -740,7 +988,7 @@ test('a merge skipped because the pointer moved to another record of the folder:
   // and Close clears a pointer that names one of those records
   idb.seed(DB, 1, { handles: { 'folder:a': a, 'folder:b': b, workspace: { handle: a.handle, id: 'a' } } });
   await p.sandbox.clearLastFolder('b');
-  assert.ok(records(idb).workspace, 'not the folder\'s own id: left alone');
+  assert.ok(records(idb).workspace, "not the folder's own id: left alone");
   await p.sandbox.clearLastFolder('b', ['a']);
   assert.equal(records(idb).workspace, undefined);
 });
@@ -749,7 +997,9 @@ test('a pointer an older tab left on a record merged away is moved to the record
   const idb = fakeIndexedDB();
   const shop = workspaceFolder('archi', 'Shop');
   // 0.10.0 migrated its pointer onto `a`, which a newer tab had merged into `b`
-  idb.seed(DB, 1, { handles: { 'folder:b': folderRecord('b', shop, 'Shop', 9), workspace: { handle: handleOn(shop), id: 'a' } } });
+  idb.seed(DB, 1, {
+    handles: { 'folder:b': folderRecord('b', shop, 'Shop', 9), workspace: { handle: handleOn(shop), id: 'a' } }
+  });
   const p = await load(idb);
   assert.ok(p.state().workspace, 'the last folder opens on load');
   assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:b', 'workspace'], 'no record added');
@@ -760,10 +1010,15 @@ test('a pointer an older tab left on a record merged away is moved to the record
 test('a tab holding the id of a record another tab merged away acts on the folder as it is stored now', async () => {
   const idb = fakeIndexedDB();
   const shop = workspaceFolder('archi', 'Shop');
-  idb.seed(DB, 1, { handles: { 'folder:a': folderRecord('a', shop, 'Shop', 5), workspace: { handle: handleOn(shop), id: 'a' } } });
+  idb.seed(DB, 1, {
+    handles: { 'folder:a': folderRecord('a', shop, 'Shop', 5), workspace: { handle: handleOn(shop), id: 'a' } }
+  });
   const p = await load(idb);
   assert.equal(p.state().folder.id, 'a');
-  const merged = () => idb.seed(DB, 1, { handles: { 'folder:b': folderRecord('b', shop, 'Shop', 9), workspace: { handle: handleOn(shop), id: 'b' } } });
+  const merged = () =>
+    idb.seed(DB, 1, {
+      handles: { 'folder:b': folderRecord('b', shop, 'Shop', 9), workspace: { handle: handleOn(shop), id: 'b' } }
+    });
 
   // the name, noted after a change in Settings, goes to the record the folder has now
   merged();
@@ -808,18 +1063,30 @@ test('the fake runs two readwrite transactions one after the other, as a browser
   const idb = fakeIndexedDB({ holdCommit: ({ keys }) => (keys.includes('k') ? gate.promise : null) });
   const { sandbox } = page(idb);
   const order = [];
-  const first = sandbox.withArchicodeStore('readwrite', (store) => { store.put(1, 'k'); }).then(() => order.push('first'));
+  const first = sandbox
+    .withArchicodeStore('readwrite', (store) => {
+      store.put(1, 'k');
+    })
+    .then(() => order.push('first'));
   await new Promise((r) => setTimeout(r, 5));
-  const second = sandbox.withArchicodeStore('readwrite', (store) => {
-    const seen = {};
-    store.get('k').onsuccess = (e) => { seen.k = e.target.result; };
-    return seen;
-  }).then((seen) => order.push('second saw ' + seen.k));
-  const reader = sandbox.withArchicodeStore('readonly', (store) => {
-    const seen = {};
-    store.get('k').onsuccess = (e) => { seen.k = e.target.result; };
-    return seen;
-  }).then((seen) => order.push('reader saw ' + seen.k));
+  const second = sandbox
+    .withArchicodeStore('readwrite', (store) => {
+      const seen = {};
+      store.get('k').onsuccess = (e) => {
+        seen.k = e.target.result;
+      };
+      return seen;
+    })
+    .then((seen) => order.push('second saw ' + seen.k));
+  const reader = sandbox
+    .withArchicodeStore('readonly', (store) => {
+      const seen = {};
+      store.get('k').onsuccess = (e) => {
+        seen.k = e.target.result;
+      };
+      return seen;
+    })
+    .then((seen) => order.push('reader saw ' + seen.k));
   await new Promise((r) => setTimeout(r, 20));
   assert.deepEqual(order, [], 'both wait for the first, held before its commit');
   gate.resolve();
@@ -828,7 +1095,9 @@ test('the fake runs two readwrite transactions one after the other, as a browser
 });
 
 test('the CSS of the list uses the variables of the theme, and keeps a long list inside the card', () => {
-  const css = fs.readFileSync(path.join(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8').match(/<style>([\s\S]*?)<\/style>/)[1];
+  const css = fs
+    .readFileSync(path.join(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
+    .match(/<style>([\s\S]*?)<\/style>/)[1];
   const rules = css.split('\n').filter((l) => /\.landing-folder|\.landing-notice/.test(l));
   assert.ok(rules.length >= 8);
   for (const rule of rules) assert.doesNotMatch(rule, /#[0-9a-f]{3,6}\b|rgb\(/i, 'no fixed colour: ' + rule.trim());
@@ -840,24 +1109,45 @@ test('the CSS of the list uses the variables of the theme, and keeps a long list
 const TOKEN = 'a-token';
 function readOnlyServer() {
   const answer = (status, body, extra) => ({
-    ok: status >= 200 && status < 300, status,
+    ok: status >= 200 && status < 300,
+    status,
     headers: { get: (name) => (extra && extra[name]) || null },
-    async text() { return typeof body === 'string' ? body : JSON.stringify(body); },
-    async arrayBuffer() { const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)); return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength); },
-    async json() { return body; }
+    async text() {
+      return typeof body === 'string' ? body : JSON.stringify(body);
+    },
+    async arrayBuffer() {
+      const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
+      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    },
+    async json() {
+      return body;
+    }
   });
   return async (url) => {
     const [route, query] = url.replace('/api/fs/', '').split('?');
     const target = path.join(FIXTURE, new URLSearchParams(query || '').get('path') || '');
     if (route === 'info') return answer(200, { folder: 'architecture' });
-    if (route === 'list') return answer(200, fs.readdirSync(target).sort().map((name) => ({ name, kind: fs.statSync(path.join(target, name)).isDirectory() ? 'directory' : 'file' })));
-    return fs.existsSync(target) ? answer(200, fs.readFileSync(target, 'utf8'), { 'X-ArchiCode-Modified': '1' }) : answer(404, 'not found');
+    if (route === 'list')
+      return answer(
+        200,
+        fs
+          .readdirSync(target)
+          .sort()
+          .map((name) => ({ name, kind: fs.statSync(path.join(target, name)).isDirectory() ? 'directory' : 'file' }))
+      );
+    return fs.existsSync(target)
+      ? answer(200, fs.readFileSync(target, 'utf8'), { 'X-ArchiCode-Modified': '1' })
+      : answer(404, 'not found');
   };
 }
 
 test('served by archicode editor serve: the folder of the server opens with no IndexedDB call and no list anywhere', async () => {
   const idb = fakeIndexedDB();
-  idb.seed(DB, 1, { handles: { 'folder:x1': { kind: 'folder', id: 'x1', handle: handleOn(workspaceFolder('archi')), name: 'Shop', openedAt: 5 } } });
+  idb.seed(DB, 1, {
+    handles: {
+      'folder:x1': { kind: 'folder', id: 'x1', handle: handleOn(workspaceFolder('archi')), name: 'Shop', openedAt: 5 }
+    }
+  });
   const sandbox = createApp({ serverToken: TOKEN, fetch: readOnlyServer(), indexedDB: idb });
   await sandbox.openServedFolder();
   assert.ok(sandbox.__state().workspace);

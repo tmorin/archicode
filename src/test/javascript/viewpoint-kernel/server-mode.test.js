@@ -20,9 +20,16 @@ function fakeServer() {
     ok: status >= 200 && status < 300,
     status,
     headers: { get: (name) => (extra && extra[name]) || null },
-    async text() { return typeof body === 'string' ? body : JSON.stringify(body); },
-    async arrayBuffer() { const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)); return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength); },
-    async json() { return body; }
+    async text() {
+      return typeof body === 'string' ? body : JSON.stringify(body);
+    },
+    async arrayBuffer() {
+      const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
+      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    },
+    async json() {
+      return body;
+    }
   });
   const fetch = async (url, init) => {
     const [route, query] = url.replace('/api/fs/', '').split('?');
@@ -33,11 +40,19 @@ function fakeServer() {
     if (route === 'info') return answer(200, { folder: 'architecture' });
     if (route === 'list') {
       if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) return answer(404, 'not a directory');
-      return answer(200, fs.readdirSync(target).sort().map((name) => ({ name, kind: fs.statSync(path.join(target, name)).isDirectory() ? 'directory' : 'file' })));
+      return answer(
+        200,
+        fs
+          .readdirSync(target)
+          .sort()
+          .map((name) => ({ name, kind: fs.statSync(path.join(target, name)).isDirectory() ? 'directory' : 'file' }))
+      );
     }
     if (init.method === 'GET') {
       return fs.existsSync(target)
-        ? answer(200, fs.readFileSync(target, 'utf8'), { 'X-ArchiCode-Modified': String(Math.round(fs.statSync(target).mtimeMs)) })
+        ? answer(200, fs.readFileSync(target, 'utf8'), {
+            'X-ArchiCode-Modified': String(Math.round(fs.statSync(target).mtimeMs))
+          })
         : answer(404, 'not found');
     }
     if (init.method === 'PUT') {
@@ -94,17 +109,26 @@ test('the handles of the server read, write, create and remove like the ones of 
 
   const file = await (await root.getFileHandle('.archicode.yaml')).getFile();
   assert.equal(await file.text(), fs.readFileSync(path.join(server.root, '.archicode.yaml'), 'utf8'));
-  assert.equal(file.lastModified, Math.round(fs.statSync(path.join(server.root, '.archicode.yaml')).mtimeMs), 'the time the editor compares to see a file changed under it');
+  assert.equal(
+    file.lastModified,
+    Math.round(fs.statSync(path.join(server.root, '.archicode.yaml')).mtimeMs),
+    'the time the editor compares to see a file changed under it'
+  );
 
   await assert.rejects(root.getFileHandle('missing.yaml'), (e) => e.name === 'NotFoundError');
   await assert.rejects(root.getDirectoryHandle('missing'), (e) => e.name === 'NotFoundError');
 
-  const created = await (await root.getDirectoryHandle('extra', { create: true })).getFileHandle('app.new.yaml', { create: true });
+  const created = await (
+    await root.getDirectoryHandle('extra', { create: true })
+  ).getFileHandle('app.new.yaml', { create: true });
   const writable = await created.createWritable();
   await writable.write('header: {kind: person}\n');
   await writable.write({ type: 'write', data: 'content: {id: new}\n' });
   await writable.close();
-  assert.equal(fs.readFileSync(path.join(server.root, 'extra/app.new.yaml'), 'utf8'), 'header: {kind: person}\ncontent: {id: new}\n');
+  assert.equal(
+    fs.readFileSync(path.join(server.root, 'extra/app.new.yaml'), 'utf8'),
+    'header: {kind: person}\ncontent: {id: new}\n'
+  );
 
   const dir = await root.getDirectoryHandle('extra');
   await dir.removeEntry('app.new.yaml');
@@ -124,7 +148,12 @@ test('a wrong token, or a server that is gone, is said on the landing page', asy
 
 test('the token the server asked for in the address is taken out of it at startup (the hash stays), and is not needed again', async () => {
   const server = fakeServer();
-  const sandbox = createApp({ serverToken: TOKEN, fetch: server.fetch, search: '?token=' + TOKEN + '&x=1', pathname: '/editor.html' });
+  const sandbox = createApp({
+    serverToken: TOKEN,
+    fetch: server.fetch,
+    search: '?token=' + TOKEN + '&x=1',
+    pathname: '/editor.html'
+  });
   sandbox.location.hash = '#/timeline/applications?pin=shop.web';
   assert.match(sandbox.location.search, /token=/);
   const started = sandbox.__documentListeners.DOMContentLoaded;

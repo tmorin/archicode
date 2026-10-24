@@ -42,7 +42,11 @@ const shuffled = (list) => {
   }
   return copy;
 };
-const kebab = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const kebab = (text) =>
+  text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 
 // ---- the model: a tree of elements; the target is a clone of the base that the scenarios then change
 let side = 'base';
@@ -79,34 +83,141 @@ const alive = (e) => !e.parent || (e.parent.children.includes(e) && alive(e.pare
 
 // ---- the vocabulary of the harbour
 const TOPICS = [
-  ['Berth', 'berth', 'Berth Allocation'], ['Tide', 'tide', 'Tide Forecast'], ['Pilot', 'pilot', 'Pilot Dispatch'], ['Tug', 'tug', 'Tug Operations'],
-  ['Crane', 'crane', 'Crane Scheduling'], ['Customs', 'customs', 'Customs Clearance'], ['Manifest', 'manifest', 'Cargo Manifests'], ['Yard', 'yard', 'Container Yard'],
-  ['Rail', 'rail', 'Rail Link'], ['Gate', 'gate', 'Gate Control'], ['Fuel', 'fuel', 'Bunkering'], ['Waste', 'waste', 'Waste Reception'],
-  ['Ferry', 'ferry', 'Ferry Ticketing'], ['Crew', 'crew', 'Crew Visas'], ['Inspection', 'inspection', 'Safety Inspections'], ['Weather', 'weather', 'Weather Stations'],
-  ['Tariff', 'tariff', 'Tariff Billing'], ['Dredging', 'dredging', 'Dredging Works'], ['Terminal', 'terminal', 'Passenger Terminal'], ['Lock', 'lock', 'Lock Gates'],
-  ['Fire', 'fire', 'Fire Brigade'], ['Mooring', 'mooring', 'Mooring Lines'], ['Cold', 'cold-store', 'Cold Storage'], ['Police', 'police', 'Port Police'],
-  ['Quay', 'quay', 'Quay Maintenance'], ['Buoy', 'buoy', 'Buoy Network'], ['Lighthouse', 'lighthouse', 'Lighthouse Service'], ['Salvage', 'salvage', 'Salvage Office'],
-  ['Visitor', 'visitor', 'Visitor Centre'], ['Fishing', 'fishing', 'Fish Market'], ['Pollution', 'pollution', 'Pollution Control'], ['Lease', 'lease', 'Land Leases'],
+  ['Berth', 'berth', 'Berth Allocation'],
+  ['Tide', 'tide', 'Tide Forecast'],
+  ['Pilot', 'pilot', 'Pilot Dispatch'],
+  ['Tug', 'tug', 'Tug Operations'],
+  ['Crane', 'crane', 'Crane Scheduling'],
+  ['Customs', 'customs', 'Customs Clearance'],
+  ['Manifest', 'manifest', 'Cargo Manifests'],
+  ['Yard', 'yard', 'Container Yard'],
+  ['Rail', 'rail', 'Rail Link'],
+  ['Gate', 'gate', 'Gate Control'],
+  ['Fuel', 'fuel', 'Bunkering'],
+  ['Waste', 'waste', 'Waste Reception'],
+  ['Ferry', 'ferry', 'Ferry Ticketing'],
+  ['Crew', 'crew', 'Crew Visas'],
+  ['Inspection', 'inspection', 'Safety Inspections'],
+  ['Weather', 'weather', 'Weather Stations'],
+  ['Tariff', 'tariff', 'Tariff Billing'],
+  ['Dredging', 'dredging', 'Dredging Works'],
+  ['Terminal', 'terminal', 'Passenger Terminal'],
+  ['Lock', 'lock', 'Lock Gates'],
+  ['Fire', 'fire', 'Fire Brigade'],
+  ['Mooring', 'mooring', 'Mooring Lines'],
+  ['Cold', 'cold-store', 'Cold Storage'],
+  ['Police', 'police', 'Port Police'],
+  ['Quay', 'quay', 'Quay Maintenance'],
+  ['Buoy', 'buoy', 'Buoy Network'],
+  ['Lighthouse', 'lighthouse', 'Lighthouse Service'],
+  ['Salvage', 'salvage', 'Salvage Office'],
+  ['Visitor', 'visitor', 'Visitor Centre'],
+  ['Fishing', 'fishing', 'Fish Market'],
+  ['Pollution', 'pollution', 'Pollution Control'],
+  ['Lease', 'lease', 'Land Leases'],
   ['Parking', 'parking', 'Truck Parking']
 ];
 const FUNCTIONS = [
-  'Registry', 'Planner', 'Gateway', 'Notifier', 'Archive Store', 'Reporter', 'Validator', 'Tracker', 'Importer', 'Exporter', 'Dashboard', 'Auditor',
-  'Scheduler', 'Billing', 'Search', 'Sync', 'Alerts', 'Forms', 'Calendar', 'Statistics'
+  'Registry',
+  'Planner',
+  'Gateway',
+  'Notifier',
+  'Archive Store',
+  'Reporter',
+  'Validator',
+  'Tracker',
+  'Importer',
+  'Exporter',
+  'Dashboard',
+  'Auditor',
+  'Scheduler',
+  'Billing',
+  'Search',
+  'Sync',
+  'Alerts',
+  'Forms',
+  'Calendar',
+  'Statistics'
 ];
-const VERBS = ['Keeps', 'Computes', 'Publishes', 'Checks', 'Records', 'Collects', 'Forwards', 'Validates', 'Archives', 'Schedules', 'Reconciles', 'Tracks', 'Summarises', 'Converts'];
-const OBJECTS = ['records', 'requests', 'schedules', 'readings', 'statements', 'notices', 'permits', 'queues', 'counts', 'reports', 'bookings', 'incidents'];
+const VERBS = [
+  'Keeps',
+  'Computes',
+  'Publishes',
+  'Checks',
+  'Records',
+  'Collects',
+  'Forwards',
+  'Validates',
+  'Archives',
+  'Schedules',
+  'Reconciles',
+  'Tracks',
+  'Summarises',
+  'Converts'
+];
+const OBJECTS = [
+  'records',
+  'requests',
+  'schedules',
+  'readings',
+  'statements',
+  'notices',
+  'permits',
+  'queues',
+  'counts',
+  'reports',
+  'bookings',
+  'incidents'
+];
 const PURPOSES = [
-  'for the harbour master', 'before the vessel leaves the quay', 'for the shipping agents', 'every night', 'for the customs officers', 'during the morning tide',
-  'for the terminal operators', 'for the safety office', 'whenever a vessel arrives', 'for the duty officer', 'for the quay planners', 'at the end of each shift'
+  'for the harbour master',
+  'before the vessel leaves the quay',
+  'for the shipping agents',
+  'every night',
+  'for the customs officers',
+  'during the morning tide',
+  'for the terminal operators',
+  'for the safety office',
+  'whenever a vessel arrives',
+  'for the duty officer',
+  'for the quay planners',
+  'at the end of each shift'
 ];
-const LABELS = ['reads from', 'sends to', 'asks', 'notifies', 'publishes to', 'fetches from', 'reports to', 'synchronises with'];
+const LABELS = [
+  'reads from',
+  'sends to',
+  'asks',
+  'notifies',
+  'publishes to',
+  'fetches from',
+  'reports to',
+  'synchronises with'
+];
 const QUALIFIERS = ['Java', 'Python', 'PostgreSQL', 'REST', 'Kafka', 'React', 'Go'];
 const COMPONENTS = [
-  ['Parser', ['Reads the incoming files and turns them into records.', 'Splits a file of the shipping lines into lines and fields.']],
-  ['Mapper', ['Maps the fields of a record to the ones the other systems expect.', 'Renames and converts the fields on their way out.']],
-  ['Cache', ['Keeps the latest answers close to the callers.', 'Remembers the last lookups so that the database rests.']],
+  [
+    'Parser',
+    [
+      'Reads the incoming files and turns them into records.',
+      'Splits a file of the shipping lines into lines and fields.'
+    ]
+  ],
+  [
+    'Mapper',
+    [
+      'Maps the fields of a record to the ones the other systems expect.',
+      'Renames and converts the fields on their way out.'
+    ]
+  ],
+  [
+    'Cache',
+    ['Keeps the latest answers close to the callers.', 'Remembers the last lookups so that the database rests.']
+  ],
   ['Queue', ['Holds the messages until they are handled.', 'Lines up the jobs and hands them out one by one.']],
-  ['Rules', ['Applies the rules of the harbour to each record.', 'Decides what is allowed from the regulations in force.']],
+  [
+    'Rules',
+    ['Applies the rules of the harbour to each record.', 'Decides what is allowed from the regulations in force.']
+  ],
   ['Store', ['Writes the records to the database.', 'Saves what the service learns and reads it back.']],
   ['Client', ['Calls the other systems of the harbour.', 'Talks to the partners over their own interfaces.']],
   ['Formatter', ['Prints the records as pages and files.', 'Lays out the results for the screen and for the printer.']],
@@ -115,22 +226,107 @@ const COMPONENTS = [
 // the free part of a description is drawn from pools big enough that two unrelated descriptions of the bulk share little more than their small words:
 // the boilerplate that real workspaces do have is planted on purpose (BOILERPLATE), not left to the pools
 const ROLES = [
-  'harbour master', 'shipping agents', 'customs officers', 'terminal operators', 'safety office', 'duty officer', 'quay planners', 'port police', 'ferry crews',
-  'tug captains', 'pilots on duty', 'crane drivers', 'yard supervisors', 'rail dispatchers', 'fuel suppliers', 'waste contractors', 'ship chandlers', 'harbour auditors',
-  'weather desk', 'dredging teams', 'lock keepers', 'fire crews', 'ticket office', 'visa clerks', 'lease managers', 'fishing boats', 'cold store staff', 'night watch',
-  'port authority board', 'insurance surveyors'
+  'harbour master',
+  'shipping agents',
+  'customs officers',
+  'terminal operators',
+  'safety office',
+  'duty officer',
+  'quay planners',
+  'port police',
+  'ferry crews',
+  'tug captains',
+  'pilots on duty',
+  'crane drivers',
+  'yard supervisors',
+  'rail dispatchers',
+  'fuel suppliers',
+  'waste contractors',
+  'ship chandlers',
+  'harbour auditors',
+  'weather desk',
+  'dredging teams',
+  'lock keepers',
+  'fire crews',
+  'ticket office',
+  'visa clerks',
+  'lease managers',
+  'fishing boats',
+  'cold store staff',
+  'night watch',
+  'port authority board',
+  'insurance surveyors'
 ];
 const ACTIONS = [
-  'warns', 'informs', 'reminds', 'alerts', 'updates', 'notifies', 'copies', 'summarises', 'flags', 'compares', 'rates', 'sorts', 'stamps', 'counts', 'weighs', 'lists', 'maps',
-  'ranks', 'signs', 'files'
+  'warns',
+  'informs',
+  'reminds',
+  'alerts',
+  'updates',
+  'notifies',
+  'copies',
+  'summarises',
+  'flags',
+  'compares',
+  'rates',
+  'sorts',
+  'stamps',
+  'counts',
+  'weighs',
+  'lists',
+  'maps',
+  'ranks',
+  'signs',
+  'files'
 ];
 const THINGS = [
-  'late arrivals', 'missing papers', 'open permits', 'unpaid fees', 'full berths', 'broken sensors', 'long queues', 'rough seas', 'heavy loads', 'expired licences',
-  'duplicate entries', 'night shifts', 'damaged goods', 'urgent requests', 'extra charges', 'spare slots', 'blocked gates', 'idle cranes', 'wrong weights', 'old records',
-  'changed plans', 'empty tanks', 'new vessels', 'tide changes', 'fog warnings', 'lost keys', 'spill reports', 'cargo holds', 'crew lists', 'safety notes'
+  'late arrivals',
+  'missing papers',
+  'open permits',
+  'unpaid fees',
+  'full berths',
+  'broken sensors',
+  'long queues',
+  'rough seas',
+  'heavy loads',
+  'expired licences',
+  'duplicate entries',
+  'night shifts',
+  'damaged goods',
+  'urgent requests',
+  'extra charges',
+  'spare slots',
+  'blocked gates',
+  'idle cranes',
+  'wrong weights',
+  'old records',
+  'changed plans',
+  'empty tanks',
+  'new vessels',
+  'tide changes',
+  'fog warnings',
+  'lost keys',
+  'spill reports',
+  'cargo holds',
+  'crew lists',
+  'safety notes'
 ];
-const WHENS = ['each morning', 'before noon', 'after every storm', 'twice a day', 'at low tide', 'once a week', 'on request', 'at dusk', 'during the winter', 'after each call', 'on Mondays', 'each hour'];
-const describe = (noun) => `${pick(VERBS)} the ${noun} ${pick(OBJECTS)} for the ${pick(ROLES)} and ${pick(ACTIONS)} the ${pick(THINGS)} ${pick(WHENS)}.`;
+const WHENS = [
+  'each morning',
+  'before noon',
+  'after every storm',
+  'twice a day',
+  'at low tide',
+  'once a week',
+  'on request',
+  'at dusk',
+  'during the winter',
+  'after each call',
+  'on Mondays',
+  'each hour'
+];
+const describe = (noun) =>
+  `${pick(VERBS)} the ${noun} ${pick(OBJECTS)} for the ${pick(ROLES)} and ${pick(ACTIONS)} the ${pick(THINGS)} ${pick(WHENS)}.`;
 const NODES = [
   ['Edge Cluster', 'Receives the traffic from outside and hands it to the applications.'],
   ['Database Primary', 'Holds the main copy of the data and takes the writes.'],
@@ -146,8 +342,14 @@ const NODES = [
   ['Backup Vault', 'Keeps the copies of the data far from the machines they come from.']
 ];
 const ENVS = [
-  ['prod', 'Production', 7], ['preprod', 'Pre-production', 6], ['staging', 'Staging', 6], ['test', 'Test Lab', 6], ['training', 'Training', 5], ['dr', 'Disaster Recovery', 4],
-  ['qa', 'Quality Assurance', 5], ['sandbox', 'Sandbox', 5]
+  ['prod', 'Production', 7],
+  ['preprod', 'Pre-production', 6],
+  ['staging', 'Staging', 6],
+  ['test', 'Test Lab', 6],
+  ['training', 'Training', 5],
+  ['dr', 'Disaster Recovery', 4],
+  ['qa', 'Quality Assurance', 5],
+  ['sandbox', 'Sandbox', 5]
 ];
 const PERSONS = [
   ['harbour-master', 'Harbour Master', 'Runs the harbour and answers for everything that happens in it.'],
@@ -161,18 +363,78 @@ const PERSONS = [
 ];
 // false friends: a container that goes away and one that appears elsewhere, which share most of the words of their description without being one thing
 const BOILERPLATE = [
-  ['Roster Interface', 'Exposes the interface of the pilot roster to the other systems of the harbour.', 'Tide Feed', 'Exposes the interface of the tide table to the other systems of the harbour.'],
-  ['Agent Digest', 'Sends a daily summary of the berth bookings to the shipping agents.', 'Fuel Mailer', 'Sends a daily summary of the fuel orders to the shipping agents.'],
-  ['Quay Watch', 'Warns the duty officer when a tug is late.', 'Lock Alarm', 'Warns the duty officer when a lock gate is stuck.'],
-  ['Hull Ledger', 'Keeps the history of every hull inspection for the harbour auditors.', 'Boarding Log', 'Keeps the history of every pilot boarding for the harbour auditors.'],
-  ['Permit Check', 'Checks every incoming cargo manifest against the customs tariff.', 'Waste Check', 'Checks every outgoing waste declaration against the harbour regulations.'],
-  ['Vessel Counter', 'Counts the vessels that enter the harbour every hour and shows the total on the screen.', 'Truck Counter', 'Counts the trucks that enter the terminal every hour and shows the total on the screen.'],
-  ['Crane Health', 'Collects the readings of the sensors on the cranes and stores them for later.', 'Buoy Health', 'Collects the readings of the sensors on the buoys and stores them for later.'],
-  ['Queue Board', 'Shows the vessels waiting at the entrance and their expected time of entry.', 'Shift Board', 'Shows the crews waiting at the dock and their expected time of duty.'],
-  ['Berth Map', 'Draws the berths on a map of the harbour.', 'Rail Map', 'Draws the railway sidings on a map of the harbour.'],
-  ['Fee Calculator', 'Computes the port fees of a vessel from its size and its time at the quay.', 'Rent Calculator', 'Computes the rent of a plot from its surface and the length of the lease.'],
-  ['Night Report', 'Prints the list of the vessels that stay in the harbour overnight.', 'Day Report', 'Prints the list of the lorries that stay in the car park overnight.'],
-  ['Slot Offer', 'Offers a free slot to the next vessel in the queue.', 'Seat Offer', 'Offers a free seat to the next passenger in the queue.']
+  [
+    'Roster Interface',
+    'Exposes the interface of the pilot roster to the other systems of the harbour.',
+    'Tide Feed',
+    'Exposes the interface of the tide table to the other systems of the harbour.'
+  ],
+  [
+    'Agent Digest',
+    'Sends a daily summary of the berth bookings to the shipping agents.',
+    'Fuel Mailer',
+    'Sends a daily summary of the fuel orders to the shipping agents.'
+  ],
+  [
+    'Quay Watch',
+    'Warns the duty officer when a tug is late.',
+    'Lock Alarm',
+    'Warns the duty officer when a lock gate is stuck.'
+  ],
+  [
+    'Hull Ledger',
+    'Keeps the history of every hull inspection for the harbour auditors.',
+    'Boarding Log',
+    'Keeps the history of every pilot boarding for the harbour auditors.'
+  ],
+  [
+    'Permit Check',
+    'Checks every incoming cargo manifest against the customs tariff.',
+    'Waste Check',
+    'Checks every outgoing waste declaration against the harbour regulations.'
+  ],
+  [
+    'Vessel Counter',
+    'Counts the vessels that enter the harbour every hour and shows the total on the screen.',
+    'Truck Counter',
+    'Counts the trucks that enter the terminal every hour and shows the total on the screen.'
+  ],
+  [
+    'Crane Health',
+    'Collects the readings of the sensors on the cranes and stores them for later.',
+    'Buoy Health',
+    'Collects the readings of the sensors on the buoys and stores them for later.'
+  ],
+  [
+    'Queue Board',
+    'Shows the vessels waiting at the entrance and their expected time of entry.',
+    'Shift Board',
+    'Shows the crews waiting at the dock and their expected time of duty.'
+  ],
+  [
+    'Berth Map',
+    'Draws the berths on a map of the harbour.',
+    'Rail Map',
+    'Draws the railway sidings on a map of the harbour.'
+  ],
+  [
+    'Fee Calculator',
+    'Computes the port fees of a vessel from its size and its time at the quay.',
+    'Rent Calculator',
+    'Computes the rent of a plot from its surface and the length of the lease.'
+  ],
+  [
+    'Night Report',
+    'Prints the list of the vessels that stay in the harbour overnight.',
+    'Day Report',
+    'Prints the list of the lorries that stay in the car park overnight.'
+  ],
+  [
+    'Slot Offer',
+    'Offers a free slot to the next vessel in the queue.',
+    'Seat Offer',
+    'Offers a free seat to the next passenger in the queue.'
+  ]
 ];
 // short descriptions: two words are too few to compare, three are enough
 const SHORT = [
@@ -183,13 +445,24 @@ const SHORT = [
 ];
 
 // ---- the base
-const persons = PERSONS.map(([id, name, description]) => Object.assign(make('person', id, name, description), { layer: 'application' }));
+const persons = PERSONS.map(([id, name, description]) =>
+  Object.assign(make('person', id, name, description), { layer: 'application' })
+);
 const systems = TOPICS.map(([word, noun, title], i) => {
-  const s = Object.assign(make('system', kebab(title), title, `Looks after the ${noun} side of the harbour.`, { noun }), { layer: 'application' });
-  const size = [11, 12, 10, 13, 11, 12, 12, 11, 10, 12, 11, 12, 12, 11, 12, 8, 12, 12, 14, 14, 12, 12, 13, 11, 12, 12, 11, 11, 10, 10, 10, 10, 10][i];
+  const s = Object.assign(
+    make('system', kebab(title), title, `Looks after the ${noun} side of the harbour.`, { noun }),
+    { layer: 'application' }
+  );
+  const size = [
+    11, 12, 10, 13, 11, 12, 12, 11, 10, 12, 11, 12, 12, 11, 12, 8, 12, 12, 14, 14, 12, 12, 13, 11, 12, 12, 11, 11, 10,
+    10, 10, 10, 10
+  ][i];
   for (const f of shuffled(FUNCTIONS).slice(0, size)) {
     const name = `${word} ${f}`;
-    const c = make('container', kebab(name), name, describe(noun), { qualifiers: rng() < 0.4 ? [pick(QUALIFIERS)] : [], noun });
+    const c = make('container', kebab(name), name, describe(noun), {
+      qualifiers: rng() < 0.4 ? [pick(QUALIFIERS)] : [],
+      noun
+    });
     add(s, c);
     if (rng() < 0.1) addComponents(c, 2 + Math.floor(rng() * 2));
   }
@@ -213,9 +486,13 @@ for (const s of systems) {
     }
   }
 }
-for (const p of persons) for (const dest of shuffled(allContainers()).slice(0, 3)) p.rels.push({ dest, label: pick(['uses', 'orders from', 'looks at']) });
+for (const p of persons)
+  for (const dest of shuffled(allContainers()).slice(0, 3))
+    p.rels.push({ dest, label: pick(['uses', 'orders from', 'looks at']) });
 const envs = ENVS.map(([id, name, count]) => {
-  const e = Object.assign(make('environment', id, name, `The ${name.toLowerCase()} machines of the harbour.`), { layer: 'technology' });
+  const e = Object.assign(make('environment', id, name, `The ${name.toLowerCase()} machines of the harbour.`), {
+    layer: 'technology'
+  });
   for (const [nodeName, description] of shuffled(NODES).slice(0, count)) {
     const n = Object.assign(make('node', kebab(nodeName), nodeName, description), { layer: 'technology' });
     n.applications = shuffled(allContainers()).slice(0, 2 + Math.floor(rng() * 3));
@@ -232,7 +509,10 @@ const used = new Set();
 function take(system, n, { comps = false } = {}) {
   let free = containersOf(system).filter((c) => !used.has(c) && (!comps || c.children.length > 0));
   if (free.length < n && comps) {
-    for (const c of containersOf(system).filter((c) => !used.has(c) && c.children.length === 0).slice(0, n - free.length)) addComponents(c, 2);
+    for (const c of containersOf(system)
+      .filter((c) => !used.has(c) && c.children.length === 0)
+      .slice(0, n - free.length))
+      addComponents(c, 2);
     free = containersOf(system).filter((c) => !used.has(c) && c.children.length > 0);
   }
   if (free.length < n) throw new Error('not enough containers in ' + system.name);
@@ -275,9 +555,13 @@ pickFor.split21 = take(S[21], 2);
 for (const c of [...pickFor.split20, ...pickFor.split21]) ensureRels(c, 3);
 pickFor.merge22 = take(S[22], 7);
 pickFor.merge23 = take(S[23], 1)[0];
-pickFor.d2Gone = ['Gate Pass', 'Entry Permit', 'Visitor Badge', 'Dock Ticket'].map((n) => plant(S[23], 'container', n, describe('gate')));
+pickFor.d2Gone = ['Gate Pass', 'Entry Permit', 'Visitor Badge', 'Dock Ticket'].map((n) =>
+  plant(S[23], 'container', n, describe('gate'))
+);
 pickFor.d3Gone = BOILERPLATE.map(([name, description]) => plant(S[25], 'container', name, description));
-pickFor.d4Gone = ['Archive', 'Calendar', 'Statistics', 'Search', 'Forms', 'Alerts'].map((n) => plant(S[27], 'container', n, describe('quay')));
+pickFor.d4Gone = ['Archive', 'Calendar', 'Statistics', 'Search', 'Forms', 'Alerts'].map((n) =>
+  plant(S[27], 'container', n, describe('quay'))
+);
 pickFor.d5Gone = SHORT.map(([name, description]) => plant(S[24], 'container', name, description));
 pickFor.d2Cross = plant(S[24], 'container', 'Message Broker', describe('mooring')); // same name as a node: another layer
 pickFor.d2Cross2 = plant(S[24], 'container', 'File Share', describe('mooring'));
@@ -354,7 +638,8 @@ function split(base, halves, scenario) {
 function merge(bases, spec, scenario, parent = T(bases[0]).parent) {
   for (const b of bases) drop(b);
   const f = fresh(parent, bases[0].kind, spec.id, spec.name, spec.description, scenario, { from: [...bases] });
-  for (const b of bases) for (const r of b.rels) if (!f.rels.some((x) => x.dest === r.dest && x.label === r.label)) f.rels.push({ ...r });
+  for (const b of bases)
+    for (const r of b.rels) if (!f.rels.some((x) => x.dest === r.dest && x.label === r.label)) f.rels.push({ ...r });
   for (const b of bases) redirect.set(b, [f]);
 }
 
@@ -362,70 +647,186 @@ function merge(bases, spec, scenario, parent = T(bases[0]).parent) {
 pickFor.r1Lone.forEach((c) => rename(c, { id: c.id + '-service', scenario: 'rename-id-only-lone' }));
 pickFor.r1Among.forEach((c) => rename(c, { id: c.id + '-v2', scenario: 'rename-id-only-among-others' }));
 // R2. id and name are renamed, the description is kept as it was or touched up
-pickFor.r2Among.forEach((c) => rename(c, { id: c.id + '-hub', name: c.name + ' Hub', scenario: 'rename-description-kept' }));
-pickFor.r2Lone.forEach((c) => rename(c, { id: c.id + '-core', name: c.name + ' Core', scenario: 'rename-description-kept-lone' }));
+pickFor.r2Among.forEach((c) =>
+  rename(c, { id: c.id + '-hub', name: c.name + ' Hub', scenario: 'rename-description-kept' })
+);
+pickFor.r2Lone.forEach((c) =>
+  rename(c, { id: c.id + '-core', name: c.name + ' Core', scenario: 'rename-description-kept-lone' })
+);
 {
   const [a, b, c] = pickFor.r2Touched;
-  const desk = (x, description) => rename(x, { id: x.id + '-desk', name: x.name + ' Desk', description, scenario: 'rename-description-touched-up' });
+  const desk = (x, description) =>
+    rename(x, { id: x.id + '-desk', name: x.name + ' Desk', description, scenario: 'rename-description-touched-up' });
   desk(a, a.description.replace(/^\w+/, 'Handles'));
   desk(b, b.description.replace(/\.$/, ' and the port authority.'));
   desk(c, c.description.replace(/^(\w+) the (\w+)/, '$1 all the $2'));
   const d = pickFor.r2TouchedLone;
-  rename(d, { id: d.id + '-desk', name: d.name + ' Desk', description: d.description.replace(/ (\w+) (\w+)\.$/, ' $2 $1.'), scenario: 'rename-description-touched-up-lone' });
+  rename(d, {
+    id: d.id + '-desk',
+    name: d.name + ' Desk',
+    description: d.description.replace(/ (\w+) (\w+)\.$/, ' $2 $1.'),
+    scenario: 'rename-description-touched-up-lone'
+  });
 }
 // R3. everything is renamed and the description written again: nothing tells, unless the element is alone under its parent
-pickFor.r3Among.forEach((c) => rename(c, { id: c.id + '-next', name: c.name + ' Next', description: describe(c.noun), scenario: 'rename-rewritten' }));
-pickFor.r3Lone.forEach((c) => rename(c, { id: c.id + '-next', name: c.name + ' Next', description: describe(c.noun), scenario: 'rename-rewritten-lone' }));
+pickFor.r3Among.forEach((c) =>
+  rename(c, { id: c.id + '-next', name: c.name + ' Next', description: describe(c.noun), scenario: 'rename-rewritten' })
+);
+pickFor.r3Lone.forEach((c) =>
+  rename(c, {
+    id: c.id + '-next',
+    name: c.name + ' Next',
+    description: describe(c.noun),
+    scenario: 'rename-rewritten-lone'
+  })
+);
 // G1. a system is renamed: description kept, every container and component changes reference and keeps its name
 rename(S[15], { id: S[15].id + '-office', name: S[15].name + ' Office', scenario: 'system-renamed' });
 // G2. containers with components are renamed: one rewritten, one with only its id changed
-rename(pickFor.g2[0], { id: pickFor.g2[0].id + '-next', name: pickFor.g2[0].name + ' Next', description: describe(pickFor.g2[0].noun), scenario: 'container-renamed-with-components' });
+rename(pickFor.g2[0], {
+  id: pickFor.g2[0].id + '-next',
+  name: pickFor.g2[0].name + ' Next',
+  description: describe(pickFor.g2[0].noun),
+  scenario: 'container-renamed-with-components'
+});
 rename(pickFor.g2[1], { id: pickFor.g2[1].id + '-2', scenario: 'container-renamed-with-components' });
 // N. unrelated removals and additions, several of each in the same system (no lone sibling): nothing should tell
 pickFor.noiseGone16.forEach(drop);
-fresh(T(S[16]), 'container', 'harbour-radio', 'Harbour Radio', 'Relays the calls of the vessels to the quay offices.', 'unrelated');
+fresh(
+  T(S[16]),
+  'container',
+  'harbour-radio',
+  'Harbour Radio',
+  'Relays the calls of the vessels to the quay offices.',
+  'unrelated'
+);
 fresh(T(S[16]), 'container', 'visitor-map', 'Visitor Map', 'Draws the quays on a map for the visitors.', 'unrelated');
 pickFor.noiseGone17.forEach(drop);
-fresh(T(S[17]), 'container', 'swell-model', 'Swell Model', 'Predicts the height of the waves at the entrance of the harbour.', 'unrelated');
-fresh(T(S[17]), 'container', 'lost-property', 'Lost Property', 'Lists the objects found on the quays and gives them back.', 'unrelated');
-fresh(T(S[17]), 'container', 'parking-permits', 'Parking Permits', 'Issues the permits of the staff who park near the terminals.', 'unrelated');
+fresh(
+  T(S[17]),
+  'container',
+  'swell-model',
+  'Swell Model',
+  'Predicts the height of the waves at the entrance of the harbour.',
+  'unrelated'
+);
+fresh(
+  T(S[17]),
+  'container',
+  'lost-property',
+  'Lost Property',
+  'Lists the objects found on the quays and gives them back.',
+  'unrelated'
+);
+fresh(
+  T(S[17]),
+  'container',
+  'parking-permits',
+  'Parking Permits',
+  'Issues the permits of the staff who park near the terminals.',
+  'unrelated'
+);
 // M. moves from a system to another
 pickFor.moveFrom.slice(0, 6).forEach((c) => move(c, T(S[19]), 'moved-name-kept'));
-pickFor.moveFrom.slice(6, 9).forEach((c) => move(c, T(S[19]), 'moved-renamed-rewritten', { id: c.id + '-x', name: c.name + ' X', description: describe(c.noun) }));
-pickFor.moveBack.forEach((c) => move(c, T(S[18]), 'moved-renamed-description-kept', { id: c.id + '-moved', name: c.name + ' Moved' }));
+pickFor.moveFrom.slice(6, 9).forEach((c) =>
+  move(c, T(S[19]), 'moved-renamed-rewritten', {
+    id: c.id + '-x',
+    name: c.name + ' X',
+    description: describe(c.noun)
+  })
+);
+pickFor.moveBack.forEach((c) =>
+  move(c, T(S[18]), 'moved-renamed-description-kept', { id: c.id + '-moved', name: c.name + ' Moved' })
+);
 // S. splits: one container becomes two (or three)
 {
   const [a, b, c] = pickFor.split20;
   const [d, e] = pickFor.split21;
-  split(a, [
-    { id: a.id + '-intake', name: a.name + ' Intake', description: a.description.replace(/\.$/, ' as they come in.') },
-    { id: a.id + '-follow-up', name: a.name + ' Follow-up', description: 'Chases the missing items and closes the files.' }
-  ], 'split-one-half-keeps-the-description');
-  split(b, [
-    { id: b.id + '-live', name: 'Live ' + b.name.split(' ')[0], description: `Shows what is happening now ${pick(PURPOSES)}.` },
-    { id: b.id + '-past', name: 'Past ' + b.name.split(' ')[0], description: `Keeps what happened before ${pick(PURPOSES)}.` }
-  ], 'split-new-names-new-descriptions');
-  split(c, [
-    { id: c.id + '-live', name: c.name, description: 'Takes over the part that has to stay in the harbour.' },
-    { id: c.id + '-archive', name: c.name + ' Archive', description: 'Keeps the old items for the auditors.' }
-  ], 'split-one-half-keeps-the-name');
-  split(d, [
-    { id: d.id + '-one', name: d.name + ' One', description: d.description },
-    { id: d.id + '-two', name: d.name + ' Two', description: d.description.replace(/^\w+/, 'Mirrors') }
-  ], 'split-both-halves-keep-the-description');
-  split(e, [
-    { id: e.id + '-north', name: 'North ' + e.name, description: describe(e.noun) },
-    { id: e.id + '-south', name: 'South ' + e.name, description: describe(e.noun) },
-    { id: e.id + '-quay', name: 'Quay ' + e.name, description: describe(e.noun) }
-  ], 'split-in-three');
+  split(
+    a,
+    [
+      {
+        id: a.id + '-intake',
+        name: a.name + ' Intake',
+        description: a.description.replace(/\.$/, ' as they come in.')
+      },
+      {
+        id: a.id + '-follow-up',
+        name: a.name + ' Follow-up',
+        description: 'Chases the missing items and closes the files.'
+      }
+    ],
+    'split-one-half-keeps-the-description'
+  );
+  split(
+    b,
+    [
+      {
+        id: b.id + '-live',
+        name: 'Live ' + b.name.split(' ')[0],
+        description: `Shows what is happening now ${pick(PURPOSES)}.`
+      },
+      {
+        id: b.id + '-past',
+        name: 'Past ' + b.name.split(' ')[0],
+        description: `Keeps what happened before ${pick(PURPOSES)}.`
+      }
+    ],
+    'split-new-names-new-descriptions'
+  );
+  split(
+    c,
+    [
+      { id: c.id + '-live', name: c.name, description: 'Takes over the part that has to stay in the harbour.' },
+      { id: c.id + '-archive', name: c.name + ' Archive', description: 'Keeps the old items for the auditors.' }
+    ],
+    'split-one-half-keeps-the-name'
+  );
+  split(
+    d,
+    [
+      { id: d.id + '-one', name: d.name + ' One', description: d.description },
+      { id: d.id + '-two', name: d.name + ' Two', description: d.description.replace(/^\w+/, 'Mirrors') }
+    ],
+    'split-both-halves-keep-the-description'
+  );
+  split(
+    e,
+    [
+      { id: e.id + '-north', name: 'North ' + e.name, description: describe(e.noun) },
+      { id: e.id + '-south', name: 'South ' + e.name, description: describe(e.noun) },
+      { id: e.id + '-quay', name: 'Quay ' + e.name, description: describe(e.noun) }
+    ],
+    'split-in-three'
+  );
 }
 // U. merges: two containers become one (the last one across two systems)
 {
   const [a, b, c, d, e, f, g] = pickFor.merge22;
-  merge([a, b], { id: a.id + '-and-' + b.id.split('-').pop(), name: a.name, description: describe(a.noun) }, 'merge-keeps-the-name-of-one');
-  merge([c, d], { id: c.id + '-all', name: c.name + ' All', description: c.description.replace(/\.$/, ' and the rest.') }, 'merge-keeps-the-description-of-one');
-  merge([e, f], { id: 'combined-' + e.id.split('-').pop(), name: 'Combined ' + e.name.split(' ').pop(), description: describe(e.noun) }, 'merge-new-name-new-description');
-  merge([g, pickFor.merge23], { id: g.id + '-joint', name: g.name + ' Joint', description: pickFor.merge23.description }, 'merge-across-systems');
+  merge(
+    [a, b],
+    { id: a.id + '-and-' + b.id.split('-').pop(), name: a.name, description: describe(a.noun) },
+    'merge-keeps-the-name-of-one'
+  );
+  merge(
+    [c, d],
+    { id: c.id + '-all', name: c.name + ' All', description: c.description.replace(/\.$/, ' and the rest.') },
+    'merge-keeps-the-description-of-one'
+  );
+  merge(
+    [e, f],
+    {
+      id: 'combined-' + e.id.split('-').pop(),
+      name: 'Combined ' + e.name.split(' ').pop(),
+      description: describe(e.noun)
+    },
+    'merge-new-name-new-description'
+  );
+  merge(
+    [g, pickFor.merge23],
+    { id: g.id + '-joint', name: g.name + ' Joint', description: pickFor.merge23.description },
+    'merge-across-systems'
+  );
 }
 
 // ---- the decoys: pairs that look alike and are not one thing
@@ -440,7 +841,11 @@ pickFor.moveBack.forEach((c) => move(c, T(S[18]), 'moved-renamed-description-kep
   pickFor.d1Container.forEach((c, i) => {
     const parent = T(c).parent;
     drop(c);
-    decoys.push({ from: c, to: fresh(parent, 'container', names[i][0], names[i][1], names[i][2], 'decoy'), trap: 'lone-sibling-different-thing' });
+    decoys.push({
+      from: c,
+      to: fresh(parent, 'container', names[i][0], names[i][1], names[i][2], 'decoy'),
+      trap: 'lone-sibling-different-thing'
+    });
   });
   const comps = [
     ['translator', 'Translator', 'Translates the messages into the language of the vessel.'],
@@ -451,41 +856,89 @@ pickFor.moveBack.forEach((c) => move(c, T(S[18]), 'moved-renamed-description-kep
   pickFor.d1Component.forEach((c, i) => {
     const gone = c.children[0];
     drop(gone);
-    decoys.push({ from: gone, to: fresh(T(c), 'component', comps[i][0], comps[i][1], comps[i][2], 'decoy'), trap: 'lone-sibling-different-thing' });
+    decoys.push({
+      from: gone,
+      to: fresh(T(c), 'component', comps[i][0], comps[i][1], comps[i][2], 'decoy'),
+      trap: 'lone-sibling-different-thing'
+    });
   });
 }
 // D2. the same name in another kind (a component, a person that becomes a container) or in another layer (a node): the layer and the kind are compared first
 {
-  const holders = containersOf(S[24]).filter((c) => !planted.has(c)).slice(0, 4);
+  const holders = containersOf(S[24])
+    .filter((c) => !planted.has(c))
+    .slice(0, 4);
   pickFor.d2Gone.forEach((c, i) => {
     drop(c);
-    decoys.push({ from: c, to: fresh(T(holders[i]), 'component', kebab(c.name), c.name, 'Another thing, filed under the same name.', 'decoy'), trap: 'same-name-other-kind' });
+    decoys.push({
+      from: c,
+      to: fresh(
+        T(holders[i]),
+        'component',
+        kebab(c.name),
+        c.name,
+        'Another thing, filed under the same name.',
+        'decoy'
+      ),
+      trap: 'same-name-other-kind'
+    });
   });
   drop(personFerry);
-  decoys.push({ from: personFerry, to: fresh(T(S[24]), 'container', 'ferry-passenger', 'Ferry Passenger', 'Receives the passengers of a ferry at the terminal.', 'decoy'), trap: 'same-name-other-kind' });
+  decoys.push({
+    from: personFerry,
+    to: fresh(
+      T(S[24]),
+      'container',
+      'ferry-passenger',
+      'Ferry Passenger',
+      'Receives the passengers of a ferry at the terminal.',
+      'decoy'
+    ),
+    trap: 'same-name-other-kind'
+  });
   // the first environment that has no node of either name
-  const home = T([E.dr, E.training, E.prod, E.preprod, E.staging, E.test].find((env) => ![pickFor.d2Cross, pickFor.d2Cross2].some((c) => env.children.some((n) => n.name === c.name))));
+  const home = T(
+    [E.dr, E.training, E.prod, E.preprod, E.staging, E.test].find(
+      (env) => ![pickFor.d2Cross, pickFor.d2Cross2].some((c) => env.children.some((n) => n.name === c.name))
+    )
+  );
   for (const c of [pickFor.d2Cross, pickFor.d2Cross2]) {
     drop(c);
-    decoys.push({ from: c, to: fresh(home, 'node', kebab(c.name), c.name, 'A machine, not a program.', 'decoy'), trap: 'same-name-other-layer' });
+    decoys.push({
+      from: c,
+      to: fresh(home, 'node', kebab(c.name), c.name, 'A machine, not a program.', 'decoy'),
+      trap: 'same-name-other-layer'
+    });
   }
 }
 // D3. close descriptions of unrelated things (boilerplate)
 pickFor.d3Gone.forEach((c, i) => {
   drop(c);
   const [, , name, description] = BOILERPLATE[i];
-  decoys.push({ from: c, to: fresh(T(S[26]), 'container', kebab(name), name, description, 'decoy'), trap: 'close-description-unrelated' });
+  decoys.push({
+    from: c,
+    to: fresh(T(S[26]), 'container', kebab(name), name, description, 'decoy'),
+    trap: 'close-description-unrelated'
+  });
 });
 // D4. two elements that share a name under different parents (nothing else in common)
 pickFor.d4Gone.forEach((c) => {
   drop(c);
-  decoys.push({ from: c, to: fresh(T(S[28]), 'container', c.id, c.name, describe('lock'), 'decoy'), trap: 'same-name-other-parent' });
+  decoys.push({
+    from: c,
+    to: fresh(T(S[28]), 'container', c.id, c.name, describe('lock'), 'decoy'),
+    trap: 'same-name-other-parent'
+  });
 });
 // D5. descriptions too short to compare (two words), and just long enough (three words)
 pickFor.d5Gone.forEach((c, i) => {
   drop(c);
   const [, , name, description] = SHORT[i];
-  decoys.push({ from: c, to: fresh(T(S[23]), 'container', kebab(name), name, description, 'decoy'), trap: i < 2 ? 'short-description-two-words' : 'short-description-three-words' });
+  decoys.push({
+    from: c,
+    to: fresh(T(S[23]), 'container', kebab(name), name, description, 'decoy'),
+    trap: i < 2 ? 'short-description-two-words' : 'short-description-three-words'
+  });
 });
 
 // ---- the persons: a rename that keeps the name, one that keeps the description, an unrelated pair
@@ -497,13 +950,38 @@ freshRoot('person', 'inspector', 'Inspector', 'Looks at the vessels before they 
 // ---- the technology: nodes renamed, moved, a whole environment renamed, and decoys
 {
   // T1. a node id is renamed, the name stays
-  [[E.prod, 0], [E.preprod, 0]].forEach(([env, i]) => rename(node(env, i), { id: node(env, i).id + '-main', scenario: 'node-renamed-id-only' }));
+  [
+    [E.prod, 0],
+    [E.preprod, 0]
+  ].forEach(([env, i]) => rename(node(env, i), { id: node(env, i).id + '-main', scenario: 'node-renamed-id-only' }));
   // T2. a node is renamed, the description stays
-  [[E.staging, 0], [E.test, 0]].forEach(([env, i]) => rename(node(env, i), { id: node(env, i).id + '-b', name: node(env, i).name + ' B', scenario: 'node-renamed-description-kept' }));
+  [
+    [E.staging, 0],
+    [E.test, 0]
+  ].forEach(([env, i]) =>
+    rename(node(env, i), {
+      id: node(env, i).id + '-b',
+      name: node(env, i).name + ' B',
+      scenario: 'node-renamed-description-kept'
+    })
+  );
   // T3. a node moves to another environment that has none of that name
-  const usedNodes = new Set([node(E.prod, 0), node(E.preprod, 0), node(E.staging, 0), node(E.test, 0), node(E.training, 0), node(E.training, 1), node(E.qa, 0), node(E.sandbox, 0)]);
-  const free = (env, other) => env.children.find((n) => !usedNodes.has(n) && !other.children.some((x) => x.id === n.id));
-  for (const [from, to] of [[E.prod, E.sandbox], [E.preprod, E.qa]]) {
+  const usedNodes = new Set([
+    node(E.prod, 0),
+    node(E.preprod, 0),
+    node(E.staging, 0),
+    node(E.test, 0),
+    node(E.training, 0),
+    node(E.training, 1),
+    node(E.qa, 0),
+    node(E.sandbox, 0)
+  ]);
+  const free = (env, other) =>
+    env.children.find((n) => !usedNodes.has(n) && !other.children.some((x) => x.id === n.id));
+  for (const [from, to] of [
+    [E.prod, E.sandbox],
+    [E.preprod, E.qa]
+  ]) {
     const n = free(from, to);
     usedNodes.add(n);
     move(n, T(to), 'node-moved-name-kept');
@@ -511,30 +989,59 @@ freshRoot('person', 'inspector', 'Inspector', 'Looks at the vessels before they 
   // T4. an environment is renamed: all its nodes change reference and keep their names
   rename(E.dr, { id: 'disaster-recovery', scenario: 'environment-renamed' });
   // T5. nodes renamed and described again
-  [0, 1].forEach((i) => rename(node(E.training, i), { id: node(E.training, i).id + '-new', name: node(E.training, i).name + ' New', description: 'Does the same job with other words.', scenario: 'node-renamed-rewritten' }));
+  [0, 1].forEach((i) =>
+    rename(node(E.training, i), {
+      id: node(E.training, i).id + '-new',
+      name: node(E.training, i).name + ' New',
+      description: 'Does the same job with other words.',
+      scenario: 'node-renamed-rewritten'
+    })
+  );
   // T6. the same name under two environments, unrelated
   for (let k = 0; k < 2; k++) {
     const gone = free(E.staging, E.test);
     usedNodes.add(gone);
     drop(gone);
-    decoys.push({ from: gone, to: fresh(T(E.test), 'node', gone.id, gone.name, 'A different machine with the same name.', 'decoy'), trap: 'same-name-other-parent' });
+    decoys.push({
+      from: gone,
+      to: fresh(T(E.test), 'node', gone.id, gone.name, 'A different machine with the same name.', 'decoy'),
+      trap: 'same-name-other-parent'
+    });
   }
   // T7. alone under their environment
   drop(qaGone);
-  decoys.push({ from: qaGone, to: fresh(T(E.qa), 'node', 'load-injector', 'Load Injector', 'Plays back the traffic of the busiest day.', 'decoy'), trap: 'lone-sibling-different-thing' });
+  decoys.push({
+    from: qaGone,
+    to: fresh(T(E.qa), 'node', 'load-injector', 'Load Injector', 'Plays back the traffic of the busiest day.', 'decoy'),
+    trap: 'lone-sibling-different-thing'
+  });
   drop(sandboxGone);
-  decoys.push({ from: sandboxGone, to: fresh(T(E.sandbox), 'node', 'mock-customs', 'Mock Customs', 'Answers like the customs service, for the tests of the partners.', 'decoy'), trap: 'lone-sibling-different-thing' });
+  decoys.push({
+    from: sandboxGone,
+    to: fresh(
+      T(E.sandbox),
+      'node',
+      'mock-customs',
+      'Mock Customs',
+      'Answers like the customs service, for the tests of the partners.',
+      'decoy'
+    ),
+    trap: 'lone-sibling-different-thing'
+  });
 }
 
 // ---- relationships that really changed, so that the ones a split hands to its halves are not the only ones in the table
 {
   const survivors = [];
-  for (const r of targetRoots) for (const e of walk(r)) if (e.kind === 'container' && e.origin && e.from.length === 0 && ref(e) === ref(e.origin)) survivors.push(e);
+  for (const r of targetRoots)
+    for (const e of walk(r))
+      if (e.kind === 'container' && e.origin && e.from.length === 0 && ref(e) === ref(e.origin)) survivors.push(e);
   const pool = shuffled(survivors);
   // new: 24 relationships between containers that stayed where they were
   for (let i = 0; i < 24; i++) {
     const [a, b] = [pool[i], pool[pool.length - 1 - i]];
-    if (a !== b && !a.rels.some((r) => r.dest === b)) a.rels.push({ dest: b, label: pick(['subscribes to', 'cross-checks with', 'mirrors']) });
+    if (a !== b && !a.rels.some((r) => r.dest === b))
+      a.rels.push({ dest: b, label: pick(['subscribes to', 'cross-checks with', 'mirrors']) });
   }
   // removed: 12 relationships of containers that stayed where they were
   for (let i = 24; i < 36; i++) {
@@ -542,7 +1049,9 @@ freshRoot('person', 'inspector', 'Inspector', 'Looks at the vessels before they 
     if (removable.length) pool[i].rels.splice(pool[i].rels.indexOf(removable[0]), 1);
   }
   // the unrelated new containers talk to someone
-  for (const r of targetRoots) for (const e of walk(r)) if (e.scenario === 'unrelated' && e.kind === 'container') e.rels.push({ dest: pick(pool), label: 'reads from' });
+  for (const r of targetRoots)
+    for (const e of walk(r))
+      if (e.scenario === 'unrelated' && e.kind === 'container') e.rels.push({ dest: pick(pool), label: 'reads from' });
 }
 
 // ---- writing
@@ -567,13 +1076,24 @@ const yamlText = (s) => JSON.stringify(s);
 
 // What an element says in a manifest, as data (the manifests of every plateau are written from it).
 function dataOf(e, sideName, declared) {
-  const data = { kind: e.kind, id: e.id, name: e.name, description: e.description || '', qualifiers: [...e.qualifiers], replaces: [], applications: [], relationships: [], children: [] };
+  const data = {
+    kind: e.kind,
+    id: e.id,
+    name: e.name,
+    description: e.description || '',
+    qualifiers: [...e.qualifiers],
+    replaces: [],
+    applications: [],
+    relationships: [],
+    children: []
+  };
   if (declared && sideName === 'target') data.replaces = fromOf(e).map(refOf).sort();
   const resolveApp = (a) => (sideName === 'base' ? a : resolve(a));
   data.applications = [...new Set(e.applications.map(resolveApp).filter(Boolean).map(refOf))].sort();
   for (const r of e.rels) {
     const dest = sideName === 'base' ? r.dest : resolve(r.dest);
-    if (dest && !data.relationships.some((x) => x.destination === refOf(dest) && x.label === r.label)) data.relationships.push({ destination: refOf(dest), label: r.label });
+    if (dest && !data.relationships.some((x) => x.destination === refOf(dest) && x.label === r.label))
+      data.relationships.push({ destination: refOf(dest), label: r.label });
   }
   for (const c of e.children) data.children.push(dataOf(c, sideName, declared));
   return data;
@@ -582,7 +1102,8 @@ function emitData(data, indent, root) {
   const pad = ' '.repeat(indent);
   const lines = [];
   const p = root ? pad : pad + '  ';
-  const key = (name, text) => lines.push((lines.length === 0 && !root ? pad + '- ' : p) + `${name}${text ? ': ' + text : ':'}`);
+  const key = (name, text) =>
+    lines.push((lines.length === 0 && !root ? pad + '- ' : p) + `${name}${text ? ': ' + text : ':'}`);
   if (!root) key('kind', yamlText(data.kind));
   key('id', yamlText(data.id));
   key('name', yamlText(data.name));
@@ -608,16 +1129,28 @@ function emitData(data, indent, root) {
   }
   return lines;
 }
-const manifestHeader = (kind, plateau, parent) =>
-  ['header:', `  kind: "archicode.morin.io/${kind}"`, '  version: "1"', ...(plateau ? [`  plateau: ${yamlText(plateau)}`] : []), ...(parent ? [`  parent: ${yamlText(parent)}`] : []), 'content:'];
+const manifestHeader = (kind, plateau, parent) => [
+  'header:',
+  `  kind: "archicode.morin.io/${kind}"`,
+  '  version: "1"',
+  ...(plateau ? [`  plateau: ${yamlText(plateau)}`] : []),
+  ...(parent ? [`  parent: ${yamlText(parent)}`] : []),
+  'content:'
+];
 function emitRoot(data) {
-  return manifestHeader(data.kind).concat(emitData(data, 2, true)).join('\n') + '\n';
+  return (
+    manifestHeader(data.kind)
+      .concat(emitData(data, 2, true))
+      .join('\n') + '\n'
+  );
 }
-const fileOf = (layer, kind, reference) => `${layer === 'technology' ? (kind === 'environment' ? 'env' : kind) : kind}-${reference}.yaml`;
+const fileOf = (layer, kind, reference) =>
+  `${layer === 'technology' ? (kind === 'environment' ? 'env' : kind) : kind}-${reference}.yaml`;
 function writeBase(dir, roots) {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
-  for (const r of roots) fs.writeFileSync(path.join(dir, fileOf(r.layer, r.kind, r.id)), emitRoot(dataOf(r, 'base', false)));
+  for (const r of roots)
+    fs.writeFileSync(path.join(dir, fileOf(r.layer, r.kind, r.id)), emitRoot(dataOf(r, 'base', false)));
   fs.writeFileSync(path.join(dir, 'plateau.yaml'), plateauManifest({ id: 'before', name: 'Before' }, []));
 }
 
@@ -628,12 +1161,27 @@ const yamlBlock = (value, indent) => {
   const pad = ' '.repeat(indent);
   if (Array.isArray(value)) {
     if (!value.length) return ' []';
-    return '\n' + value.map((item) => (typeof item === 'object' ? `${pad}- destination: ${yamlText(item.destination)}\n${pad}  label: ${yamlText(item.label)}` : `${pad}- ${yamlText(item)}`)).join('\n');
+    return (
+      '\n' +
+      value
+        .map((item) =>
+          typeof item === 'object'
+            ? `${pad}- destination: ${yamlText(item.destination)}\n${pad}  label: ${yamlText(item.label)}`
+            : `${pad}- ${yamlText(item)}`
+        )
+        .join('\n')
+    );
   }
   return ' ' + yamlText(value);
 };
 function plateauManifest({ id, name, override }, patches) {
-  const lines = ['header:', '  kind: "archicode.morin.io/plateau"', '  version: "1"', 'content:', `  id: ${yamlText(id)}`];
+  const lines = [
+    'header:',
+    '  kind: "archicode.morin.io/plateau"',
+    '  version: "1"',
+    'content:',
+    `  id: ${yamlText(id)}`
+  ];
   if (name) lines.push(`  name: ${yamlText(name)}`);
   if (override) lines.push(`  override: ${yamlText(override)}`);
   if (patches.length) {
@@ -649,7 +1197,10 @@ function plateauManifest({ id, name, override }, patches) {
 function writeLayer(dir, plateau, baseData, targetData) {
   const baseMap = new Map();
   const targetMap = new Map();
-  for (const [map, datas, roots] of [[baseMap, baseData, baseRoots], [targetMap, targetData, targetRoots]]) {
+  for (const [map, datas, roots] of [
+    [baseMap, baseData, baseRoots],
+    [targetMap, targetData, targetRoots]
+  ]) {
     const visit = (data, layer, reference, parentKey) => {
       const key = `${layer}:${reference}`;
       map.set(key, { data, layer, reference, parentKey });
@@ -669,7 +1220,8 @@ function writeLayer(dir, plateau, baseData, targetData) {
     if (!before) continue;
     if (before.data.kind !== x.data.kind) throw new Error('the kind of ' + key + ' changed');
     for (const field of ['name', 'description', 'qualifiers', 'applications', 'relationships']) {
-      if (JSON.stringify(before.data[field]) !== JSON.stringify(x.data[field])) patches.push({ operator: 'SET', target: x.reference, layer: x.layer, field, value: x.data[field] });
+      if (JSON.stringify(before.data[field]) !== JSON.stringify(x.data[field]))
+        patches.push({ operator: 'SET', target: x.reference, layer: x.layer, field, value: x.data[field] });
     }
   }
   fs.rmSync(dir, { recursive: true, force: true });
@@ -679,7 +1231,10 @@ function writeLayer(dir, plateau, baseData, targetData) {
   for (const [key, x] of targetMap) {
     if (baseMap.has(key) || (x.parentKey && !baseMap.has(x.parentKey))) continue;
     const parent = x.parentKey ? x.parentKey.slice(x.parentKey.indexOf(':') + 1) : null;
-    const text = manifestHeader(x.data.kind, plateau.id, parent).concat(emitData(x.data, 2, true)).join('\n') + '\n';
+    const text =
+      manifestHeader(x.data.kind, plateau.id, parent)
+        .concat(emitData(x.data, 2, true))
+        .join('\n') + '\n';
     fs.writeFileSync(path.join(dir, fileOf(x.layer, x.data.kind, x.reference)), text);
   }
   return patches.length;
@@ -691,22 +1246,43 @@ const baseData = baseRoots.map((r) => dataOf(r, 'base', false));
 const snapshot = new Map([...redirect].map(([k, v]) => [k, [...v]]));
 const reset = () => snapshot.forEach((v, k) => redirect.set(k, [...v]));
 reset();
-writeLayer(path.join(plateaus, '20_after'), { id: 'after', name: 'After', override: 'before' }, baseData, targetRoots.map((r) => dataOf(r, 'target', false)));
+writeLayer(
+  path.join(plateaus, '20_after'),
+  { id: 'after', name: 'After', override: 'before' },
+  baseData,
+  targetRoots.map((r) => dataOf(r, 'target', false))
+);
 reset();
-writeLayer(path.join(plateaus, '30_after-declared'), { id: 'after-declared', name: 'After, declared', override: 'before' }, baseData, targetRoots.map((r) => dataOf(r, 'target', true)));
+writeLayer(
+  path.join(plateaus, '30_after-declared'),
+  { id: 'after-declared', name: 'After, declared', override: 'before' },
+  baseData,
+  targetRoots.map((r) => dataOf(r, 'target', true))
+);
 
 // ---- the answers
 const layerOf = (e) => (e.parent ? layerOf(e.parent) : e.layer);
-const sortBy = (list) => list.sort((a, b) => ((a.layer ?? a.fromLayer) + a.from + a.to).localeCompare((b.layer ?? b.fromLayer) + b.from + b.to));
+const sortBy = (list) =>
+  list.sort((a, b) =>
+    ((a.layer ?? a.fromLayer) + a.from + a.to).localeCompare((b.layer ?? b.fromLayer) + b.from + b.to)
+  );
 
-const scenarioOf = (e) => (e.scenario ? e.scenario : e.parent && scenarioOf(e.parent) ? scenarioOf(e.parent) + '/inside' : null);
+const scenarioOf = (e) =>
+  e.scenario ? e.scenario : e.parent && scenarioOf(e.parent) ? scenarioOf(e.parent) + '/inside' : null;
 const same = [];
 for (const r of targetRoots) {
   for (const e of walk(r)) {
-    for (const o of fromOf(e)) same.push({ layer: layerOf(e), from: ref(o), to: ref(e), scenario: scenarioOf(e) ?? 'unknown' });
+    for (const o of fromOf(e))
+      same.push({ layer: layerOf(e), from: ref(o), to: ref(e), scenario: scenarioOf(e) ?? 'unknown' });
   }
 }
-const notSame = decoys.map((d) => ({ fromLayer: layerOf(d.from), from: ref(d.from), toLayer: layerOf(d.to), to: ref(d.to), trap: d.trap }));
+const notSame = decoys.map((d) => ({
+  fromLayer: layerOf(d.from),
+  from: ref(d.from),
+  toLayer: layerOf(d.to),
+  to: ref(d.to),
+  trap: d.trap
+}));
 const baseRefs = new Set();
 const targetRefs = new Set();
 const dup = (set, e, what) => {
@@ -718,8 +1294,10 @@ for (const r of baseRoots) for (const e of walk(r)) dup(baseRefs, e, 'base');
 for (const r of targetRoots) for (const e of walk(r)) dup(targetRefs, e, 'target');
 for (const a of [...same, ...notSame]) {
   const [fromLayer, toLayer] = [a.fromLayer ?? a.layer, a.toLayer ?? a.layer];
-  if (!baseRefs.has(fromLayer + ':' + a.from) || targetRefs.has(fromLayer + ':' + a.from)) throw new Error('not a removed element: ' + a.from);
-  if (!targetRefs.has(toLayer + ':' + a.to) || baseRefs.has(toLayer + ':' + a.to)) throw new Error('not a new element: ' + a.to);
+  if (!baseRefs.has(fromLayer + ':' + a.from) || targetRefs.has(fromLayer + ':' + a.from))
+    throw new Error('not a removed element: ' + a.from);
+  if (!targetRefs.has(toLayer + ':' + a.to) || baseRefs.has(toLayer + ':' + a.to))
+    throw new Error('not a new element: ' + a.to);
 }
 const count = (roots, layer) => roots.filter((r) => r.layer === layer).reduce((n, r) => n + [...walk(r)].length, 0);
 const answers = {
@@ -740,13 +1318,25 @@ fs.writeFileSync(path.join(here, 'answers.json'), JSON.stringify(answers, null, 
 // to this pair. The kernel is the judge (ReplacesLargePairTest runs it); at the kernel's own values this must list exactly the pairs the kernel lists.
 if (process.argv.includes('--sweep')) {
   const norm = (t) => (t ?? '').trim();
-  const wordsOf = (t) => new Set(norm(t).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+  const wordsOf = (t) =>
+    new Set(
+      norm(t)
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter(Boolean)
+    );
   const flat = (roots) => roots.flatMap((r) => [...walk(r)].map((e) => ({ e, layer: layerOf(e), ref: ref(e) })));
   // `--rewrite-moves`: a what-if that the pair does not plant: every element moved to another parent with its name kept (6 containers, 2 nodes)
   // gets a description written again. It shows what a rule that needs the parents to be a pair costs when the move does not keep the description.
   if (process.argv.includes('--rewrite-moves')) {
-    const moved = new Set(same.filter((a) => a.scenario === 'moved-name-kept' || a.scenario === 'node-moved-name-kept').map((a) => `${a.layer}:${a.to}`));
-    for (const x of flat(targetRoots)) if (moved.has(x.layer + ':' + x.ref)) x.e.description = 'Written again, with no word of the old text, after the move.';
+    const moved = new Set(
+      same
+        .filter((a) => a.scenario === 'moved-name-kept' || a.scenario === 'node-moved-name-kept')
+        .map((a) => `${a.layer}:${a.to}`)
+    );
+    for (const x of flat(targetRoots))
+      if (moved.has(x.layer + ':' + x.ref))
+        x.e.description = 'Written again, with no word of the old text, after the move.';
     console.log(`what-if: the description of ${moved.size} moved elements (name kept) is written again`);
   }
   const goneAll = flat(baseRoots).filter((x) => !targetRefs.has(x.layer + ':' + x.ref));
@@ -775,7 +1365,10 @@ if (process.argv.includes('--sweep')) {
       };
       gone.forEach((x) => bump(x, 0));
       fr.forEach((x) => bump(x, 1));
-      const nameCount = (list, x) => list.filter((y) => norm(y.e.kind) === norm(x.e.kind) && norm(y.e.name).toLowerCase() === norm(x.e.name).toLowerCase()).length;
+      const nameCount = (list, x) =>
+        list.filter(
+          (y) => norm(y.e.kind) === norm(x.e.kind) && norm(y.e.name).toLowerCase() === norm(x.e.name).toLowerCase()
+        ).length;
       const pairs = [];
       for (const a of gone) for (const b of fr) pairs.push([a, b]);
       // shallow pairs first: whether the parents are a pair is known by the time a deeper pair is looked at
@@ -789,7 +1382,10 @@ if (process.argv.includes('--sweep')) {
           if (names !== 'off' && name && name === norm(b.e.name).toLowerCase()) {
             const unique = nameCount(gone, a) === 1 && nameCount(fr, b) === 1;
             const [pa, pb] = [parentOf(a), parentOf(b)];
-            const parentsPair = pa === null || pb === null ? pa === pb : found.has(layer + ':' + pa + ' -> ' + layer + ':' + pb) || (sameParent && pa === pb);
+            const parentsPair =
+              pa === null || pb === null
+                ? pa === pb
+                : found.has(layer + ':' + pa + ' -> ' + layer + ':' + pb) || (sameParent && pa === pb);
             hit = {
               all: true,
               unique,
@@ -831,12 +1427,21 @@ if (process.argv.includes('--sweep')) {
   row('the kernel until wave 013 (names all)', { names: 'all' });
   if (process.argv.includes('--fp')) {
     const found = rule({});
-    const level = (k) => { const [from] = k.split(' -> '); const [layer, r] = from.split(':'); return layer + '/' + r.split('.').length; };
+    const level = (k) => {
+      const [from] = k.split(' -> ');
+      const [layer, r] = from.split(':');
+      return layer + '/' + r.split('.').length;
+    };
     const byLevel = {};
-    for (const k of found) { const l = level(k); byLevel[l] ??= { tp: 0, fp: 0 }; byLevel[l][sameKeys.has(k) ? 'tp' : 'fp']++; }
+    for (const k of found) {
+      const l = level(k);
+      byLevel[l] ??= { tp: 0, fp: 0 };
+      byLevel[l][sameKeys.has(k) ? 'tp' : 'fp']++;
+    }
     console.log(byLevel);
     const noDesc = rule({ close: 0 });
-    for (const k of found) if (!sameKeys.has(k) && !noDesc.has(k) && !plantedKeys.includes(k)) console.log('FP description only:', k);
+    for (const k of found)
+      if (!sameKeys.has(k) && !noDesc.has(k) && !plantedKeys.includes(k)) console.log('FP description only:', k);
   }
   for (const close of [0.5, 0.7, 0.8, 0.9, 1.01]) row(`close ${close > 1 ? 'never' : close}`, { close });
   for (const least of [2, 4, 5, 6, 8]) row(`least ${least} words`, { least });

@@ -16,8 +16,10 @@ const KIND = 'archicode.morin.io/system';
 
 /** The manifest the cases name by its id: YAML, or JSON or TOML when the file says so. */
 function manifestOf(file, id) {
-  if (file.endsWith('.toml')) return '[header]\nkind = "' + KIND + '"\nversion = "1"\n[content]\nid = "' + id + '"\nname = "' + id + '"\n';
-  if (file.endsWith('.json')) return JSON.stringify({ header: { kind: KIND, version: '1' }, content: { id, name: id } }) + '\n';
+  if (file.endsWith('.toml'))
+    return '[header]\nkind = "' + KIND + '"\nversion = "1"\n[content]\nid = "' + id + '"\nname = "' + id + '"\n';
+  if (file.endsWith('.json'))
+    return JSON.stringify({ header: { kind: KIND, version: '1' }, content: { id, name: id } }) + '\n';
   return 'header:\n  kind: "' + KIND + '"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n';
 }
 
@@ -29,9 +31,14 @@ function sentence(template) {
 /** The folder of a case in memory, opened by the editor. */
 async function open(c, options) {
   const files = {};
-  const settings = 'settings:\n  manifests:\n    paths: ' + JSON.stringify(c.paths) + '\n' + (c.views ? '  views:\n    path: ' + JSON.stringify(c.views) + '\n' : '');
+  const settings =
+    'settings:\n  manifests:\n    paths: ' +
+    JSON.stringify(c.paths) +
+    '\n' +
+    (c.views ? '  views:\n    path: ' + JSON.stringify(c.views) + '\n' : '');
   files['.archicode.yaml'] = settings;
-  for (const [file, value] of Object.entries(c.files)) files[file] = typeof value === 'string' ? manifestOf(file, value) : value.raw;
+  for (const [file, value] of Object.entries(c.files))
+    files[file] = typeof value === 'string' ? manifestOf(file, value) : value.raw;
   const mem = memFolder(files, { links: c.links, markLinks: !(options && options.markLinks === false) });
   for (const dir of c.empty_dirs || []) mem.mkdir(dir);
   for (const link of Object.keys(c.links || {})) mem.mkdir(link.slice(0, link.lastIndexOf('/')));
@@ -48,7 +55,9 @@ const isYaml = (file) => /\.ya?ml$/.test(file);
 function check(c, state) {
   const expect = c.expect;
   if (expect.error !== undefined) {
-    const told = state.fatalError ? state.fatalError.replace(/^Could not read the plateaus of .archicode.yaml:\n/, '') : state.duplicateReferences.map((d) => d.message).join('\n');
+    const told = state.fatalError
+      ? state.fatalError.replace(/^Could not read the plateaus of .archicode.yaml:\n/, '')
+      : state.duplicateReferences.map((d) => d.message).join('\n');
     assert.equal(told, sentence(expect.error), c.what);
     return;
   }
@@ -59,9 +68,20 @@ function check(c, state) {
     return;
   }
   assert.deepEqual(Array.from(state.manifestFiles.map((f) => f.relPath)), expect.read.filter(isYaml), c.what);
-  assert.deepEqual(Array.from(state.unreadManifestFiles), expect.read.filter((f) => !isYaml(f)), 'the files the editor does not read are told');
+  assert.deepEqual(
+    Array.from(state.unreadManifestFiles),
+    expect.read.filter((f) => !isYaml(f)),
+    'the files the editor does not read are told'
+  );
   for (const f of state.manifestFiles) assert.equal(f.error, null, f.relPath + ' is read');
-  assert.deepEqual(Array.from(state.index.application.keys()).sort(), expect.read.filter(isYaml).map((f) => c.files[f]).sort(), 'the elements are those of the files');
+  assert.deepEqual(
+    Array.from(state.index.application.keys()).sort(),
+    expect.read
+      .filter(isYaml)
+      .map((f) => c.files[f])
+      .sort(),
+    'the elements are those of the files'
+  );
 }
 
 for (const c of DOCUMENT.cases) {
@@ -73,7 +93,11 @@ for (const c of DOCUMENT.cases) {
 
 test('D15 as a browser lists it, with a link that nothing tells from a folder: a folder inside itself is read once', async () => {
   // only the loop: a browser that follows a link to a folder that is not one it is inside of reads what is there, the command line and the served folder do not
-  const c = Object.assign({}, DOCUMENT.cases.find((x) => x.id === 'D15'), { links: { 'manifests/loop': 'manifests' } });
+  const c = Object.assign(
+    {},
+    DOCUMENT.cases.find((x) => x.id === 'D15'),
+    { links: { 'manifests/loop': 'manifests' } }
+  );
   const { state } = await open(c, { markLinks: false });
   check(c, state);
 });
@@ -95,7 +119,11 @@ test('the order is by code point, not by UTF-16 unit and not by locale', () => {
   const { compareCodePoints } = createApp({});
   assert.equal(compareCodePoints('～', '\u{1F600}'), -1, 'U+FF5E comes before U+1F600');
   assert.ok('～' > '\u{1F600}', 'the UTF-16 order is the other way round');
-  assert.equal(compareCodePoints('B', 'a'), -1, 'an upper case letter before a lower case one, as the command line sorts');
+  assert.equal(
+    compareCodePoints('B', 'a'),
+    -1,
+    'an upper case letter before a lower case one, as the command line sorts'
+  );
   assert.equal(compareCodePoints('a', 'a/b'), -1);
   assert.equal(compareCodePoints('a-b', 'a.b'), -1);
   assert.equal(compareCodePoints('a.b', 'a/b'), -1);
@@ -105,14 +133,23 @@ test('the order is by code point, not by UTF-16 unit and not by locale', () => {
 
 test('the Settings screen accepts a path that ends in `/**` and refuses the rest in the words of the command line', () => {
   const app = createApp({});
-  assert.deepEqual(JSON.parse(JSON.stringify(app.validateManifestsPaths('manifests/**\n./**\nviews-source'))), { valid: true, paths: ['manifests/**', './**', 'views-source'] });
+  assert.deepEqual(JSON.parse(JSON.stringify(app.validateManifestsPaths('manifests/**\n./**\nviews-source'))), {
+    valid: true,
+    paths: ['manifests/**', './**', 'views-source']
+  });
   for (const bad of ['manifests/**/sub', '**', 'manifests/**x', 'manifests/**/']) {
     const result = app.validateManifestsPaths('manifests\n' + bad);
     assert.equal(result.valid, false, bad);
     assert.equal(result.error, 'the path `' + bad + '` of `settings.manifests.paths` ' + DOCUMENT.tails.pattern, bad);
   }
-  assert.match(app.validateManifestsPaths('../x/**').error, /^the path `..\/x\/\*\*` of `settings.manifests.paths` contains `..`: /);
-  assert.match(app.validateManifestsPaths('/srv/**').error, /^the path `\/srv\/\*\*` of `settings.manifests.paths` is absolute: /);
+  assert.match(
+    app.validateManifestsPaths('../x/**').error,
+    /^the path `..\/x\/\*\*` of `settings.manifests.paths` contains `..`: /
+  );
+  assert.match(
+    app.validateManifestsPaths('/srv/**').error,
+    /^the path `\/srv\/\*\*` of `settings.manifests.paths` is absolute: /
+  );
 });
 
 test('a new file is written to the folder of the first path, which is the folder without its `/**`', async () => {
@@ -148,20 +185,40 @@ test('a served folder says which folders are links, and the editor does not foll
     return; // no symbolic links on this system
   }
   const TOKEN = 't';
-  const answer = (status, body) => ({ ok: status >= 200 && status < 300, status, headers: { get: () => null }, async text() { return body; }, async arrayBuffer() { const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)); return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength); }, async json() { return body; } });
+  const answer = (status, body) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: () => null },
+    async text() {
+      return body;
+    },
+    async arrayBuffer() {
+      const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
+      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    },
+    async json() {
+      return body;
+    }
+  });
   const fetch = async (url) => {
     const [route, query] = url.replace('/api/fs/', '').split('?');
     const rel = new URLSearchParams(query || '').get('path') || '';
     const target = path.join(root, rel);
     if (route === 'info') return answer(200, { folder: 'ws' });
     if (route === 'list') {
-      return answer(200, fs.readdirSync(target).sort().filter((n) => !n.startsWith('.') || (rel === '' && n === '.archicode.yaml')) // as EditorHttpServer lists: nothing hidden but the workspace file at the root
-      .map((name) => {
-        const entry = path.join(target, name);
-        const out = { name, kind: fs.statSync(entry).isDirectory() ? 'directory' : 'file' };
-        if (fs.lstatSync(entry).isSymbolicLink()) out.link = true; // as EditorHttpServer says it
-        return out;
-      }));
+      return answer(
+        200,
+        fs
+          .readdirSync(target)
+          .sort()
+          .filter((n) => !n.startsWith('.') || (rel === '' && n === '.archicode.yaml')) // as EditorHttpServer lists: nothing hidden but the workspace file at the root
+          .map((name) => {
+            const entry = path.join(target, name);
+            const out = { name, kind: fs.statSync(entry).isDirectory() ? 'directory' : 'file' };
+            if (fs.lstatSync(entry).isSymbolicLink()) out.link = true; // as EditorHttpServer says it
+            return out;
+          })
+      );
     }
     return fs.existsSync(target) ? answer(200, fs.readFileSync(target, 'utf8')) : answer(404, 'not found');
   };
@@ -177,7 +234,10 @@ test('the folders of a real disk are read the same way: the harness handle is a 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'disk-'));
   fs.mkdirSync(path.join(root, 'manifests/sub'), { recursive: true });
   fs.mkdirSync(path.join(root, 'views-to-be'));
-  fs.writeFileSync(path.join(root, '.archicode.yaml'), 'settings:\n  manifests:\n    paths: ["manifests/**", "./**"]\n');
+  fs.writeFileSync(
+    path.join(root, '.archicode.yaml'),
+    'settings:\n  manifests:\n    paths: ["manifests/**", "./**"]\n'
+  );
   fs.writeFileSync(path.join(root, 'manifests/sub/b.yaml'), manifestOf('b.yaml', 'b'));
   fs.writeFileSync(path.join(root, 'manifests/a.yaml'), manifestOf('a.yaml', 'a'));
   fs.writeFileSync(path.join(root, 'views-to-be/gap.json'), '{"gap": true}\n');
@@ -188,7 +248,11 @@ test('the folders of a real disk are read the same way: the harness handle is a 
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(handle);
   assert.equal(state.fatalError, null);
-  assert.deepEqual(Array.from(state.manifestFiles.map((f) => f.relPath)), ['manifests/a.yaml', 'manifests/sub/b.yaml'], 'two paths find the same files, which are read once');
+  assert.deepEqual(
+    Array.from(state.manifestFiles.map((f) => f.relPath)),
+    ['manifests/a.yaml', 'manifests/sub/b.yaml'],
+    'two paths find the same files, which are read once'
+  );
   assert.deepEqual(Array.from(state.unreadManifestFiles), []);
 });
 
@@ -208,7 +272,12 @@ test('the example of the manual is read from its folders, in order, by the edito
     'manifests/technology/reference.yaml',
     'manifests/technology/reference/server.yaml'
   ]);
-  assert.deepEqual(Array.from(state.index.application.keys()).sort(), ['customer', 'shop', 'shop.warehouse', 'shop.web']);
+  assert.deepEqual(Array.from(state.index.application.keys()).sort(), [
+    'customer',
+    'shop',
+    'shop.warehouse',
+    'shop.web'
+  ]);
   assert.deepEqual(Array.from(state.index.technology.keys()).sort(), ['reference', 'reference.server']);
   assert.deepEqual(Array.from(state.duplicateReferences), []);
 });
@@ -217,10 +286,25 @@ test('a file created in the editor takes the place it has after a reload: the or
   const c = { paths: ['manifests'], files: { 'manifests/B.yaml': 'b', 'manifests/a.yaml': 'a' } };
   const { sandbox, state } = await open(c);
   assert.deepEqual(Array.from(state.manifestFiles.map((f) => f.relPath)), ['manifests/B.yaml', 'manifests/a.yaml']);
-  sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', attachUnderReference: null, id: 'x', name: null, description: null });
-  assert.deepEqual(Array.from(state.manifestFiles.map((f) => f.relPath)), ['manifests/B.yaml', 'manifests/a.yaml', 'manifests/app.x.yaml'], 'a locale would put B after a and app.x');
+  sandbox.commitCreateTopLevelElement({
+    category: 'application',
+    headerKind: 'system',
+    attachUnderReference: null,
+    id: 'x',
+    name: null,
+    description: null
+  });
+  assert.deepEqual(
+    Array.from(state.manifestFiles.map((f) => f.relPath)),
+    ['manifests/B.yaml', 'manifests/a.yaml', 'manifests/app.x.yaml'],
+    'a locale would put B after a and app.x'
+  );
   const source = fs.readFileSync(path.join(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
-  assert.doesNotMatch(source, /relPath\.localeCompare/, 'no list of manifest files is sorted by locale (the plateau compared with, a new element, a new view or story)');
+  assert.doesNotMatch(
+    source,
+    /relPath\.localeCompare/,
+    'no list of manifest files is sorted by locale (the plateau compared with, a new element, a new view or story)'
+  );
 });
 
 test('a views path that YAML reads as a number is the text it is, as the command line reads it', () => {
@@ -236,5 +320,9 @@ test('a folder of a comparison is told by the two files a comparison writes, and
   assert.equal(holdsComparisonFiles(listing(['gap.json', 'file'], ['gap.md', 'file'], ['a.puml', 'file'])), true);
   assert.equal(holdsComparisonFiles(listing(['gap.json', 'file'])), false, 'a lone gap.json may be a manifest');
   assert.equal(holdsComparisonFiles(listing(['gap.md', 'file'])), false);
-  assert.equal(holdsComparisonFiles(listing(['gap.json', 'file'], ['gap.md', 'directory'])), false, 'a folder called gap.md is no file');
+  assert.equal(
+    holdsComparisonFiles(listing(['gap.json', 'file'], ['gap.md', 'directory'])),
+    false,
+    'a folder called gap.md is no file'
+  );
 });

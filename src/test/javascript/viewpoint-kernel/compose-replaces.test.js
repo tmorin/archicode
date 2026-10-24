@@ -54,17 +54,29 @@ test('the page gives the kernel the plateaus the target stands on, and only when
   const { sandbox } = await open(c.files);
   const chain = (target, base) => plain(sandbox.replacesChainBetween(base, target));
   const references = (plateau) => plateau.application.map((e) => e.reference).sort();
-  assert.deepEqual(chain('p3', 'baseline').map(references), [['a'], ['b'], ['c']], 'the base, then the plateaus in between (the target itself is the `target` of the input)');
+  assert.deepEqual(
+    chain('p3', 'baseline').map(references),
+    [['a'], ['b'], ['c']],
+    'the base, then the plateaus in between (the target itself is the `target` of the input)'
+  );
   assert.deepEqual(chain('p3', 'p1').map(references), [['b'], ['c']]);
   assert.equal(chain('p3', 'p2'), null, 'one layer above: nothing to compose');
   assert.equal(chain('p1', 'baseline'), null);
   assert.equal(chain('baseline', 'p3'), null, 'the target is the past of the base: nothing to compose');
-  assert.deepEqual(chain('p3', 'baseline')[1].application, [{ reference: 'b', replaces: ['a'] }], 'a plateau in between says its `replaces` as its layer wrote them');
+  assert.deepEqual(
+    chain('p3', 'baseline')[1].application,
+    [{ reference: 'b', replaces: ['a'] }],
+    'a plateau in between says its `replaces` as its layer wrote them'
+  );
   // the sibling case: the plateau they have in common is the first of the chain
   const fork = DOCUMENT.cases.find((k) => k.id === 'R10');
   const { sandbox: forked } = await open(fork.files);
   assert.equal(forked.replacesChainBetween('p2', 'q'), null, 'q is one layer above the plateau it shares with p2');
-  assert.deepEqual(plain(forked.replacesChainBetween('q', 'p2')).map((p) => p.application.map((e) => e.reference).sort()), [['a'], ['b']], 'p2 stands on baseline and p1 since the plateau it shares with q');
+  assert.deepEqual(
+    plain(forked.replacesChainBetween('q', 'p2')).map((p) => p.application.map((e) => e.reference).sort()),
+    [['a'], ['b']],
+    'p2 stands on baseline and p1 since the plateau it shares with q'
+  );
 });
 
 test('"Write replaces" writes one step: the word goes on the element, relative to the plateau it overrides, and it is read against a plateau further up all the same', async () => {
@@ -75,9 +87,19 @@ test('"Write replaces" writes one step: the word goes on the element, relative t
   const { sandbox, state } = await open(files);
   sandbox.drawPlateau('p2');
   sandbox.compareWithPlateau('p1');
-  assert.deepEqual(plain(sandbox.acceptCandidate({ layer: 'application', from: 'y', to: 'z', reasons: ['name'] })), { ok: true });
-  assert.deepEqual(plain(state.index.application.get('z').replaces), ['y'], 'one entry, the element of the plateau it overrides');
-  assert.deepEqual(plain(state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath)), ['manifests/p2/z.yaml'], 'in the manifest that declares z and nowhere else');
+  assert.deepEqual(plain(sandbox.acceptCandidate({ layer: 'application', from: 'y', to: 'z', reasons: ['name'] })), {
+    ok: true
+  });
+  assert.deepEqual(
+    plain(state.index.application.get('z').replaces),
+    ['y'],
+    'one entry, the element of the plateau it overrides'
+  );
+  assert.deepEqual(
+    plain(state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath)),
+    ['manifests/p2/z.yaml'],
+    'in the manifest that declares z and nowhere else'
+  );
   assert.deepEqual(rowsOf(plain(sandbox.comparisonState().changes)), ['application|z|moved|y']);
   // against the first plateau the entry names nothing it has, and the chain explains it: z is new there and nothing is told
   sandbox.compareWithPlateau('baseline');

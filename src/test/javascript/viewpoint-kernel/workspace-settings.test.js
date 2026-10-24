@@ -14,7 +14,12 @@ const { memFolder } = require('./mem-folder');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
-const system = (id, name) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n';
+const system = (id, name) =>
+  'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  name +
+  '"\n';
 
 async function open(settings, files) {
   const mem = memFolder(Object.assign({ '.archicode.yaml': 'settings:\n' + settings }, files));
@@ -26,11 +31,16 @@ async function open(settings, files) {
   return { sandbox, state, mem };
 }
 
-const names = (state) => Array.from(state.index.application.values()).map((r) => r.reference + '=' + r.name).sort();
+const names = (state) =>
+  Array.from(state.index.application.values())
+    .map((r) => r.reference + '=' + r.name)
+    .sort();
 const messages = (state) => state.fatalError.split('\n').slice(1);
 
 test('a workspace without plateaus is read as it always was: its manifests folders, the band has baseline alone, no selector in the header', async () => {
-  const { sandbox, state } = await open('  views:\n    path: out\n', { 'manifests/app.shop.yaml': system('shop', 'Shop') });
+  const { sandbox, state } = await open('  views:\n    path: out\n', {
+    'manifests/app.shop.yaml': system('shop', 'Shop')
+  });
   assert.equal(state.fatalError, null);
   assert.deepEqual(names(state), ['shop=Shop']);
   assert.equal(state.layers.current, 'baseline');
@@ -61,7 +71,8 @@ test('several problems come one per line', async () => {
 // ---- saving ----
 
 test('the other keys of .archicode.yaml survive a save, comments and layout of the settings too', async () => {
-  const text = '# The architecture of the shop.\napplication:\n  elements: []\nsettings:\n  name: Shop   # shown by the editor\n  # where the manifests are\n  manifests:\n    paths:\n      - shared   # all of them\n  views:\n    path: out\n';
+  const text =
+    '# The architecture of the shop.\napplication:\n  elements: []\nsettings:\n  name: Shop   # shown by the editor\n  # where the manifests are\n  manifests:\n    paths:\n      - shared   # all of them\n  views:\n    path: out\n';
   const { sandbox, state, mem } = await open('', { 'shared/app.shop.yaml': system('shop', 'Shop') });
   mem.put('.archicode.yaml', text);
   await sandbox.loadWorkspace(mem.handle);
@@ -70,7 +81,11 @@ test('the other keys of .archicode.yaml survive a save, comments and layout of t
   state.workspace.settingsDirty = true;
   await sandbox.writeWorkspaceYaml();
   const after = mem.files.get('.archicode.yaml').text;
-  assert.equal(after.slice(0, after.indexOf('  views:')), text.slice(0, text.indexOf('  views:')), 'everything up to the next setting, comments included, is as written');
+  assert.equal(
+    after.slice(0, after.indexOf('  views:')),
+    text.slice(0, text.indexOf('  views:')),
+    'everything up to the next setting, comments included, is as written'
+  );
   assert.match(after, /  views:\n    path: out2\n/);
   const reread = plain(sandbox.parseYaml(after));
   assert.deepEqual(reread.application, { elements: [] });
@@ -78,12 +93,18 @@ test('the other keys of .archicode.yaml survive a save, comments and layout of t
 });
 
 test('a workspace without a manifests.paths still gets the default written, as before, and one that has it keeps it', async () => {
-  const { sandbox, state, mem } = await open('  views:\n    path: out\n', { 'manifests/app.shop.yaml': system('shop', 'Shop') });
+  const { sandbox, state, mem } = await open('  views:\n    path: out\n', {
+    'manifests/app.shop.yaml': system('shop', 'Shop')
+  });
   state.workspace.settings.name = 'N';
   await sandbox.writeWorkspaceYaml();
-  assert.deepEqual(plain(sandbox.parseYaml(mem.files.get('.archicode.yaml').text)).settings.manifests, { paths: ['manifests'] });
+  assert.deepEqual(plain(sandbox.parseYaml(mem.files.get('.archicode.yaml').text)).settings.manifests, {
+    paths: ['manifests']
+  });
   const kept = await open('  manifests:\n    paths: [shared]\n', { 'shared/app.shop.yaml': system('shop', 'Shop') });
-  assert.deepEqual(plain(kept.sandbox.serializeManagedSettings(kept.state.workspace.settings).manifests), { paths: ['shared'] });
+  assert.deepEqual(plain(kept.sandbox.serializeManagedSettings(kept.state.workspace.settings).manifests), {
+    paths: ['shared']
+  });
 });
 
 test('Settings has the manifests paths field and no section of plateaus', async () => {
