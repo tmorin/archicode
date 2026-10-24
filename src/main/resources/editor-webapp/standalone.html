@@ -2971,13 +2971,16 @@ function patchYamlTextPlain(oldText, newValue) {
   return patchYamlTextColumns(oldText, newValue);
 }
 
+/** A line that opens a block scalar on a key (`key: |`, `- key: >-`): the one pattern, shared by `yamlBlockHeader` and `yamlKeylessBlockHeader`. */
+const YAML_KEYED_BLOCK = /^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/;
+
 /**
  * The block scalar a line opens (`key: |`, `- key: >-`, or an item of a list that is one, `- |`): `{ 0: the indentation the text of the block must go past }` as a match, else null. For a key it
  * is what precedes the key (the dashes included); for `- |` it is the column of the last dash, as the text only has to go past the list (wave 022, run 0162, #154).
  */
 function yamlBlockHeader(line) {
   const stripped = stripYamlComment(line);
-  const keyed = stripped.match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+  const keyed = stripped.match(YAML_KEYED_BLOCK);
   if (keyed) return keyed;
   const item = stripped.match(/^( *(?:- +)*)- +[|>][-+0-9]*\s*$/);
   return item;
@@ -3004,7 +3007,7 @@ function yamlKeylessBlockIsLine(original, at, dash, emitted) {
 
 /** The column of the last dash of a line that is an item of a list opening a block scalar (`- |`, `- >-`), else null: the column the text of the block must go past. */
 function yamlKeylessBlockHeader(line) {
-  if (/^ *(?:- +)*(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/.test(stripYamlComment(line))) return null;
+  if (YAML_KEYED_BLOCK.test(stripYamlComment(line))) return null;
   const item = yamlBlockHeader(line);
   return item === null ? null : item[1].length;
 }

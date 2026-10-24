@@ -131,7 +131,7 @@ public class ManifestSchema {
      */
     private void inlineReferences(JsonNode node, Map<String, ObjectNode> definitions) {
         if (node instanceof ObjectNode object) {
-            for (val name : new ArrayList<String>(iterable(object.fieldNames()))) {
+            for (val name : names(object)) {
                 val child = object.get(name);
                 if (
                     child instanceof ObjectNode childObject &&
@@ -150,9 +150,10 @@ public class ManifestSchema {
         }
     }
 
-    private List<String> iterable(java.util.Iterator<String> names) {
+    /** The names of the keys of an object, copied: the object may change while they are read. */
+    private List<String> names(ObjectNode object) {
         val out = new ArrayList<String>();
-        names.forEachRemaining(out::add);
+        object.fieldNames().forEachRemaining(out::add);
         return out;
     }
 
@@ -239,8 +240,7 @@ public class ManifestSchema {
     /** The same tree with the keys of every object in alphabetical order (arrays keep the order they have). */
     private JsonNode sorted(JsonNode node) {
         if (node instanceof ObjectNode object) {
-            val names = new ArrayList<String>();
-            object.fieldNames().forEachRemaining(names::add);
+            val names = names(object);
             names.sort(Comparator.naturalOrder());
             val out = NODES.objectNode();
             names.forEach(name -> out.set(name, sorted(object.get(name))));

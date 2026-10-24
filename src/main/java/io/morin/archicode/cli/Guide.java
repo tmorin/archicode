@@ -89,7 +89,7 @@ public class Guide {
         }
         out.append(": ").append(firstSentence(spec.usageMessage().description())).append('\n');
         for (val option : spec.options()) {
-            if (option.names().length > 0 && EVERYWHERE.contains(option.names()[0])) {
+            if (java.util.Arrays.stream(option.names()).anyMatch(EVERYWHERE::contains)) {
                 continue;
             }
             out.append("  - `")

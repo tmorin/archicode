@@ -14,7 +14,6 @@ import picocli.CommandLine;
         "It is Markdown on the standard output, versioned (the first line is `archicode guide <version>`), the same from any folder, and it loads no workspace."
     }
 )
-@SuppressWarnings("java:S106")
 public class GuideCommand implements Runnable {
 
     @Inject

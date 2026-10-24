@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -26,7 +27,6 @@ import picocli.CommandLine;
         "FOLDER is created if it does not exist; the default is the current folder. Nothing is overwritten: a folder that already has .archicode.yaml is refused."
     }
 )
-@SuppressWarnings("java:S106")
 public class InitCommand implements Runnable {
 
     /** The workspace file, as a resource {@code init/archicode.yaml} and as the file it is written to. */
@@ -54,7 +54,7 @@ public class InitCommand implements Runnable {
     public void run() {
         val root = folder == null ? Path.of("").toAbsolutePath() : folder;
         val workspaceFile = root.resolve(WORKSPACE_FILE);
-        if (Files.exists(workspaceFile)) {
+        if (Files.exists(workspaceFile, LinkOption.NOFOLLOW_LINKS)) {
             throw new ArchiCodeException(
                 "the folder `%s` already holds `%s`: init writes nothing over a workspace",
                 root,
@@ -65,7 +65,7 @@ public class InitCommand implements Runnable {
             throw new ArchiCodeException("`%s` is not a folder: init writes a workspace in a folder", root);
         }
         for (val manifest : MANIFESTS) {
-            if (Files.exists(root.resolve(manifest))) {
+            if (Files.exists(root.resolve(manifest), LinkOption.NOFOLLOW_LINKS)) {
                 throw new ArchiCodeException(
                     "the file `%s` already exists in `%s`: init overwrites nothing",
                     manifest,
@@ -74,14 +74,21 @@ public class InitCommand implements Runnable {
             }
         }
         val written = new ArrayList<String>();
-        write(root, workspaceFile, "init/archicode.yaml", WORKSPACE_FILE, written);
-        for (val manifest : MANIFESTS) {
-            write(root, root.resolve(manifest), "init/" + manifest, manifest, written);
+        val created = new ArrayList<Path>();
+        try {
+            write(workspaceFile, "init/archicode.yaml", WORKSPACE_FILE, written, created);
+            for (val manifest : MANIFESTS) {
+                write(root.resolve(manifest), "init/" + manifest, manifest, written, created);
+            }
+        } catch (RuntimeException e) {
+            // nothing is left half written: what this run created goes, whatever stopped it
+            created.forEach(InitCommand::deleteQuietly);
+            throw e;
         }
         written.add(gitignore(root));
         val out = new StringBuilder("Wrote a workspace in ").append(root).append(":\n");
         written.forEach(line -> out.append("  ").append(line).append('\n'));
-        val where = folder == null ? "" : "cd " + folder + " && ";
+        val where = folder == null ? "" : "cd " + shellQuoted(folder.toString()) + " && ";
         out.append("Next:\n");
         out.append("  ").append(where).append("archicode query graph       check that it loads\n");
         out.append("  ").append(where).append("archicode views generate    draw it into views/\n");
@@ -91,7 +98,7 @@ public class InitCommand implements Runnable {
     }
 
     @SneakyThrows
-    private static void write(Path root, Path target, String resource, String name, List<String> written) {
+    private static void write(Path target, String resource, String name, List<String> written, List<Path> created) {
         Files.createDirectories(target.getParent());
         try (InputStream in = InitCommand.class.getResourceAsStream("/" + resource)) {
             if (in == null) {
@@ -99,6 +106,7 @@ public class InitCommand implements Runnable {
             }
             // CREATE_NEW: nothing is overwritten, whatever happened since the check
             Files.write(target, in.readAllBytes(), StandardOpenOption.CREATE_NEW);
+            created.add(target);
         }
         written.add(name);
     }
@@ -123,5 +131,18 @@ public class InitCommand implements Runnable {
             StandardOpenOption.TRUNCATE_EXISTING
         );
         return ".gitignore (added " + GITIGNORE_LINE + ")";
+    }
+
+    private static void deleteQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            // the error that stopped the run is the one the author reads
+        }
+    }
+
+    /** The folder as a shell word: plain when it only holds characters a shell leaves alone, else in single quotes. */
+    static String shellQuoted(String word) {
+        return word.matches("[A-Za-z0-9_./:@%+=,-]+") ? word : "'" + word.replace("'", "'\\''") + "'";
     }
 }
