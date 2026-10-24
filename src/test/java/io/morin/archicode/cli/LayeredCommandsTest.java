@@ -501,7 +501,7 @@ class LayeredCommandsTest {
         assertEquals(1, result.exit());
         assertEquals(
             List.of(
-                "error: in the plateau `inhouse`, `shop.web` has a relationship towards `nowhere`, which does not exist"
+                "error: in the plateau `inhouse`, `shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[1].destination`"
             ),
             errors(result)
         );

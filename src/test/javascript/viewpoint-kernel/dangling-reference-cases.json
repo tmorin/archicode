@@ -1,0 +1,228 @@
+{
+  "comment": "The dangling references (a relationship destination, a `uses` entry, a hosted application) that name no element, in a workspace with no plateau and in a layered one (run 0165, wave 023, W-2, issue #159; V-B). The sentence names the element that holds the reference, the file that declares it and the key, and a layered workspace says the plateau first. `cli` is, for each command, the `error:` lines it prints (exit 1) or null when it succeeds as before (query graph does not read `uses` or a hosted application); `editor.problems` is what the page tells. A workspace with no plateau is told without the plateau by both tools. Read by DanglingReferenceCasesTest and dangling-references.test.js.",
+  "cases": [
+    {
+      "id": "D01",
+      "what": "plain: a relationship towards an element that is not there says the element, the file and the key",
+      "plateau": null,
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  relationships:\n    - destination: \"nowhere\"\n"
+      },
+      "cli": {
+        "query graph": [
+          "`shop` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ],
+        "views generate": [
+          "`shop` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "`shop` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ]
+      }
+    },
+    {
+      "id": "D02",
+      "what": "plain: the key is the place of the relationship in the list, the dangling one is the second",
+      "plateau": null,
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  relationships:\n    - destination: \"shop.web\"\n    - destination: \"gone\"\n",
+        "manifests/web.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: \"shop\"\ncontent:\n  id: \"web\"\n"
+      },
+      "cli": {
+        "query graph": [
+          "`shop` has a relationship towards `gone`, which does not exist, in `manifests/shop.yaml` at `relationships[1].destination`"
+        ],
+        "views generate": [
+          "`shop` has a relationship towards `gone`, which does not exist, in `manifests/shop.yaml` at `relationships[1].destination`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "`shop` has a relationship towards `gone`, which does not exist, in `manifests/shop.yaml` at `relationships[1].destination`"
+        ]
+      }
+    },
+    {
+      "id": "D03",
+      "what": "plain: an element nested in a manifest is told by its reference, with the file of the manifest",
+      "plateau": null,
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  elements:\n    - kind: container\n      id: web\n      relationships:\n        - destination: \"nowhere\"\n"
+      },
+      "cli": {
+        "query graph": [
+          "`shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ],
+        "views generate": [
+          "`shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "`shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ]
+      }
+    },
+    {
+      "id": "D04",
+      "what": "plain: an element declared under a parent by its header is told with its own file",
+      "plateau": null,
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n",
+        "manifests/web.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: \"shop\"\ncontent:\n  id: \"web\"\n  relationships:\n    - destination: \"nowhere\"\n"
+      },
+      "cli": {
+        "query graph": [
+          "`shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/web.yaml` at `relationships[0].destination`"
+        ],
+        "views generate": [
+          "`shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/web.yaml` at `relationships[0].destination`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "`shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/web.yaml` at `relationships[0].destination`"
+        ]
+      }
+    },
+    {
+      "id": "D05",
+      "what": "plain: an environment that uses an environment that is not there (query graph does not read it, as before)",
+      "plateau": null,
+      "files": {
+        "manifests/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  uses: [\"staging\", \"ghost\"]\n",
+        "manifests/staging.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"staging\"\n"
+      },
+      "cli": {
+        "query graph": null,
+        "views generate": [
+          "`prod` uses `ghost`, which does not exist, in `manifests/prod.yaml` at `uses[1]`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "`prod` uses `ghost`, which does not exist, in `manifests/prod.yaml` at `uses[1]`"
+        ]
+      }
+    },
+    {
+      "id": "D06",
+      "what": "plain: a node that hosts an application that is not there (query graph does not read it, as before)",
+      "plateau": null,
+      "files": {
+        "manifests/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n",
+        "manifests/vm.yaml": "header:\n  kind: \"archicode.morin.io/node\"\n  version: \"1\"\n  parent: \"prod\"\ncontent:\n  id: \"vm\"\n  applications: [\"appghost\"]\n"
+      },
+      "cli": {
+        "query graph": null,
+        "views generate": [
+          "`prod.vm` hosts `appghost`, which does not exist, in `manifests/vm.yaml` at `applications[0]`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "`prod.vm` hosts `appghost`, which does not exist, in `manifests/vm.yaml` at `applications[0]`"
+        ]
+      }
+    },
+    {
+      "id": "D07",
+      "what": "plain: one sentence for what is missing, with how many other elements point at it",
+      "plateau": null,
+      "files": {
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  relationships:\n    - destination: \"ghost\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  relationships:\n    - destination: \"ghost\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"c\"\n  relationships:\n    - destination: \"ghost\"\n"
+      },
+      "cli": {
+        "query graph": [
+          "`a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination` (2 more elements point at it)"
+        ],
+        "views generate": [
+          "`a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination` (2 more elements point at it)"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "`a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination` (2 more elements point at it)"
+        ]
+      }
+    },
+    {
+      "id": "D08",
+      "what": "layered: a relationship, with the plateau, the file and the key",
+      "plateau": "baseline",
+      "files": {
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  relationships:\n    - destination: \"ghost\"\n"
+      },
+      "cli": {
+        "query graph": [
+          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination`"
+        ],
+        "views generate": [
+          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "in the plateau `baseline`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/a.yaml` at `relationships[0].destination`"
+        ]
+      }
+    },
+    {
+      "id": "D09",
+      "what": "layered: the file is that of the plateau that declares the element",
+      "plateau": "p1",
+      "files": {
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n",
+        "manifests/p1/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"a\"\n  relationships:\n    - destination: \"ghost\"\n"
+      },
+      "cli": {
+        "query graph": [
+          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/p1/a.yaml` at `relationships[0].destination`"
+        ],
+        "views generate": [
+          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/p1/a.yaml` at `relationships[0].destination`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "in the plateau `p1`, `a` has a relationship towards `ghost`, which does not exist, in `manifests/p1/a.yaml` at `relationships[0].destination`"
+        ]
+      }
+    },
+    {
+      "id": "D10",
+      "what": "layered: a nested element, a uses entry and a hosted application, one sentence each, in the order of the elements",
+      "plateau": "baseline",
+      "files": {
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n",
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  elements:\n    - kind: container\n      id: web\n      relationships:\n        - destination: \"nowhere\"\n",
+        "manifests/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  uses: [\"ghost\"]\n",
+        "manifests/vm.yaml": "header:\n  kind: \"archicode.morin.io/node\"\n  version: \"1\"\n  parent: \"prod\"\ncontent:\n  id: \"vm\"\n  applications: [\"appghost\"]\n"
+      },
+      "cli": {
+        "query graph": [
+          "in the plateau `baseline`, `prod` uses `ghost`, which does not exist, in `manifests/prod.yaml` at `uses[0]`",
+          "in the plateau `baseline`, `prod.vm` hosts `appghost`, which does not exist, in `manifests/vm.yaml` at `applications[0]`",
+          "in the plateau `baseline`, `shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ],
+        "views generate": [
+          "in the plateau `baseline`, `prod` uses `ghost`, which does not exist, in `manifests/prod.yaml` at `uses[0]`",
+          "in the plateau `baseline`, `prod.vm` hosts `appghost`, which does not exist, in `manifests/vm.yaml` at `applications[0]`",
+          "in the plateau `baseline`, `shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ]
+      },
+      "editor": {
+        "problems": [
+          "in the plateau `baseline`, `prod` uses `ghost`, which does not exist, in `manifests/prod.yaml` at `uses[0]`",
+          "in the plateau `baseline`, `prod.vm` hosts `appghost`, which does not exist, in `manifests/vm.yaml` at `applications[0]`",
+          "in the plateau `baseline`, `shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        ]
+      }
+    }
+  ]
+}

@@ -118,13 +118,19 @@ class CleanFailuresTest {
     @Test
     void viewsGenerateSaysWhichReferenceDanglesAndExitsWithOne() {
         val result = run("-w", dangling().toString(), "views", "generate");
-        assertOneLine(result, "error: dangling reference: nowhere");
+        assertOneLine(
+            result,
+            "error: `shop` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        );
     }
 
     @Test
     void queryGraphSaysWhichReferenceDanglesAndExitsWithOne() {
         val result = run("-w", dangling().toString(), "query", "graph");
-        assertOneLine(result, "error: unable to find the element nowhere");
+        assertOneLine(
+            result,
+            "error: `shop` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[0].destination`"
+        );
     }
 
     @Test

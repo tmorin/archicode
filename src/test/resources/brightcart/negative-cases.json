@@ -520,7 +520,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: in the plateau `baseline`, `agent` has a relationship towards `nowhere.backoffice.console`, which does not exist"
+            "error: in the plateau `baseline`, `agent` has a relationship towards `nowhere.backoffice.console`, which does not exist, in `baseline/application/agent.yaml` at `relationships[0].destination`"
           ]
         },
         {
@@ -532,7 +532,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: in the plateau `baseline`, `agent` has a relationship towards `nowhere.backoffice.console`, which does not exist"
+            "error: in the plateau `baseline`, `agent` has a relationship towards `nowhere.backoffice.console`, which does not exist, in `baseline/application/agent.yaml` at `relationships[0].destination`"
           ]
         }
       ],
@@ -542,7 +542,7 @@
           "compareTo": null,
           "expect": {
             "layerProblems": [
-              "in the plateau `baseline`, `agent` has a relationship towards `nowhere.backoffice.console`, which does not exist"
+              "in the plateau `baseline`, `agent` has a relationship towards `nowhere.backoffice.console`, which does not exist, in `baseline/application/agent.yaml` at `relationships[0].destination`"
             ],
             "danglingRelationships": 1
           }
@@ -1510,7 +1510,7 @@
           "stderr": [
             "warning: the plateau `inhous` exists only through the `plateau` key of the header of `inhouse/application/commerce.cart.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name",
             "warning: the plateaus `inhous` and `inhouse` have ids one letter apart: check that one of them is not a typo",
-            "error: in the plateau `inhouse`, `commerce.checkout` has a relationship towards `commerce.cart`, which does not exist (3 more elements of the plateau point at it)"
+            "error: in the plateau `inhouse`, `commerce.checkout` has a relationship towards `commerce.cart`, which does not exist, in `inhouse/application/commerce.checkout.yaml` at `relationships[0].destination` (3 more elements of the plateau point at it)"
           ]
         }
       ],
@@ -1538,7 +1538,7 @@
               "the plateaus `inhous` and `inhouse` have ids one letter apart: check that one of them is not a typo"
             ],
             "layerProblems": [
-              "in the plateau `inhouse`, `commerce.checkout` has a relationship towards `commerce.cart`, which does not exist (3 more elements of the plateau point at it)"
+              "in the plateau `inhouse`, `commerce.checkout` has a relationship towards `commerce.cart`, which does not exist, in `inhouse/application/commerce.checkout.yaml` at `relationships[0].destination` (3 more elements of the plateau point at it)"
             ],
             "danglingRelationships": 2
           }
@@ -1920,7 +1920,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: in the plateau `baseline`, `probe-a` has a relationship towards `nowhere`, which does not exist (1 more element of the plateau points at it)"
+            "error: in the plateau `baseline`, `probe-a` has a relationship towards `nowhere`, which does not exist, in `baseline/application/probe-a.yaml` at `relationships[0].destination` (1 more element of the plateau points at it)"
           ]
         }
       ],
@@ -1930,7 +1930,7 @@
           "compareTo": null,
           "expect": {
             "layerProblems": [
-              "in the plateau `baseline`, `probe-a` has a relationship towards `nowhere`, which does not exist (1 more element of the plateau points at it)"
+              "in the plateau `baseline`, `probe-a` has a relationship towards `nowhere`, which does not exist, in `baseline/application/probe-a.yaml` at `relationships[0].destination` (1 more element of the plateau points at it)"
             ],
             "danglingRelationships": 2
           }

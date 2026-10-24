@@ -32,6 +32,14 @@ public class ElementIndex {
     @Builder.Default
     Map<Element, String> referenceByElementIndex = new HashMap<>();
 
+    /**
+     * The file that declares each element the manifests declare, by reference, from the folder of the workspace (a nested
+     * element has the file of the manifest it is written in). An element of {@code .archicode.yaml} has none.
+     */
+    @NonNull
+    @Builder.Default
+    Map<String, String> sourceByReference = new HashMap<>();
+
     public Optional<Element> searchElement(String reference) {
         return Optional.ofNullable(elementByReferenceIndex.get(reference));
     }

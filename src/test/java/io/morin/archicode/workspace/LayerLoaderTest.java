@@ -250,11 +250,11 @@ class LayerLoaderTest {
                 """
         );
         assertEquals(
-            "in the plateau `inhouse`, `shop.web` has a relationship towards `nowhere`, which does not exist",
+            "in the plateau `inhouse`, `shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[1].destination`",
             errorOf(files, "inhouse")
         );
         assertEquals(
-            "in the plateau `inhouse`, `shop.web` has a relationship towards `nowhere`, which does not exist",
+            "in the plateau `inhouse`, `shop.web` has a relationship towards `nowhere`, which does not exist, in `manifests/shop.yaml` at `relationships[1].destination`",
             errorOf(files, "marketplace"),
             "a plateau that overrides it says the same, and names the layer that is wrong"
         );
@@ -278,7 +278,7 @@ class LayerLoaderTest {
                 """
         );
         assertEquals(
-            "in the plateau `marketplace`, `prod.vm` hosts `shop.cache`, which does not exist",
+            "in the plateau `marketplace`, `prod.vm` hosts `shop.cache`, which does not exist, in `manifests/prod.yaml` at `applications[1]`",
             errorOf(files, "marketplace")
         );
     }
@@ -529,7 +529,7 @@ class LayerLoaderTest {
                 .replace("  name: \"Production\"\n", "  name: \"Production\"\n  uses: [\"ghost\"]\n")
         );
         assertEquals(
-            "in the plateau `baseline`, `prod` uses `ghost`, which does not exist",
+            "in the plateau `baseline`, `prod` uses `ghost`, which does not exist, in `manifests/prod.yaml` at `uses[0]`",
             errorOf(files, "baseline")
         );
     }
@@ -553,7 +553,7 @@ class LayerLoaderTest {
             """
         );
         assertEquals(
-            "in the plateau `inhouse`, `extra` has a relationship towards `aaa`, which does not exist\nin the plateau `inhouse`, `extra` has a relationship towards `aaa2`, which does not exist\nin the plateau `inhouse`, `extra` has a relationship towards `zzz`, which does not exist",
+            "in the plateau `inhouse`, `extra` has a relationship towards `aaa`, which does not exist, in `plateaus/inhouse/extra.yaml` at `relationships[2].destination`\nin the plateau `inhouse`, `extra` has a relationship towards `aaa2`, which does not exist, in `plateaus/inhouse/extra.yaml` at `relationships[1].destination`\nin the plateau `inhouse`, `extra` has a relationship towards `zzz`, which does not exist, in `plateaus/inhouse/extra.yaml` at `relationships[0].destination`",
             errorOf(files, "inhouse")
         );
     }
