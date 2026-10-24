@@ -302,19 +302,6 @@ public class GenerateViewsCommand implements Runnable {
         return onlyChanges && comparison != null;
     }
 
-    public void renderWorkspace(Workspace workspace) {
-        renderWorkspace(workspace, null);
-    }
-
-    /**
-     * @param workspace  the workspace to draw
-     * @param comparison what changed between the two plateaus {@code workspace} is the union of, or null for the views of a
-     *                   workspace that compares nothing
-     */
-    public void renderWorkspace(Workspace workspace, Comparison comparison) {
-        renderWorkspace(workspace, workspace, comparison);
-    }
-
     /**
      * @param plateauWorkspace the workspace of the plateau {@code workspace} is drawn from: itself, or the one a facet was
      *                         applied to (a view cannot be drawn in a plateau that lacks what it names, whatever the facet)

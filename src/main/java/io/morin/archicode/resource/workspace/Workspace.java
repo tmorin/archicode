@@ -12,7 +12,6 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import lombok.*;
 import lombok.experimental.UtilityClass;
 import lombok.extern.jackson.Jacksonized;
@@ -184,21 +183,6 @@ public class Workspace {
             if (element instanceof Parent<?>) {
                 for (Element child : ((Parent<?>) element).getElements()) {
                     consumer.accept(element, child);
-                    walkDown(child, consumer);
-                }
-            }
-        }
-
-        /**
-         * Walk down the descendents of the given element.
-         *
-         * @param element  the element
-         * @param consumer the consumer with the child
-         */
-        public void walkDown(Element element, Consumer<Element> consumer) {
-            consumer.accept(element);
-            if (element instanceof Parent<?>) {
-                for (Element child : ((Parent<?>) element).getElements()) {
                     walkDown(child, consumer);
                 }
             }

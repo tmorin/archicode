@@ -22,6 +22,7 @@ import lombok.SneakyThrows;
 import lombok.val;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -381,5 +382,54 @@ class EditorHttpServerTest {
 
     private int status(String rawResponse) {
         return Integer.parseInt(rawResponse.split(" ")[1]);
+    }
+
+    @Test
+    void refusesAMethodThatTheRouteDoesNotTake() {
+        assertEquals(405, call("POST", "/?token=" + running.token(), "x", null, null).statusCode());
+        assertEquals("method not allowed", call("POST", "/?token=" + running.token(), "x", null, null).body());
+        assertEquals("method not allowed", api("POST", "info", "", "x").body());
+        assertEquals("method not allowed", api("PUT", "list", "", "x").body());
+        val file = api("POST", "file", "manifests/app.yaml", "x: 1");
+        assertEquals(405, file.statusCode());
+        assertEquals("method not allowed", file.body());
+        assertEquals("header: {kind: person}\n", readQuietly("manifests/app.yaml"), "nothing was written");
+    }
+
+    @Test
+    void saysWhichRouteIsUnknown() {
+        val response = call("GET", "/api/fs/nothing?path=a", null, running.token(), null);
+        assertEquals(404, response.statusCode());
+        assertEquals("unknown route: nothing", response.body());
+        assertEquals(404, call("GET", "/api/fs/", null, running.token(), null).statusCode());
+    }
+
+    @Test
+    void answersAnEmptyFileWithAnEmptyBody() throws Exception {
+        Files.writeString(folder.resolve("manifests/empty.yaml"), "");
+        val response = api("GET", "file", "manifests/empty.yaml", null);
+        assertEquals(200, response.statusCode());
+        assertEquals("", response.body());
+        assertTrue(response.headers().firstValue(EditorHttpServer.MODIFIED_HEADER).isPresent());
+
+        // and it takes an empty body as a file
+        assertEquals(201, api("PUT", "file", "manifests/created-empty.yaml", "").statusCode());
+        assertEquals("", readQuietly("manifests/created-empty.yaml"));
+    }
+
+    @Test
+    void failsWithoutSayingWhyWhenTheFileCannotBeRead() throws Exception {
+        val locked = folder.resolve("manifests/locked.yaml");
+        Files.writeString(locked, "secret: true\n");
+        locked.toFile().setReadable(false, false);
+        try {
+            Assumptions.assumeFalse(Files.isReadable(locked), "this user reads a file whatever its mode");
+            val response = api("GET", "file", "manifests/locked.yaml", null);
+            assertEquals(500, response.statusCode());
+            assertEquals("the editor server failed, see its log", response.body());
+            assertFalse(response.body().contains(folder.toString()), "no absolute path");
+        } finally {
+            locked.toFile().setReadable(true, false);
+        }
     }
 }

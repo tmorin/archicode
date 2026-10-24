@@ -259,7 +259,7 @@ wave_manifest:
       slug: java-coverage-above-90
       phase: P3
       depends_on: []
-      run: null
+      run: 0171
       delegation: standard
       likely_paths:
         - 'pom.xml'
