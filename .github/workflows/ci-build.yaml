@@ -83,6 +83,18 @@ jobs:
       - name: "Lint the viewpoint kernel"
         # every clippy finding is fixed; a lint that would change what the kernel computes is allowed on its item with the reason
         run: (cd src/main/rust/viewpoint-kernel && cargo clippy --all-targets -- -D warnings)
+      - name: "Install cargo-llvm-cov"
+        # the prebuilt binary of this version, its checksum checked by the action (a few seconds; no compilation, no server of ours, no secret)
+        uses: "taiki-e/install-action@v2.87.26"
+        with:
+          tool: cargo-llvm-cov@0.9.1
+      - name: "Cover the viewpoint kernel"
+        # line coverage of the kernel by all its tests (llvm-tools-preview of rust-toolchain.toml); the step fails below 90 %. The unit tests are in
+        # src/*_tests.rs, which are not counted (the coverage is of production code); run the same command to see the table by file
+        run: |
+          cd src/main/rust/viewpoint-kernel
+          cargo llvm-cov --ignore-filename-regex '_tests\.rs$' --fail-under-lines 90 \
+            || { echo "::error::the line coverage of the viewpoint kernel is below 90 % (the table above says where)"; exit 1; }
       - name: "Check the committed WebAssembly is the one the Rust builds"
         # the same build as embed.sh, into a scratch directory, with the compiler of rust-toolchain.toml: a change to the
         # Rust whose .wasm was not re-embedded (in src/main/wasm and in standalone.html) fails
