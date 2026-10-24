@@ -9,7 +9,11 @@ const CASES: &str = include_str!("../../../../test/javascript/viewpoint-kernel/p
 
 fn pointer_parent<'a>(doc: &'a mut Value, pointer: &str) -> (&'a mut Value, String) {
     let (parent, last) = pointer.rsplit_once('/').expect("a pointer has a slash");
-    (doc.pointer_mut(parent).unwrap_or_else(|| panic!("no node at {parent}")), last.to_string())
+    (
+        doc.pointer_mut(parent)
+            .unwrap_or_else(|| panic!("no node at {parent}")),
+        last.to_string(),
+    )
 }
 
 /// `set`, `append` and `remove` at a JSON pointer: how a case says what its workspace is, from the base.
@@ -25,12 +29,18 @@ fn edit(doc: &mut Value, step: &Value) {
             _ => panic!("cannot set at {pointer}"),
         }
     } else if let Some(pointer) = step.get("append").and_then(Value::as_str) {
-        doc.pointer_mut(pointer).and_then(Value::as_array_mut).unwrap_or_else(|| panic!("no list at {pointer}")).push(step["value"].clone());
+        doc.pointer_mut(pointer)
+            .and_then(Value::as_array_mut)
+            .unwrap_or_else(|| panic!("no list at {pointer}"))
+            .push(step["value"].clone());
     } else if let Some(pointer) = step.get("remove").and_then(Value::as_str) {
         let (parent, last) = pointer_parent(doc, pointer);
         match parent {
             Value::Object(object) => {
-                assert!(object.remove(&last).is_some(), "nothing to remove at {pointer}");
+                assert!(
+                    object.remove(&last).is_some(),
+                    "nothing to remove at {pointer}"
+                );
             }
             Value::Array(list) => {
                 list.remove(last.parse::<usize>().unwrap());
@@ -60,19 +70,39 @@ fn every_case_of_the_shared_list_gives_its_workspace_and_its_reports_or_its_erro
         let name = case["name"].as_str().unwrap();
         let out = call(base, case);
         if case.get("error").is_some() || case.get("error_contains").is_some() {
-            let message = out["error"].as_str().unwrap_or_else(|| panic!("{name}: expected an error, got {out}"));
+            let message = out["error"]
+                .as_str()
+                .unwrap_or_else(|| panic!("{name}: expected an error, got {out}"));
             if let Some(exact) = case.get("error").and_then(Value::as_str) {
                 assert_eq!(message, exact, "{name}");
             }
-            for piece in case.get("error_contains").and_then(Value::as_array).into_iter().flatten() {
-                assert!(message.contains(piece.as_str().unwrap()), "{name}: {message:?} does not contain {piece}");
+            for piece in case
+                .get("error_contains")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                assert!(
+                    message.contains(piece.as_str().unwrap()),
+                    "{name}: {message:?} does not contain {piece}"
+                );
             }
-            assert_eq!(out.get("patch"), case.get("error_patch"), "{name}: error.patch");
-            assert!(out.get("workspace").is_none(), "{name}: an error returns no workspace");
+            assert_eq!(
+                out.get("patch"),
+                case.get("error_patch"),
+                "{name}: error.patch"
+            );
+            assert!(
+                out.get("workspace").is_none(),
+                "{name}: an error returns no workspace"
+            );
         } else {
             assert!(out.get("error").is_none(), "{name}: {out}");
             let mut expected = base.clone();
-            for step in case["edits"].as_array().expect("a case without an error has edits") {
+            for step in case["edits"]
+                .as_array()
+                .expect("a case without an error has edits")
+            {
                 edit(&mut expected, step);
             }
             assert_eq!(out["workspace"], expected, "{name}: workspace");
@@ -93,7 +123,11 @@ fn a_patch_keeps_the_order_of_the_keys_of_the_workspace_and_of_the_element() {
         { "operator": "SET", "target": "shop", "field": "owner", "value": "team-a" }
     ]});
     let out = apply_patches_json(&request.to_string());
-    let (name, application, styles) = (out.find("\"name\":\"Demo\"").unwrap(), out.find("\"application\"").unwrap(), out.find("\"styles\"").unwrap());
+    let (name, application, styles) = (
+        out.find("\"name\":\"Demo\"").unwrap(),
+        out.find("\"application\"").unwrap(),
+        out.find("\"styles\"").unwrap(),
+    );
     assert!(name < application && application < styles, "{out}");
     let shop = &out[out.find("\"id\":\"shop\"").unwrap()..];
     // the replaced field stays where it was, the new one comes last
@@ -115,7 +149,11 @@ fn the_same_input_gives_the_same_bytes() {
 
 #[test]
 fn a_call_without_patches_gives_the_workspace_back() {
-    for request in [json!({ "workspace": workspace() }), json!({ "workspace": workspace(), "patches": null }), json!({ "workspace": workspace(), "patches": [] })] {
+    for request in [
+        json!({ "workspace": workspace() }),
+        json!({ "workspace": workspace(), "patches": null }),
+        json!({ "workspace": workspace(), "patches": [] }),
+    ] {
         let out: Value = serde_json::from_str(&apply_patches_json(&request.to_string())).unwrap();
         assert_eq!(out["workspace"], workspace());
         assert_eq!(out["patches"], json!([]));
@@ -128,7 +166,10 @@ fn what_is_not_a_request_is_an_error_not_a_trap() {
     for (input, piece) in [
         ("{", "invalid input"),
         ("{}", "missing field `workspace`"),
-        (r#"{"workspace":[],"patches":[]}"#, "`workspace` is a list, not an object"),
+        (
+            r#"{"workspace":[],"patches":[]}"#,
+            "`workspace` is a list, not an object",
+        ),
         (r#"{"workspace":{},"patches":{}}"#, "invalid input"),
         (r#"{"workspace":{},"patches":[],"extra":1}"#, ""),
     ] {
@@ -137,7 +178,10 @@ fn what_is_not_a_request_is_an_error_not_a_trap() {
             // an unknown key of the request is ignored, like the other entry points
             assert!(out.get("error").is_none(), "{out}");
         } else {
-            assert!(out["error"].as_str().unwrap().contains(piece), "{input}: {out}");
+            assert!(
+                out["error"].as_str().unwrap().contains(piece),
+                "{input}: {out}"
+            );
             assert!(out.get("patch").is_none());
         }
     }
@@ -146,10 +190,22 @@ fn what_is_not_a_request_is_an_error_not_a_trap() {
 #[test]
 fn a_reference_that_led_nowhere_before_is_not_touched_by_a_removal() {
     let mut ws = workspace();
-    ws["application"]["elements"][0]["elements"][2]["relationships"] = json!([{ "destination": "nowhere" }]);
-    let out: Value = serde_json::from_str(&apply_patches_json(&json!({ "workspace": ws, "patches": [{ "operator": "REMOVE", "target": "tax" }] }).to_string())).unwrap();
-    assert_eq!(out["workspace"]["application"]["elements"][0]["elements"][2]["relationships"], json!([{ "destination": "nowhere" }]));
-    assert_eq!(out["patches"][0]["dropped"].as_array().unwrap().len(), 3, "only what pointed at tax");
+    ws["application"]["elements"][0]["elements"][2]["relationships"] =
+        json!([{ "destination": "nowhere" }]);
+    let out: Value = serde_json::from_str(&apply_patches_json(
+        &json!({ "workspace": ws, "patches": [{ "operator": "REMOVE", "target": "tax" }] })
+            .to_string(),
+    ))
+    .unwrap();
+    assert_eq!(
+        out["workspace"]["application"]["elements"][0]["elements"][2]["relationships"],
+        json!([{ "destination": "nowhere" }])
+    );
+    assert_eq!(
+        out["patches"][0]["dropped"].as_array().unwrap().len(),
+        3,
+        "only what pointed at tax"
+    );
 }
 
 #[test]
@@ -158,9 +214,17 @@ fn a_field_taken_out_leaves_the_other_keys_of_the_element_in_their_order() {
     let out = apply_patches_json(&request.to_string());
     let shop = &out[out.find("\"id\":\"shop\"").unwrap()..];
     // `shop` is {id, kind, name, description, elements}: taking `name` out keeps id, kind, description, elements in that order
-    let (kind, description, elements) = (shop.find("\"kind\"").unwrap(), shop.find("\"description\"").unwrap(), shop.find("\"elements\"").unwrap());
+    let (kind, description, elements) = (
+        shop.find("\"kind\"").unwrap(),
+        shop.find("\"description\"").unwrap(),
+        shop.find("\"elements\"").unwrap(),
+    );
     assert!(kind < description && description < elements, "{out}");
-    assert!(!out[out.find("\"id\":\"shop\"").unwrap()..out.find("\"id\":\"web\"").unwrap()].contains("\"name\""), "{out}");
+    assert!(
+        !out[out.find("\"id\":\"shop\"").unwrap()..out.find("\"id\":\"web\"").unwrap()]
+            .contains("\"name\""),
+        "{out}"
+    );
 }
 
 #[test]
@@ -168,10 +232,15 @@ fn a_field_taken_out_is_not_a_removal_and_leaves_no_cascade() {
     let request = json!({ "workspace": workspace(), "patches": [{ "operator": "REMOVE", "target": "prod.vm", "layer": "technology", "field": "applications" }]});
     let out: Value = serde_json::from_str(&apply_patches_json(&request.to_string())).unwrap();
     let report = &out["patches"][0];
-    assert!(report.get("removed").is_none() && report.get("dropped").is_none(), "{report}");
+    assert!(
+        report.get("removed").is_none() && report.get("dropped").is_none(),
+        "{report}"
+    );
     assert_eq!(report["matched"], 1);
     // the same element, without the key, and every other element as it was
-    assert!(out["workspace"]["technology"]["elements"][0]["elements"][0].get("applications").is_none());
+    assert!(out["workspace"]["technology"]["elements"][0]["elements"][0]
+        .get("applications")
+        .is_none());
     assert_eq!(out["workspace"]["application"], workspace()["application"]);
 }
 
@@ -203,7 +272,10 @@ fn one_by_one(workspace: &Value, patches: &[Value]) -> Value {
     let mut doc = workspace.clone();
     let mut reports = Vec::new();
     for (index, patch) in patches.iter().enumerate() {
-        let answer: Value = serde_json::from_str(&apply_patches_json(&json!({ "workspace": doc, "patches": [patch] }).to_string())).unwrap();
+        let answer: Value = serde_json::from_str(&apply_patches_json(
+            &json!({ "workspace": doc, "patches": [patch] }).to_string(),
+        ))
+        .unwrap();
         if answer.get("error").is_some() {
             return json!({ "error": answer["error"], "rank": index + 1 });
         }
@@ -216,7 +288,10 @@ fn one_by_one(workspace: &Value, patches: &[Value]) -> Value {
 }
 
 fn in_one_call(workspace: &Value, patches: &[Value]) -> Value {
-    let answer: Value = serde_json::from_str(&apply_patches_json(&json!({ "workspace": workspace, "patches": patches }).to_string())).unwrap();
+    let answer: Value = serde_json::from_str(&apply_patches_json(
+        &json!({ "workspace": workspace, "patches": patches }).to_string(),
+    ))
+    .unwrap();
     if let Some(error) = answer.get("error") {
         let rank = answer["patch"]["rank"].clone();
         return json!({ "error": error, "rank": rank });
@@ -226,11 +301,17 @@ fn in_one_call(workspace: &Value, patches: &[Value]) -> Value {
 
 fn same_as_one_by_one(patches: Vec<Value>) {
     let workspace = counted_workspace();
-    let (together, alone) = (in_one_call(&workspace, &patches), one_by_one(&workspace, &patches));
+    let (together, alone) = (
+        in_one_call(&workspace, &patches),
+        one_by_one(&workspace, &patches),
+    );
     // an error sentence names the plateau and the rank: only whether and where it fails is compared
     if together.get("error").is_some() || alone.get("error").is_some() {
         assert_eq!(together["rank"], alone["rank"], "{together}\n{alone}");
-        assert_eq!(together.get("error").is_some(), alone.get("error").is_some());
+        assert_eq!(
+            together.get("error").is_some(),
+            alone.get("error").is_some()
+        );
         return;
     }
     assert_eq!(together, alone);
@@ -246,9 +327,19 @@ fn remove_layer(target: &str, layer: &str) -> Value {
 
 #[test]
 fn removals_in_a_row_drop_what_points_at_each_as_one_patch_at_a_time_does() {
-    same_as_one_by_one(vec![remove("a.x"), remove("b.c.d"), remove("b.c"), remove("keep"), remove("a")]);
+    same_as_one_by_one(vec![
+        remove("a.x"),
+        remove("b.c.d"),
+        remove("b.c"),
+        remove("keep"),
+        remove("a"),
+    ]);
     same_as_one_by_one(vec![remove("b"), remove("a.x"), remove("a")]);
-    same_as_one_by_one(vec![remove("b.c"), remove_layer("env.n", "technology"), remove_layer("env", "technology")]);
+    same_as_one_by_one(vec![
+        remove("b.c"),
+        remove_layer("env.n", "technology"),
+        remove_layer("env", "technology"),
+    ]);
 }
 
 #[test]
@@ -261,35 +352,69 @@ fn an_element_declared_twice_is_gone_when_both_are() {
 #[test]
 fn a_removal_of_a_path_inside_another_in_one_patch_reads_the_document() {
     let path = |p: &str| json!({ "operator": "REMOVE", "json-path": p });
-    same_as_one_by_one(vec![path("$.application..elements[?(@.id == 'c' || @.id == 'd')]"), remove("keep")]);
+    same_as_one_by_one(vec![
+        path("$.application..elements[?(@.id == 'c' || @.id == 'd')]"),
+        remove("keep"),
+    ]);
     same_as_one_by_one(vec![path("$.application.elements[0:2]"), remove("keep")]);
     same_as_one_by_one(vec![path("$.application"), remove("keep")]);
 }
 
 #[test]
-fn patches_that_set_with_and_without_a_field_between_removals_leave_the_references_as_one_at_a_time_reads_them() {
+fn patches_that_set_with_and_without_a_field_between_removals_leave_the_references_as_one_at_a_time_reads_them(
+) {
     let set = |target: &str, field: &str| json!({ "operator": "SET", "target": target, "field": field, "value": "new" });
-    same_as_one_by_one(vec![remove("b.c.d"), set("b.c", "description"), remove("b.c"), set("keep", "name"), remove("a.x")]);
+    same_as_one_by_one(vec![
+        remove("b.c.d"),
+        set("b.c", "description"),
+        remove("b.c"),
+        set("keep", "name"),
+        remove("a.x"),
+    ]);
     // without a field the nodes themselves are replaced: here an element gets another one inside it
     let replace = json!({ "operator": "SET", "json-path": "$.application.elements[2]", "value": { "id": "dup", "kind": "system", "elements": [{ "id": "kid", "kind": "container" }] } });
-    same_as_one_by_one(vec![remove("a.x"), replace.clone(), remove("dup.kid"), remove("b.c")]);
+    same_as_one_by_one(vec![
+        remove("a.x"),
+        replace.clone(),
+        remove("dup.kid"),
+        remove("b.c"),
+    ]);
     // a patch that renames an element is refused, and a removal before it changes nothing about that
     let rename = json!({ "operator": "SET", "json-path": "$.application.elements[1]", "value": { "id": "other", "kind": "system" } });
     same_as_one_by_one(vec![remove("a.x"), rename, remove("b")]);
 }
 
 #[test]
-fn removing_a_field_that_is_an_id_is_still_refused_and_a_field_of_an_element_does_not_confuse_the_next_removal() {
+fn removing_a_field_that_is_an_id_is_still_refused_and_a_field_of_an_element_does_not_confuse_the_next_removal(
+) {
     let field = |target: &str, field: &str| json!({ "operator": "REMOVE", "target": target, "field": field });
-    same_as_one_by_one(vec![remove("a.x"), field("keep", "relationships"), remove("orphan")]);
-    same_as_one_by_one(vec![remove("a.x"), json!({ "operator": "REMOVE", "json-path": "$.application.elements[5].id" }), remove("b")]);
+    same_as_one_by_one(vec![
+        remove("a.x"),
+        field("keep", "relationships"),
+        remove("orphan"),
+    ]);
+    same_as_one_by_one(vec![
+        remove("a.x"),
+        json!({ "operator": "REMOVE", "json-path": "$.application.elements[5].id" }),
+        remove("b"),
+    ]);
 }
 
 #[test]
 fn a_facet_that_removes_an_id_then_an_element_reads_the_references_again() {
     // the actions of a facet run one after the other on what the one before left: one call is the same as one call for each
-    let actions = |paths: &[&str]| -> Vec<Value> { paths.iter().map(|p| json!({ "operator": "REMOVE", "json_path": p })).collect() };
-    let apply = |workspace: &Value, list: &[Value]| -> Value { serde_json::from_str(&apply_facet_json(&json!({ "workspace": workspace, "actions": list }).to_string())).unwrap() };
+    let actions = |paths: &[&str]| -> Vec<Value> {
+        paths
+            .iter()
+            .map(|p| json!({ "operator": "REMOVE", "json_path": p }))
+            .collect()
+    };
+    let apply = |workspace: &Value, list: &[Value]| -> Value {
+        serde_json::from_str(&apply_facet_json(
+            &json!({ "workspace": workspace, "actions": list }).to_string(),
+        ))
+        .unwrap()
+    };
     let paths = [
         "$.application.elements[1].id",
         "$.application.elements[0].elements[0]",
@@ -323,23 +448,52 @@ fn what_a_removal_says_is_gone_is_what_the_document_no_longer_holds() {
     };
     let cases: Vec<Vec<Vec<Step>>> = vec![
         vec![element("application", &[0, 0])],
-        vec![element("application", &[1]), element("application", &[0, 0])],
-        vec![element("application", &[1, 0]), element("application", &[1])], // one inside the other
-        vec![element("application", &[2])],                                   // declared twice: the other stays
-        vec![element("application", &[2]), element("application", &[3])],    // both go
-        vec![element("application", &[4])],                                  // no `id`, nor its children
+        vec![
+            element("application", &[1]),
+            element("application", &[0, 0]),
+        ],
+        vec![
+            element("application", &[1, 0]),
+            element("application", &[1]),
+        ], // one inside the other
+        vec![element("application", &[2])], // declared twice: the other stays
+        vec![element("application", &[2]), element("application", &[3])], // both go
+        vec![element("application", &[4])], // no `id`, nor its children
         vec![element("application", &[4, 0])],
         vec![element("technology", &[0]), element("application", &[5])],
         vec![vec![name("application")]],
         vec![vec![name("application"), name("elements")]],
-        vec![element("application", &[0, 0]), vec![name("application"), name("elements"), Step::Index(1), name("id")]],
+        vec![
+            element("application", &[0, 0]),
+            vec![
+                name("application"),
+                name("elements"),
+                Step::Index(1),
+                name("id"),
+            ],
+        ],
     ];
     for (n, found) in cases.into_iter().enumerate() {
         let mut fast = counted_workspace();
         let mut slow = counted_workspace();
         let before = References::of(&slow);
         let mut counts = None;
-        let removal = remove_nodes(&mut fast, found.iter().map(|steps| steps.iter().map(|s| match s { Step::Name(x) => name(x), Step::Index(i) => Step::Index(*i) }).collect()).collect(), &mut counts);
+        let removal = remove_nodes(
+            &mut fast,
+            found
+                .iter()
+                .map(|steps| {
+                    steps
+                        .iter()
+                        .map(|s| match s {
+                            Step::Name(x) => name(x),
+                            Step::Index(i) => Step::Index(*i),
+                        })
+                        .collect()
+                })
+                .collect(),
+            &mut counts,
+        );
         // the rule: what the document held before and does not hold after, taken out of the document through the same removal without the counts
         let mut sorted = found;
         sorted.sort_unstable_by(|a, b| b.cmp(a));
@@ -365,10 +519,29 @@ fn what_a_removal_says_is_gone_is_what_the_document_no_longer_holds() {
             }
         }
         let after = References::of(&slow);
-        let any_element = sorted.iter().any(|steps| matches!(steps.as_slice(), [_, Step::Name(e), ..] if e == "elements") || steps.len() == 1);
+        let any_element = sorted.iter().any(|steps| {
+            matches!(steps.as_slice(), [_, Step::Name(e), ..] if e == "elements")
+                || steps.len() == 1
+        });
         if any_element {
-            assert!(removal.gone.application == before.application.difference(&after.application).cloned().collect(), "case {n}: application");
-            assert!(removal.gone.technology == before.technology.difference(&after.technology).cloned().collect(), "case {n}: technology");
+            assert!(
+                removal.gone.application
+                    == before
+                        .application
+                        .difference(&after.application)
+                        .cloned()
+                        .collect(),
+                "case {n}: application"
+            );
+            assert!(
+                removal.gone.technology
+                    == before
+                        .technology
+                        .difference(&after.technology)
+                        .cloned()
+                        .collect(),
+                "case {n}: technology"
+            );
         }
     }
 }

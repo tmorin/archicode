@@ -18,6 +18,8 @@ Viewpoint kernel (Rust compiled to WebAssembly, shared by the CLI and the standa
 
 ```bash
 cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml
+cargo fmt --check --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml     # rustfmt (`cargo fmt` writes); CI step "Check the format of the viewpoint kernel"
+cargo clippy --all-targets --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml -- -D warnings   # every finding is fixed, none baselined; CI step "Lint the viewpoint kernel"
 src/main/rust/viewpoint-kernel/embed.sh                  # after changing the Rust: rebuilds and re-embeds the .wasm
 node --test "src/test/javascript/**/*.test.js"           # kernel and standalone editor vs. the views the CLI generates
 scripts/byte-identity.sh                                 # V-C (wave 023): the jar of the tag archicode-0.19.0 (built outside the repo from `git archive`) and the working tree run the commands on every shipped workspace; files, stdout, stderr and exit codes must be identical but for the sentences of scripts/byte-identity-exceptions.txt
