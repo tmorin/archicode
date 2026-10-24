@@ -379,6 +379,10 @@
             <properties>
                 <skipITs>false</skipITs>
                 <quarkus.native.enabled>true</quarkus.native.enabled>
+                <!-- The coverage floors are the Build job's (unit tests and @QuarkusTest on the JVM). Here Surefire is skipped, so
+                     no test would write the file the report and the check read, and the check would fail on 0.00: the three
+                     executions of jacoco-maven-plugin (agent, report, check) do nothing. -->
+                <jacoco.skip>true</jacoco.skip>
             </properties>
             <build>
                 <plugins>
