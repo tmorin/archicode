@@ -1,0 +1,45 @@
+{
+  "total": {
+    "lines": 90,
+    "functions": 90
+  },
+  "areas": {
+    "yaml-and-save": {
+      "lines": 90,
+      "functions": 90
+    },
+    "layers-and-plateaus": {
+      "lines": 90,
+      "functions": 90
+    },
+    "workspace-and-files": {
+      "lines": 90,
+      "functions": 90
+    },
+    "editing": {
+      "lines": 90,
+      "functions": 90
+    },
+    "pages": {
+      "lines": 83.8,
+      "functions": 90
+    },
+    "diagram": {
+      "lines": 90,
+      "functions": 90
+    },
+    "stories": {
+      "lines": 90,
+      "functions": 90
+    },
+    "story-player": {
+      "lines": 90,
+      "functions": 90
+    },
+    "other": {
+      "lines": 88.1,
+      "functions": 75
+    }
+  },
+  "note": "Percent of the lines of code and of the functions of the editor script that the node suite runs, rounded down to a tenth. Written by `node scripts/editor-coverage.mjs --write-floor`, which only raises it. Lowering it is a decision (--lower)."
+}

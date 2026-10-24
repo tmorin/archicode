@@ -468,7 +468,13 @@ function createApp(options = {}) {
   }; // the entries of the history and the one the window is on
   sandbox.__documentListeners = documentListeners;
   vm.createContext(sandbox);
-  vm.runInContext(script[1], sandbox, { filename: 'standalone.html-script.js' });
+  // The name is what scripts/editor-coverage.mjs looks for in the V8 coverage: the script of the page in the repository. Another page (a released one given as `options.html`, or the one of
+  // ARCHICODE_EDITOR_HTML) has another name, so that its ranges are not counted as ranges of this one (wave 023, run 0173).
+  const filename =
+    options.html === undefined && !process.env.ARCHICODE_EDITOR_HTML
+      ? 'standalone.html-script.js'
+      : 'other-page-script.js';
+  vm.runInContext(script[1], sandbox, { filename });
   vm.runInContext('globalThis.__state = () => AppState;', sandbox);
   return sandbox;
 }
