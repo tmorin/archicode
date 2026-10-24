@@ -19,7 +19,9 @@ const FIXTURE = path.resolve(__dirname, '../../resources/plateau-state-hints');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 async function loadEmbeddedKernel() {
-  const block = fs.readFileSync(HTML, 'utf8').match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
+  const block = fs
+    .readFileSync(HTML, 'utf8')
+    .match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
   const { instance } = await WebAssembly.instantiate(Buffer.from(block[1].trim(), 'base64'), {});
   const x = instance.exports;
   return (name, input) => {
@@ -50,48 +52,78 @@ async function open() {
 /** The union of a layer drawn as a map with every box open, as the page hands it to `compute`. */
 function drawn(call, layers, layer, extra) {
   const elements = layers[layer];
-  const input = Object.assign({ viewpoint: 'map', layer, focal: '', elements: plain(elements), opened: elements.filter((e) => e.parent).map((e) => e.reference) }, extra || {});
+  const input = Object.assign(
+    {
+      viewpoint: 'map',
+      layer,
+      focal: '',
+      elements: plain(elements),
+      opened: elements.filter((e) => e.parent).map((e) => e.reference)
+    },
+    extra || {}
+  );
   const view = call('compute', input);
   assert.equal(view.error, undefined, JSON.stringify(view.error));
   return view;
 }
 
 for (const layer of ['application', 'technology']) {
-  test('compute works out, on the ' + layer + ' layer of the union, the state the union says: every item and every element agree', async () => {
-    const call = await loadEmbeddedKernel();
-    const { sandbox } = await open();
-    const state = sandbox.comparisonState();
-    const view = drawn(call, state.full.layers, layer);
-    let boxes = 0;
-    for (const item of view.items) {
-      const element = state.full.records.get(layer + '|' + item.reference);
-      assert.ok(element, item.reference + ' is in the union');
-      assert.equal(item.contains_changes === true, element.contains_changes === true, layer + ' ' + item.reference + ': the item and the union say the same');
-      if (item.contains_changes) boxes++;
+  test(
+    'compute works out, on the ' +
+      layer +
+      ' layer of the union, the state the union says: every item and every element agree',
+    async () => {
+      const call = await loadEmbeddedKernel();
+      const { sandbox } = await open();
+      const state = sandbox.comparisonState();
+      const view = drawn(call, state.full.layers, layer);
+      let boxes = 0;
+      for (const item of view.items) {
+        const element = state.full.records.get(layer + '|' + item.reference);
+        assert.ok(element, item.reference + ' is in the union');
+        assert.equal(
+          item.contains_changes === true,
+          element.contains_changes === true,
+          layer + ' ' + item.reference + ': the item and the union say the same'
+        );
+        if (item.contains_changes) boxes++;
+      }
+      assert.ok(view.items.length >= 3);
+      assert.ok(boxes >= 1, 'the data has a box that holds a change in this layer');
+      // an element that changed itself never says it, whatever is inside it
+      for (const [key, element] of state.full.records)
+        if (key.startsWith(layer + '|') && element.change !== 'none')
+          assert.equal(element.contains_changes, undefined, key);
     }
-    assert.ok(view.items.length >= 3);
-    assert.ok(boxes >= 1, 'the data has a box that holds a change in this layer');
-    // an element that changed itself never says it, whatever is inside it
-    for (const [key, element] of state.full.records) if (key.startsWith(layer + '|') && element.change !== 'none') assert.equal(element.contains_changes, undefined, key);
-  });
+  );
 
-  test('with the wording-only changes set aside, compute and the union agree on the ' + layer + ' layer as well (the box that holds a rewording only is not marked)', async () => {
-    const call = await loadEmbeddedKernel();
-    const { sandbox, state } = await open();
-    const full = sandbox.comparisonState();
-    state.hideWording = true;
-    vm.runInContext('AppState.hideWording = true;', sandbox);
-    const quiet = sandbox.comparisonState();
-    const view = drawn(call, quiet.layers, layer);
-    for (const item of view.items) {
-      const element = quiet.records.get(layer + '|' + item.reference);
-      assert.equal(item.contains_changes === true, element.contains_changes === true, layer + ' ' + item.reference + ': set aside, the item and the record say the same');
+  test(
+    'with the wording-only changes set aside, compute and the union agree on the ' +
+      layer +
+      ' layer as well (the box that holds a rewording only is not marked)',
+    async () => {
+      const call = await loadEmbeddedKernel();
+      const { sandbox, state } = await open();
+      const full = sandbox.comparisonState();
+      state.hideWording = true;
+      vm.runInContext('AppState.hideWording = true;', sandbox);
+      const quiet = sandbox.comparisonState();
+      const view = drawn(call, quiet.layers, layer);
+      for (const item of view.items) {
+        const element = quiet.records.get(layer + '|' + item.reference);
+        assert.equal(
+          item.contains_changes === true,
+          element.contains_changes === true,
+          layer + ' ' + item.reference + ': set aside, the item and the record say the same'
+        );
+      }
+      // an element that is not a rewording keeps what the union says of it
+      for (const [key, element] of full.records) {
+        if (key.startsWith(layer + '|') && !(element.change === 'changed' && element.wording_only === true))
+          assert.equal(quiet.records.get(key).change, element.change, key);
+      }
     }
-    // an element that is not a rewording keeps what the union says of it
-    for (const [key, element] of full.records) {
-      if (key.startsWith(layer + '|') && !(element.change === 'changed' && element.wording_only === true)) assert.equal(quiet.records.get(key).change, element.change, key);
-    }
-  });
+  );
 }
 
 test('the key is not a free-form field of compute: a facet does not see it, and the drawing does not depend on it', async () => {
@@ -103,9 +135,24 @@ test('the key is not a free-form field of compute: a facet does not see it, and 
   const facet = { actions: [{ operator: 'REMOVE', json_path: '$..elements[?(@.contains_changes == true)]' }] };
   const through = drawn(call, state.full.layers, 'application', { facet });
   const without = drawn(call, state.full.layers, 'application');
-  assert.deepEqual(plain(through.items.map((i) => i.id)), plain(without.items.map((i) => i.id)), 'the facet removed nothing: it never saw the key');
-  const stripped = { application: state.full.layers.application.map((e) => { const copy = Object.assign({}, e); delete copy.contains_changes; delete copy.contains_more_than_wording; return copy; }) };
-  assert.deepEqual(plain(drawn(call, stripped, 'application')), plain(without), 'the drawing is the same without the keys');
+  assert.deepEqual(
+    plain(through.items.map((i) => i.id)),
+    plain(without.items.map((i) => i.id)),
+    'the facet removed nothing: it never saw the key'
+  );
+  const stripped = {
+    application: state.full.layers.application.map((e) => {
+      const copy = Object.assign({}, e);
+      delete copy.contains_changes;
+      delete copy.contains_more_than_wording;
+      return copy;
+    })
+  };
+  assert.deepEqual(
+    plain(drawn(call, stripped, 'application')),
+    plain(without),
+    'the drawing is the same without the keys'
+  );
 });
 
 test('the page keeps no copy of the rule: it reads the key of the union (the tree, the hints about hand-written states)', async () => {
@@ -117,7 +164,8 @@ test('the page keeps no copy of the rule: it reads the key of the union (the tre
   assert.equal(state.full.above, undefined);
   const loans = state.full.records.get('application|library.loans');
   assert.equal(sandbox.comparisonStateOfElement(loans), 'changed');
-  const viaKey = (element) => sandbox.comparisonStateOfElement(Object.assign({}, element, { change: 'none', contains_changes: true }));
+  const viaKey = (element) =>
+    sandbox.comparisonStateOfElement(Object.assign({}, element, { change: 'none', contains_changes: true }));
   assert.equal(viaKey(loans), 'contains-changes');
   assert.equal(sandbox.comparisonStateOfElement(undefined), null, 'a reference the union does not hold');
   assert.equal(sandbox.comparisonStateOfElement({ reference: 'x', change: 'none' }), null);
@@ -127,8 +175,26 @@ test('a box that holds a rewording only is marked in the full drawing and not on
   const call = await loadEmbeddedKernel();
   const { sandbox } = await open();
   const el = (reference, extra) => Object.assign({ reference, parent: !reference.includes('.') }, extra || {});
-  const base = { application: [el('wording'), el('wording.leaf', { description: 'one' }), el('mixed'), el('mixed.leaf', { description: 'one' }), el('mixed.fresh-ground')], technology: [] };
-  const target = { application: [el('wording'), el('wording.leaf', { description: 'two' }), el('mixed'), el('mixed.leaf', { description: 'two' }), el('mixed.born')], technology: [] };
+  const base = {
+    application: [
+      el('wording'),
+      el('wording.leaf', { description: 'one' }),
+      el('mixed'),
+      el('mixed.leaf', { description: 'one' }),
+      el('mixed.fresh-ground')
+    ],
+    technology: []
+  };
+  const target = {
+    application: [
+      el('wording'),
+      el('wording.leaf', { description: 'two' }),
+      el('mixed'),
+      el('mixed.leaf', { description: 'two' }),
+      el('mixed.born')
+    ],
+    technology: []
+  };
   const answer = call('compare', { base, target, on_one_chain: true });
   assert.equal(answer.error, undefined);
   const flags = (records, reference) => records.get('application|' + reference);
@@ -143,12 +209,24 @@ test('a box that holds a rewording only is marked in the full drawing and not on
   assert.equal(flags(quiet.records, 'wording').contains_changes, undefined);
   assert.equal(flags(quiet.records, 'mixed').contains_changes, true);
   assert.equal(sandbox.comparisonStateOfElement(flags(quiet.records, 'wording')), null);
-  assert.equal(sandbox.comparisonStateOfElement(flags(quiet.records, 'wording.leaf')), null, 'set aside, the leaf is unchanged');
+  assert.equal(
+    sandbox.comparisonStateOfElement(flags(quiet.records, 'wording.leaf')),
+    null,
+    'set aside, the leaf is unchanged'
+  );
   assert.equal(sandbox.comparisonStateOfElement(flags(value.records, 'wording.leaf')), 'changed');
   // and `compute`, given the elements as they are set aside, says what the records say
-  for (const [layers, records] of [[value.layers, value.records], [quiet.layers, quiet.records]]) {
+  for (const [layers, records] of [
+    [value.layers, value.records],
+    [quiet.layers, quiet.records]
+  ]) {
     const view = drawn(call, layers, 'application');
     assert.ok(view.items.length >= 4);
-    for (const item of view.items) assert.equal(item.contains_changes === true, records.get('application|' + item.reference).contains_changes === true, item.reference);
+    for (const item of view.items)
+      assert.equal(
+        item.contains_changes === true,
+        records.get('application|' + item.reference).contains_changes === true,
+        item.reference
+      );
   }
 });

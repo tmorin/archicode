@@ -17,16 +17,23 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 const NONE = { kind: 'none', key: null, mode: 'view' };
 
 function fakeLayout(graph) {
-  const place = (node, x) => Object.assign({}, node, {
-    x, y: 0, width: node.width || 400, height: node.height || 200,
-    children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
-  });
+  const place = (node, x) =>
+    Object.assign({}, node, {
+      x,
+      y: 0,
+      width: node.width || 400,
+      height: node.height || 200,
+      children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
+    });
   return Object.assign(place(graph, 0), {
-    width: 900, height: 600,
-    edges: graph.edges.map((edge) => Object.assign({}, edge, {
-      sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
-      labels: (edge.labels || []).map((label) => Object.assign({ x: 3, y: 3 }, label))
-    }))
+    width: 900,
+    height: 600,
+    edges: graph.edges.map((edge) =>
+      Object.assign({}, edge, {
+        sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
+        labels: (edge.labels || []).map((label) => Object.assign({ x: 3, y: 3 }, label))
+      })
+    )
   });
 }
 
@@ -44,7 +51,14 @@ async function startPage() {
   const originalGet = sandbox.document.getElementById;
   let html = '';
   let canvas = null;
-  Object.defineProperty(app, 'innerHTML', { get: () => html, set: (value) => { html = value; canvas = null; }, configurable: true });
+  Object.defineProperty(app, 'innerHTML', {
+    get: () => html,
+    set: (value) => {
+      html = value;
+      canvas = null;
+    },
+    configurable: true
+  });
   const canvasOf = () => {
     if (canvas) return canvas;
     const tag = /<div class="diagram-canvas" id="diagram-canvas"([^>]*)>/.exec(html);
@@ -70,7 +84,9 @@ async function startPage() {
   };
   sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? canvasOf() : originalGet(id));
   const page = {
-    sandbox, state, kernel,
+    sandbox,
+    state,
+    kernel,
     html: () => html,
     canvas: canvasOf,
     /** Waits until the diagram of the page is on the canvas (the kernel and the layout are asynchronous). */
@@ -103,14 +119,19 @@ function addView(page, content) {
 }
 
 function openView(page, view) {
-  run(page.sandbox, "libraryTab = 'views'; selectedViewId = " + JSON.stringify(view.id) + ";");
+  run(page.sandbox, "libraryTab = 'views'; selectedViewId = " + JSON.stringify(view.id) + ';');
   page.sandbox.setPerspective('library');
   return page.drawn().catch(() => null);
 }
 
 function click(sandbox, attributes) {
   const target = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
-  sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  sandbox.handleAppClick({
+    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    preventDefault() {},
+    stopPropagation() {},
+    detail: 1
+  });
 }
 
 const idsOf = (scene) => plain(Object.keys(scene.boxes).sort());
@@ -129,7 +150,12 @@ function expectedElements(page, viewpoint, reference, options) {
     const kept = sandbox.hideUnlinkedItems(drawn.items, drawn.links, reference);
     drawn = { items: kept.items, links: kept.links };
   }
-  const boxes = plain(drawn.items.filter((item) => !item.ghost).map((item) => item.id).sort());
+  const boxes = plain(
+    drawn.items
+      .filter((item) => !item.ghost)
+      .map((item) => item.id)
+      .sort()
+  );
   const ids = new Set(drawn.items.map((item) => item.id));
   const pairs = new Map();
   for (const link of drawn.links) {
@@ -144,7 +170,11 @@ function expectedElements(page, viewpoint, reference, options) {
 
 test('the page of an Elements view puts a canvas in the centre that draws what the kernel computes, for each viewpoint', async () => {
   const page = await startPage();
-  for (const [viewpoint, element] of [['overview', 'shop.web.api'], ['detailed', 'shop'], ['deep', 'shop']]) {
+  for (const [viewpoint, element] of [
+    ['overview', 'shop.web.api'],
+    ['detailed', 'shop'],
+    ['deep', 'shop']
+  ]) {
     const view = addView(page, { id: 'v_' + viewpoint, name: 'View ' + viewpoint, viewpoint, properties: { element } });
     const canvas = await openView(page, view);
     assert.ok(canvas, viewpoint + ': a canvas is on the page');
@@ -159,14 +189,24 @@ test('the page of an Elements view puts a canvas in the centre that draws what t
     assert.deepEqual(pairsOf(scene), expected.pairs, viewpoint + ': and its links');
     assert.equal(scene.hasSvg, true);
     assert.equal(canvas.innerHTML, scene.html, 'the canvas holds the drawing');
-    assert.match(scene.viewKey, new RegExp('^' + element + '\\|' + viewpoint + '\\|\\|\\|view:' + view.id + '$'), 'framed on this view when another is shown');
+    assert.match(
+      scene.viewKey,
+      new RegExp('^' + element + '\\|' + viewpoint + '\\|\\|\\|view:' + view.id + '$'),
+      'framed on this view when another is shown'
+    );
   }
 });
 
 test('a view of the technology layer is drawn from the technology layer, even though the selection is somewhere else', async () => {
   const page = await startPage();
   page.state.selection = { kind: 'element', key: 'shop', mode: 'view' }; // the selection says application: the view does not read it
-  const view = addView(page, { id: 'infra', name: 'Infra', viewpoint: 'deep', layer: 'technology', properties: { element: 'prod.cluster' } });
+  const view = addView(page, {
+    id: 'infra',
+    name: 'Infra',
+    viewpoint: 'deep',
+    layer: 'technology',
+    properties: { element: 'prod.cluster' }
+  });
   await openView(page, view);
   const expected = expectedElements(page, 'deep', 'prod.cluster', { layer: 'technology' });
   assert.ok(expected.boxes.length > 2);
@@ -177,7 +217,12 @@ test('a view of the technology layer is drawn from the technology layer, even th
 
 test('a leaf element asked for the detailed viewpoint is drawn as its overview, as the tab of Elements does', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'leaf', name: 'Leaf', viewpoint: 'detailed', properties: { element: 'shop.catalog.service.search' } });
+  const view = addView(page, {
+    id: 'leaf',
+    name: 'Leaf',
+    viewpoint: 'detailed',
+    properties: { element: 'shop.catalog.service.search' }
+  });
   await openView(page, view);
   const expected = expectedElements(page, 'overview', 'shop.catalog.service.search');
   assert.deepEqual(idsOf(page.scene()), expected.boxes);
@@ -189,7 +234,12 @@ test('the facet of the view is drawn through, and the status line says so', asyn
   const plainView = addView(page, { id: 'plain', name: 'Plain', viewpoint: 'deep', properties: { element: 'shop' } });
   await openView(page, plainView);
   const without = page.scene();
-  const view = addView(page, { id: 'through', name: 'Through', viewpoint: 'deep', properties: { element: 'shop', facet: 'rest-only' } });
+  const view = addView(page, {
+    id: 'through',
+    name: 'Through',
+    viewpoint: 'deep',
+    properties: { element: 'shop', facet: 'rest-only' }
+  });
   await openView(page, view);
   const expected = expectedElements(page, 'deep', 'shop', { facet: 'rest-only' });
   const scene = page.scene();
@@ -203,7 +253,13 @@ test('the facet of the view is drawn through, and the status line says so', asyn
 
 test('Hide unlinked of the view leaves out the boxes no link reaches, as the toolbar does', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'tidy', name: 'Tidy', viewpoint: 'deep', layer: 'technology', properties: { element: 'prod.cluster', 'hide-unlinked': true } });
+  const view = addView(page, {
+    id: 'tidy',
+    name: 'Tidy',
+    viewpoint: 'deep',
+    layer: 'technology',
+    properties: { element: 'prod.cluster', 'hide-unlinked': true }
+  });
   await openView(page, view);
   const expected = expectedElements(page, 'deep', 'prod.cluster', { layer: 'technology', hideUnlinked: true });
   const all = expectedElements(page, 'deep', 'prod.cluster', { layer: 'technology' });
@@ -217,11 +273,21 @@ test('Hide unlinked of the view leaves out the boxes no link reaches, as the too
 test('the texts of the view are drawn: its labels, and the defaults of an Elements diagram when it says nothing', async () => {
   const page = await startPage();
   const captions = (scene) => (scene.html.match(/<text class="dg-label"/g) || []).length;
-  const silent = addView(page, { id: 'silent', name: 'Silent', viewpoint: 'overview', properties: { element: 'shop.web.api' } });
+  const silent = addView(page, {
+    id: 'silent',
+    name: 'Silent',
+    viewpoint: 'overview',
+    properties: { element: 'shop.web.api' }
+  });
   await openView(page, silent);
   const withLabels = captions(page.scene());
   assert.ok(withLabels > 0, 'an element diagram starts with its captions');
-  const quiet = addView(page, { id: 'quiet', name: 'Quiet', viewpoint: 'overview', properties: { element: 'shop.web.api', labels: false } });
+  const quiet = addView(page, {
+    id: 'quiet',
+    name: 'Quiet',
+    viewpoint: 'overview',
+    properties: { element: 'shop.web.api', labels: false }
+  });
   await openView(page, quiet);
   assert.equal(captions(page.scene()), 0, 'labels: false');
   assert.match(page.html(), /data-show="labels" aria-pressed="false"/);
@@ -232,7 +298,12 @@ test('the texts of the view are drawn: its labels, and the defaults of an Elemen
 
 test('the page of a Map view draws the map of its pinned, hidden and opened elements', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'scope', name: 'Scope', viewpoint: 'map', properties: { pinned: ['shop.web'], hidden: ['customer'], opened: ['shop'] } });
+  const view = addView(page, {
+    id: 'scope',
+    name: 'Scope',
+    viewpoint: 'map',
+    properties: { pinned: ['shop.web'], hidden: ['customer'], opened: ['shop'] }
+  });
   const canvas = await openView(page, view);
   assert.equal(canvas.getAttribute('data-host'), 'library');
   assert.equal(canvas.hasAttribute('data-map'), false);
@@ -240,7 +311,15 @@ test('the page of a Map view draws the map of its pinned, hidden and opened elem
   input.hidden = ['customer'];
   const result = page.kernel.compute(input);
   const scene = page.scene();
-  assert.deepEqual(idsOf(scene), plain(result.items.filter((item) => !item.ghost).map((item) => item.id).sort()));
+  assert.deepEqual(
+    idsOf(scene),
+    plain(
+      result.items
+        .filter((item) => !item.ghost)
+        .map((item) => item.id)
+        .sort()
+    )
+  );
   assert.ok(!scene.boxes.customer, 'hidden');
   assert.ok(scene.boxes.shop && scene.boxes['shop.web'], 'opened and pinned');
   assert.match(scene.viewKey, /^map\|map\|\|shop\.web\|view:scope$/);
@@ -251,18 +330,37 @@ test('the page of a Map view draws the map of its pinned, hidden and opened elem
 
 test('a Map view that names elements that no longer exist is drawn with the ones that do', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'gone', name: 'Gone', viewpoint: 'map', properties: { pinned: ['shop.web', 'removed.long.ago'], hidden: ['nobody'] } });
+  const view = addView(page, {
+    id: 'gone',
+    name: 'Gone',
+    viewpoint: 'map',
+    properties: { pinned: ['shop.web', 'removed.long.ago'], hidden: ['nobody'] }
+  });
   await openView(page, view);
   const expected = page.sandbox.buildKernelInput('map', '', { opened: [], pinned: ['shop.web'] }).input;
   expected.hidden = [];
-  assert.deepEqual(idsOf(page.scene()), plain(page.kernel.compute(expected).items.filter((item) => !item.ghost).map((item) => item.id).sort()));
+  assert.deepEqual(
+    idsOf(page.scene()),
+    plain(
+      page.kernel
+        .compute(expected)
+        .items.filter((item) => !item.ghost)
+        .map((item) => item.id)
+        .sort()
+    )
+  );
 });
 
 // ============================================================ 3. The page: header, tools, details
 
 test('the page keeps Open on diagram, Rename, Delete, the facts and the steps that show the view (now in the panel on the right), and has the tools of the diagram', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'shown', name: 'Shown', viewpoint: 'overview', properties: { element: 'shop.web.api' } });
+  const view = addView(page, {
+    id: 'shown',
+    name: 'Shown',
+    viewpoint: 'overview',
+    properties: { element: 'shop.web.api' }
+  });
   await openView(page, view);
   const html = page.html();
   assert.match(html, /data-action="saved-view-open" data-view="shown"/);
@@ -271,25 +369,43 @@ test('the page keeps Open on diagram, Rename, Delete, the facts and the steps th
   assert.match(html, /<dl class="view-facts">/);
   assert.match(html, /<h3>Shown in<\/h3>/);
   // the tools of the Map and Elements
-  for (const tool of ['toggle-hide-unlinked', 'diagram-recenter', 'diagram-export']) assert.ok(html.includes('data-action="' + tool + '"'), tool);
+  for (const tool of ['toggle-hide-unlinked', 'diagram-recenter', 'diagram-export'])
+    assert.ok(html.includes('data-action="' + tool + '"'), tool);
   assert.match(html, /data-dir="out"[^]*data-dir="reset"[^]*data-dir="in"[^]*data-dir="fit"/);
-  for (const name of ['labels', 'qualifiers', 'descriptions', 'wrap']) assert.ok(html.includes('data-show="' + name + '"'), name);
+  for (const name of ['labels', 'qualifiers', 'descriptions', 'wrap'])
+    assert.ok(html.includes('data-show="' + name + '"'), name);
   assert.match(html, /data-format="png"[^]*data-format="svg"/);
   assert.match(html, /id="diagram-status"/);
   // what the page does not offer: folding, a facet picker, Maximize, the Map's chips
-  for (const absent of ['fold-all', 'unfold-all', 'diagram-facet-select', 'map-chips', 'toggle-fold']) assert.ok(!html.includes(absent), absent + ' is not on this page');
-  assert.match(html, /aria-label="Diagram of the view Shown\. Arrow keys move between boxes, Enter selects one, plus and minus zoom\."/);
+  for (const absent of ['fold-all', 'unfold-all', 'diagram-facet-select', 'map-chips', 'toggle-fold'])
+    assert.ok(!html.includes(absent), absent + ' is not on this page');
+  assert.match(
+    html,
+    /aria-label="Diagram of the view Shown\. Arrow keys move between boxes, Enter selects one, plus and minus zoom\."/
+  );
   const region = page.sandbox.renderLibraryPerspectiveHtml();
-  assert.ok(region.right && region.right.includes('class="view-facts"') && region.right.includes('<h3>Shown in</h3>'), 'the facts and the steps are in the right-hand panel (run 0028)');
+  assert.ok(
+    region.right && region.right.includes('class="view-facts"') && region.right.includes('<h3>Shown in</h3>'),
+    'the facts and the steps are in the right-hand panel (run 0028)'
+  );
   assert.ok(!region.center.includes('class="view-facts"'), 'and no longer in the centre');
 });
 
 test('the facts and the steps are not in the centre any more: it is the header, the stage and the status line', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'order', name: 'Order', viewpoint: 'overview', properties: { element: 'shop.web.api' } });
+  const view = addView(page, {
+    id: 'order',
+    name: 'Order',
+    viewpoint: 'overview',
+    properties: { element: 'shop.web.api' }
+  });
   await openView(page, view);
   const region = page.sandbox.renderLibraryPerspectiveHtml();
-  const at = (needle) => { const i = region.center.indexOf(needle); assert.ok(i > 0, needle); return i; };
+  const at = (needle) => {
+    const i = region.center.indexOf(needle);
+    assert.ok(i > 0, needle);
+    return i;
+  };
   assert.ok(at('class="element-header"') < at('class="diagram-stage"'));
   assert.ok(at('class="diagram-stage"') < at('id="diagram-status"'));
   assert.ok(!page.html().includes('library-view-details'), 'the block under the diagram is gone');
@@ -300,25 +416,47 @@ test('the facts and the steps are not in the centre any more: it is the header, 
 
 test('a view that cannot be drawn keeps its message and has no canvas', async () => {
   const page = await startPage();
-  const elementGone = addView(page, { id: 'orphan', name: 'Orphan', viewpoint: 'deep', properties: { element: 'shop.web.removed' } });
-  const mapGone = addView(page, { id: 'nopins', name: 'No pins', viewpoint: 'map', properties: { pinned: ['nothing.here'] } });
+  const elementGone = addView(page, {
+    id: 'orphan',
+    name: 'Orphan',
+    viewpoint: 'deep',
+    properties: { element: 'shop.web.removed' }
+  });
+  const mapGone = addView(page, {
+    id: 'nopins',
+    name: 'No pins',
+    viewpoint: 'map',
+    properties: { pinned: ['nothing.here'] }
+  });
   const unknown = addView(page, { id: 'weird', name: 'Weird', viewpoint: 'sideways', properties: { element: 'shop' } });
-  for (const [view, message] of [[elementGone, /The element “shop\.web\.removed” does not exist any more/], [mapGone, /None of the elements it was pinned on exists any more/], [unknown, /does not draw the viewpoint “sideways”/]]) {
-    run(page.sandbox, "libraryTab = 'views'; selectedViewId = " + JSON.stringify(view.id) + ";");
+  for (const [view, message] of [
+    [elementGone, /The element “shop\.web\.removed” does not exist any more/],
+    [mapGone, /None of the elements it was pinned on exists any more/],
+    [unknown, /does not draw the viewpoint “sideways”/]
+  ]) {
+    run(page.sandbox, "libraryTab = 'views'; selectedViewId = " + JSON.stringify(view.id) + ';');
     page.sandbox.setPerspective('library');
     assert.equal(page.canvas(), null, view.id + ': no canvas');
     assert.ok(!page.html().includes('diagram-canvas'), view.id + ': nothing of a diagram');
     assert.match(page.html(), message);
     assert.match(page.html(), /class="story-step-problem"/);
     assert.match(page.html(), /data-action="saved-view-rename"/);
-    assert.ok(!page.html().includes('data-action="saved-view-open"'), 'no Open on diagram for a view that cannot be drawn');
+    assert.ok(
+      !page.html().includes('data-action="saved-view-open"'),
+      'no Open on diagram for a view that cannot be drawn'
+    );
   }
   assert.equal(page.scene(), null, 'and no scene is left behind');
 });
 
 test('an element deleted while its view is on screen turns the page into the message', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'fragile', name: 'Fragile', viewpoint: 'overview', properties: { element: 'shop.web.api' } });
+  const view = addView(page, {
+    id: 'fragile',
+    name: 'Fragile',
+    viewpoint: 'overview',
+    properties: { element: 'shop.web.api' }
+  });
   await openView(page, view);
   assert.ok(page.canvas());
   run(page.sandbox, "AppState.index.application.delete('shop.web.api');");
@@ -331,88 +469,150 @@ test('an element deleted while its view is on screen turns the page into the mes
 
 /** Every global the Map and Elements read, as text. */
 function snapshot(page) {
-  return run(page.sandbox, `JSON.stringify({
+  return run(
+    page.sandbox,
+    `JSON.stringify({
     selection: AppState.selection, expanded: Array.from(AppState.expanded || []),
     perspective: currentPerspective, elementTab, diagramFacet, diagramHideUnlinked, diagramShow, diagramMaximized,
     mapPinned, mapHidden, mapOpened: mapOpened ? Array.from(mapOpened) : null,
     diagramScale, diagramCenter, diagramShownView, diagramLinkStop, activeStory, helpOpen, headerMenuOpen,
     treeExpandedApplications, treeExpandedEnvironments, navActiveKey, mapSelectionCheck, revealLinkAfterDrawing
-  })`);
+  })`
+  );
 }
 
 /** Sets the Map and Elements up with choices that none of the defaults would give. */
 function setUp(page, perspective) {
   const { sandbox, state } = page;
-  run(sandbox, `
+  run(
+    sandbox,
+    `
     mapPinned = ['shop.web']; mapHidden = ['customer']; mapOpened = new Set(['shop']);
     diagramFacet = 'no-smtp'; diagramHideUnlinked = true; setDiagramShow({ labels: true, qualifiers: false, descriptions: true, wrap: true });
     elementTab = 'deep'; diagramMaximized = false;
-  `);
+  `
+  );
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   run(sandbox, "currentPerspective = '" + perspective + "'; diagramScale = 1.5; diagramCenter = { x: 120, y: 80 };");
 }
 
 for (const perspective of ['map', 'elements']) {
-  test('visiting the page of a view and coming back to ' + perspective + ' leaves what it shows, and its address, as they were', async () => {
-    const page = await startPage();
-    const elementsView = addView(page, { id: 'e', name: 'E', viewpoint: 'detailed', properties: { element: 'shop', facet: 'rest-only', labels: false, wrap: true } });
-    const mapView = addView(page, { id: 'm', name: 'M', viewpoint: 'map', properties: { pinned: ['shop.catalog'], hidden: ['mailer'], opened: ['shop.catalog'], facet: 'no-smtp', 'hide-unlinked': true, labels: true } });
-    const broken = addView(page, { id: 'b', name: 'B', viewpoint: 'deep', properties: { element: 'removed' } });
-    setUp(page, perspective);
-    await page.show();
-    const before = snapshot(page);
-    const hashBefore = page.sandbox.location.hash;
-    const sceneBefore = page.scene();
-    const cacheBefore = run(page.sandbox, 'diagramCache');
-    assert.ok(sceneBefore && cacheBefore, 'the ' + perspective + ' is drawn before the visit');
-    assert.match(hashBefore, new RegExp('^#/timeline/' + (perspective === 'map' ? 'applications' : perspective)));
-    const unsavedBefore = page.sandbox.countUnsavedChanges();
+  test(
+    'visiting the page of a view and coming back to ' +
+      perspective +
+      ' leaves what it shows, and its address, as they were',
+    async () => {
+      const page = await startPage();
+      const elementsView = addView(page, {
+        id: 'e',
+        name: 'E',
+        viewpoint: 'detailed',
+        properties: { element: 'shop', facet: 'rest-only', labels: false, wrap: true }
+      });
+      const mapView = addView(page, {
+        id: 'm',
+        name: 'M',
+        viewpoint: 'map',
+        properties: {
+          pinned: ['shop.catalog'],
+          hidden: ['mailer'],
+          opened: ['shop.catalog'],
+          facet: 'no-smtp',
+          'hide-unlinked': true,
+          labels: true
+        }
+      });
+      const broken = addView(page, { id: 'b', name: 'B', viewpoint: 'deep', properties: { element: 'removed' } });
+      setUp(page, perspective);
+      await page.show();
+      const before = snapshot(page);
+      const hashBefore = page.sandbox.location.hash;
+      const sceneBefore = page.scene();
+      const cacheBefore = run(page.sandbox, 'diagramCache');
+      assert.ok(sceneBefore && cacheBefore, 'the ' + perspective + ' is drawn before the visit');
+      assert.match(hashBefore, new RegExp('^#/timeline/' + (perspective === 'map' ? 'applications' : perspective)));
+      const unsavedBefore = page.sandbox.countUnsavedChanges();
 
-    for (const view of [elementsView, mapView, broken, elementsView]) {
-      await openView(page, view);
-      // the tools of the page, used
-      if (page.canvas()) {
-        for (const attributes of [
-          { 'data-action': 'diagram-zoom', 'data-dir': 'in' }, { 'data-action': 'diagram-zoom', 'data-dir': 'fit' }, { 'data-action': 'diagram-recenter' }
-        ]) { // (Hide unlinked and the texts are edits of the view since run 0029: library-view-edit.test.js)
-          click(page.sandbox, attributes);
+      for (const view of [elementsView, mapView, broken, elementsView]) {
+        await openView(page, view);
+        // the tools of the page, used
+        if (page.canvas()) {
+          for (const attributes of [
+            { 'data-action': 'diagram-zoom', 'data-dir': 'in' },
+            { 'data-action': 'diagram-zoom', 'data-dir': 'fit' },
+            { 'data-action': 'diagram-recenter' }
+          ]) {
+            // (Hide unlinked and the texts are edits of the view since run 0029: library-view-edit.test.js)
+            click(page.sandbox, attributes);
+            await page.drawn().catch(() => null);
+          }
+          const stage = { closest: (selector) => (selector === '.diagram-stage' ? {} : null) };
+          for (const key of ['m', 'M', 'Escape', 'f', 'c', '+', '-', '0'])
+            page.sandbox.handleDiagramKeydown({
+              key,
+              target: stage,
+              preventDefault() {},
+              ctrlKey: false,
+              metaKey: false,
+              altKey: false
+            });
+          // the selection of the page (run 0028): a box, a link, an element named in the panel, Open's neighbours, Maximize and Restore, the cross
+          const svg = page.scene().html;
+          const box =
+            /<g class="dg-node[^>]*? data-id="([^"]*)" data-action="goto-element" data-ref="([^"]*)" data-layer="([^"]*)"/.exec(
+              svg
+            );
+          const link =
+            /<g class="dg-link" data-from="([^"]*)" data-to="([^"]*)"(?: data-nth="[^"]*")? data-layer="([^"]*)" data-action="select-link"/.exec(
+              svg
+            );
+          assert.ok(box, 'the page draws boxes that select');
+          click(page.sandbox, { 'data-action': 'goto-element', 'data-ref': box[2], 'data-layer': box[3] });
+          await page.drawn().catch(() => null);
+          if (link) {
+            // (the view with a facet and Hide unlinked may have none)
+            click(page.sandbox, {
+              'data-action': 'select-link',
+              'data-from': link[1],
+              'data-to': link[2],
+              'data-layer': link[3]
+            });
+            await page.drawn().catch(() => null);
+          }
+          click(page.sandbox, { 'data-action': 'goto-element', 'data-ref': 'customer', 'data-layer': 'application' });
+          click(page.sandbox, { 'data-action': 'toggle-maximize' });
+          click(page.sandbox, { 'data-action': 'toggle-maximize' });
+          page.sandbox.handleDiagramKeydown({
+            key: 'Escape',
+            target: stage,
+            preventDefault() {},
+            ctrlKey: false,
+            metaKey: false,
+            altKey: false
+          });
+          click(page.sandbox, { 'data-action': 'goto-element', 'data-ref': box[2], 'data-layer': box[3] });
+          click(page.sandbox, { 'data-action': 'close-inspection' });
           await page.drawn().catch(() => null);
         }
-        const stage = { closest: (selector) => (selector === '.diagram-stage' ? {} : null) };
-        for (const key of ['m', 'M', 'Escape', 'f', 'c', '+', '-', '0']) page.sandbox.handleDiagramKeydown({ key, target: stage, preventDefault() {}, ctrlKey: false, metaKey: false, altKey: false });
-        // the selection of the page (run 0028): a box, a link, an element named in the panel, Open's neighbours, Maximize and Restore, the cross
-        const svg = page.scene().html;
-        const box = /<g class="dg-node[^>]*? data-id="([^"]*)" data-action="goto-element" data-ref="([^"]*)" data-layer="([^"]*)"/.exec(svg);
-        const link = /<g class="dg-link" data-from="([^"]*)" data-to="([^"]*)"(?: data-nth="[^"]*")? data-layer="([^"]*)" data-action="select-link"/.exec(svg);
-        assert.ok(box, 'the page draws boxes that select');
-        click(page.sandbox, { 'data-action': 'goto-element', 'data-ref': box[2], 'data-layer': box[3] });
-        await page.drawn().catch(() => null);
-        if (link) { // (the view with a facet and Hide unlinked may have none)
-          click(page.sandbox, { 'data-action': 'select-link', 'data-from': link[1], 'data-to': link[2], 'data-layer': link[3] });
-          await page.drawn().catch(() => null);
-        }
-        click(page.sandbox, { 'data-action': 'goto-element', 'data-ref': 'customer', 'data-layer': 'application' });
-        click(page.sandbox, { 'data-action': 'toggle-maximize' });
-        click(page.sandbox, { 'data-action': 'toggle-maximize' });
-        page.sandbox.handleDiagramKeydown({ key: 'Escape', target: stage, preventDefault() {}, ctrlKey: false, metaKey: false, altKey: false });
-        click(page.sandbox, { 'data-action': 'goto-element', 'data-ref': box[2], 'data-layer': box[3] });
-        click(page.sandbox, { 'data-action': 'close-inspection' });
-        await page.drawn().catch(() => null);
+        assert.equal(snapshot(page).includes('"perspective":"library"'), true);
       }
-      assert.equal(snapshot(page).includes('"perspective":"library"'), true);
-    }
-    await page.go(perspective);
-    page.sandbox.location.hash = '#' + page.sandbox.currentRouteHash();
+      await page.go(perspective);
+      page.sandbox.location.hash = '#' + page.sandbox.currentRouteHash();
 
-    const after = JSON.parse(snapshot(page));
-    const expected = JSON.parse(before);
-    assert.deepEqual(after, expected, 'selection, pins, hidden and opened sets, facet, hide-unlinked, texts, tab, maximized state, camera: all as before');
-    assert.equal(page.sandbox.location.hash, hashBefore, 'the address');
-    assert.equal(page.sandbox.countUnsavedChanges(), unsavedBefore, 'and nothing was marked modified');
-    assert.equal(page.scene().html, sceneBefore.html, 'the drawing on screen is the Map\'s or Elements\' own');
-    assert.equal(page.scene().viewKey, sceneBefore.viewKey);
-    assert.equal(run(page.sandbox, 'diagramCache'), cacheBefore, 'and so is its cache');
-  });
+      const after = JSON.parse(snapshot(page));
+      const expected = JSON.parse(before);
+      assert.deepEqual(
+        after,
+        expected,
+        'selection, pins, hidden and opened sets, facet, hide-unlinked, texts, tab, maximized state, camera: all as before'
+      );
+      assert.equal(page.sandbox.location.hash, hashBefore, 'the address');
+      assert.equal(page.sandbox.countUnsavedChanges(), unsavedBefore, 'and nothing was marked modified');
+      assert.equal(page.scene().html, sceneBefore.html, "the drawing on screen is the Map's or Elements' own");
+      assert.equal(page.scene().viewKey, sceneBefore.viewKey);
+      assert.equal(run(page.sandbox, 'diagramCache'), cacheBefore, 'and so is its cache');
+    }
+  );
 }
 
 test('a zoom and a move on the page do not move the Map, and the page opens framed on its own', async () => {
@@ -439,25 +639,40 @@ test('a zoom and a move on the page do not move the Map, and the page opens fram
 
 test('a Map link selection is ended by entering the Library, as it already is by entering Files or Settings', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'sel', name: 'Sel', viewpoint: 'overview', properties: { element: 'shop.web.api' } });
+  const view = addView(page, {
+    id: 'sel',
+    name: 'Sel',
+    viewpoint: 'overview',
+    properties: { element: 'shop.web.api' }
+  });
   page.state.selection = { kind: 'link', key: 'a -> b', from: 'a', to: 'b', layer: 'application', mode: 'view' };
   run(page.sandbox, "currentPerspective = 'map';");
   await openView(page, view);
-  assert.equal(page.state.selection.kind, 'none', 'unchanged behaviour of settleLinkSelection (finding F-1 of run 0027)');
+  assert.equal(
+    page.state.selection.kind,
+    'none',
+    'unchanged behaviour of settleLinkSelection (finding F-1 of run 0027)'
+  );
 });
 
 test('the page is its own host: the Map and Elements globals are not even readable by the pipeline of the page', async () => {
   const page = await startPage();
   const view = addView(page, { id: 'iso', name: 'Iso', viewpoint: 'deep', properties: { element: 'shop' } });
   // whatever the Map says, the page draws its view: a Map with a hidden element, a facet and Hide unlinked on does not leak in
-  run(page.sandbox, "diagramFacet = 'rest-only'; diagramHideUnlinked = true; mapHidden = ['shop']; elementTab = 'overview'; setDiagramShow({ labels: false, qualifiers: false, descriptions: false, wrap: false });");
+  run(
+    page.sandbox,
+    "diagramFacet = 'rest-only'; diagramHideUnlinked = true; mapHidden = ['shop']; elementTab = 'overview'; setDiagramShow({ labels: false, qualifiers: false, descriptions: false, wrap: false });"
+  );
   page.state.selection = { kind: 'element', key: 'customer', mode: 'view' };
   await openView(page, view);
   const expected = expectedElements(page, 'deep', 'shop');
   assert.deepEqual(idsOf(page.scene()), expected.boxes);
   assert.deepEqual(pairsOf(page.scene()), expected.pairs);
   assert.doesNotMatch(page.scene().status, /facet/);
-  assert.ok((page.scene().html.match(/<text class="dg-label"/g) || []).length > 0, 'the captions of the view, not those the Map turned off');
+  assert.ok(
+    (page.scene().html.match(/<text class="dg-label"/g) || []).length > 0,
+    'the captions of the view, not those the Map turned off'
+  );
 });
 
 // ============================================================ 6. The tools: the Map's and Elements' own are not taken over
@@ -476,14 +691,23 @@ test('the Map and Elements still toggle their own texts and Hide unlinked (the p
 
 test('the drawing of the page offers no way to change what it draws: no fold button, and its boxes and links only select', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'ro', name: 'RO', viewpoint: 'deep', properties: { element: 'shop', labels: true } });
+  const view = addView(page, {
+    id: 'ro',
+    name: 'RO',
+    viewpoint: 'deep',
+    properties: { element: 'shop', labels: true }
+  });
   await openView(page, view);
   const svg = page.scene().html;
   assert.ok(svg.includes('class="dg-node'), 'there are boxes');
   assert.ok(svg.includes('class="dg-link"'), 'and links');
   assert.ok(svg.includes('class="dg-label"'), 'and captions');
   const actions = new Set(Array.from(svg.matchAll(/data-action="([^"]+)"/g), (m) => m[1]));
-  assert.deepEqual(Array.from(actions).sort(), ['goto-element', 'select-link'], 'selecting is all the drawing does (run 0028)');
+  assert.deepEqual(
+    Array.from(actions).sort(),
+    ['goto-element', 'select-link'],
+    'selecting is all the drawing does (run 0028)'
+  );
   assert.doesNotMatch(svg, /class="dg-fold"|toggle-fold|fix-dangling|clear-facet/);
   // the boxes and links are what they are on the Map to the keyboard and to a screen reader
   assert.match(svg, /<g class="dg-node[^>]*role="link"/);
@@ -492,16 +716,27 @@ test('the drawing of the page offers no way to change what it draws: no fold but
   assert.equal((svg.match(/<g class="dg-link"[^>]*tabindex="0"/g) || []).length, 1, 'the links are still one tab stop');
   // nothing under a click without an action: the handler is given the target a browser would give
   const before = snapshot(page);
-  page.sandbox.handleAppClick({ target: { closest: () => null }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  page.sandbox.handleAppClick({
+    target: { closest: () => null },
+    preventDefault() {},
+    stopPropagation() {},
+    detail: 1
+  });
   assert.equal(snapshot(page), before);
 });
 
-test('a box that points at nothing (a ghost) is inert on the page: no way to its owner\'s form', async () => {
+test("a box that points at nothing (a ghost) is inert on the page: no way to its owner's form", async () => {
   const { sandbox } = await openFixture();
-  const items = [{ id: 'shop', reference: 'shop', parent: null }, { id: 'ghost_x', reference: 'nowhere', parent: null, ghost: true, owner: 'shop' }];
+  const items = [
+    { id: 'shop', reference: 'shop', parent: null },
+    { id: 'ghost_x', reference: 'nowhere', parent: null, ghost: true, owner: 'shop' }
+  ];
   const links = [{ from: 'shop', to: 'ghost_x', label: '', qualifiers: [], ghost: true }];
   const layout = fakeLayout(sandbox.buildElkGraph({ items, links }));
-  const readonly = sandbox.renderDiagramSvg(layout, { items, links }, '', { layer: 'application', readonly: true }).html;
+  const readonly = sandbox.renderDiagramSvg(layout, { items, links }, '', {
+    layer: 'application',
+    readonly: true
+  }).html;
   const main = sandbox.renderDiagramSvg(layout, { items, links }, '', { layer: 'application' }).html;
   assert.doesNotMatch(readonly, /fix-dangling/);
   assert.match(readonly, /data-id="ghost_x" tabindex="0" role="img"/, 'the ghost is a picture');
@@ -525,14 +760,24 @@ test('the empty and the offline messages of the page offer no action that change
   const page = await startPage();
   // offline: the plain list, whose names select like the boxes do
   run(page.sandbox, 'loadElk = async () => null;');
-  const view = addView(page, { id: 'off', name: 'Offline', viewpoint: 'overview', properties: { element: 'shop.web.api' } });
+  const view = addView(page, {
+    id: 'off',
+    name: 'Offline',
+    viewpoint: 'overview',
+    properties: { element: 'shop.web.api' }
+  });
   await openView(page, view);
   assert.match(page.scene().html, /class="dg-list"/);
   assert.doesNotMatch(page.scene().html, /data-action="(?!goto-element")/);
   assert.match(page.scene().html, /data-action="goto-element"/);
   // a facet that removes the element
   run(page.sandbox, 'loadElk = async () => __elk;');
-  const removed = addView(page, { id: 'rm', name: 'Removed', viewpoint: 'overview', properties: { element: 'customer', facet: 'rest-only' } });
+  const removed = addView(page, {
+    id: 'rm',
+    name: 'Removed',
+    viewpoint: 'overview',
+    properties: { element: 'customer', facet: 'rest-only' }
+  });
   await openView(page, removed);
   const scene = page.scene();
   assert.doesNotMatch(scene.html, /clear-facet|data-action=/);
@@ -547,7 +792,10 @@ test('edit, edit, edit: only the last redraw reaches the canvas', async () => {
   run(page.sandbox, "libraryTab = 'views'; selectedViewId = 'rapid'; currentPerspective = 'library';");
   const shown = [];
   page.sandbox.__log = (scene) => shown.push(scene.viewKey + (scene.html.length > 200 ? ' drawn' : ' message'));
-  run(page.sandbox, 'globalThis.__show = showDiagramScene; showDiagramScene = (scene) => { __log(scene); __show(scene); };');
+  run(
+    page.sandbox,
+    'globalThis.__show = showDiagramScene; showDiagramScene = (scene) => { __log(scene); __show(scene); };'
+  );
   page.sandbox.render();
   click(page.sandbox, { 'data-action': 'toggle-hide-unlinked' });
   click(page.sandbox, { 'data-action': 'toggle-show', 'data-show': 'labels' });
@@ -569,7 +817,12 @@ test('the Map keeps its drawing across a visit: the way back is a cache hit, not
   page.state.selection = NONE;
   await page.show();
   let layouts = 0;
-  page.sandbox.__elk = { layout: async (graph) => { layouts++; return fakeLayout(graph); } };
+  page.sandbox.__elk = {
+    layout: async (graph) => {
+      layouts++;
+      return fakeLayout(graph);
+    }
+  };
   await openView(page, view);
   const visitLayouts = layouts;
   assert.equal(visitLayouts, 1, 'the page lays its own diagram out');
@@ -577,11 +830,11 @@ test('the Map keeps its drawing across a visit: the way back is a cache hit, not
   assert.equal(layouts, visitLayouts, 'the Map is served from its cache');
 });
 
-test('an address with frame=fit typed while on the page is the Map\'s framing, not the page\'s', async () => {
+test("an address with frame=fit typed while on the page is the Map's framing, not the page's", async () => {
   const page = await startPage();
   const view = addView(page, { id: 'fit', name: 'Fit', viewpoint: 'deep', properties: { element: 'shop' } });
   await openView(page, view);
-  run(page.sandbox, "diagramScale = 1.25;"); // the page's own zoom
+  run(page.sandbox, 'diagramScale = 1.25;'); // the page's own zoom
   page.sandbox.location.hash = '#/timeline/applications?pin=shop&frame=fit';
   page.sandbox.syncPerspectiveFromHash();
   assert.equal(run(page.sandbox, 'diagramScale'), 'fit', 'the Map is framed as the address says');
@@ -590,7 +843,7 @@ test('an address with frame=fit typed while on the page is the Map\'s framing, n
   assert.equal(run(page.sandbox, 'diagramScale'), 1.25, 'and the page kept its own zoom');
 });
 
-test('closing a folder forgets what the page remembered: the notice of an edit, the camera and the Map\'s parked state', async () => {
+test("closing a folder forgets what the page remembered: the notice of an edit, the camera and the Map's parked state", async () => {
   const page = await startPage();
   const view = addView(page, { id: 'reset', name: 'Reset', viewpoint: 'deep', properties: { element: 'shop' } });
   await openView(page, view);
@@ -612,7 +865,15 @@ test('M and Escape on the page maximize and restore the page, and never the Map'
   const view = addView(page, { id: 'kb', name: 'KB', viewpoint: 'deep', properties: { element: 'shop' } });
   await openView(page, view);
   const stage = { closest: (selector) => (selector === '.diagram-stage' ? {} : null) };
-  const press = (key) => page.sandbox.handleDiagramKeydown({ key, target: stage, preventDefault() {}, ctrlKey: false, metaKey: false, altKey: false });
+  const press = (key) =>
+    page.sandbox.handleDiagramKeydown({
+      key,
+      target: stage,
+      preventDefault() {},
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false
+    });
   press('m');
   assert.equal(run(page.sandbox, 'diagramMaximized'), true, 'the page is maximized');
   press('Escape');
@@ -627,7 +888,7 @@ test('M and Escape on the page maximize and restore the page, and never the Map'
   press('Escape');
   assert.equal(run(page.sandbox, 'diagramMaximized'), false);
   await page.go('map');
-  assert.equal(run(page.sandbox, 'diagramMaximized'), true, 'the Map\'s maximized state is not the page\'s to lift');
+  assert.equal(run(page.sandbox, 'diagramMaximized'), true, "the Map's maximized state is not the page's to lift");
   await openView(page, view);
   press('+');
   assert.equal(typeof run(page.sandbox, 'diagramScale'), 'number', 'while the zoom keys work');
@@ -635,16 +896,38 @@ test('M and Escape on the page maximize and restore the page, and never the Map'
 
 test('the export is named after the view', async () => {
   const page = await startPage();
-  const view = addView(page, { id: 'authentication_token_validation', name: 'Auth', viewpoint: 'detailed', properties: { element: 'shop' } });
+  const view = addView(page, {
+    id: 'authentication_token_validation',
+    name: 'Auth',
+    viewpoint: 'detailed',
+    properties: { element: 'shop' }
+  });
   await openView(page, view);
   const made = [];
-  const node = (tag) => ({ tag, attrs: {}, children: [], setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute() {}, insertBefore() {}, classList: { remove() {} }, querySelectorAll: () => [], style: {} });
+  const node = (tag) => ({
+    tag,
+    attrs: {},
+    children: [],
+    setAttribute(k, v) {
+      this.attrs[k] = v;
+    },
+    removeAttribute() {},
+    insertBefore() {},
+    classList: { remove() {} },
+    querySelectorAll: () => [],
+    style: {}
+  });
   const canvas = page.canvas();
   canvas.querySelector = (selector) => (selector === 'svg' ? { cloneNode: () => node('svg') } : null);
   page.sandbox.document.createElementNS = (ns, tag) => node(tag);
   page.sandbox.document.documentElement.getAttribute = () => null;
   page.sandbox.getComputedStyle = () => ({ getPropertyValue: () => '#123456' });
-  page.sandbox.XMLSerializer = class { serializeToString() { made.push(1); return '<svg/>'; } };
+  page.sandbox.XMLSerializer = class {
+    serializeToString() {
+      made.push(1);
+      return '<svg/>';
+    }
+  };
   const exported = page.sandbox.diagramExportDocument();
   assert.equal(exported.name, 'authentication_token_validation-detailed');
 });
@@ -652,13 +935,39 @@ test('the export is named after the view', async () => {
 // ============================================================ 10. Source pins that keep the seams where W-2 and W-3 expect them
 
 test('the recipe is the one place the pipeline reads what to draw', () => {
-  const mount = HTML.slice(HTML.indexOf('function mountDiagramIfNeeded('), HTML.indexOf('/** The center of Elements on a diagram tab'));
-  for (const global of ['diagramHideUnlinked', 'diagramFacet', 'currentDiagramFacet(', 'currentMapState(', 'diagramShows(', 'effectiveDiagramViewpoint(', 'mapPinned', 'elementTab']) {
+  const mount = HTML.slice(
+    HTML.indexOf('function mountDiagramIfNeeded('),
+    HTML.indexOf('/** The center of Elements on a diagram tab')
+  );
+  for (const global of [
+    'diagramHideUnlinked',
+    'diagramFacet',
+    'currentDiagramFacet(',
+    'currentMapState(',
+    'diagramShows(',
+    'effectiveDiagramViewpoint(',
+    'mapPinned',
+    'elementTab'
+  ]) {
     assert.ok(!mount.includes(global), 'mountDiagramIfNeeded no longer reads ' + global);
   }
   assert.match(mount, /diagramRecipeOf\(canvas\)/);
   const library = HTML.slice(HTML.indexOf('function libraryDiagramRecipe('), HTML.indexOf('function diagramRecipeOf('));
-  for (const global of ['diagramHideUnlinked', 'diagramFacet', 'currentDiagramFacet(', 'currentMapState(', 'diagramShows(', 'effectiveDiagramViewpoint(', 'mapPinned', 'mapHidden', 'mapOpened', 'elementTab', 'AppState.selection', 'diagramShow ', 'currentPerspective']) {
+  for (const global of [
+    'diagramHideUnlinked',
+    'diagramFacet',
+    'currentDiagramFacet(',
+    'currentMapState(',
+    'diagramShows(',
+    'effectiveDiagramViewpoint(',
+    'mapPinned',
+    'mapHidden',
+    'mapOpened',
+    'elementTab',
+    'AppState.selection',
+    'diagramShow ',
+    'currentPerspective'
+  ]) {
     assert.ok(!library.includes(global), 'the recipe of the page does not read ' + global);
   }
 });
@@ -668,25 +977,51 @@ test('the recipe is the one place the pipeline reads what to draw', () => {
 test('a box is named and described from the layer of the view, not from whatever is selected', async () => {
   const page = await startPage();
   // an environment that shares a reference with an application element, as `hub` does in a real workspace
-  const tech = Object.assign({}, page.state.index.technology.get('psp.gateway'), { reference: 'mailer', id: 'mailer', name: 'The mailer machine', kind: 'node', relationships: [], children: [] });
+  const tech = Object.assign({}, page.state.index.technology.get('psp.gateway'), {
+    reference: 'mailer',
+    id: 'mailer',
+    name: 'The mailer machine',
+    kind: 'node',
+    relationships: [],
+    children: []
+  });
   page.state.index.technology.set('mailer', tech);
   const item = { id: 'mailer', reference: 'mailer', parent: null };
   page.state.selection = { kind: 'element', key: 'mailer', layer: 'application', mode: 'view' };
   assert.equal(page.sandbox.diagramItemText(item, {}, 'technology').title, 'The mailer machine');
   page.state.selection = { kind: 'element', key: 'mailer', layer: 'technology', mode: 'view' };
-  assert.equal(page.sandbox.diagramItemText(item, {}, 'application').title, page.state.index.application.get('mailer').name);
-  assert.equal(page.sandbox.diagramItemText({ id: 'pod_mailer', reference: 'mailer', parent: null }, {}, 'technology').title, page.state.index.application.get('mailer').name, 'an application hosted by the node keeps its own record');
+  assert.equal(
+    page.sandbox.diagramItemText(item, {}, 'application').title,
+    page.state.index.application.get('mailer').name
+  );
+  assert.equal(
+    page.sandbox.diagramItemText({ id: 'pod_mailer', reference: 'mailer', parent: null }, {}, 'technology').title,
+    page.state.index.application.get('mailer').name,
+    'an application hosted by the node keeps its own record'
+  );
   // and the Map and Elements, which name no layer, still let the selection decide
   assert.equal(page.sandbox.diagramItemText(item, {}).title, 'The mailer machine');
   // the whole drawing of a technology view carries it down to the title of its boxes and the label of its links
-  const svg = page.sandbox.renderDiagramSvg(fakeLayout(page.sandbox.buildElkGraph({ items: [item, { id: 'x', reference: 'psp.gateway', parent: null }], links: [{ from: 'mailer', to: 'x', label: '', qualifiers: [] }] })),
-    { items: [item, { id: 'x', reference: 'psp.gateway', parent: null }], links: [{ from: 'mailer', to: 'x', label: '', qualifiers: [] }] }, '', { layer: 'technology', itemLayer: 'technology', readonly: true }).html;
+  const svg = page.sandbox.renderDiagramSvg(
+    fakeLayout(
+      page.sandbox.buildElkGraph({
+        items: [item, { id: 'x', reference: 'psp.gateway', parent: null }],
+        links: [{ from: 'mailer', to: 'x', label: '', qualifiers: [] }]
+      })
+    ),
+    {
+      items: [item, { id: 'x', reference: 'psp.gateway', parent: null }],
+      links: [{ from: 'mailer', to: 'x', label: '', qualifiers: [] }]
+    },
+    '',
+    { layer: 'technology', itemLayer: 'technology', readonly: true }
+  ).html;
   page.state.selection = NONE;
   assert.match(svg, /aria-label="The mailer machine/);
   assert.match(svg, /Link from The mailer machine/);
 });
 
-test('leaving the page by its tab or by an address writes the address of the Map from the Map\'s camera, before anything is redrawn', async () => {
+test("leaving the page by its tab or by an address writes the address of the Map from the Map's camera, before anything is redrawn", async () => {
   const page = await startPage();
   const view = addView(page, { id: 'adr', name: 'Adr', viewpoint: 'deep', properties: { element: 'shop' } });
   run(page.sandbox, "currentPerspective = 'map';");
@@ -696,7 +1031,7 @@ test('leaving the page by its tab or by an address writes the address of the Map
   assert.equal(run(page.sandbox, 'diagramScale'), 'fit');
   page.sandbox.render = () => {}; // only the address, as setPerspective writes it before it draws
   page.sandbox.setPerspective('map');
-  assert.doesNotMatch(page.sandbox.location.hash, /frame=fit/, 'the page\'s Fit is not the Map\'s');
+  assert.doesNotMatch(page.sandbox.location.hash, /frame=fit/, "the page's Fit is not the Map's");
   assert.equal(run(page.sandbox, 'diagramScale'), 'auto');
 });
 
@@ -746,9 +1081,16 @@ test('another view opens framed on itself: a manual zoom is dropped, as it is be
 test('a facet that removes the element, and a kernel that refuses, are said without a button to change the view', async () => {
   const page = await startPage();
   const real = await page.sandbox.loadViewpointKernel();
-  page.sandbox.__kernel = { compute: (input) => (input.facet ? { error: 'the facet removed everything' } : real.compute(input)) };
+  page.sandbox.__kernel = {
+    compute: (input) => (input.facet ? { error: 'the facet removed everything' } : real.compute(input))
+  };
   run(page.sandbox, 'loadViewpointKernel = async () => __kernel;');
-  const view = addView(page, { id: 'gone_facet', name: 'Gone', viewpoint: 'overview', properties: { element: 'customer', facet: 'rest-only' } });
+  const view = addView(page, {
+    id: 'gone_facet',
+    name: 'Gone',
+    viewpoint: 'overview',
+    properties: { element: 'customer', facet: 'rest-only' }
+  });
   await openView(page, view);
   assert.match(page.scene().html, /facet “rest-only” removes this element/);
   assert.doesNotMatch(page.scene().html, /<button|data-action/);
@@ -766,7 +1108,7 @@ test('closing a folder, after a visit with the Map drawn first, leaves nothing p
   page.state.selection = NONE;
   await page.show();
   await openView(page, view);
-  assert.ok(run(page.sandbox, 'parkedDiagramHost.scene'), 'the Map\'s drawing is parked while the page is shown');
+  assert.ok(run(page.sandbox, 'parkedDiagramHost.scene'), "the Map's drawing is parked while the page is shown");
   page.sandbox.resetUiState();
   assert.equal(run(page.sandbox, 'parkedDiagramHost.scene'), null);
   assert.equal(run(page.sandbox, 'parkedDiagramHost.cache'), null);
@@ -774,21 +1116,37 @@ test('closing a folder, after a visit with the Map drawn first, leaves nothing p
 
 test('the host switch parks the camera, the scene, the cache and the tab stop of the links, and gives each host its own', async () => {
   const { sandbox } = await openFixture();
-  run(sandbox, "diagramScale = 2; diagramCenter = { x: 5, y: 6 }; diagramShownView = 'main-view'; diagramScene = { id: 'main' }; diagramCache = { key: 'main' }; diagramLinkStop = { link: true, from: 'a', to: 'b', nth: null };");
+  run(
+    sandbox,
+    "diagramScale = 2; diagramCenter = { x: 5, y: 6 }; diagramShownView = 'main-view'; diagramScene = { id: 'main' }; diagramCache = { key: 'main' }; diagramLinkStop = { link: true, from: 'a', to: 'b', nth: null };"
+  );
   sandbox.useDiagramHost('library');
   assert.equal(run(sandbox, 'diagramHost'), 'library');
-  assert.deepEqual(plain(run(sandbox, '[diagramScale, diagramCenter, diagramShownView, diagramScene, diagramCache, diagramLinkStop]')), ['auto', { x: 0, y: 0 }, null, null, null, null], 'the page starts from nothing');
-  run(sandbox, "diagramScale = 'fit'; diagramCenter = { x: 9, y: 9 }; diagramShownView = 'lib-view'; diagramScene = { id: 'lib' }; diagramCache = { key: 'lib' }; diagramLinkStop = { link: true, from: 'c', to: 'd', nth: '1' };");
+  assert.deepEqual(
+    plain(run(sandbox, '[diagramScale, diagramCenter, diagramShownView, diagramScene, diagramCache, diagramLinkStop]')),
+    ['auto', { x: 0, y: 0 }, null, null, null, null],
+    'the page starts from nothing'
+  );
+  run(
+    sandbox,
+    "diagramScale = 'fit'; diagramCenter = { x: 9, y: 9 }; diagramShownView = 'lib-view'; diagramScene = { id: 'lib' }; diagramCache = { key: 'lib' }; diagramLinkStop = { link: true, from: 'c', to: 'd', nth: '1' };"
+  );
   sandbox.useDiagramHost('library');
   assert.equal(run(sandbox, 'diagramScale'), 'fit', 'asking for the host that is on screen changes nothing');
   sandbox.useDiagramHost('main');
-  assert.deepEqual(plain(run(sandbox, '[diagramScale, diagramCenter, diagramShownView, diagramScene, diagramCache, diagramLinkStop]')),
-    [2, { x: 5, y: 6 }, 'main-view', { id: 'main' }, { key: 'main' }, { link: true, from: 'a', to: 'b', nth: null }], 'the Map gets back exactly its own');
+  assert.deepEqual(
+    plain(run(sandbox, '[diagramScale, diagramCenter, diagramShownView, diagramScene, diagramCache, diagramLinkStop]')),
+    [2, { x: 5, y: 6 }, 'main-view', { id: 'main' }, { key: 'main' }, { link: true, from: 'a', to: 'b', nth: null }],
+    'the Map gets back exactly its own'
+  );
   sandbox.useDiagramHost('library');
-  assert.deepEqual(plain(run(sandbox, '[diagramScale, diagramCenter, diagramShownView, diagramScene, diagramCache, diagramLinkStop]')),
-    ['fit', { x: 9, y: 9 }, 'lib-view', { id: 'lib' }, { key: 'lib' }, { link: true, from: 'c', to: 'd', nth: '1' }]);
+  assert.deepEqual(
+    plain(run(sandbox, '[diagramScale, diagramCenter, diagramShownView, diagramScene, diagramCache, diagramLinkStop]')),
+    ['fit', { x: 9, y: 9 }, 'lib-view', { id: 'lib' }, { key: 'lib' }, { link: true, from: 'c', to: 'd', nth: '1' }]
+  );
   assert.equal(sandbox.diagramHostOf('library'), 'library');
-  for (const perspective of ['map', 'elements', 'files', 'settings']) assert.equal(sandbox.diagramHostOf(perspective), 'main');
+  for (const perspective of ['map', 'elements', 'files', 'settings'])
+    assert.equal(sandbox.diagramHostOf(perspective), 'main');
 });
 
 test('render() takes the host of the perspective it draws, whoever changed the perspective', async () => {
@@ -803,7 +1161,7 @@ test('render() takes the host of the perspective it draws, whoever changed the p
   assert.equal(run(page.sandbox, 'diagramHost'), 'main');
 });
 
-test('the Library tab itself, with no view to draw, leaves the Map\'s drawing parked and no canvas on the page', async () => {
+test("the Library tab itself, with no view to draw, leaves the Map's drawing parked and no canvas on the page", async () => {
   const page = await startPage();
   run(page.sandbox, "currentPerspective = 'map';");
   page.state.selection = NONE;
@@ -819,14 +1177,31 @@ test('the Library tab itself, with no view to draw, leaves the Map\'s drawing pa
 
 test('the layer of a technology view reaches the names of its boxes and the labels of its links, whatever is selected', async () => {
   const page = await startPage();
-  const tech = Object.assign({}, page.state.index.technology.get('psp.gateway'), { reference: 'mailer', id: 'mailer', name: 'The mailer machine', kind: 'node', children: [],
-    relationships: [{ destination: 'psp.gateway', resolved: true, rawLabel: 'talks to', label: 'talks to', qualifiers: [], tags: {} }] });
+  const tech = Object.assign({}, page.state.index.technology.get('psp.gateway'), {
+    reference: 'mailer',
+    id: 'mailer',
+    name: 'The mailer machine',
+    kind: 'node',
+    children: [],
+    relationships: [
+      { destination: 'psp.gateway', resolved: true, rawLabel: 'talks to', label: 'talks to', qualifiers: [], tags: {} }
+    ]
+  });
   page.state.index.technology.set('mailer', tech);
   page.state.selection = { kind: 'element', key: 'mailer', layer: 'application', mode: 'view' }; // the application mailer: the selection must not name the box
-  const view = addView(page, { id: 'both', name: 'Both', viewpoint: 'overview', layer: 'technology', properties: { element: 'mailer' } });
+  const view = addView(page, {
+    id: 'both',
+    name: 'Both',
+    viewpoint: 'overview',
+    layer: 'technology',
+    properties: { element: 'mailer' }
+  });
   await openView(page, view);
   const scene = page.scene();
-  assert.ok(scene.boxes.mailer && scene.boxes.psp, 'the technology element is the one drawn, with the environment it points at');
+  assert.ok(
+    scene.boxes.mailer && scene.boxes.psp,
+    'the technology element is the one drawn, with the environment it points at'
+  );
   assert.match(scene.html, /aria-label="The mailer machine/);
   assert.match(scene.html, /Link from The mailer machine/);
   assert.equal(page.state.selection.layer, 'application', 'and the selection is as it was');

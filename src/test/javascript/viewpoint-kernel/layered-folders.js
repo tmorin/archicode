@@ -15,7 +15,13 @@ function inPlateau(id, text) {
 
 /** The manifest of kind plateau that names a plateau; `override` is its parent (none: `baseline`). */
 function plateauManifest(plateau) {
-  const lines = ['header:', '  kind: "archicode.morin.io/plateau"', '  version: "1"', 'content:', '  id: "' + plateau.id + '"'];
+  const lines = [
+    'header:',
+    '  kind: "archicode.morin.io/plateau"',
+    '  version: "1"',
+    'content:',
+    '  id: "' + plateau.id + '"'
+  ];
   if (plateau.name) lines.push('  name: "' + plateau.name + '"');
   if (plateau.horizon) lines.push('  horizon: "' + plateau.horizon + '"');
   if (plateau.override) lines.push('  override: "' + plateau.override + '"');
@@ -28,7 +34,10 @@ function plateauManifest(plateau) {
  * `paths`: the entry of `manifests.paths` that reads the folders (default `plateaus/**`). The plateau manifest of each plateau is `<path>/plateau.yaml`.
  */
 function layeredFiles(plateaus, files, settings, paths) {
-  const out = { '.archicode.yaml': 'settings:\n' + (settings || '') + '  manifests:\n    paths:\n      - ' + (paths || 'plateaus/**') + '\n' };
+  const out = {
+    '.archicode.yaml':
+      'settings:\n' + (settings || '') + '  manifests:\n    paths:\n      - ' + (paths || 'plateaus/**') + '\n'
+  };
   for (const [file, text] of Object.entries(files)) {
     const plateau = plateaus.find((p) => file.startsWith(p.path + '/'));
     out[file] = plateau ? inPlateau(plateau.id, text) : text;
@@ -74,7 +83,14 @@ function compareWith(sandbox, id) {
  */
 function chooseOnBand(sandbox, kind, value) {
   const attributes = { 'data-band-select': kind };
-  const target = { id: 'band-' + kind, value, tagName: 'SELECT', matches: () => false, closest: () => null, getAttribute: (name) => (name in attributes ? attributes[name] : null) };
+  const target = {
+    id: 'band-' + kind,
+    value,
+    tagName: 'SELECT',
+    matches: () => false,
+    closest: () => null,
+    getAttribute: (name) => (name in attributes ? attributes[name] : null)
+  };
   sandbox.handleAppInput({ target });
 }
 
@@ -84,14 +100,25 @@ function chooseOnBand(sandbox, kind, value) {
  */
 function bandOf(sandbox) {
   const html = sandbox.renderPlateauBandHtml();
-  const unescape = (text) => text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const unescape = (text) =>
+    text
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&');
   const list = (id) => {
     const at = html.indexOf('<select id="' + id + '"');
     if (at < 0) return null;
     const block = html.slice(at, html.indexOf('</select>', at));
     return {
       disabled: /^<select[^>]*\sdisabled/.test(block),
-      options: Array.from(block.matchAll(/<option value="([^"]*)"([^>]*)>([^<]*)<\/option>/g)).map((m) => ({ value: unescape(m[1]), label: unescape(m[3]).replace(/^\u2003+/, ''), selected: /\sselected/.test(m[2]), disabled: /\sdisabled/.test(m[2]) }))
+      options: Array.from(block.matchAll(/<option value="([^"]*)"([^>]*)>([^<]*)<\/option>/g)).map((m) => ({
+        value: unescape(m[1]),
+        label: unescape(m[3]).replace(/^\u2003+/, ''),
+        selected: /\sselected/.test(m[2]),
+        disabled: /\sdisabled/.test(m[2])
+      }))
     };
   };
   const plateau = list('band-plateau');

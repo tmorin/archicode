@@ -37,7 +37,9 @@ async function open(files) {
   await sandbox.loadWorkspace(mem.handle);
   await sandbox.loadViewpointKernel();
   // the harness has no layout engine: `render()` is the address and nothing else (the dialog is read through `renderAppDialogHtml`)
-  sandbox.render = () => { sandbox.syncHashFromState(); };
+  sandbox.render = () => {
+    sandbox.syncHashFromState();
+  };
   return { sandbox, state, mem, original: Object.assign({}, files) };
 }
 
@@ -62,8 +64,18 @@ function addToStory(opened, choice, options) {
 
 const stepsOf = (sandbox, id) => plain(sandbox.findStory(id).steps);
 const file = (state, relPath) => state.manifestFiles.find((f) => f.relPath === relPath);
-const drawing = (state) => ({ plateau: state.layers.current, against: state.layers.compare ? state.layers.compare.other : null });
-const text = (html) => html.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+const drawing = (state) => ({
+  plateau: state.layers.current,
+  against: state.layers.compare ? state.layers.compare.other : null
+});
+const text = (html) =>
+  html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
 
 const ORDER = 'shared/story.order_journey.yaml';
 /** What a new step adds to the file of the story: the lines after the last step, nothing else changes. */
@@ -74,9 +86,16 @@ function appended(opened, relPath) {
   return after.slice(before.length);
 }
 
-const SYSTEM = (id) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n';
-const PLATEAU = (id, override, body) => 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (override ? '  override: "' + override + '"\n' : '') + (body || '');
-const TOUR = 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "tour"\n  steps:\n    # the ferry\n    - viewpoint: overview\n      properties:\n        element: ferry\n      text: Hello\n';
+const SYSTEM = (id) =>
+  'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n';
+const PLATEAU = (id, override, body) =>
+  'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' +
+  id +
+  '"\n' +
+  (override ? '  override: "' + override + '"\n' : '') +
+  (body || '');
+const TOUR =
+  'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "tour"\n  steps:\n    # the ferry\n    - viewpoint: overview\n      properties:\n        element: ferry\n      text: Hello\n';
 const FERRY = {
   '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
   'app.ferry.yaml': SYSTEM('ferry'),
@@ -99,13 +118,31 @@ test('a comparison on screen: the box is offered and CHECKED; the step is writte
   assert.ok(box, 'the box is in the dialog');
   assert.match(box[1], /\bchecked\b/, 'a comparison is on screen: checked');
   assert.match(text(html), /Tell the step at marketplace, compared with inhouse/);
-  assert.match(text(html), /written as the plateau it is now/, 'one sentence says that the keys name plateaus, not modes');
+  assert.match(
+    text(html),
+    /written as the plateau it is now/,
+    'one sentence says that the keys name plateaus, not modes'
+  );
 
   const steps = stepsOf(sandbox, 'order_journey');
   assert.equal(steps.length, before + 1);
-  assert.deepEqual(steps[before], { viewpoint: 'overview', layer: 'application', properties: { element: 'psp' }, at: 'marketplace', against: 'inhouse' });
-  assert.match(appended(opened, ORDER), /^\s+- viewpoint: .*\n(.*\n)*\s+at: .*marketplace.*\n\s+against: .*inhouse.*\n$/, 'only the lines of the new step are added');
-  assert.deepEqual(plain(sandbox.entryProblemsOf(state.workspace.settings)), [], 'the keys pass the checks of the stories');
+  assert.deepEqual(steps[before], {
+    viewpoint: 'overview',
+    layer: 'application',
+    properties: { element: 'psp' },
+    at: 'marketplace',
+    against: 'inhouse'
+  });
+  assert.match(
+    appended(opened, ORDER),
+    /^\s+- viewpoint: .*\n(.*\n)*\s+at: .*marketplace.*\n\s+against: .*inhouse.*\n$/,
+    'only the lines of the new step are added'
+  );
+  assert.deepEqual(
+    plain(sandbox.entryProblemsOf(state.workspace.settings)),
+    [],
+    'the keys pass the checks of the stories'
+  );
   assert.deepEqual(plain(sandbox.stepPlateauProblem(sandbox.findStory('order_journey').steps[before])), null);
   assert.match(run(sandbox, 'storyBarNotice'), /Added as step 4 of .*, told at marketplace, compared with inhouse\./);
 
@@ -155,11 +192,20 @@ test('no comparison on screen: the box is offered and UNCHECKED; ticked, only `a
   const first = addToStory(opened, { choice: 'order_journey' });
   assert.ok(first.box);
   assert.doesNotMatch(first.box[1], /\bchecked\b/, 'no comparison: unchecked');
-  assert.deepEqual(stepsOf(sandbox, 'order_journey')[before], { viewpoint: 'overview', layer: 'application', properties: { element: 'psp' } }, 'unchecked, as it was');
+  assert.deepEqual(
+    stepsOf(sandbox, 'order_journey')[before],
+    { viewpoint: 'overview', layer: 'application', properties: { element: 'psp' } },
+    'unchecked, as it was'
+  );
   // the author ticks it: the plateau drawn, no comparison to name
   const second = addToStory(opened, { choice: 'order_journey' }, { ticked: true });
   assert.match(text(second.html), /Tell the step at the plateau drawn, inhouse/);
-  assert.deepEqual(stepsOf(sandbox, 'order_journey')[run(sandbox, 'activeStory').step], { viewpoint: 'overview', layer: 'application', properties: { element: 'psp' }, at: 'inhouse' });
+  assert.deepEqual(stepsOf(sandbox, 'order_journey')[run(sandbox, 'activeStory').step], {
+    viewpoint: 'overview',
+    layer: 'application',
+    properties: { element: 'psp' },
+    at: 'inhouse'
+  });
 });
 
 test('a following comparison (the past) is written as the plateau it resolves to now, and stays that plateau when the plateau drawn changes', async () => {
@@ -169,7 +215,13 @@ test('a following comparison (the past) is written as the plateau it resolves to
   sandbox.toggleCompareWithPast();
   assert.equal(state.layers.compare.mode, 'past');
   showElement(opened, 'psp');
-  assert.deepEqual(plain(sandbox.storyStepPlateaus()), { at: 'marketplace', against: 'inhouse', note: null, problem: null, checked: true });
+  assert.deepEqual(plain(sandbox.storyStepPlateaus()), {
+    at: 'marketplace',
+    against: 'inhouse',
+    note: null,
+    problem: null,
+    checked: true
+  });
   const before = stepsOf(sandbox, 'order_journey').length;
   const { html } = addToStory(opened, { choice: 'order_journey' });
   assert.match(text(html), /written as the plateau it is now/);
@@ -220,7 +272,11 @@ test('the box writes into a new story too, and into a step that points at a name
   const named = sandbox.findSavedView('customer_overview');
   assert.ok(named);
   showElement(opened, named.properties.element);
-  assert.deepEqual(plain(sandbox.currentViewDefinition()), plain({ viewpoint: named.viewpoint, layer: named.layer || 'application', properties: named.properties }), 'the diagram on screen is that view');
+  assert.deepEqual(
+    plain(sandbox.currentViewDefinition()),
+    plain({ viewpoint: named.viewpoint, layer: named.layer || 'application', properties: named.properties }),
+    'the diagram on screen is that view'
+  );
   addToStory(opened, { choice: '__new__', newName: 'Saas tour' });
   const story = sandbox.storiesList().find((s) => s.name === 'Saas tour');
   assert.deepEqual(plain(story.steps), [{ view: 'customer_overview', at: 'saas', against: 'baseline' }]);
@@ -232,7 +288,11 @@ test('the box writes into a new story too, and into a step that points at a name
 // ---- where the box is not ----
 
 test('a workspace with no plateau shows no box and writes no key, ticked or not', async () => {
-  const opened = await open({ '.archicode.yaml': FERRY['.archicode.yaml'], 'app.ferry.yaml': SYSTEM('ferry'), 'story.tour.yaml': TOUR });
+  const opened = await open({
+    '.archicode.yaml': FERRY['.archicode.yaml'],
+    'app.ferry.yaml': SYSTEM('ferry'),
+    'story.tour.yaml': TOUR
+  });
   const { sandbox, state } = opened;
   assert.equal(state.plateauTree.layered, false);
   showElement(opened, 'ferry');
@@ -240,7 +300,11 @@ test('a workspace with no plateau shows no box and writes no key, ticked or not'
   const { html, box } = addToStory(opened, { choice: 'tour' }, { ticked: true });
   assert.equal(box, null);
   assert.equal(html.includes('data-dialog-plateaus'), false);
-  assert.deepEqual(stepsOf(sandbox, 'tour')[1], { viewpoint: 'overview', layer: 'application', properties: { element: 'ferry' } });
+  assert.deepEqual(stepsOf(sandbox, 'tour')[1], {
+    viewpoint: 'overview',
+    layer: 'application',
+    properties: { element: 'ferry' }
+  });
   assert.equal(appended(opened, 'story.tour.yaml').includes('at:'), false);
 });
 
@@ -252,23 +316,45 @@ test('the plateaus cannot be drawn (a tree that is wrong): no box, the dialog sa
   const { html, box } = addToStory(opened, { choice: 'tour' }, { ticked: true });
   assert.equal(box, null);
   assert.match(text(html), /The plateaus cannot be drawn \(.*\), so the step is added without a plateau\./);
-  assert.deepEqual(stepsOf(sandbox, 'tour')[1], { viewpoint: 'overview', layer: 'application', properties: { element: 'ferry' } });
+  assert.deepEqual(stepsOf(sandbox, 'tour')[1], {
+    viewpoint: 'overview',
+    layer: 'application',
+    properties: { element: 'ferry' }
+  });
 });
 
 test('a plateau the kernel refuses cannot be told: compared with it, `against` is left out and the reason said; drawn, nothing is written', async () => {
-  const bad = PLATEAU('later', null, '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n');
-  const opened = await open(Object.assign({}, FERRY, { 'later/plateau.yaml': bad, 'latest/plateau.yaml': PLATEAU('latest', null) }));
+  const bad = PLATEAU(
+    'later',
+    null,
+    '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n'
+  );
+  const opened = await open(
+    Object.assign({}, FERRY, { 'later/plateau.yaml': bad, 'latest/plateau.yaml': PLATEAU('latest', null) })
+  );
   const { sandbox } = opened;
   sandbox.drawPlateau('latest');
   sandbox.compareWithPlateau('later'); // compared with a plateau the command line refuses
   showElement(opened, 'ferry');
   const offer = plain(sandbox.storyStepPlateaus());
-  assert.deepEqual([offer.at, offer.against, offer.problem, offer.checked], ['latest', null, null, false], 'the step can be told at the plateau drawn, not compared with that one');
-  assert.match(offer.note, /The plateau “later” cannot be drawn: the command line refuses its patches\. No plateau is named for the comparison\./);
+  assert.deepEqual(
+    [offer.at, offer.against, offer.problem, offer.checked],
+    ['latest', null, null, false],
+    'the step can be told at the plateau drawn, not compared with that one'
+  );
+  assert.match(
+    offer.note,
+    /The plateau “later” cannot be drawn: the command line refuses its patches\. No plateau is named for the comparison\./
+  );
   assert.match(text(sandbox.storyPlateauChoiceHtml()), /No plateau is named for the comparison\./);
   sandbox.addCurrentViewToStoryChoice({ storyId: 'tour', withPlateaus: true });
   const written = stepsOf(sandbox, 'tour')[1];
-  assert.deepEqual(written, { viewpoint: 'overview', layer: 'application', properties: { element: 'ferry' }, at: 'latest' });
+  assert.deepEqual(written, {
+    viewpoint: 'overview',
+    layer: 'application',
+    properties: { element: 'ferry' },
+    at: 'latest'
+  });
   assert.equal(sandbox.stepProblem(sandbox.findStory('tour').steps[1]), null, 'a step the page does not flag');
 });
 
@@ -282,14 +368,27 @@ test('the line-preserving save: a step is added after the comment and the lines 
   showElement(opened, 'ferry');
   addToStory(opened, { choice: 'tour' });
   const added = appended(opened, 'story.tour.yaml');
-  assert.match(added, /^ {4}- viewpoint: overview\n {6}layer: application\n {6}properties:\n {8}element: ferry\n {6}at: "?latest"?\n {6}against: "?later"?\n$/);
-  assert.equal(file(state, 'story.tour.yaml').rawText.startsWith(TOUR), true, 'the comment and the first step are as they were');
+  assert.match(
+    added,
+    /^ {4}- viewpoint: overview\n {6}layer: application\n {6}properties:\n {8}element: ferry\n {6}at: "?latest"?\n {6}against: "?later"?\n$/
+  );
+  assert.equal(
+    file(state, 'story.tour.yaml').rawText.startsWith(TOUR),
+    true,
+    'the comment and the first step are as they were'
+  );
   assert.equal(state.workspace.settingsDirty, false, '.archicode.yaml is left alone');
   await sandbox.saveAllChanges();
   assert.deepEqual(mem.writes, ['story.tour.yaml']);
   // read again, the step has its keys
   const again = await open(Object.fromEntries(Array.from(mem.files).map(([p, f]) => [p, f.text])));
-  assert.deepEqual(stepsOf(again.sandbox, 'tour')[1], { viewpoint: 'overview', layer: 'application', properties: { element: 'ferry' }, at: 'latest', against: 'later' });
+  assert.deepEqual(stepsOf(again.sandbox, 'tour')[1], {
+    viewpoint: 'overview',
+    layer: 'application',
+    properties: { element: 'ferry' },
+    at: 'latest',
+    against: 'later'
+  });
   assert.deepEqual(plain(again.sandbox.entryProblemsOf(again.state.workspace.settings)), []);
 });
 
@@ -304,10 +403,19 @@ test('the step goes after the step being told, with its keys, and the story edit
   addToStory(opened, { choice: 'fork_tour' });
   const steps = stepsOf(sandbox, 'fork_tour');
   assert.equal(steps.length, 8);
-  assert.deepEqual(steps[2], { viewpoint: 'overview', layer: 'application', properties: { element: 'psp' }, at: 'marketplace', against: 'inhouse' });
+  assert.deepEqual(steps[2], {
+    viewpoint: 'overview',
+    layer: 'application',
+    properties: { element: 'psp' },
+    at: 'marketplace',
+    against: 'inhouse'
+  });
   assert.deepEqual(steps[1].at, 'saas', 'the steps around it are what they were');
   const html = sandbox.renderStoryEditorHtml(sandbox.findStory('fork_tour'));
-  assert.match(html, /<select data-story-step-plateau="at" data-story="fork_tour" data-step="2"[^>]*>.*<option value="marketplace" selected>/s);
+  assert.match(
+    html,
+    /<select data-story-step-plateau="at" data-story="fork_tour" data-step="2"[^>]*>.*<option value="marketplace" selected>/s
+  );
 });
 
 test('the dialog reads the box from the page: what is ticked is what is written (`submitAppDialog` with no values)', async () => {
@@ -335,5 +443,8 @@ test('the dialog reads the box from the page: what is ticked is what is written 
   assert.equal(stepsOf(sandbox, 'order_journey')[before].at, undefined);
   answer(true);
   const steps = stepsOf(sandbox, 'order_journey');
-  assert.deepEqual([steps[run(sandbox, 'activeStory').step].at, steps[run(sandbox, 'activeStory').step].against], ['marketplace', 'inhouse']);
+  assert.deepEqual(
+    [steps[run(sandbox, 'activeStory').step].at, steps[run(sandbox, 'activeStory').step].against],
+    ['marketplace', 'inhouse']
+  );
 });

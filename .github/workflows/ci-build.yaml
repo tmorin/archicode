@@ -72,7 +72,7 @@ jobs:
       - name: "Test the viewpoint kernel"
         run: |
           (cd src/main/rust/viewpoint-kernel && cargo test)
-          node --test "src/test/javascript/**/*.test.js"
+          npm run test:unit
       - name: "Check the format of the viewpoint kernel"
         # rustfmt of rust-toolchain.toml; run `cargo fmt` in src/main/rust/viewpoint-kernel to fix
         run: (cd src/main/rust/viewpoint-kernel && cargo fmt --check)

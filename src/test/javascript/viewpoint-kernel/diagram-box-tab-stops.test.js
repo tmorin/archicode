@@ -15,21 +15,41 @@ const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 
 function fakeLayout(graph) {
-  const place = (node, x) => Object.assign({}, node, {
-    x, y: 0, width: node.width || 400, height: node.height || 200,
-    children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
-  });
+  const place = (node, x) =>
+    Object.assign({}, node, {
+      x,
+      y: 0,
+      width: node.width || 400,
+      height: node.height || 200,
+      children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
+    });
   return Object.assign(place(graph, 0), { width: 900, height: 600, edges: [] });
 }
 
 /** The tag of every box of a drawing, in drawing order: { id, tabindex, ghost }. */
-const boxesOf = (html) => Array.from(html.matchAll(/<g class="dg-node([^"]*)"[^>]*? data-id="([^"]*)"[^>]*? tabindex="(-?\d)"/g), (m) => ({ id: m[2], tabindex: m[3], ghost: m[1].includes('dg-ghost'), focal: m[1].includes('dg-focal') }));
+const boxesOf = (html) =>
+  Array.from(html.matchAll(/<g class="dg-node([^"]*)"[^>]*? data-id="([^"]*)"[^>]*? tabindex="(-?\d)"/g), (m) => ({
+    id: m[2],
+    tabindex: m[3],
+    ghost: m[1].includes('dg-ghost'),
+    focal: m[1].includes('dg-focal')
+  }));
 
 async function draw(viewpoint, reference, opts) {
   const { sandbox, state, kernel } = await openFixture();
   run(sandbox, "currentPerspective = 'elements';");
   const result = kernel.compute(sandbox.buildKernelInput(viewpoint, reference).input);
-  return { sandbox, state, result, html: sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, (opts && opts.focal !== undefined) ? opts.focal : reference, (opts && opts.options) || {}).html };
+  return {
+    sandbox,
+    state,
+    result,
+    html: sandbox.renderDiagramSvg(
+      fakeLayout(sandbox.buildElkGraph(result)),
+      result,
+      opts && opts.focal !== undefined ? opts.focal : reference,
+      (opts && opts.options) || {}
+    ).html
+  };
 }
 
 // ============================================================ the markup
@@ -38,7 +58,11 @@ test('a drawing has one box with the tab stop: the focal one, and every other bo
   const { html } = await draw('deep', 'shop');
   const boxes = boxesOf(html);
   assert.ok(boxes.length > 8, 'a drawing with many boxes');
-  assert.deepEqual(boxes.filter((b) => b.tabindex === '0').map((b) => b.id), ['shop'], 'the focal box');
+  assert.deepEqual(
+    boxes.filter((b) => b.tabindex === '0').map((b) => b.id),
+    ['shop'],
+    'the focal box'
+  );
   assert.ok(boxes.filter((b) => b.tabindex === '-1').length === boxes.length - 1);
   // what a box was is still there: a link to its element, named, reachable by the arrow keys
   assert.ok((html.match(/<g class="dg-node[^>]*role="link"[^>]*aria-label="[^"]+"/g) || []).length === boxes.length);
@@ -54,11 +78,19 @@ test('with no focal box (the Map) the first box drawn is the stop', async () => 
 test('a ghost box keeps its own stop and is not the stop of the others', async () => {
   const { sandbox } = await openFixture();
   const result = {
-    items: [{ id: 'a', reference: 'a', parent: null }, { id: 'b', reference: 'b', parent: null }, { id: 'ghost_x', reference: 'ghost_x', ghost: true, owner: 'a', parent: null }],
+    items: [
+      { id: 'a', reference: 'a', parent: null },
+      { id: 'b', reference: 'b', parent: null },
+      { id: 'ghost_x', reference: 'ghost_x', ghost: true, owner: 'a', parent: null }
+    ],
     links: []
   };
   const html = sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, '').html;
-  assert.deepEqual(boxesOf(html).map((b) => b.id + ':' + b.tabindex), ['a:0', 'b:-1', 'ghost_x:0'], 'one stop among the real boxes, and the ghost, which is not part of them');
+  assert.deepEqual(
+    boxesOf(html).map((b) => b.id + ':' + b.tabindex),
+    ['a:0', 'b:-1', 'ghost_x:0'],
+    'one stop among the real boxes, and the ghost, which is not part of them'
+  );
 });
 
 // ============================================================ which box is the stop
@@ -69,16 +101,23 @@ function fakeBox(id, classes) {
   return {
     attrs,
     getAttribute: (name) => (name in attrs ? attrs[name] : null),
-    setAttribute: (name, value) => { attrs[name] = String(value); },
+    setAttribute: (name, value) => {
+      attrs[name] = String(value);
+    },
     classList: { contains: (c) => set.has(c), add: (c) => set.add(c), remove: (c) => set.delete(c) },
-    closest: (selector) => (selector.split(',').some((part) => set.has(part.trim().replace(/^.*\./, ''))) ? undefined : null) || null
+    closest: (selector) =>
+      (selector.split(',').some((part) => set.has(part.trim().replace(/^.*\./, ''))) ? undefined : null) || null
   };
 }
 const stops = (boxes) => boxes.map((b) => b.attrs.tabindex);
 
 async function pageWith(boxes) {
   const { sandbox } = await openFixture();
-  const canvas = { querySelectorAll: (selector) => (selector === '.dg-node' ? boxes : []), contains: () => true, focus() {} };
+  const canvas = {
+    querySelectorAll: (selector) => (selector === '.dg-node' ? boxes : []),
+    contains: () => true,
+    focus() {}
+  };
   sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? canvas : null);
   sandbox.document.querySelectorAll = (selector) => (selector === '#diagram-canvas .dg-node' ? boxes : []);
   sandbox.document.querySelector = () => null;
@@ -105,7 +144,11 @@ test('the stop is the box the focus last rested on, else the selected one, else 
   assert.deepEqual(stops(boxes), ['-1', '-1', '-1', '0'], 'the one the focus was on, over everything');
   run(sandbox, "diagramNodeStop = 'gone';");
   sandbox.syncNodeTabStop(canvas);
-  assert.deepEqual(stops(boxes), ['0', '-1', '-1', '-1'], 'a box the drawing has not any more: the fallback, and what is kept is a box it has');
+  assert.deepEqual(
+    stops(boxes),
+    ['0', '-1', '-1', '-1'],
+    'a box the drawing has not any more: the fallback, and what is kept is a box it has'
+  );
   assert.equal(run(sandbox, 'diagramNodeStop'), 'a');
 });
 
@@ -127,7 +170,15 @@ test('the focus moves the stop: a box that gets the focus becomes the only stop;
   const boxes = [fakeBox('a'), fakeBox('b'), fakeBox('c')];
   const ghost = fakeBox('g', ['dg-ghost']);
   const { sandbox, canvas } = await pageWith(boxes);
-  const focus = (el) => { el.closest = (selector) => (selector === '#diagram-canvas' ? canvas : (selector.split(',').some((part) => el.classList.contains(part.trim().replace(/^.*\./, ''))) ? el : null)); sandbox.handleDiagramFocus({ type: 'focusin', target: el }); };
+  const focus = (el) => {
+    el.closest = (selector) =>
+      selector === '#diagram-canvas'
+        ? canvas
+        : selector.split(',').some((part) => el.classList.contains(part.trim().replace(/^.*\./, '')))
+          ? el
+          : null;
+    sandbox.handleDiagramFocus({ type: 'focusin', target: el });
+  };
   sandbox.syncNodeTabStop(canvas);
   assert.deepEqual(stops(boxes), ['0', '-1', '-1']);
   focus(boxes[2]);
@@ -138,9 +189,20 @@ test('the focus moves the stop: a box that gets the focus becomes the only stop;
 });
 
 test('the page runs the sync with the other stops, after the outlines and before the focus is given back', () => {
-  const body = HTML.slice(HTML.indexOf('function showDiagramScene('), HTML.indexOf('\n}\n', HTML.indexOf('function showDiagramScene(')));
-  const order = ['markMapSelection();', 'syncLinkTabStop(canvas);', 'syncNodeTabStop(canvas);', 'restoreDiagramFocus(canvas);'].map((call) => body.indexOf(call));
-  assert.ok(order.every((i) => i > 0) && order.every((i, k) => k === 0 || order[k - 1] < i), 'selection outline, links, boxes, then the focus');
+  const body = HTML.slice(
+    HTML.indexOf('function showDiagramScene('),
+    HTML.indexOf('\n}\n', HTML.indexOf('function showDiagramScene('))
+  );
+  const order = [
+    'markMapSelection();',
+    'syncLinkTabStop(canvas);',
+    'syncNodeTabStop(canvas);',
+    'restoreDiagramFocus(canvas);'
+  ].map((call) => body.indexOf(call));
+  assert.ok(
+    order.every((i) => i > 0) && order.every((i, k) => k === 0 || order[k - 1] < i),
+    'selection outline, links, boxes, then the focus'
+  );
 });
 
 // ============================================================ what did not change
@@ -151,12 +213,35 @@ test('the arrow keys still go to the neighbouring box and Enter still opens it, 
   sandbox.syncNodeTabStop(canvas);
   assert.equal(boxes[1].attrs.tabindex, '-1');
   const focused = [];
-  sandbox.diagramNeighbor = (from, key) => (from === boxes[0] && key === 'ArrowRight' ? Object.assign(boxes[1], { focus() { focused.push('b'); } }) : null);
+  sandbox.diagramNeighbor = (from, key) =>
+    from === boxes[0] && key === 'ArrowRight'
+      ? Object.assign(boxes[1], {
+          focus() {
+            focused.push('b');
+          }
+        })
+      : null;
   const stage = {};
   const key = (target, name) => {
-    const event = { key: name, target, prevented: false, preventDefault() { event.prevented = true; } };
+    const event = {
+      key: name,
+      target,
+      prevented: false,
+      preventDefault() {
+        event.prevented = true;
+      }
+    };
     const inner = target.closest;
-    target.closest = (selector) => (selector === '.diagram-stage' ? stage : selector === '#diagram-canvas' ? canvas : (selector === '.dg-link' ? null : selector === '[data-action]' ? null : inner(selector)));
+    target.closest = (selector) =>
+      selector === '.diagram-stage'
+        ? stage
+        : selector === '#diagram-canvas'
+          ? canvas
+          : selector === '.dg-link'
+            ? null
+            : selector === '[data-action]'
+              ? null
+              : inner(selector);
     sandbox.handleDiagramKeydown(event);
     target.closest = inner;
     return event;
@@ -164,7 +249,10 @@ test('the arrow keys still go to the neighbouring box and Enter still opens it, 
   boxes[0].closest.length; // the arrow works from a box whatever its tabindex
   sandbox.diagramNodeOf = (el) => el;
   const arrow = key(boxes[0], 'ArrowRight');
-  assert.ok(arrow.prevented && focused.length === 1, 'the arrow goes to the next box, which has tabindex -1 and takes the focus all the same');
+  assert.ok(
+    arrow.prevented && focused.length === 1,
+    'the arrow goes to the next box, which has tabindex -1 and takes the focus all the same'
+  );
   assert.match(HTML, /e\.key\.startsWith\('Arrow'\)[\s\S]{0,200}diagramNeighbor\(current, e\.key\)/);
   assert.match(HTML, /e\.key === 'Enter' \|\| e\.key === ' '[\s\S]{0,300}dispatchEvent\(new MouseEvent\('click'/);
 });
@@ -174,7 +262,16 @@ test('after a redraw the focus goes back to the same box, whatever its tabindex,
   const { sandbox, canvas } = await pageWith(boxes);
   const focused = [];
   for (const box of boxes) {
-    box.focus = () => { focused.push(box.attrs['data-id']); box.closest = (selector) => (selector === '#diagram-canvas' ? canvas : (selector.split(',').some((part) => box.classList.contains(part.trim().replace(/^.*\./, ''))) ? box : null)); sandbox.handleDiagramFocus({ type: 'focusin', target: box }); };
+    box.focus = () => {
+      focused.push(box.attrs['data-id']);
+      box.closest = (selector) =>
+        selector === '#diagram-canvas'
+          ? canvas
+          : selector.split(',').some((part) => box.classList.contains(part.trim().replace(/^.*\./, '')))
+            ? box
+            : null;
+      sandbox.handleDiagramFocus({ type: 'focusin', target: box });
+    };
   }
   canvas.querySelectorAll = (selector) => (selector === '.dg-node' ? boxes : []);
   sandbox.syncNodeTabStop(canvas);
@@ -186,6 +283,13 @@ test('after a redraw the focus goes back to the same box, whatever its tabindex,
 });
 
 test('the exported SVG has no tab stop of any box, and the fold buttons keep theirs', () => {
-  assert.match(HTML, /for \(const el of clone\.querySelectorAll\('\[tabindex\],\[data-action\]'\)\) \{ el\.removeAttribute\('tabindex'\)/);
-  assert.match(HTML, /class="dg-fold"[^;]*tabindex="0" role="button"/, 'a fold button is a button: its own stop, on the Map');
+  assert.match(
+    HTML,
+    /for \(const el of clone\.querySelectorAll\('\[tabindex\],\[data-action\]'\)\) \{ el\.removeAttribute\('tabindex'\)/
+  );
+  assert.match(
+    HTML,
+    /class="dg-fold"[^;]*tabindex="0" role="button"/,
+    'a fold button is a button: its own stop, on the Map'
+  );
 });

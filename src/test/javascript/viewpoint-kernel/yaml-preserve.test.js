@@ -47,7 +47,11 @@ test('an added and a removed line keep the comments around them', () => {
   value.content.relationships.push({ label: 'logs', destination: 'audit' });
   const text = patch(FILE, value);
   assert.deepEqual(parse(text), value);
-  assert.ok(text.includes('# the system of the shop\n') && text.includes('  # who it talks to\n') && text.includes('# end of the file\n'));
+  assert.ok(
+    text.includes('# the system of the shop\n') &&
+      text.includes('  # who it talks to\n') &&
+      text.includes('# end of the file\n')
+  );
   assert.ok(text.includes('id: "shop"   # the id is quoted'));
   assert.ok(!text.includes('"uses"') && text.includes('label: logs') && text.endsWith('\n'));
 });
@@ -92,7 +96,8 @@ test('every YAML file of the repository: unchanged is identical, and an edit is 
       else if (/\.ya?ml$/.test(entry.name)) found.push(full);
     }
   };
-  for (const dir of ['src/doc/examples', 'src/test/workspaces', 'src/test/resources/viewpoint-kernel/workspace']) walk(path.join(REPO, dir));
+  for (const dir of ['src/doc/examples', 'src/test/workspaces', 'src/test/resources/viewpoint-kernel/workspace'])
+    walk(path.join(REPO, dir));
   assert.ok(found.length > 30);
   let followed = 0;
   for (const file of found) {
@@ -132,22 +137,38 @@ const { openFixture } = require('./harness');
 test('an edit of an element rewrites its manifest line by line: the comments of the file stay', async () => {
   const { sandbox, state } = await openFixture();
   const mf = state.manifestFiles.find((f) => f.relPath.endsWith('app.shop.web.yaml'));
-  mf.rawText = '# kept: the owner of this file\n' + mf.rawText.replace('  name: "Web Shop"', '  name: "Web Shop"   # kept too') + '# trailing\n';
-  sandbox.commitElementEdit('shop.web.frontend', (node) => { node.name = 'Frontend 2'; });
+  mf.rawText =
+    '# kept: the owner of this file\n' +
+    mf.rawText.replace('  name: "Web Shop"', '  name: "Web Shop"   # kept too') +
+    '# trailing\n';
+  sandbox.commitElementEdit('shop.web.frontend', (node) => {
+    node.name = 'Frontend 2';
+  });
   assert.ok(mf.rawText.startsWith('# kept: the owner of this file\n'));
   assert.ok(mf.rawText.includes('  name: "Web Shop"   # kept too\n'));
   assert.ok(mf.rawText.endsWith('# trailing\n'));
   assert.ok(mf.rawText.includes('name: "Frontend 2"'));
-  assert.ok(mf.rawText.includes('      qualifiers:\n        - "Angular"'), 'a line the edit did not touch keeps its quotes');
+  assert.ok(
+    mf.rawText.includes('      qualifiers:\n        - "Angular"'),
+    'a line the edit did not touch keeps its quotes'
+  );
   assert.equal(mf.rawText.split('\n').length, (mf.rawText.match(/\n/g) || []).length + 1);
   assert.deepEqual(parse(mf.rawText), plain({ header: mf.header, content: mf.content }));
 });
 
 test('a relationship that points at nothing is a button to the edit form of its owner in Details, as it is in the diagram', async () => {
   const { sandbox, state } = await openFixture();
-  sandbox.commitElementEdit('shop.web.frontend', (node) => { node.relationships[0].destination = 'shop.nowhere'; });
+  sandbox.commitElementEdit('shop.web.frontend', (node) => {
+    node.relationships[0].destination = 'shop.nowhere';
+  });
   const html = sandbox.renderElementRelationshipsHtml(state.index.application.get('shop.web.frontend'));
-  assert.match(html, /<button type="button" class="relationship-link relationship-dangling" data-action="fix-dangling" data-ref="shop\.web\.frontend"[^>]*>shop\.nowhere<\/button><span class="dangling-badge">dangling<\/span>/);
+  assert.match(
+    html,
+    /<button type="button" class="relationship-link relationship-dangling" data-action="fix-dangling" data-ref="shop\.web\.frontend"[^>]*>shop\.nowhere<\/button><span class="dangling-badge">dangling<\/span>/
+  );
   // a reference that is not a relationship (a parent, a child) stays a plain text
-  assert.match(sandbox.renderReferenceItemHtml('shop.nowhere', 'application'), /^<span class="relationship-dangling">shop\.nowhere<span class="dangling-badge">dangling<\/span><\/span>$/);
+  assert.match(
+    sandbox.renderReferenceItemHtml('shop.nowhere', 'application'),
+    /^<span class="relationship-dangling">shop\.nowhere<span class="dangling-badge">dangling<\/span><\/span>$/
+  );
 });

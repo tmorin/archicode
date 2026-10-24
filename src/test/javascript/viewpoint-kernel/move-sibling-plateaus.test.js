@@ -31,13 +31,32 @@ function walk(dir, base, out) {
 const BRIGHTCART = walk(LAYERED, LAYERED, {});
 const WITHOUT_ENTRIES = Object.fromEntries(Object.entries(BRIGHTCART).filter(([file]) => !file.startsWith('shared/')));
 
-const element = (kind, id, plateau, parent) => 'header:\n  kind: "archicode.morin.io/' + kind + '"\n  version: "1"\n' + (plateau ? '  plateau: "' + plateau + '"\n' : '') + (parent ? '  parent: "' + parent + '"\n' : '') +
-  'content:\n  id: "' + id + '"\n  name: "' + id + ' of ' + plateau + '"\n';
-const VIEW_ON_CART = 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "cart_overview"\n  name: "The cart service"\n  viewpoint: overview\n  layer: application\n  properties:\n    element: "commerce.cart"\n';
-const STORY_ON_CART = 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "cart_story"\n  name: "Around the cart"\n  steps:\n    - viewpoint: "overview"\n      layer: "application"\n      properties:\n        element: "commerce.cart"\n      text: "The cart."\n';
-const SAAS_CART = { 'saas/application/commerce.yaml': element('system', 'commerce', 'saas'), 'saas/application/commerce-cart.yaml': element('container', 'cart', 'saas', 'commerce') };
+const element = (kind, id, plateau, parent) =>
+  'header:\n  kind: "archicode.morin.io/' +
+  kind +
+  '"\n  version: "1"\n' +
+  (plateau ? '  plateau: "' + plateau + '"\n' : '') +
+  (parent ? '  parent: "' + parent + '"\n' : '') +
+  'content:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  id +
+  ' of ' +
+  plateau +
+  '"\n';
+const VIEW_ON_CART =
+  'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "cart_overview"\n  name: "The cart service"\n  viewpoint: overview\n  layer: application\n  properties:\n    element: "commerce.cart"\n';
+const STORY_ON_CART =
+  'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "cart_story"\n  name: "Around the cart"\n  steps:\n    - viewpoint: "overview"\n      layer: "application"\n      properties:\n        element: "commerce.cart"\n      text: "The cart."\n';
+const SAAS_CART = {
+  'saas/application/commerce.yaml': element('system', 'commerce', 'saas'),
+  'saas/application/commerce-cart.yaml': element('container', 'cart', 'saas', 'commerce')
+};
 /** `saas` and `inhouse` both have `commerce.cart`, a view and a step of a story name it. */
-const FORK = Object.assign({}, BRIGHTCART, SAAS_CART, { 'shared/view.cart_overview.yaml': VIEW_ON_CART, 'shared/story.cart_story.yaml': STORY_ON_CART });
+const FORK = Object.assign({}, BRIGHTCART, SAAS_CART, {
+  'shared/view.cart_overview.yaml': VIEW_ON_CART,
+  'shared/story.cart_story.yaml': STORY_ON_CART
+});
 const FORK_NO_ENTRIES = Object.assign({}, WITHOUT_ENTRIES, SAAS_CART);
 
 async function open(files, drawn) {
@@ -61,7 +80,14 @@ async function saved(opened) {
 }
 
 const dialogOf = (sandbox) => run(sandbox, 'appDialog');
-const text = (html) => html.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+const text = (html) =>
+  html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
 const status = (sandbox) => plain(run(sandbox, 'saveStatus'));
 const dirty = (state) => Array.from(state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath)).sort();
 
@@ -99,7 +125,9 @@ test('pressing Move with a parent chosen opens the dialog of the plateaus that k
   assert.equal(dialog.kind, 'rename-siblings');
   assert.equal(dialog.moving, true);
   assert.deepEqual(plain(dialog.impact), {
-    from: 'commerce.cart', to: 'orders.cart', plateau: 'inhouse',
+    from: 'commerce.cart',
+    to: 'orders.cart',
+    plateau: 'inhouse',
     plateaus: [{ id: 'saas', name: 'Buy the commerce platform', declaredIn: 'saas', references: ['commerce.cart'] }],
     views: [{ id: 'cart_overview', label: 'The cart service', plateaus: ['saas'] }],
     steps: [{ story: 'cart_story', label: 'Around the cart', number: 1, plateaus: ['saas'] }]
@@ -119,15 +147,28 @@ test('the dialog names the plateau, the old and the new reference, the view and 
   assert.match(html, /class="app-dialog app-dialog-wide"/);
   const said = text(html);
   assert.match(said, /Move “Cart service”: 1 plateau keeps the old reference/);
-  assert.match(said, /commerce\.cart becomes orders\.cart in the plateau inhouse, and in the plateaus that stand on it\./);
-  assert.match(said, /This plateau does not stand on inhouse and still has commerce\.cart \(the move does not reach it\):\s*saas/);
-  assert.match(said, /Views and stories belong to no plateau: they follow the move everywhere, so these 2 cannot be drawn any more in the plateaus that keep the old reference:/);
+  assert.match(
+    said,
+    /commerce\.cart becomes orders\.cart in the plateau inhouse, and in the plateaus that stand on it\./
+  );
+  assert.match(
+    said,
+    /This plateau does not stand on inhouse and still has commerce\.cart \(the move does not reach it\):\s*saas/
+  );
+  assert.match(
+    said,
+    /Views and stories belong to no plateau: they follow the move everywhere, so these 2 cannot be drawn any more in the plateaus that keep the old reference:/
+  );
   assert.match(said, /the view The cart service cart_overview in saas/);
   assert.match(said, /the story Around the cart cart_story, step 1 in saas/);
   assert.match(said, /go back, draw that plateau and move the element to the same place there/);
   assert.doesNotMatch(said, /rename/i, 'the words are the words of a move');
   assert.doesNotMatch(said, /marketplace/, 'marketplace stands on inhouse: it is rewritten, not listed');
-  assert.match(html, /data-action="dialog-cancel" data-dialog-autofocus>Back to Move<\/button>/, 'the focus is on the safe button');
+  assert.match(
+    html,
+    /data-action="dialog-cancel" data-dialog-autofocus>Back to Move<\/button>/,
+    'the focus is on the safe button'
+  );
   assert.match(html, /data-action="dialog-submit">Move anyway<\/button>/);
 });
 
@@ -142,19 +183,32 @@ test('"Move anyway" writes what a move has always written: the same files, byte 
   assert.deepEqual(status(forked.sandbox).state === 'error' ? status(forked.sandbox) : null, null, 'no error is told');
   const out = await saved(forked);
   // the control: the same move where no plateau keeps the reference, written by the function the button called before this run
-  const control = await open(Object.assign({}, BRIGHTCART, { 'shared/view.cart_overview.yaml': VIEW_ON_CART, 'shared/story.cart_story.yaml': STORY_ON_CART }), 'inhouse');
+  const control = await open(
+    Object.assign({}, BRIGHTCART, {
+      'shared/view.cart_overview.yaml': VIEW_ON_CART,
+      'shared/story.cart_story.yaml': STORY_ON_CART
+    }),
+    'inhouse'
+  );
   assert.equal(control.sandbox.renameSiblingImpact('commerce.cart', 'orders.cart', 'application'), null);
   control.sandbox.commitMoveElement('commerce.cart', 'application', 'orders', { confirmed: true });
   const expected = await saved(control);
-  const withoutSaas = (files) => Object.fromEntries(Object.entries(files).filter(([file]) => !file.startsWith('saas/')));
+  const withoutSaas = (files) =>
+    Object.fromEntries(Object.entries(files).filter(([file]) => !file.startsWith('saas/')));
   assert.deepEqual(withoutSaas(out.changed), expected.changed, 'the rewrite is the rewrite');
   assert.deepEqual(out.removed, expected.removed);
   assert.match(out.changed['shared/view.cart_overview.yaml'], /element: "orders\.cart"/);
   assert.match(out.changed['shared/story.cart_story.yaml'], /element: "orders\.cart"/);
-  assert.ok(!Object.keys(out.changed).some((file) => file.startsWith('saas/')), 'the sibling keeps its own commerce.cart');
+  assert.ok(
+    !Object.keys(out.changed).some((file) => file.startsWith('saas/')),
+    'the sibling keeps its own commerce.cart'
+  );
   // the sibling really cannot draw the view now, as the dialog said
   forked.sandbox.drawPlateau('saas');
-  assert.equal(forked.sandbox.viewProblem(forked.sandbox.findSavedView('cart_overview')), 'The element “orders.cart” is not in the plateau “saas”.');
+  assert.equal(
+    forked.sandbox.viewProblem(forked.sandbox.findSavedView('cart_overview')),
+    'The element “orders.cart” is not in the plateau “saas”.'
+  );
 });
 
 // ---- the way back ----
@@ -200,7 +254,12 @@ test('after "Back to Move" the author chooses another parent, is asked again wit
 /** A click on the control with that `data-action`, as the page's one listener gets it. */
 function click(sandbox, action) {
   const target = { getAttribute: (name) => (name === 'data-action' ? action : null), closest: () => null };
-  sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  sandbox.handleAppClick({
+    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    preventDefault() {},
+    stopPropagation() {},
+    detail: 1
+  });
 }
 
 test('the buttons do it: Move asks, Back to Move gives the dialog back, Move asks again and Move anyway writes (the clicks the page gets)', async () => {
@@ -209,7 +268,10 @@ test('the buttons do it: Move asks, Back to Move gives the dialog back, Move ask
   sandbox.openAppDialog({ kind: 'move', reference: 'commerce.cart', layer: 'application' });
   const move = dialogOf(sandbox);
   move.chosen = 'orders'; // what the radio button says (the page reads it from the DOM; the harness has no radio)
-  sandbox.document.querySelector = ((original) => (selector) => (selector === 'input[name="move-parent"]:checked' ? { value: 'orders' } : original.call(sandbox.document, selector)))(sandbox.document.querySelector);
+  sandbox.document.querySelector = ((original) => (selector) =>
+    selector === 'input[name="move-parent"]:checked' ? { value: 'orders' } : original.call(sandbox.document, selector))(
+    sandbox.document.querySelector
+  );
   click(sandbox, 'move-confirm');
   assert.equal(dialogOf(sandbox).kind, 'rename-siblings');
   click(sandbox, 'dialog-cancel'); // Back to Move
@@ -249,7 +311,11 @@ test('a move where no sibling keeps the reference opens no dialog of ours, and w
   const form = await open(BRIGHTCART, 'inhouse');
   assert.equal(form.sandbox.renameSiblingImpact('commerce.cart', 'orders.cart', 'application'), null);
   const result = pressMove(form.sandbox, 'commerce.cart', 'orders');
-  assert.equal(result && result.pending, true, 'only the dialog of the plateaus that stand on inhouse, as before this run');
+  assert.equal(
+    result && result.pending,
+    true,
+    'only the dialog of the plateaus that stand on inhouse, as before this run'
+  );
   assert.deepEqual(sayYes(form.sandbox), ['layer-confirm']);
   const low = await open(BRIGHTCART, 'inhouse');
   low.sandbox.commitMoveElement('commerce.cart', 'application', 'orders', { confirmed: true });
@@ -260,17 +326,27 @@ test('a sibling that keeps the reference but is named by no view and no step ask
   const form = await open(FORK_NO_ENTRIES, 'inhouse');
   assert.equal(form.sandbox.renameSiblingImpact('commerce.cart', 'orders.cart', 'application'), null);
   pressMove(form.sandbox, 'commerce.cart', 'orders');
-  assert.deepEqual(sayYes(form.sandbox), ['layer-confirm'], 'the sibling asks nothing: only the plateaus that stand on inhouse are asked, as before');
+  assert.deepEqual(
+    sayYes(form.sandbox),
+    ['layer-confirm'],
+    'the sibling asks nothing: only the plateaus that stand on inhouse are asked, as before'
+  );
   assert.equal(form.state.index.application.has('orders.cart'), true);
 });
 
 test('a move in baseline asks nothing: every plateau stands on it, and the views follow in all of them', async () => {
-  const view = VIEW_ON_CART.replace('cart_overview', 'app_overview').replace('The cart service', 'The shop application').replace('commerce.cart', 'shop.app');
+  const view = VIEW_ON_CART.replace('cart_overview', 'app_overview')
+    .replace('The cart service', 'The shop application')
+    .replace('commerce.cart', 'shop.app');
   const opened = await open(Object.assign({}, FORK, { 'shared/view.app_overview.yaml': view }), 'baseline');
   const { sandbox, state } = opened;
   assert.equal(sandbox.findSavedView('app_overview').properties.element, 'shop.app');
   assert.equal(sandbox.renameSiblingImpact('shop.app', 'backoffice.app', 'application'), null);
-  assert.equal(pressMove(sandbox, 'shop.app', 'backoffice').pending, true, 'the plateaus that inherit it are asked, as before');
+  assert.equal(
+    pressMove(sandbox, 'shop.app', 'backoffice').pending,
+    true,
+    'the plateaus that inherit it are asked, as before'
+  );
   assert.deepEqual(sayYes(sandbox), ['layer-confirm'], 'and nothing else');
   assert.equal(state.index.application.has('backoffice.app'), true);
   assert.equal(sandbox.findSavedView('app_overview').properties.element, 'backoffice.app');
@@ -278,13 +354,18 @@ test('a move in baseline asks nothing: every plateau stands on it, and the views
     sandbox.drawPlateau(id);
     assert.equal(state.index.application.has('shop.app'), false, 'no plateau keeps the old reference: ' + id);
     // a plateau that has the element at all has it moved, and draws the view (marketplace replaces the shop and has neither)
-    if (state.index.application.has('backoffice.app')) assert.equal(sandbox.viewProblem(sandbox.findSavedView('app_overview')), null, 'drawn in ' + id);
+    if (state.index.application.has('backoffice.app'))
+      assert.equal(sandbox.viewProblem(sandbox.findSavedView('app_overview')), null, 'drawn in ' + id);
   }
 });
 
 test('an element the plateau drawn only inherits is refused by the Move dialog with its own sentence, not by the question', async () => {
   const { sandbox, state } = await open(FORK, 'saas');
-  assert.equal(sandbox.renameSiblingImpact('shop.app', 'backoffice.app', 'application'), null, 'saas does not declare shop.app');
+  assert.equal(
+    sandbox.renameSiblingImpact('shop.app', 'backoffice.app', 'application'),
+    null,
+    'saas does not declare shop.app'
+  );
   assert.equal(pressMove(sandbox, 'shop.app', 'backoffice'), null);
   const dialog = dialogOf(sandbox);
   assert.notEqual(dialog && dialog.kind, 'rename-siblings');
@@ -295,9 +376,12 @@ test('an element the plateau drawn only inherits is refused by the Move dialog w
 test('a workspace with no plateau moves as it always did: no dialog, the view follows', async () => {
   const files = {
     '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
-    'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n  elements:\n    - kind: container\n      id: "ticketing"\n      name: "Ticketing"\n',
-    'app.pier.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "pier"\n  name: "Pier"\n',
-    'view.ticketing_overview.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "ticketing_overview"\n  viewpoint: overview\n  properties:\n    element: ferry.ticketing\n'
+    'app.ferry.yaml':
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n  elements:\n    - kind: container\n      id: "ticketing"\n      name: "Ticketing"\n',
+    'app.pier.yaml':
+      'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "pier"\n  name: "Pier"\n',
+    'view.ticketing_overview.yaml':
+      'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "ticketing_overview"\n  viewpoint: overview\n  properties:\n    element: ferry.ticketing\n'
   };
   const opened = await open(files);
   const { sandbox } = opened;
@@ -307,6 +391,10 @@ test('a workspace with no plateau moves as it always did: no dialog, the view fo
   assert.equal(result.ok, true);
   assert.equal(dialogOf(sandbox), null);
   const out = await saved(opened);
-  assert.deepEqual(Object.keys(out.changed).sort(), ['app.ferry.yaml', 'app.pier.yaml', 'view.ticketing_overview.yaml']);
+  assert.deepEqual(Object.keys(out.changed).sort(), [
+    'app.ferry.yaml',
+    'app.pier.yaml',
+    'view.ticketing_overview.yaml'
+  ]);
   assert.match(out.changed['view.ticketing_overview.yaml'], /element: pier\.ticketing/);
 });

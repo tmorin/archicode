@@ -17,14 +17,29 @@ const KEY = 'archicode-standalone-editor:theme';
 /** A localStorage in memory. */
 function memoryStorage(initial = {}) {
   const data = Object.assign({}, initial);
-  return { data, getItem: (k) => (k in data ? data[k] : null), setItem: (k, v) => { data[k] = String(v); }, removeItem: (k) => { delete data[k]; } };
+  return {
+    data,
+    getItem: (k) => (k in data ? data[k] : null),
+    setItem: (k, v) => {
+      data[k] = String(v);
+    },
+    removeItem: (k) => {
+      delete data[k];
+    }
+  };
 }
 
 /** A localStorage that refuses everything, as a browser with its site data blocked does. */
 const refusingStorage = {
-  getItem() { throw new Error('SecurityError'); },
-  setItem() { throw new Error('QuotaExceededError'); },
-  removeItem() { throw new Error('SecurityError'); }
+  getItem() {
+    throw new Error('SecurityError');
+  },
+  setItem() {
+    throw new Error('QuotaExceededError');
+  },
+  removeItem() {
+    throw new Error('SecurityError');
+  }
 };
 
 const themeOf = (sandbox) => sandbox.document.documentElement.getAttribute('data-theme');
@@ -35,7 +50,13 @@ function runBootScript(localStorage) {
   assert.ok(boot, 'the <head> has its script');
   assert.ok(HTML.indexOf(boot[0]) < HTML.indexOf('<style>'), 'it runs before the stylesheet and the body');
   const attributes = {};
-  const document = { documentElement: { setAttribute: (k, v) => { attributes[k] = v; } } };
+  const document = {
+    documentElement: {
+      setAttribute: (k, v) => {
+        attributes[k] = v;
+      }
+    }
+  };
   vm.runInNewContext(boot[1], { document, localStorage });
   return attributes;
 }
@@ -101,11 +122,19 @@ test('a browser that refuses its storage still gets the choice, for the session,
   }
 });
 
-test('the code editors are dark when the choice says so, whatever the system says, and the system\'s otherwise', () => {
+test("the code editors are dark when the choice says so, whatever the system says, and the system's otherwise", () => {
   const sandbox = createApp({ localStorage: memoryStorage() });
   const themes = [];
   const darkHighlight = { highlight: true };
-  sandbox.window.CM = { EditorView: { theme: (spec, options) => { themes.push(options.dark); return { theme: true }; } }, darkHighlight };
+  sandbox.window.CM = {
+    EditorView: {
+      theme: (spec, options) => {
+        themes.push(options.dark);
+        return { theme: true };
+      }
+    },
+    darkHighlight
+  };
   const dark = () => Array.from(sandbox.codeMirrorThemeExtensions()).includes(darkHighlight);
 
   sandbox.window.matchMedia = (query) => ({ matches: /dark/.test(query) }); // the system is dark
@@ -125,11 +154,29 @@ test('the open code editors are rebuilt with the text they hold when the theme c
   const sandbox = createApp({ localStorage: memoryStorage() });
   const created = [];
   class FakeView {
-    constructor({ doc, extensions, parent }) { this.doc = doc; this.extensions = extensions; this.parent = parent; this.dom = { parentElement: parent }; this.destroyed = false; this.state = { doc: { toString: () => this.doc } }; created.push(this); }
-    destroy() { this.destroyed = true; }
-    static theme() { return { theme: true }; }
+    constructor({ doc, extensions, parent }) {
+      this.doc = doc;
+      this.extensions = extensions;
+      this.parent = parent;
+      this.dom = { parentElement: parent };
+      this.destroyed = false;
+      this.state = { doc: { toString: () => this.doc } };
+      created.push(this);
+    }
+    destroy() {
+      this.destroyed = true;
+    }
+    static theme() {
+      return { theme: true };
+    }
   }
-  sandbox.window.CM = { EditorView: FakeView, basicSetup: 'setup', json: () => 'json', yaml: () => 'yaml', darkHighlight: 'dark-highlight' };
+  sandbox.window.CM = {
+    EditorView: FakeView,
+    basicSetup: 'setup',
+    json: () => 'json',
+    yaml: () => 'yaml',
+    darkHighlight: 'dark-highlight'
+  };
   const host = { host: 'json' };
   const typed = new FakeView({ doc: '{"typed": "not saved"}', extensions: [], parent: host });
   sandbox.__open = { classic: typed };
@@ -157,9 +204,19 @@ test('the Settings screen offers the choice in a section of its own, apart from 
   assert.ok(section, 'the section');
   assert.match(section[0], /<h3>Appearance \(this browser\)<\/h3>/);
   assert.match(section[0], /<fieldset[^>]*><legend>Theme<\/legend>/);
-  const radios = Array.from(section[0].matchAll(/<input type="radio" name="theme-choice" value="(\w+)"( checked)?>/g), (m) => [m[1], !!m[2]]);
-  assert.deepEqual(radios, [['light', false], ['dark', true], ['system', false]]);
-  assert.ok(html.indexOf('id="settings-appearance"') < html.indexOf('<h3>Manifests</h3>'), 'before the workspace settings');
+  const radios = Array.from(
+    section[0].matchAll(/<input type="radio" name="theme-choice" value="(\w+)"( checked)?>/g),
+    (m) => [m[1], !!m[2]]
+  );
+  assert.deepEqual(radios, [
+    ['light', false],
+    ['dark', true],
+    ['system', false]
+  ]);
+  assert.ok(
+    html.indexOf('id="settings-appearance"') < html.indexOf('<h3>Manifests</h3>'),
+    'before the workspace settings'
+  );
   assert.equal(html.split('id="settings-appearance"').length, 2, 'only once');
 });
 
@@ -168,8 +225,14 @@ test('choosing a theme in Settings does not modify the workspace, light "Save al
   const sandbox = createApp({ localStorage: storage });
   await sandbox.loadWorkspace(makeDirHandle(FIXTURE));
   let renders = 0;
-  sandbox.render = () => { renders++; };
-  const radio = (value) => ({ value, matches: (selector) => selector === 'input[name="theme-choice"]', closest: (selector) => (/settings-view/.test(selector) ? {} : null) });
+  sandbox.render = () => {
+    renders++;
+  };
+  const radio = (value) => ({
+    value,
+    matches: (selector) => selector === 'input[name="theme-choice"]',
+    closest: (selector) => (/settings-view/.test(selector) ? {} : null)
+  });
 
   assert.equal(sandbox.hasUnsavedChanges(), false);
   sandbox.handleAppInput({ target: radio('dark') });
@@ -179,10 +242,16 @@ test('choosing a theme in Settings does not modify the workspace, light "Save al
   assert.equal(sandbox.hasUnsavedChanges(), false, 'the workspace is not modified');
   assert.match(sandbox.renderSaveAllButtonHtml(), /disabled/, 'Save all changes stays off');
   assert.equal(renders, 0, 'no redraw: what is typed in the settings is not lost');
-  assert.equal(JSON.stringify(sandbox.serializeSettingsToRaw(sandbox.__state().workspace.settings)).includes('theme'), false, 'nothing in .archicode.yaml');
+  assert.equal(
+    JSON.stringify(sandbox.serializeSettingsToRaw(sandbox.__state().workspace.settings)).includes('theme'),
+    false,
+    'nothing in .archicode.yaml'
+  );
 
   // while typing in the form still dirties it
-  sandbox.handleAppInput({ target: { id: 'x', matches: () => false, closest: (selector) => (/settings-view/.test(selector) ? {} : null) } });
+  sandbox.handleAppInput({
+    target: { id: 'x', matches: () => false, closest: (selector) => (/settings-view/.test(selector) ? {} : null) }
+  });
   assert.equal(run(sandbox, 'draftTyped'), true);
 });
 
@@ -190,12 +259,23 @@ test('the stylesheet: forced themes override the system, with the right color-sc
   assert.match(CSS, /:root \{\s*color-scheme: light dark;/, 'system: both');
   assert.match(CSS, /:root\[data-theme="light"\] \{ color-scheme: light; \}/);
   assert.match(CSS, /:root\[data-theme="dark"\] \{\s*color-scheme: dark;/);
-  assert.match(CSS, /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{/, 'a forced light wins over a dark system');
+  assert.match(
+    CSS,
+    /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{/,
+    'a forced light wins over a dark system'
+  );
 });
 
-test('the dark variables are the same for the system\'s dark and for the forced one', () => {
-  const declarations = (block) => block.split(';').map((d) => d.trim()).filter((d) => d.startsWith('--')).sort();
-  const system = declarations(CSS.match(/prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([^}]*)\}/)[1]);
+test("the dark variables are the same for the system's dark and for the forced one", () => {
+  const declarations = (block) =>
+    block
+      .split(';')
+      .map((d) => d.trim())
+      .filter((d) => d.startsWith('--'))
+      .sort();
+  const system = declarations(
+    CSS.match(/prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([^}]*)\}/)[1]
+  );
   const forced = declarations(CSS.match(/:root\[data-theme="dark"\] \{([^}]*)\}/)[1]);
   assert.ok(system.length >= 9);
   assert.deepEqual(forced, system);

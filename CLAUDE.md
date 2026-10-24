@@ -21,13 +21,13 @@ cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml
 cargo fmt --check --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml     # rustfmt (`cargo fmt` writes); CI step "Check the format of the viewpoint kernel"
 cargo clippy --all-targets --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml -- -D warnings   # every finding is fixed, none baselined; CI step "Lint the viewpoint kernel"
 src/main/rust/viewpoint-kernel/embed.sh                  # after changing the Rust: rebuilds and re-embeds the .wasm
-node --test "src/test/javascript/**/*.test.js"           # kernel and standalone editor vs. the views the CLI generates
+npm run test:unit                                        # = node --test "src/test/javascript/**/*.test.js": kernel and standalone editor vs. the views the CLI generates (the unit/integration suite; an e2e suite, `test:e2e`, comes later in wave 023)
 scripts/byte-identity.sh                                 # V-C (wave 023): the jar of the tag archicode-0.19.0 (built outside the repo from `git archive`) and the working tree run the commands on every shipped workspace; files, stdout, stderr and exit codes must be identical but for the sentences of scripts/byte-identity-exceptions.txt
 ```
 
 Maven needs no Rust: `src/main/wasm/viewpoint_kernel.wasm` is committed.
 
-Format (Prettier, pinned by `package-lock.json`; run `npm ci` once; options in `.prettierrc.yaml`, files left out in `.prettierignore`: the editor page `standalone.html` stays out until #161). `format:check` is the step "Check the format" of the `Build` job of CI; today it covers `src/**/*.java`, and the JavaScript tests are added to both scripts by wave 023 run W-5 (the options for `*.js` and `*.mjs` are already in `.prettierrc.yaml`):
+Format (Prettier, pinned by `package-lock.json`; run `npm ci` once; options in `.prettierrc.yaml`, files left out in `.prettierignore`: the editor page `standalone.html` stays out until #161). `format:check` is the step "Check the format" of the `Build` job of CI; it covers `src/**/*.java`, `src/test/javascript/**/*.js` and the generators `src/test/resources/**/*.mjs` (wave 023 run W-5, #160 step 2; the options for `*.js` and `*.mjs` are in `.prettierrc.yaml`; the reformatting is one commit of formatter output only, so `git blame --ignore-rev` can skip it; Prettier's member-chain layout may need two `--write` passes on a file, the committed files are fixed points):
 
 ```bash
 npm run format          # writes

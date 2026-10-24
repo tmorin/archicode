@@ -8,7 +8,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { FIXTURE, openFixture } = require('./harness');
 
-const SHAPES = 'rectangle|person|database|node|card|actor|queue|cloud|component|folder|frame|package|storage|artifact|collections|stack|boundary|control|entity|file|hexagon|label|usecase|interface';
+const SHAPES =
+  'rectangle|person|database|node|card|actor|queue|cloud|component|folder|frame|package|storage|artifact|collections|stack|boundary|control|entity|file|hexagon|label|usecase|interface';
 
 /** What a generated .puml draws: its links as from|to|label|qualifiers, and the ids of its boxes. */
 function parsePuml(text) {
@@ -33,7 +34,8 @@ function parsePuml(text) {
   return { links, items };
 }
 
-const linkKey = (l, name = (id) => id) => [name(l.from), name(l.to), l.label || '', Array.from(l.qualifiers).sort().join(',')].join('|');
+const linkKey = (l, name = (id) => id) =>
+  [name(l.from), name(l.to), l.label || '', Array.from(l.qualifiers).sort().join(',')].join('|');
 
 /**
  * The name the CLI gives each id of a view in its PlantUML (rendering/plantuml/PlantumlNames.java): PlantUML reads letters,
@@ -59,7 +61,16 @@ test('the fixture is what the tests below expect it to be', async () => {
   const { state } = await openFixture();
   assert.ok(state.index.application.size >= 15, 'application elements: ' + state.index.application.size);
   assert.ok(state.index.technology.size >= 8, 'technology elements: ' + state.index.technology.size);
-  assert.deepEqual(Array.from(state.workspace.settings.facets.customs, (f) => f.name).sort(), ['audited-only', 'compound', 'keep-untyped', 'no-smtp', 'quiet-infra', 'rest-only', 'rest-only-standard', 'unaudited']);
+  assert.deepEqual(Array.from(state.workspace.settings.facets.customs, (f) => f.name).sort(), [
+    'audited-only',
+    'compound',
+    'keep-untyped',
+    'no-smtp',
+    'quiet-infra',
+    'rest-only',
+    'rest-only-standard',
+    'unaudited'
+  ]);
 });
 
 test('every generated view is reproduced, for the workspace and for each facet', async () => {
@@ -82,7 +93,10 @@ test('every generated view is reproduced, for the workspace and for each facet',
           const { input } = sandbox.buildKernelInput(viewpoint, ref, { layer, facet: set.facet });
           const out = kernel.compute(input);
           const where = set.dir + '/' + layer + '/' + ref + ' ' + viewpoint;
-          if (out.error) { problems.push(where + ': ' + out.error); continue; }
+          if (out.error) {
+            problems.push(where + ': ' + out.error);
+            continue;
+          }
           const name = plantumlNames(out.items.map((i) => i.id));
           const mine = new Set(out.links.filter((l) => !l.secondary).map((l) => linkKey(l, name)));
           const ids = new Set(out.items.map((i) => name(i.id)));
@@ -90,7 +104,13 @@ test('every generated view is reproduced, for the workspace and for each facet',
           const extra = { links: diff(mine, gold.links), items: diff(ids, gold.items) };
           const missing = { links: diff(gold.links, mine), items: diff(gold.items, ids) };
           if (extra.links.length + extra.items.length + missing.links.length + missing.items.length) {
-            problems.push(where + '\n   only in the kernel: ' + JSON.stringify(extra) + '\n   only in the CLI:    ' + JSON.stringify(missing));
+            problems.push(
+              where +
+                '\n   only in the kernel: ' +
+                JSON.stringify(extra) +
+                '\n   only in the CLI:    ' +
+                JSON.stringify(missing)
+            );
           }
           checked++;
         }
@@ -118,7 +138,13 @@ function pumlStereotypes(text) {
       m = line.match(new RegExp('^(?:' + SHAPES + ') (\\S+) as ".*" ((?:<<.+?>> ?)+) \\{$'));
       drawnWith = 1;
     }
-    if (m) boxes.set(m[1], Array.from(m[2].matchAll(/<<(.+?)>>/g), (s) => s[1]).slice(0, -drawnWith).reverse());
+    if (m)
+      boxes.set(
+        m[1],
+        Array.from(m[2].matchAll(/<<(.+?)>>/g), (s) => s[1])
+          .slice(0, -drawnWith)
+          .reverse()
+      );
   }
   return boxes;
 }
@@ -142,10 +168,22 @@ test('the stereotypes of every box are the ones the CLI draws it with: the quali
           const out = kernel.compute(sandbox.buildKernelInput(viewpoint, ref, { layer, facet: set.facet }).input);
           const name = plantumlNames(out.items.map((i) => i.id));
           for (const item of out.items) {
-            if (!gold.has(name(item.id))) { problems.push(file + ': no box ' + item.id); continue; }
+            if (!gold.has(name(item.id))) {
+              problems.push(file + ': no box ' + item.id);
+              continue;
+            }
             boxes++;
             const mine = Array.from(item.stereotypes); // from another realm: copied
-            if (JSON.stringify(mine) !== JSON.stringify(gold.get(name(item.id)))) problems.push(file + ' ' + item.id + ': the kernel says ' + JSON.stringify(mine) + ', the CLI draws ' + JSON.stringify(gold.get(name(item.id))));
+            if (JSON.stringify(mine) !== JSON.stringify(gold.get(name(item.id))))
+              problems.push(
+                file +
+                  ' ' +
+                  item.id +
+                  ': the kernel says ' +
+                  JSON.stringify(mine) +
+                  ', the CLI draws ' +
+                  JSON.stringify(gold.get(name(item.id)))
+              );
             mine.forEach((s) => seen.add(s));
           }
         }
@@ -154,7 +192,8 @@ test('the stereotypes of every box are the ones the CLI draws it with: the quali
   }
   assert.deepEqual(problems, []);
   assert.ok(boxes >= 5 * 100, 'only ' + boxes + ' boxes were compared');
-  for (const expected of ['external', 'changed', 'Spring Boot', 'PostgreSQL']) assert.ok(seen.has(expected), expected + ' is among the stereotypes compared');
+  for (const expected of ['external', 'changed', 'Spring Boot', 'PostgreSQL'])
+    assert.ok(seen.has(expected), expected + ' is among the stereotypes compared');
   assert.ok(!seen.has('external changed'), 'the tag is a list, not one stereotype');
 });
 
@@ -180,24 +219,41 @@ test('the output states its contract version and says what each link stands for'
 test('a folded box hides what is inside it and the links follow', async () => {
   const { sandbox, kernel } = await openFixture();
   const open = kernel.compute(sandbox.buildKernelInput('deep', 'shop.catalog').input);
-  const folded = kernel.compute(sandbox.buildKernelInput('deep', 'shop.catalog', { collapsed: ['shop.catalog.service'] }).input);
+  const folded = kernel.compute(
+    sandbox.buildKernelInput('deep', 'shop.catalog', { collapsed: ['shop.catalog.service'] }).input
+  );
   const box = folded.items.find((i) => i.id === 'shop.catalog.service');
   assert.equal(box.collapsed, true);
   assert.equal(box.hidden, open.items.filter((i) => i.id.startsWith('shop.catalog.service.')).length);
   assert.ok(!folded.items.some((i) => i.id.startsWith('shop.catalog.service.')), 'the inside is gone');
-  assert.ok(folded.links.every((l) => !l.from.startsWith('shop.catalog.service.') && !l.to.startsWith('shop.catalog.service.')), 'no link reaches inside any more');
+  assert.ok(
+    folded.links.every((l) => !l.from.startsWith('shop.catalog.service.') && !l.to.startsWith('shop.catalog.service.')),
+    'no link reaches inside any more'
+  );
 });
 
 test('a facet that cannot be evaluated is reported, not ignored', async () => {
   const { sandbox, kernel } = await openFixture();
-  const compute = (actions) => kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api', { facet: { name: 'odd', actions } }).input);
-  assert.match(compute([{ operator: 'REMOVE', jsonPath: '$..relationships[?(@.label == ' }]).error, /invalid facet JSONPath/);
-  assert.match(compute([{ operator: 'KEEP', jsonPath: "$..relationships[?(@.label == 'x')]" }]).error, /unsupported facet action: KEEP/);
+  const compute = (actions) =>
+    kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api', { facet: { name: 'odd', actions } }).input);
+  assert.match(
+    compute([{ operator: 'REMOVE', jsonPath: '$..relationships[?(@.label == ' }]).error,
+    /invalid facet JSONPath/
+  );
+  assert.match(
+    compute([{ operator: 'KEEP', jsonPath: "$..relationships[?(@.label == 'x')]" }]).error,
+    /unsupported facet action: KEEP/
+  );
 });
 
 test('a facet written for the earlier engine (Jayway) is refused with the standard form to write, and the standard form says nothing (#128)', async () => {
   const { sandbox, kernel } = await openFixture();
-  const compute = (jsonPath) => kernel.compute(sandbox.buildKernelInput('deep', 'shop.web.api', { facet: { name: 'f', actions: [{ operator: 'REMOVE', jsonPath }] } }).input);
+  const compute = (jsonPath) =>
+    kernel.compute(
+      sandbox.buildKernelInput('deep', 'shop.web.api', {
+        facet: { name: 'f', actions: [{ operator: 'REMOVE', jsonPath }] }
+      }).input
+    );
   const cases = JSON.parse(fs.readFileSync(path.join(__dirname, 'facet-dialect-cases.json'), 'utf8'));
   for (const c of cases.refused) {
     const out = compute(c.path);
@@ -207,7 +263,9 @@ test('a facet written for the earlier engine (Jayway) is refused with the standa
   for (const accepted of cases.accepted) assert.equal(compute(accepted).error, undefined, accepted);
   const standard = compute("$.application..relationships[?(@.qualifiers && !@.qualifiers[?(@ == 'REST')])]");
   assert.equal(standard.warnings, undefined);
-  assert.ok(standard.links.length > 0 && standard.links.length < compute("$..relationships[?(@.label == 'none')]").links.length);
+  assert.ok(
+    standard.links.length > 0 && standard.links.length < compute("$..relationships[?(@.label == 'none')]").links.length
+  );
 });
 
 test('the facets that filter on tags, qualifiers and labels keep what a plain reading of the manifests says', async () => {
@@ -215,9 +273,21 @@ test('the facets that filter on tags, qualifiers and labels keep what a plain re
   const { sandbox, state, kernel } = await openFixture();
   const rels = [];
   for (const record of state.index.application.values()) {
-    for (const rel of record.relationships) rels.push({ from: record.reference, to: rel.destination, label: rel.rawLabel || '', tags: rel.tags || {}, qualifiers: rel.qualifiers || [] });
+    for (const rel of record.relationships)
+      rels.push({
+        from: record.reference,
+        to: rel.destination,
+        label: rel.rawLabel || '',
+        tags: rel.tags || {},
+        qualifiers: rel.qualifiers || []
+      });
   }
-  assert.ok(rels.some((r) => r.tags.audited === 'yes') && rels.some((r) => r.tags.audited === 'no') && rels.some((r) => r.label === 'routes to'), 'the fixture has what the facets look at');
+  assert.ok(
+    rels.some((r) => r.tags.audited === 'yes') &&
+      rels.some((r) => r.tags.audited === 'no') &&
+      rels.some((r) => r.label === 'routes to'),
+    'the fixture has what the facets look at'
+  );
   const kept = {
     unaudited: (r) => r.tags.audited !== 'yes',
     'audited-only': (r) => r.tags.audited === 'yes',
@@ -229,8 +299,13 @@ test('the facets that filter on tags, qualifiers and labels keep what a plain re
     const facet = state.workspace.settings.facets.customs.find((f) => f.name === name);
     const out = kernel.compute(sandbox.buildKernelInput('map', null, { facet, opened: everything }).input);
     assert.equal(out.error, undefined, name);
-    const mine = Array.from(out.links.flatMap((l) => l.relationships.map((r) => [r.from, r.destination, r.label || ''].join('|')))).sort(); // from another realm: copied
-    const expected = rels.filter(keep).map((r) => [r.from, r.to, r.label].join('|')).sort();
+    const mine = Array.from(
+      out.links.flatMap((l) => l.relationships.map((r) => [r.from, r.destination, r.label || ''].join('|')))
+    ).sort(); // from another realm: copied
+    const expected = rels
+      .filter(keep)
+      .map((r) => [r.from, r.to, r.label].join('|'))
+      .sort();
     assert.deepEqual(mine, expected, name);
     assert.ok(expected.length > 0 && expected.length < rels.length, name + ' keeps some of the relationships, not all');
   }
@@ -238,7 +313,9 @@ test('the facets that filter on tags, qualifiers and labels keep what a plain re
 
 test('the kernel the CLI runs is the one the editor embeds', () => {
   const html = fs.readFileSync(path.join(FIXTURE, '../../../../main/resources/editor-webapp/standalone.html'), 'utf8');
-  const embedded = html.match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/)[1];
+  const embedded = html.match(
+    /<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/
+  )[1];
   const file = fs.readFileSync(path.join(FIXTURE, '../../../../main/wasm/viewpoint_kernel.wasm'));
   assert.equal(Buffer.from(embedded, 'base64').equals(file), true, 'run src/main/rust/viewpoint-kernel/embed.sh');
 });
@@ -258,10 +335,17 @@ test('the map, pinned on one element with nothing open, draws the overview the C
         const file = path.join(dir, ref.replace(/\./g, '_') + '-' + viewpoint + '.puml');
         if (!fs.existsSync(file)) continue;
         const gold = parsePuml(fs.readFileSync(file, 'utf8'));
-        const { input } = sandbox.buildKernelInput('map', null, { facet: set.facet, pinned: [ref], opened: viewpoint === 'deep' ? everything : [] });
+        const { input } = sandbox.buildKernelInput('map', null, {
+          facet: set.facet,
+          pinned: [ref],
+          opened: viewpoint === 'deep' ? everything : []
+        });
         const out = kernel.compute(input);
         const where = set.dir + ' ' + ref + ' ' + viewpoint;
-        if (out.error) { problems.push(where + ': ' + out.error); continue; }
+        if (out.error) {
+          problems.push(where + ': ' + out.error);
+          continue;
+        }
         const name = plantumlNames(out.items.map((i) => i.id));
         const mine = new Set(out.links.filter((l) => !l.secondary).map((l) => linkKey(l, name)));
         const diff = (a, b) => [...a].filter((v) => !b.has(v));

@@ -8,7 +8,10 @@ test('the actions of a facet are read with their JSON path, and written back und
   const { sandbox, state } = await openFixture();
   const facet = state.workspace.settings.facets.customs.find((f) => f.name === 'rest-only');
   assert.equal(facet.actions.length, 2);
-  assert.equal(facet.actions[0].jsonPath, "$.application..relationships[?((@.qualifiers && !@.qualifiers[?(@ == 'REST')]))]");
+  assert.equal(
+    facet.actions[0].jsonPath,
+    "$.application..relationships[?((@.qualifiers && !@.qualifiers[?(@ == 'REST')]))]"
+  );
   assert.equal(facet.actions[0].operator, 'REMOVE');
   assert.ok(!('json-path' in facet.actions[0]), 'one spelling only inside the editor');
 

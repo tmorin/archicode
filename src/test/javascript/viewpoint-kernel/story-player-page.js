@@ -21,13 +21,20 @@ function filesOf(dir, prefix = '') {
   return out;
 }
 const FILES = new Map();
-const shippedFiles = (dir) => { if (!FILES.has(dir)) FILES.set(dir, filesOf(dir)); return FILES.get(dir); };
+const shippedFiles = (dir) => {
+  if (!FILES.has(dir)) FILES.set(dir, filesOf(dir));
+  return FILES.get(dir);
+};
 
 /** The shipped stories and the homes they are played from (the plateau and comparison on screen when Play is pressed; `compare` is the choice of the band). */
 const SHIPPED = [
   { story: 'migration', dir: DOMAIN_PLATEAUS, homes: [{}, { plateau: 'to-be', compare: 'past' }] },
   { story: 'fork_tour', dir: LAYERED, homes: [{}, { plateau: 'marketplace', compare: 'past' }] },
-  { story: 'order_journey', dir: LAYERED, homes: [{}, { plateau: 'marketplace', compare: 'past' }, { plateau: 'saas', compare: 'other:marketplace' }] },
+  {
+    story: 'order_journey',
+    dir: LAYERED,
+    homes: [{}, { plateau: 'marketplace', compare: 'past' }, { plateau: 'saas', compare: 'other:marketplace' }]
+  },
   { story: 'seller_journey', dir: LAYERED, homes: [{}, { plateau: 'inhouse', compare: 'other:saas' }] }
 ];
 
@@ -63,7 +70,10 @@ function cloneDeep(value, seen = new Map()) {
 function boxesAndLinks(html) {
   return {
     boxes: Array.from(html.matchAll(/<g class="dg-node[^>]*? data-id="([^"]*)"/g), (m) => m[1]).sort(),
-    links: Array.from(html.matchAll(/<g class="dg-link" data-from="([^"]*)" data-to="([^"]*)"/g), (m) => m[1] + '>' + m[2]).sort()
+    links: Array.from(
+      html.matchAll(/<g class="dg-link" data-from="([^"]*)" data-to="([^"]*)"/g),
+      (m) => m[1] + '>' + m[2]
+    ).sort()
   };
 }
 
@@ -73,15 +83,26 @@ function fakeControl(tag, attributes, dom) {
   const el = {
     tagName: tag.toUpperCase(),
     attrs,
-    get disabled() { return 'disabled' in attrs; },
+    get disabled() {
+      return 'disabled' in attrs;
+    },
     hidden: false,
     isContentEditable: false,
     getAttribute: (name) => (name in attrs ? attrs[name] : null),
     hasAttribute: (name) => name in attrs,
-    setAttribute: (name, value) => { attrs[name] = String(value); },
-    focus() { dom.active = el; },
+    setAttribute: (name, value) => {
+      attrs[name] = String(value);
+    },
+    focus() {
+      dom.active = el;
+    },
     matches: (selector) => selector === '[data-player-step-menu]' && 'data-player-step-menu' in attrs,
-    closest: (selector) => (selector === '[data-player-action]' && 'data-player-action' in attrs ? el : selector === '[data-player-step-menu]' && 'data-player-step-menu' in attrs ? el : null)
+    closest: (selector) =>
+      selector === '[data-player-action]' && 'data-player-action' in attrs
+        ? el
+        : selector === '[data-player-step-menu]' && 'data-player-step-menu' in attrs
+          ? el
+          : null
   };
   return el;
 }
@@ -96,11 +117,23 @@ function fakeRoot(dom, onWrite) {
   const root = {
     hidden: true,
     listeners: {},
-    addEventListener(type, fn) { (root.listeners[type] = root.listeners[type] || []).push(fn); },
-    get innerHTML() { return html; },
+    addEventListener(type, fn) {
+      (root.listeners[type] = root.listeners[type] || []).push(fn);
+    },
+    get innerHTML() {
+      return html;
+    },
     set innerHTML(value) {
       html = value;
-      controls = Array.from(html.matchAll(/<(button|select)\b([^>]*)>/g), (m) => fakeControl(m[1], Object.fromEntries(Array.from(m[2].matchAll(/([\w-]+)(?:="([^"]*)")?/g), (a) => [a[1], a[2] === undefined ? '' : a[2]])), dom));
+      controls = Array.from(html.matchAll(/<(button|select)\b([^>]*)>/g), (m) =>
+        fakeControl(
+          m[1],
+          Object.fromEntries(
+            Array.from(m[2].matchAll(/([\w-]+)(?:="([^"]*)")?/g), (a) => [a[1], a[2] === undefined ? '' : a[2]])
+          ),
+          dom
+        )
+      );
       onWrite();
     },
     controls: () => controls,
@@ -108,7 +141,8 @@ function fakeRoot(dom, onWrite) {
     querySelector(selector) {
       const action = /^\[data-player-action="([^"]*)"\]$/.exec(selector);
       if (action) return controls.find((el) => el.attrs['data-player-action'] === action[1]) || null;
-      if (selector === '[data-player-step-menu]') return controls.find((el) => 'data-player-step-menu' in el.attrs) || null;
+      if (selector === '[data-player-step-menu]')
+        return controls.find((el) => 'data-player-step-menu' in el.attrs) || null;
       return null;
     },
     querySelectorAll: () => controls.slice()
@@ -118,7 +152,13 @@ function fakeRoot(dom, onWrite) {
 
 /** A canvas of 800 x 600 px with an SVG the player can frame (its size and its transform are what it writes). */
 function fakeCanvas() {
-  const svg = { attrs: {}, style: {}, setAttribute(name, value) { svg.attrs[name] = String(value); } };
+  const svg = {
+    attrs: {},
+    style: {},
+    setAttribute(name, value) {
+      svg.attrs[name] = String(value);
+    }
+  };
   return {
     svg,
     clientWidth: 800,
@@ -140,17 +180,30 @@ async function openPlayerPage(files, home, options) {
   const { sandbox } = page;
   const dom = { active: null };
   let canvas = null;
-  const root = fakeRoot(dom, () => { canvas = null; });
+  const root = fakeRoot(dom, () => {
+    canvas = null;
+  });
   const region = { textContent: '' };
   const app = sandbox.document.getElementById('app');
   const inert = { value: false, calls: [] };
-  app.setAttribute = (name) => { if (name === 'inert') { inert.value = true; inert.calls.push('set'); } };
-  app.removeAttribute = (name) => { if (name === 'inert') { inert.value = false; inert.calls.push('remove'); } };
+  app.setAttribute = (name) => {
+    if (name === 'inert') {
+      inert.value = true;
+      inert.calls.push('set');
+    }
+  };
+  app.removeAttribute = (name) => {
+    if (name === 'inert') {
+      inert.value = false;
+      inert.calls.push('remove');
+    }
+  };
   const previous = sandbox.document.getElementById;
   sandbox.document.getElementById = (id) => {
     if (id === 'story-player') return root;
     if (id === 'story-announcer') return region;
-    if (id === 'player-canvas') return /id="player-canvas"/.test(root.innerHTML) ? (canvas = canvas || fakeCanvas()) : null;
+    if (id === 'player-canvas')
+      return /id="player-canvas"/.test(root.innerHTML) ? (canvas = canvas || fakeCanvas()) : null;
     return previous.call(sandbox.document, id);
   };
   Object.defineProperty(sandbox.document, 'activeElement', { get: () => dom.active, configurable: true });
@@ -164,7 +217,14 @@ async function openPlayerPage(files, home, options) {
   } else {
     await page.show();
   }
-  Object.assign(page, { dom, root, region, app, inert, playerCanvas: () => (/id="player-canvas"/.test(root.innerHTML) ? (canvas = canvas || fakeCanvas()) : null) });
+  Object.assign(page, {
+    dom,
+    root,
+    region,
+    app,
+    inert,
+    playerCanvas: () => (/id="player-canvas"/.test(root.innerHTML) ? (canvas = canvas || fakeCanvas()) : null)
+  });
   return page;
 }
 
@@ -173,13 +233,21 @@ async function sceneShown(page, expectedStep) {
   const { waitFor } = require('./harness');
   return waitFor(() => {
     const player = run(page.sandbox, 'storyPlayer');
-    return player && player.scene && player.scene.index === player.step && (expectedStep === undefined || player.step === expectedStep) ? player : null;
+    return player &&
+      player.scene &&
+      player.scene.index === player.step &&
+      (expectedStep === undefined || player.step === expectedStep)
+      ? player
+      : null;
   }, 'the scene of the step shown by the player');
 }
 
 /** A click on a control of the player, as the container's listener receives it. */
 function playerClick(page, action) {
-  const control = action === 'menu' ? page.root.querySelector('[data-player-step-menu]') : page.root.querySelector('[data-player-action="' + action + '"]');
+  const control =
+    action === 'menu'
+      ? page.root.querySelector('[data-player-step-menu]')
+      : page.root.querySelector('[data-player-action="' + action + '"]');
   if (!control) throw new Error('no control ' + action + ' in the player');
   for (const fn of page.root.listeners.click || []) fn({ target: control });
   return control;
@@ -195,7 +263,20 @@ function playerChoose(page, index) {
 /** A key as the player's document listener reads it; `target` defaults to the control that has the focus. */
 function keyEvent(page, key, extra) {
   const target = (extra && extra.target) || page.dom.active || { tagName: 'BODY', closest: () => null };
-  const event = Object.assign({ key, target, defaultPrevented: false, preventDefault() { event.defaultPrevented = true; }, stopPropagation() { event.stopped = true; } }, extra);
+  const event = Object.assign(
+    {
+      key,
+      target,
+      defaultPrevented: false,
+      preventDefault() {
+        event.defaultPrevented = true;
+      },
+      stopPropagation() {
+        event.stopped = true;
+      }
+    },
+    extra
+  );
   return event;
 }
 function press(page, key, extra) {
@@ -208,10 +289,17 @@ function press(page, key, extra) {
 function playButton(page, story) {
   const opener = {
     attrs: { 'data-action': 'story-player-open', 'data-story': story },
-    getAttribute(name) { return name in opener.attrs ? opener.attrs[name] : null; },
-    closest(selector) { return selector === '[data-action]' ? opener : null; },
+    getAttribute(name) {
+      return name in opener.attrs ? opener.attrs[name] : null;
+    },
+    closest(selector) {
+      return selector === '[data-action]' ? opener : null;
+    },
     focused: 0,
-    focus() { opener.focused++; page.dom.active = opener; }
+    focus() {
+      opener.focused++;
+      page.dom.active = opener;
+    }
   };
   return opener;
 }
@@ -227,7 +315,15 @@ function editorOf(page) {
   const { sandbox, state } = page;
   return {
     state: cloneDeep(state),
-    identity: [state.index, state.baseline, state.layers, state.layers && state.layers.compare, state.selection, state.plateauTree, state.workspace],
+    identity: [
+      state.index,
+      state.baseline,
+      state.layers,
+      state.layers && state.layers.compare,
+      state.selection,
+      state.plateauTree,
+      state.workspace
+    ],
     perspective: run(sandbox, 'currentPerspective'),
     hash: sandbox.location.hash,
     version: run(sandbox, 'modelVersion'),
@@ -246,4 +342,21 @@ function editorOf(page) {
   };
 }
 
-module.exports = { REPO, LAYERED, DOMAIN_PLATEAUS, shippedFiles, SHIPPED, cloneDeep, boxesAndLinks, openPlayerPage, sceneShown, playerClick, playerChoose, press, keyEvent, playButton, pressPlay, editorOf };
+module.exports = {
+  REPO,
+  LAYERED,
+  DOMAIN_PLATEAUS,
+  shippedFiles,
+  SHIPPED,
+  cloneDeep,
+  boxesAndLinks,
+  openPlayerPage,
+  sceneShown,
+  playerClick,
+  playerChoose,
+  press,
+  keyEvent,
+  playButton,
+  pressPlay,
+  editorOf
+};

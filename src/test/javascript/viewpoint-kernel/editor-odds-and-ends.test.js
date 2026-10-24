@@ -26,11 +26,27 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 // ---- an invented ferry company in three plateaus, with two facets ----
 
 const element = (kind, parent, id, name, extra) =>
-  'header:\n  kind: "archicode.morin.io/' + kind + '"\n' + (parent ? '  parent: "' + parent + '"\n' : '') + '  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n' + (extra || '');
-const rel = (destination, label) => '  relationships:\n    - destination: "' + destination + '"\n      label: "' + label + '"\n';
+  'header:\n  kind: "archicode.morin.io/' +
+  kind +
+  '"\n' +
+  (parent ? '  parent: "' + parent + '"\n' : '') +
+  '  version: "1"\ncontent:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  name +
+  '"\n' +
+  (extra || '');
+const rel = (destination, label) =>
+  '  relationships:\n    - destination: "' + destination + '"\n      label: "' + label + '"\n';
 const FLEET_NOW = {
   'app.fleet.yaml': element('system', null, 'fleet', 'Fleet'),
-  'app.fleet.dock.yaml': element('container', 'fleet', 'dock', 'Dock planner', rel('fleet.ferry', 'schedules') + '  tags:\n    rendering-stereotypes: "planner"\n'),
+  'app.fleet.dock.yaml': element(
+    'container',
+    'fleet',
+    'dock',
+    'Dock planner',
+    rel('fleet.ferry', 'schedules') + '  tags:\n    rendering-stereotypes: "planner"\n'
+  ),
   'app.fleet.ferry.yaml': element('container', 'fleet', 'ferry', 'Ferry log'),
   'app.fleet.radio.yaml': element('container', 'fleet', 'radio', 'Radio desk', rel('fleet.dock', 'calls'))
 };
@@ -40,10 +56,15 @@ const FLEET_NEXT = {
   'app.fleet.ferry.yaml': element('container', 'fleet', 'ferry', 'Ferry log'),
   'app.fleet.beacon.yaml': element('container', 'fleet', 'beacon', 'Beacon feed', rel('fleet.dock', 'feeds'))
 };
-const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
+const folder = (dir, files) =>
+  Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
 const FILES = Object.assign({}, folder('10_now', FLEET_NOW), folder('20_next', FLEET_NEXT));
-const PLATEAU_LIST = [{ id: 'now', path: 'plateaus/10_now' }, { id: 'next', path: 'plateaus/20_next' }];
-const SETTINGS = '  current: next\n' +
+const PLATEAU_LIST = [
+  { id: 'now', path: 'plateaus/10_now' },
+  { id: 'next', path: 'plateaus/20_next' }
+];
+const SETTINGS =
+  '  current: next\n' +
   '  facets:\n    customs:\n' +
   '      - name: no-ferry\n        actions:\n          - operator: REMOVE\n            json-path: "$.application..elements[?(@.id == \'ferry\')]"\n' +
   '      - name: no-radio\n        actions:\n          - operator: REMOVE\n            json-path: "$.application..elements[?(@.id == \'radio\')]"\n';
@@ -70,7 +91,9 @@ async function open({ compareTo = null, files = FILES, folderHandle = null } = {
   sandbox.console = Object.assign({}, console, { error() {} });
   sandbox.__scenes = [];
   sandbox.__recipe = null;
-  run(sandbox, `
+  run(
+    sandbox,
+    `
     globalThis.__count = { kernelInputs: 0, computes: 0, quiets: 0, models: 0 };
     showDiagramScene = (scene) => { __scenes.push(scene); };
     diagramRecipeOf = () => __recipe;
@@ -79,17 +102,46 @@ async function open({ compareTo = null, files = FILES, folderHandle = null } = {
     { const kernel = loadedKernel; const compute = kernel.compute; kernel.compute = function (input) { __count.computes++; return compute.call(this, input); }; }
     { const kernel = loadedKernel; const quiet = kernel.quiet; kernel.quiet = function (input) { __count.quiets++; return quiet.call(this, input); }; } // wave 015, issue #81: the quiet references are one call per layer
     { const stringify = JSON.stringify; JSON.stringify = function (...a) { const text = stringify.apply(this, a); if (typeof text === 'string' && text.includes('"reference"') && text.includes('"relationships"')) __count.models++; return text; }; }
-  `);
+  `
+  );
   const count = () => plain(run(sandbox, '__count'));
   const facet = (name) => state.workspace.settings.facets.customs.find((candidate) => candidate.name === name);
   return { sandbox, state, mem, count, facet, kernel: run(sandbox, 'loadedKernel') };
 }
 
-const recipeOf = (sandbox, state, over) => Object.assign({
-  host: 'main', view: null, isMap: false, reference: 'fleet.dock', record: state.index.application.get('fleet.dock'), layer: 'application', viewpoint: 'overview',
-  facet: null, mapState: null, hideUnlinked: false, shows: { labels: true, qualifiers: false, descriptions: false, wrap: false }
-}, over);
-const mapRecipe = (sandbox, state, over) => recipeOf(sandbox, state, Object.assign({ isMap: true, reference: '', record: null, viewpoint: 'map', layer: undefined, mapState: { opened: ['fleet'], pinned: [], hidden: [] } }, over));
+const recipeOf = (sandbox, state, over) =>
+  Object.assign(
+    {
+      host: 'main',
+      view: null,
+      isMap: false,
+      reference: 'fleet.dock',
+      record: state.index.application.get('fleet.dock'),
+      layer: 'application',
+      viewpoint: 'overview',
+      facet: null,
+      mapState: null,
+      hideUnlinked: false,
+      shows: { labels: true, qualifiers: false, descriptions: false, wrap: false }
+    },
+    over
+  );
+const mapRecipe = (sandbox, state, over) =>
+  recipeOf(
+    sandbox,
+    state,
+    Object.assign(
+      {
+        isMap: true,
+        reference: '',
+        record: null,
+        viewpoint: 'map',
+        layer: undefined,
+        mapState: { opened: ['fleet'], pinned: [], hidden: [] }
+      },
+      over
+    )
+  );
 
 /** Draws what the recipe says and returns the scene the page showed (waits for the layout, which here is the fallback). */
 async function draw(ctx, recipe) {
@@ -112,16 +164,33 @@ async function drawWithoutCache(ctx, recipe) {
 test('#37: two renders of an unchanged model, with or without a comparison, build no kernel input, compute nothing and serialise no model', async () => {
   for (const compareTo of [null, 'now']) {
     const ctx = await open({ compareTo });
-    for (const recipe of [recipeOf(null, ctx.state, {}), recipeOf(null, ctx.state, { facet: ctx.facet('no-ferry') }), mapRecipe(null, ctx.state, {}), mapRecipe(null, ctx.state, { facet: ctx.facet('no-radio') })]) {
+    for (const recipe of [
+      recipeOf(null, ctx.state, {}),
+      recipeOf(null, ctx.state, { facet: ctx.facet('no-ferry') }),
+      mapRecipe(null, ctx.state, {}),
+      mapRecipe(null, ctx.state, { facet: ctx.facet('no-radio') })
+    ]) {
       const first = await draw(ctx, recipe);
-      assert.ok(run(ctx.sandbox, 'diagramCache') && !first.html.includes('error-panel'), 'the drawing is one, and it is kept');
+      assert.ok(
+        run(ctx.sandbox, 'diagramCache') && !first.html.includes('error-panel'),
+        'the drawing is one, and it is kept'
+      );
       const before = ctx.count();
       assert.ok(before.kernelInputs > 0 && before.computes > 0, 'the first render did the work');
       for (let i = 0; i < 2; i++) {
         const again = await draw(ctx, recipe);
         assert.equal(again.html, first.html, 'the same drawing');
       }
-      assert.deepEqual(ctx.count(), before, 'compare to ' + compareTo + ', ' + recipe.viewpoint + (recipe.facet ? ' through ' + recipe.facet.name : '') + ': the second and the third render did nothing');
+      assert.deepEqual(
+        ctx.count(),
+        before,
+        'compare to ' +
+          compareTo +
+          ', ' +
+          recipe.viewpoint +
+          (recipe.facet ? ' through ' + recipe.facet.name : '') +
+          ': the second and the third render did nothing'
+      );
     }
   }
 });
@@ -140,10 +209,21 @@ test('#37: the counters are real: a render that has to compute is seen by them',
 
 test('#37: the key of the drawing is not the kernel input and no walk of the index: the source says so', () => {
   const key = HTML.slice(HTML.indexOf('function diagramCacheKey('), HTML.indexOf('let treeQuietCache'));
-  assert.ok(key.includes('modelsKey(') && !key.includes('buildKernelInput(') && !key.includes('JSON.stringify(input)') && !key.includes('AppState.index['));
+  assert.ok(
+    key.includes('modelsKey(') &&
+      !key.includes('buildKernelInput(') &&
+      !key.includes('JSON.stringify(input)') &&
+      !key.includes('AppState.index[')
+  );
   assert.ok(!HTML.includes('diagramModelFingerprint'), 'the third walk of the model is gone');
-  const quiet = HTML.slice(HTML.indexOf('function quietReferencesThroughFacet('), HTML.indexOf('async function markTreeThroughFacet'));
-  assert.ok(quiet.indexOf('treeQuietCache.key === key') < quiet.indexOf('buildKernelInput('), 'the cache is asked before any input is built');
+  const quiet = HTML.slice(
+    HTML.indexOf('function quietReferencesThroughFacet('),
+    HTML.indexOf('async function markTreeThroughFacet')
+  );
+  assert.ok(
+    quiet.indexOf('treeQuietCache.key === key') < quiet.indexOf('buildKernelInput('),
+    'the cache is asked before any input is built'
+  );
   assert.ok(!quiet.includes('JSON.stringify(Object.values(bases)'));
 });
 
@@ -156,18 +236,37 @@ test('#37: a change of the model gives a fresh drawing, the one a page without a
   assert.ok(first.html.includes('Ferry log') && !first.html.includes('Ferry journal'));
   let computes = ctx.count().computes;
 
-  ctx.sandbox.commitElementEdit('fleet.ferry', (node) => { node.name = 'Ferry journal'; });
+  ctx.sandbox.commitElementEdit('fleet.ferry', (node) => {
+    node.name = 'Ferry journal';
+  });
   const renamed = await draw(ctx, recipe());
   assert.ok(ctx.count().computes > computes, 'computed again');
-  assert.ok(renamed.html.includes('Ferry journal') && !renamed.html.includes('Ferry log'), 'the new name, not the cached drawing');
+  assert.ok(
+    renamed.html.includes('Ferry journal') && !renamed.html.includes('Ferry log'),
+    'the new name, not the cached drawing'
+  );
   assert.equal(renamed.html, (await drawWithoutCache(ctx, recipe())).html);
   computes = ctx.count().computes;
 
   // a relationship added: the drawing has one more link
-  ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.ferry.yaml', inPlateau('next', element('container', 'fleet', 'ferry', 'Ferry journal', rel('fleet.dock', 'reports to'))));
-  const linked = await draw(ctx, recipeOf(null, ctx.state, { reference: 'fleet.ferry', record: ctx.state.index.application.get('fleet.ferry') }));
+  ctx.sandbox.commitFileEdit(
+    'plateaus/20_next/app.fleet.ferry.yaml',
+    inPlateau('next', element('container', 'fleet', 'ferry', 'Ferry journal', rel('fleet.dock', 'reports to')))
+  );
+  const linked = await draw(
+    ctx,
+    recipeOf(null, ctx.state, { reference: 'fleet.ferry', record: ctx.state.index.application.get('fleet.ferry') })
+  );
   assert.ok(linked.html.includes('reports to') || linked.html.includes('Dock planner'));
-  assert.equal(linked.html, (await drawWithoutCache(ctx, recipeOf(null, ctx.state, { reference: 'fleet.ferry', record: ctx.state.index.application.get('fleet.ferry') }))).html);
+  assert.equal(
+    linked.html,
+    (
+      await drawWithoutCache(
+        ctx,
+        recipeOf(null, ctx.state, { reference: 'fleet.ferry', record: ctx.state.index.application.get('fleet.ferry') })
+      )
+    ).html
+  );
 
   // an element deleted: the drawing of what pointed at it changes
   const impact = ctx.sandbox.computeDeleteImpact('fleet.ferry', 'application');
@@ -222,14 +321,36 @@ test('#37: a change of the viewpoint, of the element, of the layer of the drawin
   };
   await step('dock, overview', recipeOf(null, ctx.state, {}));
   await step('dock, detailed', recipeOf(null, ctx.state, { viewpoint: 'detailed' }));
-  await step('fleet, overview', recipeOf(null, ctx.state, { reference: 'fleet', record: ctx.state.index.application.get('fleet') }));
-  await step('fleet, detailed', recipeOf(null, ctx.state, { reference: 'fleet', record: ctx.state.index.application.get('fleet'), viewpoint: 'detailed' }));
-  await step('radio, overview', recipeOf(null, ctx.state, { reference: 'fleet.radio', record: ctx.state.index.application.get('fleet.radio') }));
+  await step(
+    'fleet, overview',
+    recipeOf(null, ctx.state, { reference: 'fleet', record: ctx.state.index.application.get('fleet') })
+  );
+  await step(
+    'fleet, detailed',
+    recipeOf(null, ctx.state, {
+      reference: 'fleet',
+      record: ctx.state.index.application.get('fleet'),
+      viewpoint: 'detailed'
+    })
+  );
+  await step(
+    'radio, overview',
+    recipeOf(null, ctx.state, { reference: 'fleet.radio', record: ctx.state.index.application.get('fleet.radio') })
+  );
   assert.notEqual(seen.get('dock, overview'), seen.get('radio, overview'));
-  await step('radio, hide unlinked', recipeOf(null, ctx.state, { reference: 'fleet.radio', record: ctx.state.index.application.get('fleet.radio'), hideUnlinked: true }));
+  await step(
+    'radio, hide unlinked',
+    recipeOf(null, ctx.state, {
+      reference: 'fleet.radio',
+      record: ctx.state.index.application.get('fleet.radio'),
+      hideUnlinked: true
+    })
+  );
   // what is shown (the captions): the entry holds the text of the options too
   const before = ctx.count().computes;
-  const withoutLabels = recipeOf(null, ctx.state, { shows: { labels: false, qualifiers: false, descriptions: false, wrap: false } });
+  const withoutLabels = recipeOf(null, ctx.state, {
+    shows: { labels: false, qualifiers: false, descriptions: false, wrap: false }
+  });
   await draw(ctx, withoutLabels);
   assert.ok(ctx.count().computes > before);
 });
@@ -252,7 +373,12 @@ test('#37: a change of what the map has opened, pinned or hidden gives a fresh d
 
 test('#37: a change of the plateau compared with, of Changes only, of the wording and of the styles gives a fresh drawing', async () => {
   const ctx = await open({ compareTo: 'now' });
-  const recipe = () => recipeOf(null, ctx.state, { reference: 'fleet', record: ctx.state.index.application.get('fleet'), viewpoint: 'detailed' });
+  const recipe = () =>
+    recipeOf(null, ctx.state, {
+      reference: 'fleet',
+      record: ctx.state.index.application.get('fleet'),
+      viewpoint: 'detailed'
+    });
   const stepAfter = async (label, change) => {
     await change();
     const before = ctx.count().computes;
@@ -266,10 +392,19 @@ test('#37: a change of the plateau compared with, of Changes only, of the wordin
   assert.notEqual(nothing.html, compared.html, 'a comparison draws the new and the removed ones');
   const back = await stepAfter('compare to now again', () => compareWith(ctx.sandbox, 'now'));
   assert.equal(back.html, compared.html);
-  await stepAfter('Changes only', () => { ctx.state.changesOnly = true; });
-  await stepAfter('Changes only off', () => { ctx.state.changesOnly = false; });
-  await stepAfter('the styles', () => { ctx.state.workspace.styles = { 'by-tags': { planner: { 'background-color': '#abcdef' } } }; });
-  await stepAfter('the other direction: now drawn, compared with next', () => { ctx.sandbox.drawPlateau('now'); compareWith(ctx.sandbox, 'next'); });
+  await stepAfter('Changes only', () => {
+    ctx.state.changesOnly = true;
+  });
+  await stepAfter('Changes only off', () => {
+    ctx.state.changesOnly = false;
+  });
+  await stepAfter('the styles', () => {
+    ctx.state.workspace.styles = { 'by-tags': { planner: { 'background-color': '#abcdef' } } };
+  });
+  await stepAfter('the other direction: now drawn, compared with next', () => {
+    ctx.sandbox.drawPlateau('now');
+    compareWith(ctx.sandbox, 'next');
+  });
 });
 
 test('#37: a drawing computed before an edit is not served after it, even when the edit lands while the layout is being made', async () => {
@@ -279,7 +414,9 @@ test('#37: a drawing computed before an edit is not served after it, even when t
   run(ctx.sandbox, 'loadElk = () => new Promise((resolve) => { __release = () => resolve(null); });');
   ctx.sandbox.__recipe = recipe;
   ctx.sandbox.mountDiagramIfNeeded(); // the layout starts and waits
-  ctx.sandbox.commitElementEdit('fleet.ferry', (node) => { node.name = 'Ferry journal'; });
+  ctx.sandbox.commitElementEdit('fleet.ferry', (node) => {
+    node.name = 'Ferry journal';
+  });
   ctx.sandbox.mountDiagramIfNeeded(); // the render of the edit supersedes it
   release = ctx.sandbox.__release;
   release();
@@ -298,8 +435,16 @@ test('#37: the quiet references of two renders of an unchanged model are the sam
     const facet = ctx.facet('no-ferry');
     const first = ctx.sandbox.quietReferencesThroughFacet(ctx.kernel, facet);
     const before = ctx.count();
-    assert.ok(before.kernelInputs > 0 && before.quiets > 0 && before.computes === 0, 'the first answer: one call per layer, no compute');
-    for (let i = 0; i < 3; i++) assert.equal(ctx.sandbox.quietReferencesThroughFacet(ctx.kernel, facet), first, 'the same answer, not a copy of it');
+    assert.ok(
+      before.kernelInputs > 0 && before.quiets > 0 && before.computes === 0,
+      'the first answer: one call per layer, no compute'
+    );
+    for (let i = 0; i < 3; i++)
+      assert.equal(
+        ctx.sandbox.quietReferencesThroughFacet(ctx.kernel, facet),
+        first,
+        'the same answer, not a copy of it'
+      );
     assert.deepEqual(ctx.count(), before);
   }
 });
@@ -307,7 +452,10 @@ test('#37: the quiet references of two renders of an unchanged model are the sam
 test('#37: the quiet references are computed again after a change of the model, the facet (picked or edited), the tab, Changes only and the comparison, and are those of a page without a cache', async () => {
   const ctx = await open({ compareTo: 'now' });
   const quiet = (facet) => ctx.sandbox.quietReferencesThroughFacet(ctx.kernel, facet);
-  const fresh = (facet) => { run(ctx.sandbox, 'treeQuietCache = null;'); return Array.from(quiet(facet)).sort(); };
+  const fresh = (facet) => {
+    run(ctx.sandbox, 'treeQuietCache = null;');
+    return Array.from(quiet(facet)).sort();
+  };
   const sorted = (set) => Array.from(set).sort();
   const noFerry = ctx.facet('no-ferry');
   const noRadio = ctx.facet('no-radio');
@@ -322,17 +470,35 @@ test('#37: the quiet references are computed again after a change of the model, 
     return after;
   };
   quiet(noFerry);
-  step('a file edited: the beacon feed now points at the ferry log', noFerry, () => ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.beacon.yaml', inPlateau('next', element('container', 'fleet', 'beacon', 'Beacon feed', rel('fleet.ferry', 'feeds')))));
-  const afterCut = step('a file edited: the beacon feed points at nothing', noRadio, () => ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.beacon.yaml', inPlateau('next', element('container', 'fleet', 'beacon', 'Beacon feed'))));
+  step('a file edited: the beacon feed now points at the ferry log', noFerry, () =>
+    ctx.sandbox.commitFileEdit(
+      'plateaus/20_next/app.fleet.beacon.yaml',
+      inPlateau('next', element('container', 'fleet', 'beacon', 'Beacon feed', rel('fleet.ferry', 'feeds')))
+    )
+  );
+  const afterCut = step('a file edited: the beacon feed points at nothing', noRadio, () =>
+    ctx.sandbox.commitFileEdit(
+      'plateaus/20_next/app.fleet.beacon.yaml',
+      inPlateau('next', element('container', 'fleet', 'beacon', 'Beacon feed'))
+    )
+  );
   assert.ok(afterCut.has('fleet.beacon'), 'and so the beacon feed has nothing left to draw');
-  step('a rename', noFerry, () => ctx.sandbox.commitElementEdit('fleet.beacon', (node) => { node.name = 'Beacon'; }));
+  step('a rename', noFerry, () =>
+    ctx.sandbox.commitElementEdit('fleet.beacon', (node) => {
+      node.name = 'Beacon';
+    })
+  );
   const picked = quiet(noRadio);
   assert.notEqual(picked, quiet(noFerry), 'another facet, another answer');
   noRadio.actions[0].jsonPath = "$.application..elements[?(@.id == 'beacon')]";
   assert.notEqual(quiet(noRadio), picked, 'the same facet edited, another answer');
   assert.deepEqual(sorted(quiet(noRadio)), fresh(noRadio));
-  step('another tab of an element', noFerry, () => { run(ctx.sandbox, "currentPerspective = 'elements'; elementTab = 'detailed';"); });
-  step('Changes only', noFerry, () => { ctx.sandbox.__state().changesOnly = true; });
+  step('another tab of an element', noFerry, () => {
+    run(ctx.sandbox, "currentPerspective = 'elements'; elementTab = 'detailed';");
+  });
+  step('Changes only', noFerry, () => {
+    ctx.sandbox.__state().changesOnly = true;
+  });
   // a comparison turned off, then on with the other plateau
   const prior = quiet(noFerry);
   const computes = ctx.count().quiets;
@@ -361,16 +527,31 @@ test('#37: on the 82 elements of the Brightcart marketplace plateau, with a comp
   sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? { id } : realGet(id));
   sandbox.console = Object.assign({}, console, { error() {} });
   sandbox.__scenes = [];
-  run(sandbox, `
+  run(
+    sandbox,
+    `
     globalThis.__count = { kernelInputs: 0, models: 0 };
     showDiagramScene = (scene) => { __scenes.push(scene); };
     diagramRecipeOf = () => __recipe;
     loadElk = async () => null;
     { const toKernel = toKernelElements; toKernelElements = function (...a) { __count.kernelInputs++; return toKernel.apply(this, a); }; }
     { const stringify = JSON.stringify; JSON.stringify = function (...a) { const text = stringify.apply(this, a); if (typeof text === 'string' && text.includes('"reference"') && text.includes('"relationships"')) __count.models++; return text; }; }
-  `);
+  `
+  );
   const facet = state.workspace.settings.facets.customs.find((candidate) => candidate.name === 'journey');
-  const recipe = { host: 'main', view: null, isMap: true, reference: '', record: null, layer: undefined, viewpoint: 'map', facet, mapState: { opened: ['commerce'], pinned: [], hidden: [] }, hideUnlinked: false, shows: { labels: false, qualifiers: false, descriptions: false, wrap: false } };
+  const recipe = {
+    host: 'main',
+    view: null,
+    isMap: true,
+    reference: '',
+    record: null,
+    layer: undefined,
+    viewpoint: 'map',
+    facet,
+    mapState: { opened: ['commerce'], pinned: [], hidden: [] },
+    hideUnlinked: false,
+    shows: { labels: false, qualifiers: false, descriptions: false, wrap: false }
+  };
   const first = await draw(ctx, recipe);
   assert.ok(run(sandbox, 'diagramCache') && !first.html.includes('error-panel'), 'the drawing is one, and it is kept');
   const quiet = sandbox.quietReferencesThroughFacet(run(sandbox, 'loadedKernel'), facet);
@@ -385,16 +566,35 @@ test('#37: on the 82 elements of the Brightcart marketplace plateau, with a comp
 
 // ---- 4. The panel of a removed environment lists its `uses` ----
 
-const environment = (id, name, uses, elements) => 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n' +
-  (uses ? '  uses:\n' + uses.map((u) => '    - "' + u + '"\n').join('') : '') + (elements || '');
-const HARBOUR_FILES = layeredFiles([{ id: 'now', path: 'p/now' }, { id: 'next', path: 'p/next' }], {
-  'p/now/tec.quay.yaml': environment('quay', 'Quay'),
-  'p/now/tec.pier.yaml': environment('pier', 'Pier'),
-  'p/now/tec.harbour.yaml': environment('harbour', 'Harbour', ['quay', 'pier'], '  elements:\n    - kind: "node"\n      id: "crane"\n      name: "Crane"\n'),
-  'p/now/tec.lonely.yaml': environment('lonely', 'Lonely'),
-  'p/next/tec.quay.yaml': environment('quay', 'Quay'),
-  'p/next/tec.pier.yaml': environment('pier', 'Pier')
-}, '  current: next\n', 'p/**');
+const environment = (id, name, uses, elements) =>
+  'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "' +
+  id +
+  '"\n  name: "' +
+  name +
+  '"\n' +
+  (uses ? '  uses:\n' + uses.map((u) => '    - "' + u + '"\n').join('') : '') +
+  (elements || '');
+const HARBOUR_FILES = layeredFiles(
+  [
+    { id: 'now', path: 'p/now' },
+    { id: 'next', path: 'p/next' }
+  ],
+  {
+    'p/now/tec.quay.yaml': environment('quay', 'Quay'),
+    'p/now/tec.pier.yaml': environment('pier', 'Pier'),
+    'p/now/tec.harbour.yaml': environment(
+      'harbour',
+      'Harbour',
+      ['quay', 'pier'],
+      '  elements:\n    - kind: "node"\n      id: "crane"\n      name: "Crane"\n'
+    ),
+    'p/now/tec.lonely.yaml': environment('lonely', 'Lonely'),
+    'p/next/tec.quay.yaml': environment('quay', 'Quay'),
+    'p/next/tec.pier.yaml': environment('pier', 'Pier')
+  },
+  '  current: next\n',
+  'p/**'
+);
 
 async function harbourAgainstNow() {
   const mem = memFolder(HARBOUR_FILES);
@@ -410,11 +610,24 @@ async function harbourAgainstNow() {
 
 function removedPanel(sandbox, reference) {
   run(sandbox, "currentPerspective = 'map';");
-  const target = { getAttribute: (name) => ({ 'data-action': 'select-removed', 'data-ref': reference, 'data-layer': 'technology' })[name] || null, closest: () => null };
-  sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
+  const target = {
+    getAttribute: (name) =>
+      ({ 'data-action': 'select-removed', 'data-ref': reference, 'data-layer': 'technology' })[name] || null,
+    closest: () => null
+  };
+  sandbox.handleAppClick({
+    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    preventDefault() {},
+    stopPropagation() {},
+    detail: 1
+  });
   return sandbox.renderMapPerspectiveHtml().right;
 }
-const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const text = (html) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 test('the panel of a removed environment lists what it used in the other plateau, Before only, under the label of a changed environment', async () => {
   const { sandbox, state } = await harbourAgainstNow();
@@ -422,7 +635,9 @@ test('the panel of a removed environment lists what it used in the other plateau
   assert.deepEqual(plain(state.baseline.index.technology.get('harbour').uses), ['quay', 'pier']);
   const panel = removedPanel(sandbox, 'harbour');
   assert.match(panel, /inspection-removed" data-inspection-ref="harbour"/);
-  const block = panel.match(/<div class="change-diff" data-property="uses">[\s\S]*?(?=<div class="change-diff"|<h5|<\/section>)/);
+  const block = panel.match(
+    /<div class="change-diff" data-property="uses">[\s\S]*?(?=<div class="change-diff"|<h5|<\/section>)/
+  );
   assert.ok(block, 'the panel has a Uses block');
   assert.match(text(block[0]), /^Uses − Before quay pier$/);
   assert.doesNotMatch(block[0], /change-after/, 'an environment that is gone has no After');
@@ -472,34 +687,64 @@ test('at 360 px the three columns do not fit: the tree and the inspection alone 
   const left = rem(declarationsOf('.min-w-48')) * 16; // the minimum width the tree, the inspection and the handles take
   const right = rem(declarationsOf('.min-w-56')) * 16;
   const handles = 2 * rem(declarationsOf('.w-1')) * 16;
-  assert.equal(left + right + handles, 424, 'the width the document had at 360 px, measured in a browser on the Brightcart fixture');
+  assert.equal(
+    left + right + handles,
+    424,
+    'the width the document had at 360 px, measured in a browser on the Brightcart fixture'
+  );
   assert.ok(left + right + handles > 360);
 });
 
 test('below 40rem the regions are stacked, as wide as the window, with no handle and none of the sizes the user gave them by dragging', () => {
   const rules = (selector) => {
     const found = [];
-    for (const m of narrowRules().matchAll(/([^{}]+)\{([^{}]*)\}/g)) if (m[1].split(',').map((x) => x.trim()).includes(selector)) found.push(m[2]);
+    for (const m of narrowRules().matchAll(/([^{}]+)\{([^{}]*)\}/g))
+      if (
+        m[1]
+          .split(',')
+          .map((x) => x.trim())
+          .includes(selector)
+      )
+        found.push(m[2]);
     return found.join(';');
   };
   assert.match(rules('.app-shell'), /display:\s*flex;\s*flex-direction:\s*column/);
   assert.match(rules('.app-shell [data-resize]'), /display:\s*none/, 'the handles that set the widths are gone');
   for (const panel of ['.app-shell > .left-panel', '.app-shell .right-panel']) {
     const css = rules(panel);
-    assert.match(css, /width:\s*auto\s*!important/, panel + ': the width saved by dragging does not apply (it is an inline style)');
+    assert.match(
+      css,
+      /width:\s*auto\s*!important/,
+      panel + ': the width saved by dragging does not apply (it is an inline style)'
+    );
     assert.match(css, /min-width:\s*0/, panel + ': and no minimum width');
     assert.match(css, /max-width:\s*none/);
   }
-  assert.match(rules('.app-shell > div.col-start-3'), /flex-direction:\s*column/, 'the grid that holds the centre and the inspection is a column too');
-  assert.match(rules('.app-shell .center-panel'), /height:\s*80vh/, 'the centre has a height of its own (it had the row of the grid), enough for a diagram');
+  assert.match(
+    rules('.app-shell > div.col-start-3'),
+    /flex-direction:\s*column/,
+    'the grid that holds the centre and the inspection is a column too'
+  );
+  assert.match(
+    rules('.app-shell .center-panel'),
+    /height:\s*80vh/,
+    'the centre has a height of its own (it had the row of the grid), enough for a diagram'
+  );
   // the window below which the three columns are not used leaves the centre at least 200 px when it is the three columns above it
-  const columns = rem(declarationsOf('.min-w-48')) * 16 + rem(declarationsOf('.min-w-56')) * 16 + 2 * rem(declarationsOf('.w-1')) * 16;
-  assert.ok(40 * 16 - columns >= 200, 'at 40rem the centre still has ' + (40 * 16 - columns) + ' px in the three-column layout');
+  const columns =
+    rem(declarationsOf('.min-w-48')) * 16 +
+    rem(declarationsOf('.min-w-56')) * 16 +
+    2 * rem(declarationsOf('.w-1')) * 16;
+  assert.ok(
+    40 * 16 - columns >= 200,
+    'at 40rem the centre still has ' + (40 * 16 - columns) + ' px in the three-column layout'
+  );
 });
 
 test('the wide layout is untouched: the rules for the narrow window are inside the media query and nowhere else', () => {
   const outside = CSS.replace(narrowRules(), '');
-  for (const text of ['flex-direction: column; height: auto', 'height: 80vh', 'width: auto !important']) assert.ok(!outside.includes(text), text + ' only in the query');
+  for (const text of ['flex-direction: column; height: auto', 'height: 80vh', 'width: auto !important'])
+    assert.ok(!outside.includes(text), text + ' only in the query');
   assert.match(declarationsOf('.app-shell'), /height:\s*100%/);
   assert.match(declarationsOf('#app'), /height:\s*100vh/);
 });

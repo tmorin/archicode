@@ -22,11 +22,15 @@ const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 async function loadEmbeddedKernel() {
-  const block = fs.readFileSync(HTML, 'utf8').match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
+  const block = fs
+    .readFileSync(HTML, 'utf8')
+    .match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
   const { instance } = await WebAssembly.instantiate(Buffer.from(block[1].trim(), 'base64'), {});
   const x = instance.exports;
   return (name, input) => {
-    const data = Buffer.isBuffer(input) ? input : Buffer.from(typeof input === 'string' ? input : JSON.stringify(input), 'utf8');
+    const data = Buffer.isBuffer(input)
+      ? input
+      : Buffer.from(typeof input === 'string' ? input : JSON.stringify(input), 'utf8');
     const ptr = x.alloc(data.length);
     new Uint8Array(x.memory.buffer, ptr, data.length).set(data);
     const length = x[name](ptr, data.length);
@@ -49,7 +53,10 @@ async function openLayered() {
 }
 
 const node = (reference, name) => ({ reference, parent: false, kind: 'node', name, description: name });
-const side = (...elements) => ({ application: [], technology: [{ reference: 'partners', parent: true }].concat(elements) });
+const side = (...elements) => ({
+  application: [],
+  technology: [{ reference: 'partners', parent: true }].concat(elements)
+});
 const pairs = (answer) => answer.candidates.map((c) => [c.from, c.to, c.reasons.join('+')]);
 
 // ---- the module ----
@@ -58,9 +65,15 @@ test('the kernel asks whether the plateaus are on one chain and takes no default
   const call = await loadEmbeddedKernel();
   const base = side(node('partners.commerce-live', 'Commerce platform'));
   const target = side(node('partners.tax-live', 'Tax service'));
-  for (const input of [{ base, target }, { base, target, on_one_chain: null }]) {
+  for (const input of [
+    { base, target },
+    { base, target, on_one_chain: null }
+  ]) {
     const answer = call('compare', input);
-    assert.match(answer.error, /^invalid input: `on_one_chain` is missing: say whether one of the two plateaus is the past of the other/);
+    assert.match(
+      answer.error,
+      /^invalid input: `on_one_chain` is missing: say whether one of the two plateaus is the past of the other/
+    );
     assert.deepEqual(Object.keys(answer), ['error'], 'no partial answer');
   }
   for (const wrong of ['yes', 1, [true], {}]) {
@@ -85,7 +98,13 @@ test('on a chain two nodes alone under a parent are a candidate for the parent; 
 
 test('between siblings a pair keeps the reasons that are not the parent', async () => {
   const call = await loadEmbeddedKernel();
-  const container = (reference, name, description) => ({ reference, parent: false, kind: 'container', name, description });
+  const container = (reference, name, description) => ({
+    reference,
+    parent: false,
+    kind: 'container',
+    name,
+    description
+  });
   const input = (onOneChain) => ({
     base: { application: [{ reference: 'p', parent: true }, container('p.a', 'Billing')] },
     target: { application: [{ reference: 'p', parent: true }, container('p.b', 'Billing')] },
@@ -100,10 +119,22 @@ test('between siblings a pair keeps the reasons that are not the parent', async 
 test('the editor tells the kernel that a plateau and one it builds on are a chain and that two plateaus that build on the same one are not', async () => {
   const { sandbox } = await openLayered();
   const onOneChain = (a, b) => run(sandbox, 'plateausOnOneChain(' + JSON.stringify(a) + ', ' + JSON.stringify(b) + ')');
-  for (const [a, b] of [['baseline', 'saas'], ['saas', 'baseline'], ['inhouse', 'marketplace'], ['marketplace', 'baseline'], ['baseline', 'marketplace'], ['saas', 'saas']]) {
+  for (const [a, b] of [
+    ['baseline', 'saas'],
+    ['saas', 'baseline'],
+    ['inhouse', 'marketplace'],
+    ['marketplace', 'baseline'],
+    ['baseline', 'marketplace'],
+    ['saas', 'saas']
+  ]) {
     assert.equal(onOneChain(a, b), true, a + ' / ' + b);
   }
-  for (const [a, b] of [['inhouse', 'saas'], ['saas', 'inhouse'], ['marketplace', 'saas'], ['saas', 'marketplace']]) {
+  for (const [a, b] of [
+    ['inhouse', 'saas'],
+    ['saas', 'inhouse'],
+    ['marketplace', 'saas'],
+    ['saas', 'marketplace']
+  ]) {
     assert.equal(onOneChain(a, b), false, a + ' / ' + b);
   }
   // a plateau that does not exist is a mistake of the caller, told as `PlateauTree.onOneChain` does, not an answer
@@ -116,7 +147,10 @@ async function sentWhenComparing(drawn, other) {
   const kernel = run(sandbox, 'loadedKernel');
   const sent = [];
   const compare = kernel.compare;
-  kernel.compare = (input) => { sent.push(input.on_one_chain); return compare.call(kernel, input); };
+  kernel.compare = (input) => {
+    sent.push(input.on_one_chain);
+    return compare.call(kernel, input);
+  };
   sandbox.drawPlateau(drawn);
   sandbox.compareWithPlateau(other);
   const comparison = sandbox.comparisonState();
@@ -136,7 +170,10 @@ test('saas against baseline, its past, still proposes them, and the swap pair is
   const kernel = run(sandbox, 'loadedKernel');
   const sent = [];
   const compare = kernel.compare;
-  kernel.compare = (input) => { sent.push(input.on_one_chain); return compare.call(kernel, input); };
+  kernel.compare = (input) => {
+    sent.push(input.on_one_chain);
+    return compare.call(kernel, input);
+  };
   sandbox.drawPlateau('saas');
   sandbox.toggleCompareWithPast();
   assert.equal(state.layers.compare.other, 'baseline');
@@ -159,7 +196,10 @@ test('the pair is the same however the two siblings are chosen, and a comparison
   const kernel = run(sandbox, 'loadedKernel');
   const sent = [];
   const compare = kernel.compare;
-  kernel.compare = (input) => { sent.push(input.on_one_chain); return compare.call(kernel, input); };
+  kernel.compare = (input) => {
+    sent.push(input.on_one_chain);
+    return compare.call(kernel, input);
+  };
   sandbox.drawPlateau('inhouse');
   sandbox.toggleCompareWithFuture();
   assert.equal(state.layers.compare.other, 'marketplace');
@@ -172,7 +212,10 @@ test('the counts of the band are those of a plateau and the one it overrides: a 
   const kernel = run(sandbox, 'loadedKernel');
   const sent = [];
   const compare = kernel.compare;
-  kernel.compare = (input) => { sent.push(input.on_one_chain); return compare.call(kernel, input); };
+  kernel.compare = (input) => {
+    sent.push(input.on_one_chain);
+    return compare.call(kernel, input);
+  };
   for (const id of ['saas', 'inhouse', 'marketplace']) assert.ok(sandbox.layerNodeCounts(id), id);
   assert.deepEqual(sent, [true, true, true]);
 });
@@ -189,13 +232,15 @@ test('the kernel says the seven state words once, in a fixed order, and ignores 
     container: 'contains-changes',
     states: ['new', 'changed', 'removed', 'moved', 'split', 'merged', 'contains-changes']
   });
-  for (const input of ['', 'null', 'nonsense', '{"relationship":[]}', Buffer.from([0xff, 0xfe])]) assert.deepEqual(plain(call('states', input)), plain(said), JSON.stringify(input));
+  for (const input of ['', 'null', 'nonsense', '{"relationship":[]}', Buffer.from([0xff, 0xfe])])
+    assert.deepEqual(plain(call('states', input)), plain(said), JSON.stringify(input));
 });
 
 test('the page keeps no list of the state words: its four arrays are filled from the kernel when it loads, and each word has a glyph, words and a look', async () => {
   const sandbox = createApp({});
   const names = ['RELATIONSHIP_STATES', 'IDENTITY_STATES', 'CHANGE_STATES', 'STATE_WORDS'];
-  for (const name of names) assert.deepEqual(plain(run(sandbox, name)), [], name + ' is empty until the kernel is loaded');
+  for (const name of names)
+    assert.deepEqual(plain(run(sandbox, name)), [], name + ' is empty until the kernel is loaded');
   await sandbox.loadViewpointKernel();
   const said = (await loadEmbeddedKernel())('states', {});
   assert.deepEqual(plain(run(sandbox, 'RELATIONSHIP_STATES')), said.relationship);
@@ -204,7 +249,8 @@ test('the page keeps no list of the state words: its four arrays are filled from
   assert.deepEqual(plain(run(sandbox, 'STATE_WORDS')), said.states);
   // the look of each word is the page's own, and every word of the kernel has one
   for (const word of said.states) {
-    for (const table of ['CHANGE_GLYPHS', 'CHANGE_WORDS', 'CHANGE_DEFAULT_LOOK']) assert.ok(run(sandbox, table)[word], word + ' has an entry in ' + table);
+    for (const table of ['CHANGE_GLYPHS', 'CHANGE_WORDS', 'CHANGE_DEFAULT_LOOK'])
+      assert.ok(run(sandbox, table)[word], word + ' has an entry in ' + table);
   }
   assert.equal(said.container, 'contains-changes');
   // loading it again does not duplicate a word
@@ -223,7 +269,13 @@ test('an item says it holds a change when the kernel computed it; the word writt
     { reference: 'box', parent: true, change: 'none', qualifiers: ['contains-changes'], relationships: [] },
     { reference: 'sys', parent: true, change: 'none', relationships: [] },
     { reference: 'sys.fresh', parent: false, change: 'new', relationships: [] },
-    { reference: 'sys.leaf', parent: false, change: 'none', tags: { 'rendering-stereotypes': 'contains-changes' }, relationships: [] }
+    {
+      reference: 'sys.leaf',
+      parent: false,
+      change: 'none',
+      tags: { 'rendering-stereotypes': 'contains-changes' },
+      relationships: []
+    }
   ];
   const view = call('compute', { viewpoint: 'map', layer: 'application', focal: '', elements, opened: ['sys'] });
   const item = (id) => view.items.find((i) => i.id === id);
@@ -231,12 +283,17 @@ test('an item says it holds a change when the kernel computed it; the word writt
   assert.equal(item('sys').contains_changes, true);
   assert.deepEqual(plain(item('sys').stereotypes), ['contains-changes']);
   for (const id of ['box', 'sys.leaf']) {
-    assert.deepEqual(plain(item(id).stereotypes), ['contains-changes'], id + ': the author\'s word is in the list');
+    assert.deepEqual(plain(item(id).stereotypes), ['contains-changes'], id + ": the author's word is in the list");
     assert.equal('contains_changes' in item(id), false, id + ': the kernel did not compute it');
   }
   assert.equal('contains_changes' in item('sys.fresh'), false, 'a new box says new');
   // without a comparison the key is never there
-  const plainView = call('compute', { viewpoint: 'map', layer: 'application', focal: '', elements: [{ reference: 'box', parent: false, qualifiers: ['contains-changes'] }] });
+  const plainView = call('compute', {
+    viewpoint: 'map',
+    layer: 'application',
+    focal: '',
+    elements: [{ reference: 'box', parent: false, qualifiers: ['contains-changes'] }]
+  });
   assert.equal(JSON.stringify(plainView).includes('contains_changes'), false);
 
   // and the page reads the key, not the last stereotype

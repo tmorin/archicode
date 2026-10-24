@@ -32,7 +32,13 @@ async function loadEmbeddedKernel() {
     x.dealloc(ptr, data.length);
     return text;
   };
-  return { bytes, exports: x, raw: (input) => call('apply_patches', input), apply: (input) => JSON.parse(call('apply_patches', input)), facet: (input) => JSON.parse(call('apply_facet', input)) };
+  return {
+    bytes,
+    exports: x,
+    raw: (input) => call('apply_patches', input),
+    apply: (input) => JSON.parse(call('apply_patches', input)),
+    facet: (input) => JSON.parse(call('apply_facet', input))
+  };
 }
 
 /** `set`, `append` and `remove` at a JSON pointer: how a case says what its workspace is, from the base. */
@@ -47,7 +53,10 @@ function edit(doc, step) {
     const [parent, last] = at(step.set);
     parent[last] = step.value;
   } else if (step.append !== undefined) {
-    const list = step.append.slice(1).split('/').reduce((node, key) => node[key], doc);
+    const list = step.append
+      .slice(1)
+      .split('/')
+      .reduce((node, key) => node[key], doc);
     assert.ok(Array.isArray(list), 'no list at ' + step.append);
     list.push(step.value);
   } else if (step.remove !== undefined) {
@@ -68,19 +77,54 @@ function request(c, workspace = CASES.workspace) {
 
 test('the module the editor embeds is the one the CLI loads, and it exports apply_patches next to the other entry points', async () => {
   const kernel = await loadEmbeddedKernel();
-  assert.ok(Buffer.compare(kernel.bytes, fs.readFileSync(WASM)) === 0, 'the same bytes in standalone.html and in src/main/wasm');
-  for (const name of ['alloc', 'dealloc', 'compute', 'apply_facet', 'compare', 'apply_patches', 'result_ptr', 'memory']) assert.ok(name in kernel.exports, name + ' is exported');
+  assert.ok(
+    Buffer.compare(kernel.bytes, fs.readFileSync(WASM)) === 0,
+    'the same bytes in standalone.html and in src/main/wasm'
+  );
+  for (const name of ['alloc', 'dealloc', 'compute', 'apply_facet', 'compare', 'apply_patches', 'result_ptr', 'memory'])
+    assert.ok(name in kernel.exports, name + ' is exported');
 });
 
 test('the list of cases has a success and a failure for every operator, and the main errors', () => {
   const ok = CASES.cases.filter((c) => !c.error && !c.error_contains);
   for (const operator of ['REMOVE', 'SET', 'ADD', 'MERGE']) {
-    assert.ok(ok.some((c) => c.patches.some((p) => p.operator === operator)), operator + ' has a case that succeeds');
-    assert.ok(CASES.cases.some((c) => (c.error || c.error_contains) && c.patches.some((p) => p.operator === operator)), operator + ' has a case that fails');
+    assert.ok(
+      ok.some((c) => c.patches.some((p) => p.operator === operator)),
+      operator + ' has a case that succeeds'
+    );
+    assert.ok(
+      CASES.cases.some((c) => (c.error || c.error_contains) && c.patches.some((p) => p.operator === operator)),
+      operator + ' has a case that fails'
+    );
   }
   const sentences = CASES.cases.map((c) => c.error || (c.error_contains || []).join('')).filter(Boolean);
-  for (const piece of ['selects nothing, there is no element', 'selects nothing, at least one node is expected', 'nodes, ', 'expected', 'unsupported operator', 'invalid JSONPath', 'outside the elements', 'would change the reference', 'cannot be changed', 'needs a `value`', 'needs a `field`', 'MERGE merges an object', 'ADD appends to a list', 'has no relationship to', 'where` finds one', 'REMOVE takes no', '`expect` goes with', '`layer` goes with', 'invalid patch', 'would remove an `id`', '`field` is empty']) {
-    assert.ok(sentences.some((s) => s.includes(piece)), 'no case for: ' + piece);
+  for (const piece of [
+    'selects nothing, there is no element',
+    'selects nothing, at least one node is expected',
+    'nodes, ',
+    'expected',
+    'unsupported operator',
+    'invalid JSONPath',
+    'outside the elements',
+    'would change the reference',
+    'cannot be changed',
+    'needs a `value`',
+    'needs a `field`',
+    'MERGE merges an object',
+    'ADD appends to a list',
+    'has no relationship to',
+    'where` finds one',
+    'REMOVE takes no',
+    '`expect` goes with',
+    '`layer` goes with',
+    'invalid patch',
+    'would remove an `id`',
+    '`field` is empty'
+  ]) {
+    assert.ok(
+      sentences.some((s) => s.includes(piece)),
+      'no case for: ' + piece
+    );
   }
 });
 
@@ -91,7 +135,11 @@ for (const c of CASES.cases) {
     if (c.error !== undefined || c.error_contains !== undefined) {
       assert.equal(typeof answer.error, 'string', 'an error: ' + JSON.stringify(answer).slice(0, 300));
       if (c.error !== undefined) assert.equal(answer.error, c.error);
-      for (const piece of c.error_contains || []) assert.ok(answer.error.includes(piece), JSON.stringify(answer.error) + ' does not contain ' + JSON.stringify(piece));
+      for (const piece of c.error_contains || [])
+        assert.ok(
+          answer.error.includes(piece),
+          JSON.stringify(answer.error) + ' does not contain ' + JSON.stringify(piece)
+        );
       assert.deepEqual(answer.patch, c.error_patch, 'error.patch');
       assert.equal(answer.workspace, undefined, 'an error returns no workspace');
     } else {
@@ -107,15 +155,30 @@ for (const c of CASES.cases) {
 
 test('the answer is the same bytes every time, and a patch keeps the order of the keys of the workspace', async () => {
   const kernel = await loadEmbeddedKernel();
-  const input = { workspace: CASES.workspace, plateau: 'saas', patches: [{ operator: 'REMOVE', target: 'shop' }, { operator: 'MERGE', 'json-path': "$.application..elements[?(@.id == 'tax')]", field: 'tags', value: { a: 'b' } }] };
+  const input = {
+    workspace: CASES.workspace,
+    plateau: 'saas',
+    patches: [
+      { operator: 'REMOVE', target: 'shop' },
+      { operator: 'MERGE', 'json-path': "$.application..elements[?(@.id == 'tax')]", field: 'tags', value: { a: 'b' } }
+    ]
+  };
   const first = kernel.raw(input);
   assert.equal(first, kernel.raw(input));
-  assert.ok(first.indexOf('"name":"Demo"') < first.indexOf('"application"') && first.indexOf('"application"') < first.indexOf('"styles"'), 'the keys of the workspace keep their order');
+  assert.ok(
+    first.indexOf('"name":"Demo"') < first.indexOf('"application"') &&
+      first.indexOf('"application"') < first.indexOf('"styles"'),
+    'the keys of the workspace keep their order'
+  );
 });
 
 test('a call without patches, or with patches null, gives the workspace back; what is not a request is an error', async () => {
   const kernel = await loadEmbeddedKernel();
-  for (const input of [{ workspace: CASES.workspace }, { workspace: CASES.workspace, patches: null }, { workspace: CASES.workspace, patches: [] }]) {
+  for (const input of [
+    { workspace: CASES.workspace },
+    { workspace: CASES.workspace, patches: null },
+    { workspace: CASES.workspace, patches: [] }
+  ]) {
     const answer = kernel.apply(input);
     assert.deepEqual(answer.workspace, CASES.workspace);
     assert.deepEqual(answer.patches, []);

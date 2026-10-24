@@ -31,5 +31,8 @@ test('the field Current plateau links to its section of the manual', () => {
   const docs = new Map(entries(block('SETTINGS_HELP_DOCS')));
   assert.equal(new Map(entries(block('DOC_LINKS'))).get(docs.get('current')), '#editor-current-plateau');
   assert.ok(MANUAL.includes('[[editor-current-plateau]]'));
-  assert.ok(entries(block('SETTINGS_HELP')).some(([key]) => key === 'current'), 'the help sentence of the field exists');
+  assert.ok(
+    entries(block('SETTINGS_HELP')).some(([key]) => key === 'current'),
+    'the help sentence of the field exists'
+  );
 });

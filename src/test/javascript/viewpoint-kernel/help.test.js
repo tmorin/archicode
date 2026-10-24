@@ -19,7 +19,10 @@ test('every anchor of the manual that the editor links to is written in the manu
   for (const [key, anchor] of Object.entries(links)) {
     if (anchor === '') continue; // the manual itself
     assert.match(anchor, /^#[a-z-]+$/, key + ' is a plain anchor');
-    assert.ok(MANUAL.includes('[[' + anchor.slice(1) + ']]'), key + ': the manual has no [[' + anchor.slice(1) + ']] anchor — a link of the editor would land on nothing');
+    assert.ok(
+      MANUAL.includes('[[' + anchor.slice(1) + ']]'),
+      key + ': the manual has no [[' + anchor.slice(1) + ']] anchor — a link of the editor would land on nothing'
+    );
   }
   assert.equal(sandbox.docUrl('manual'), 'https://tmorin.github.io/archicode/docs/');
   assert.equal(sandbox.docUrl('map'), 'https://tmorin.github.io/archicode/docs/#editor-map');
@@ -37,13 +40,22 @@ test('the help opens from the top panel, shows the manual and the version, and c
   assert.equal(sandbox.renderHelpMenuHtml(), '', 'closed: nothing is drawn');
   const click = (action, inside) => {
     const target = action ? { getAttribute: (name) => (name === 'data-action' ? action : null) } : null;
-    sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : inside && selector === '.help-menu' ? {} : null) }, preventDefault() {}, stopPropagation() {} });
+    sandbox.handleAppClick({
+      target: {
+        closest: (selector) => (selector === '[data-action]' ? target : inside && selector === '.help-menu' ? {} : null)
+      },
+      preventDefault() {},
+      stopPropagation() {}
+    });
   };
   click('toggle-help');
   assert.equal(run(sandbox, 'helpOpen'), true);
   const menu = sandbox.renderHelpMenuHtml();
   assert.match(menu, /role="dialog" aria-label="Help"/);
-  assert.match(menu, /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#editor-keyboard" target="_blank" rel="noopener">Keyboard shortcuts</);
+  assert.match(
+    menu,
+    /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#editor-keyboard" target="_blank" rel="noopener">Keyboard shortcuts</
+  );
   assert.match(menu, /ArchiCode dev · kernel contract 5/, 'the release this page is, here the file of the repository');
   assert.match(menu, /Nothing is uploaded/);
   assert.match(menu, /in the folder you picked/, 'opened on its own, the editor says where the files are');
@@ -61,18 +73,29 @@ test('the version is the one the page was stamped with, and the help says where 
   run(served, 'helpOpen = true;');
   assert.match(served.renderHelpMenuHtml(), /archicode editor serve/);
   const sandbox = createApp();
-  sandbox.document.querySelector = (selector) => (selector === 'meta[name="archicode-version"]' ? { getAttribute: () => '1.2.3' } : null);
+  sandbox.document.querySelector = (selector) =>
+    selector === 'meta[name="archicode-version"]' ? { getAttribute: () => '1.2.3' } : null;
   assert.equal(sandbox.editorVersion(), '1.2.3');
 });
 
 test('some texts of the settings point at the manual', async () => {
   const { sandbox } = await openFixture();
-  assert.match(sandbox.renderHelpHtml('facetsIntro'), /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#facets" target="_blank" rel="noopener">Manual</);
+  assert.match(
+    sandbox.renderHelpHtml('facetsIntro'),
+    /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#facets" target="_blank" rel="noopener">Manual</
+  );
   assert.match(sandbox.renderHelpHtml('manifestsPaths'), /#technical-configuration/);
-  assert.doesNotMatch(sandbox.renderHelpHtml('viewsLabels'), /<a /, 'a text the manual does not explain further has no link');
+  assert.doesNotMatch(
+    sandbox.renderHelpHtml('viewsLabels'),
+    /<a /,
+    'a text the manual does not explain further has no link'
+  );
 });
 
 test('the landing page links to the manual', () => {
   const sandbox = createApp();
-  assert.match(sandbox.renderLandingHtml(sandbox.landingScreenConfig()), /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#editor"/);
+  assert.match(
+    sandbox.renderLandingHtml(sandbox.landingScreenConfig()),
+    /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#editor"/
+  );
 });

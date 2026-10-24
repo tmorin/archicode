@@ -65,11 +65,16 @@ const SHIPPED_FILE = '(`' + SHIPPED.folder + '/';
 function said(sandbox, state, compared) {
   const out = {};
   if (state.fatalError) out.fatalError = state.fatalError;
-  if (state.plateauTree && state.plateauTree.problems && state.plateauTree.problems.length) out.treeProblems = state.plateauTree.problems;
-  if (state.plateauTree && state.plateauTree.redeclared && state.plateauTree.redeclared.length) out.redeclared = state.plateauTree.redeclared; // a reference declared in a plateau and again in its ancestor
-  if (state.plateauTree && state.plateauTree.warnings && state.plateauTree.warnings.length) out.treeWarnings = state.plateauTree.warnings; // what the command line warns of when it reads the manifests
+  if (state.plateauTree && state.plateauTree.problems && state.plateauTree.problems.length)
+    out.treeProblems = state.plateauTree.problems;
+  if (state.plateauTree && state.plateauTree.redeclared && state.plateauTree.redeclared.length)
+    out.redeclared = state.plateauTree.redeclared; // a reference declared in a plateau and again in its ancestor
+  if (state.plateauTree && state.plateauTree.warnings && state.plateauTree.warnings.length)
+    out.treeWarnings = state.plateauTree.warnings; // what the command line warns of when it reads the manifests
   if (state.layerProblems) out.layerProblems = state.layerProblems;
-  const entries = (state.workspace ? sandbox.entryProblemsOf(state.workspace.settings) : []).filter((text) => !text.includes(SHIPPED_FILE)); // a view or a story that names an element no plateau has (run 0100): not a mistake of the plateau drawn
+  const entries = (state.workspace ? sandbox.entryProblemsOf(state.workspace.settings) : []).filter(
+    (text) => !text.includes(SHIPPED_FILE)
+  ); // a view or a story that names an element no plateau has (run 0100): not a mistake of the plateau drawn
   if (entries.length) out.entryProblems = entries;
   const viewProblems = {}; // a saved view the plateau drawn cannot draw (it lacks what the view names): the page says so in the view
   for (const view of state.workspace ? sandbox.savedViews() : []) {
@@ -126,11 +131,18 @@ for (const c of CASES) {
 
 test('the editor sentences are the command line sentences, up to the capital, the full stop, the heading of the plateau rules and the position of a file', () => {
   // the case table spells both; this keeps them from drifting apart
-  const normal = (text) => text.replace(/^Could not read the plateaus of \.archicode\.yaml:\n/, '').replace(/^Could not read\/parse \.archicode\.yaml: /, '').replace(/^[A-Z]/, (l) => l.toLowerCase()).replace(/\.$/, '');
+  const normal = (text) =>
+    text
+      .replace(/^Could not read the plateaus of \.archicode\.yaml:\n/, '')
+      .replace(/^Could not read\/parse \.archicode\.yaml: /, '')
+      .replace(/^[A-Z]/, (l) => l.toLowerCase())
+      .replace(/\.$/, '');
   const FILE = /^`[^`]+` is not valid: /;
   for (const c of CASES) {
     if (c.editor === null) continue;
-    const lines = c.cli.flatMap((command) => command.stderr).map((line) => line.replace(/^(error|warning): /, '').replace(/ \(line \d+, column \d+\)$/, ''));
+    const lines = c.cli
+      .flatMap((command) => command.stderr)
+      .map((line) => line.replace(/^(error|warning): /, '').replace(/ \(line \d+, column \d+\)$/, ''));
     const whole = new Set(lines.map(normal)); // the line as the command line says it
     const bare = new Set(lines.map((line) => normal(line.replace(FILE, '')))); // without the file: the editor's badge on a file says the sentence of the file alone
     for (const step of c.editor) {
@@ -138,7 +150,12 @@ test('the editor sentences are the command line sentences, up to the capital, th
         if (typeof value === 'number' || key === 'viewProblems' || key === 'stepProblems') continue; // a count, told by a badge and not by a sentence; what the page says in a view it cannot draw here
         const texts = typeof value === 'string' ? [value] : Array.isArray(value) ? value : Object.values(value);
         const known = key === 'manifestErrors' || key === 'fatalError' ? bare : whole; // the banner for .archicode.yaml names the file in its heading
-        for (const text of texts) for (const line of normal(text).split('\n')) assert.ok(known.has(normal(line)), c.id + ': the editor says (' + key + ') "' + line + '" and the command line does not say it'); // a banner with several sentences is one line each for the command line
+        for (const text of texts)
+          for (const line of normal(text).split('\n'))
+            assert.ok(
+              known.has(normal(line)),
+              c.id + ': the editor says (' + key + ') "' + line + '" and the command line does not say it'
+            ); // a banner with several sentences is one line each for the command line
       }
     }
   }
@@ -162,10 +179,20 @@ test('no sentence of the page tells the line and the column of a file: the comma
     if (c.editor === null) continue;
     for (const step of c.editor) {
       for (const value of Object.values(step.expect)) {
-        const texts = typeof value === 'string' ? [value] : Array.isArray(value) ? value : value !== null && typeof value === 'object' ? Object.values(value) : [];
+        const texts =
+          typeof value === 'string'
+            ? [value]
+            : Array.isArray(value)
+              ? value
+              : value !== null && typeof value === 'object'
+                ? Object.values(value)
+                : [];
         for (const text of texts) assert.ok(!POSITION.test(String(text)), c.id + ': the page says a position: ' + text);
       }
     }
   }
-  assert.ok(withPosition > 10, 'the command line does say it for the sentences of a file: the difference is real (' + withPosition + ' cases)');
+  assert.ok(
+    withPosition > 10,
+    'the command line does say it for the sentences of a file: the difference is real (' + withPosition + ' cases)'
+  );
 });

@@ -21,14 +21,20 @@ async function read(files) {
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  if (state.fatalError) return { error: state.fatalError.replace(/^Could not read\/parse \.archicode\.yaml: /, ''), file: '.archicode.yaml' };
+  if (state.fatalError)
+    return {
+      error: state.fatalError.replace(/^Could not read\/parse \.archicode\.yaml: /, ''),
+      file: '.archicode.yaml'
+    };
   const bad = (state.manifestFiles || []).find((f) => f.error);
   if (bad) return { error: bad.error, file: bad.relPath };
   const records = [];
-  for (const layer of ['application', 'technology']) for (const [reference, record] of state.index[layer]) records.push([reference, record]);
+  for (const layer of ['application', 'technology'])
+    for (const [reference, record] of state.index[layer]) records.push([reference, record]);
   const references = records.map(([reference]) => reference).sort();
   const qualifiers = {};
-  for (const [reference, record] of records) if (record.qualifiers && record.qualifiers.length) qualifiers[reference] = Array.from(record.qualifiers, String); // a list of the record may hold a number (`[12]`): the text of it is what is compared
+  for (const [reference, record] of records)
+    if (record.qualifiers && record.qualifiers.length) qualifiers[reference] = Array.from(record.qualifiers, String); // a list of the record may hold a number (`[12]`): the text of it is what is compared
   return Object.keys(qualifiers).length ? { references, qualifiers } : { references };
 }
 
@@ -60,11 +66,15 @@ const NUMBERS = [
   '      name: Back',
   ''
 ].join('\n');
-const CHILD = 'header:\n  kind: "archicode.morin.io/container"\n  parent: 0\n  version: 1.0\ncontent:\n  id: c\n  name: Child\n';
+const CHILD =
+  'header:\n  kind: "archicode.morin.io/container"\n  parent: 0\n  version: 1.0\ncontent:\n  id: c\n  name: Child\n';
 const ROOT_ZERO = 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "0"\n  name: Zero\n';
 
 async function open(manifests) {
-  const files = Object.assign({ '.archicode.yaml': WORKSPACE }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body])));
+  const files = Object.assign(
+    { '.archicode.yaml': WORKSPACE },
+    Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body]))
+  );
   const mem = memFolder(files);
   const sandbox = createApp({});
   const state = sandbox.__state();
@@ -84,15 +94,31 @@ test('the page holds the numbers of a manifest as the command line does and the 
 
 test('an edit of the name of an element whose id is a number leaves the number, its comment and the rest of the file as written', async () => {
   const page = await open({ 'shop.yaml': NUMBERS, 'child.yaml': CHILD, 'zero.yaml': ROOT_ZERO });
-  page.sandbox.commitElementEdit('8', (node) => { node.name = 'Big shop'; return {}; });
+  page.sandbox.commitElementEdit('8', (node) => {
+    node.name = 'Big shop';
+    return {};
+  });
   await page.sandbox.saveAllChanges();
   assert.equal(onDisk(page, 'shop.yaml'), NUMBERS.replace('name: Shop', 'name: Big shop'));
-  page.sandbox.commitElementEdit('8.31', (node) => { node.name = 'Cash desk'; return {}; });
+  page.sandbox.commitElementEdit('8.31', (node) => {
+    node.name = 'Cash desk';
+    return {};
+  });
   await page.sandbox.saveAllChanges();
-  assert.equal(onDisk(page, 'shop.yaml'), NUMBERS.replace('name: Shop', 'name: Big shop').replace('name: Till', 'name: Cash desk'));
-  page.sandbox.commitElementEdit('0.c', (node) => { node.name = 'Kid'; return {}; });
+  assert.equal(
+    onDisk(page, 'shop.yaml'),
+    NUMBERS.replace('name: Shop', 'name: Big shop').replace('name: Till', 'name: Cash desk')
+  );
+  page.sandbox.commitElementEdit('0.c', (node) => {
+    node.name = 'Kid';
+    return {};
+  });
   await page.sandbox.saveAllChanges();
-  assert.equal(onDisk(page, 'child.yaml'), CHILD.replace('name: Child', 'name: Kid'), 'parent: 0 and version: 1.0 stay as written');
+  assert.equal(
+    onDisk(page, 'child.yaml'),
+    CHILD.replace('name: Child', 'name: Kid'),
+    'parent: 0 and version: 1.0 stay as written'
+  );
 });
 
 test('a block with numbers moves to another manifest as written (the cut and the paste follow the text)', async () => {
@@ -106,21 +132,43 @@ test('a block with numbers moves to another manifest as written (the cut and the
 
 test('.archicode.yaml keeps its numbers when it is saved (the text as written, quoted or not)', () => {
   const sandbox = createApp({});
-  const text = 'settings:\n  name: 010  # the name\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x1F  # a gap\n    line-style: 5.0\n';
+  const text =
+    'settings:\n  name: 010  # the name\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x1F  # a gap\n    line-style: 5.0\n';
   const value = sandbox.parseYaml(text);
   value.settings.name = '010';
   value.styles.composite['round-corner'] = 4;
-  assert.equal(sandbox.patchYamlText(text, value, true), text.replace('    line-style: 5.0\n', '    line-style: 5.0\n    round-corner: 4\n'));
+  assert.equal(
+    sandbox.patchYamlText(text, value, true),
+    text.replace('    line-style: 5.0\n', '    line-style: 5.0\n    round-corner: 4\n')
+  );
 });
 
 test('a style written as a YAML 1.1 number is drawn as the command line reads it: the whole number (issue #136, was pinned in #103)', async () => {
   const workspace = [
-    'settings:', '  manifests:', '    paths: [manifests]', 'styles:', '  by-tags:',
-    '    hot:', '      line-style: 0x5', '      line-gap: 1_0', '      line-thickness: 1e1', '      round-corner: 8.0',
-    '    cut:', '      line-style: 0b11', '      line-gap: 1.5', '      round-corner: 8.9',
-    '    quoted:', '      line-style: "7"', '      round-corner: !!int 0x1F', '      line-gap: 0x7FFFFFFF', ''
+    'settings:',
+    '  manifests:',
+    '    paths: [manifests]',
+    'styles:',
+    '  by-tags:',
+    '    hot:',
+    '      line-style: 0x5',
+    '      line-gap: 1_0',
+    '      line-thickness: 1e1',
+    '      round-corner: 8.0',
+    '    cut:',
+    '      line-style: 0b11',
+    '      line-gap: 1.5',
+    '      round-corner: 8.9',
+    '    quoted:',
+    '      line-style: "7"',
+    '      round-corner: !!int 0x1F',
+    '      line-gap: 0x7FFFFFFF',
+    ''
   ].join('\n');
-  const mem = memFolder({ '.archicode.yaml': workspace, 'manifests/m0.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: s\n' });
+  const mem = memFolder({
+    '.archicode.yaml': workspace,
+    'manifests/m0.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: s\n'
+  });
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -129,7 +177,10 @@ test('a style written as a YAML 1.1 number is drawn as the command line reads it
   assert.equal(state.fatalError, null);
   const plain = (value) => JSON.parse(JSON.stringify(value));
   // the numbers the command line reads (StyleNumbersTest.java): 0x5 is 5, 1_0 is 10, 1e1 is 10, 8.0 and 8.9 are 8, 1.5 is 1
-  assert.deepEqual(plain(sandbox.styleLookOf(sandbox.stereotypeStyleOf('hot')).vars), { '--st-width': '10px', '--st-dash': '5 10' });
+  assert.deepEqual(plain(sandbox.styleLookOf(sandbox.stereotypeStyleOf('hot')).vars), {
+    '--st-width': '10px',
+    '--st-dash': '5 10'
+  });
   assert.equal(sandbox.styleLookOf(sandbox.stereotypeStyleOf('hot')).rx, 4);
   assert.deepEqual(plain(sandbox.styleLookOf(sandbox.stereotypeStyleOf('cut')).vars), { '--st-dash': '3 1' });
   assert.equal(sandbox.styleLookOf(sandbox.stereotypeStyleOf('cut')).rx, 4);
@@ -144,11 +195,27 @@ test('a style written as a YAML 1.1 number is drawn as the command line reads it
 test('a tagged number is saved as written: the line, its tag and its comment stay when another field is edited', () => {
   const sandbox = createApp({});
   const text = [
-    'header:', '  kind: "archicode.morin.io/system"', '  version: !!int 010', 'content:',
-    '  id: !!int 0x1F   # hex id', '  name: Shop', '  description: !!binary YR==',
-    '  qualifiers:', '    - !!int 0x1F', '    - !!float 5   # five', '    - !!float 1e3', '    - a',
-    '  tags:', '    size: !!float 1e3', '    n: !!int 1_000', '    big: !!int 0xFFFFFFFFFFFFFFFFFFFFFF',
-    '  elements:', '    - kind: container', '      id: !!int 010', '      name: Till', ''
+    'header:',
+    '  kind: "archicode.morin.io/system"',
+    '  version: !!int 010',
+    'content:',
+    '  id: !!int 0x1F   # hex id',
+    '  name: Shop',
+    '  description: !!binary YR==',
+    '  qualifiers:',
+    '    - !!int 0x1F',
+    '    - !!float 5   # five',
+    '    - !!float 1e3',
+    '    - a',
+    '  tags:',
+    '    size: !!float 1e3',
+    '    n: !!int 1_000',
+    '    big: !!int 0xFFFFFFFFFFFFFFFFFFFFFF',
+    '  elements:',
+    '    - kind: container',
+    '      id: !!int 010',
+    '      name: Till',
+    ''
   ].join('\n');
   const parsed = sandbox.parseManifestText(text);
   assert.equal(parsed.error, null);
@@ -160,19 +227,37 @@ test('a tagged number is saved as written: the line, its tag and its comment sta
   assert.equal(plain.tags.big, '309485009821345068724781055');
   assert.equal(plain.elements[0].id, 8);
   parsed.content.name = 'Shop2';
-  assert.equal(sandbox.patchYamlText(text, { header: parsed.header, content: parsed.content }), text.replace('name: Shop\n', 'name: Shop2\n'));
+  assert.equal(
+    sandbox.patchYamlText(text, { header: parsed.header, content: parsed.content }),
+    text.replace('name: Shop\n', 'name: Shop2\n')
+  );
   const again = sandbox.parseManifestText(text);
   again.content.elements[0].name = 'Till2';
-  assert.equal(sandbox.patchYamlText(text, { header: again.header, content: again.content }), text.replace('name: Till', 'name: Till2'));
+  assert.equal(
+    sandbox.patchYamlText(text, { header: again.header, content: again.content }),
+    text.replace('name: Till', 'name: Till2')
+  );
 });
 
 test('a tag says what a plain scalar is before it is looked at as a number: `.inf` is a text under `!!str` and `!!int`', () => {
   const sandbox = createApp({});
   const read = (text) => JSON.parse(JSON.stringify(sandbox.parseYaml(text)));
-  assert.deepEqual(read('a: !!str .inf\nb: !!int .inf\nc: !!int 1e3\nd: !!int 1:30\n'), { a: '.inf', b: '.inf', c: '1e3', d: '1:30' });
+  assert.deepEqual(read('a: !!str .inf\nb: !!int .inf\nc: !!int 1e3\nd: !!int 1:30\n'), {
+    a: '.inf',
+    b: '.inf',
+    c: '1e3',
+    d: '1:30'
+  });
   // the tagged integer is the number the command line reads (Jackson over SnakeYAML), and what it cannot read is its sentence
-  const failing = (text) => { try { sandbox.parseYaml(text); } catch (e) { return e.message; } return null; };
-  assert.equal(failing('a: !!int 09\n'), "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8");
+  const failing = (text) => {
+    try {
+      sandbox.parseYaml(text);
+    } catch (e) {
+      return e.message;
+    }
+    return null;
+  };
+  assert.equal(failing('a: !!int 09\n'), 'Invalid base-8 number (\'9\'), problem: For input string: "9" under radix 8');
   assert.equal(failing('a: !!float 0x1F\n'), "Malformed numeric value '0x1F'");
   assert.equal(failing('a: !!binary abc\n').startsWith('Unexpected end of base64-encoded String'), true);
 });

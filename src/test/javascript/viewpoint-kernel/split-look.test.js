@@ -10,7 +10,10 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
 
-const CHANGE_MARKS = fs.readFileSync(path.resolve(__dirname, '../../../main/java/io/morin/archicode/rendering/plantuml/ChangeMarks.java'), 'utf8');
+const CHANGE_MARKS = fs.readFileSync(
+  path.resolve(__dirname, '../../../main/java/io/morin/archicode/rendering/plantuml/ChangeMarks.java'),
+  'utf8'
+);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 /** The `LineStyle` of each state of the command line, from `ChangeMarks.style`. */
@@ -18,15 +21,23 @@ function commandLineStyles() {
   const body = CHANGE_MARKS.slice(CHANGE_MARKS.indexOf('Styles.Style style('));
   const out = {};
   // `default` is the style of `contains-changes`
-  for (const [, state, rest] of body.matchAll(/(?:case ([A-Z_]+)|default) ->\s*(Styles\.Style\.builder\(\)[^;]*?\.build\(\));/g)) {
-    out[state ? state.toLowerCase().replace('_', '-') : 'contains-changes'] = Number(/\.lineStyle\((\d+)\)/.exec(rest)[1]);
+  for (const [, state, rest] of body.matchAll(
+    /(?:case ([A-Z_]+)|default) ->\s*(Styles\.Style\.builder\(\)[^;]*?\.build\(\));/g
+  )) {
+    out[state ? state.toLowerCase().replace('_', '-') : 'contains-changes'] = Number(
+      /\.lineStyle\((\d+)\)/.exec(rest)[1]
+    );
   }
   return out;
 }
 
 test('the editor draws `split` with the dash and the gap of the command line', () => {
   const cli = commandLineStyles();
-  assert.deepEqual(Object.keys(cli).sort(), ['changed', 'contains-changes', 'merged', 'moved', 'new', 'removed', 'split'], 'every state is read');
+  assert.deepEqual(
+    Object.keys(cli).sort(),
+    ['changed', 'contains-changes', 'merged', 'moved', 'new', 'removed', 'split'],
+    'every state is read'
+  );
   assert.equal(cli.split, 8);
   const sandbox = createApp();
   const look = plain(vm.runInContext('CHANGE_DEFAULT_LOOK', sandbox));
@@ -40,9 +51,13 @@ test('no other state has the pair of `split`, in either tool, and no line of the
   for (const state of others) assert.notEqual(cli[state], cli.split, 'the command line: ' + state);
   const sandbox = createApp();
   const look = plain(vm.runInContext('CHANGE_DEFAULT_LOOK', sandbox));
-  for (const state of Object.keys(look)) if (state !== 'split') assert.notEqual(look[state]['--st-dash'], look.split['--st-dash'], 'the editor: ' + state);
+  for (const state of Object.keys(look))
+    if (state !== 'split') assert.notEqual(look[state]['--st-dash'], look.split['--st-dash'], 'the editor: ' + state);
   // the lines of the page that are not a state (a grouped link, a dangling one, the edges of a change) draw other patterns: the CSS is read for any dash array equal to the pair
-  const html = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+  const html = fs.readFileSync(
+    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
+    'utf8'
+  );
   assert.ok(!/stroke-dasharray:\s*8[ ,]8\b/.test(html), 'no other line of the page is drawn with 8 8');
 });
 
@@ -50,7 +65,10 @@ test('both keys say the same of `split`: medium dashes', () => {
   assert.match(CHANGE_MARKS, /split, one of several that replace one element: medium dashes/);
   const sandbox = createApp();
   assert.equal(plain(vm.runInContext('CHANGE_WORDS', sandbox)).split.box, 'medium dashes');
-  const html = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+  const html = fs.readFileSync(
+    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
+    'utf8'
+  );
   assert.match(html, /split: 'medium dashes: one of several that replace one'/);
   assert.doesNotMatch(html, /dash-dot/);
 });

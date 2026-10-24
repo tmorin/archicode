@@ -48,25 +48,55 @@ const plateau = (application = [], technology = []) => ({ application, technolog
 
 test('the module the editor embeds is the one the CLI loads, and it exports compare next to compute', async () => {
   const kernel = await loadEmbeddedKernel();
-  assert.ok(Buffer.compare(kernel.bytes, fs.readFileSync(WASM)) === 0, 'the same bytes in standalone.html and in src/main/wasm');
-  for (const name of ['alloc', 'dealloc', 'compute', 'apply_facet', 'compare', 'states', 'result_ptr', 'memory']) assert.ok(name in kernel.exports, name + ' is exported');
+  assert.ok(
+    Buffer.compare(kernel.bytes, fs.readFileSync(WASM)) === 0,
+    'the same bytes in standalone.html and in src/main/wasm'
+  );
+  for (const name of ['alloc', 'dealloc', 'compute', 'apply_facet', 'compare', 'states', 'result_ptr', 'memory'])
+    assert.ok(name in kernel.exports, name + ' is exported');
 });
 
 test('compare lists the new, changed and removed things of two small plateaus, and says why', async () => {
   const kernel = await loadEmbeddedKernel();
   const base = plateau(
-    [el('shop', { name: 'Shop', description: 'sells' }), el('shop.web', { relationships: [rel('shop.api', 'calls')] }), el('shop.api'), el('legacy'), el('legacy.batch')],
+    [
+      el('shop', { name: 'Shop', description: 'sells' }),
+      el('shop.web', { relationships: [rel('shop.api', 'calls')] }),
+      el('shop.api'),
+      el('legacy'),
+      el('legacy.batch')
+    ],
     [el('env', { applications: ['shop.web'] })]
   );
   const target = plateau(
-    [el('shop', { name: 'Shop', description: 'sells things' }), el('shop.web', { relationships: [rel('shop.api', 'calls'), rel('shop.cache', 'reads')] }), el('shop.api', { tags: { 'rendering-stereotypes': 'external' } }), el('shop.cache')],
+    [
+      el('shop', { name: 'Shop', description: 'sells things' }),
+      el('shop.web', { relationships: [rel('shop.api', 'calls'), rel('shop.cache', 'reads')] }),
+      el('shop.api', { tags: { 'rendering-stereotypes': 'external' } }),
+      el('shop.cache')
+    ],
     [el('env', { applications: ['shop.web', 'shop.api'] })]
   );
   const out = kernel.compare({ base, target });
   assert.equal(out.error, undefined);
-  assert.deepEqual(out.counts, { elements: { new: 1, changed: 3, removed: 2, wording_only: 1 }, relationships: { new: 1, changed: 0, removed: 0 } });
+  assert.deepEqual(out.counts, {
+    elements: { new: 1, changed: 3, removed: 2, wording_only: 1 },
+    relationships: { new: 1, changed: 0, removed: 0 }
+  });
   const changes = new Map(out.changes.map((r) => [r.thing + ':' + r.reference, r]));
-  assert.deepEqual(Array.from(changes.keys()), ['element:legacy', 'element:legacy.batch', 'element:shop', 'element:shop.cache', 'element:shop.web', 'element:env', 'relationship:shop.web'], 'by layer, then reference; the elements, then the relationships');
+  assert.deepEqual(
+    Array.from(changes.keys()),
+    [
+      'element:legacy',
+      'element:legacy.batch',
+      'element:shop',
+      'element:shop.cache',
+      'element:shop.web',
+      'element:env',
+      'relationship:shop.web'
+    ],
+    'by layer, then reference; the elements, then the relationships'
+  );
   assert.deepEqual(changes.get('element:env').natures, ['deployment']);
   assert.equal(changes.get('element:shop').wording_only, true, 'a description alone is wording');
   assert.deepEqual(changes.get('element:shop').before, { description: 'sells' });
@@ -79,14 +109,30 @@ test('compare lists the new, changed and removed things of two small plateaus, a
 test('compare answers the same bytes for the same input, whatever the order of its lists', async () => {
   const kernel = await loadEmbeddedKernel();
   const input = {
-    base: plateau([el('a', { relationships: [rel('b', 'x'), rel('c', 'y')] }), el('b'), el('c'), el('gone')], [el('env', { applications: ['a', 'b'], uses: ['env.n', 'env.m'] }), el('env.n'), el('env.m')]),
-    target: plateau([el('a', { name: 'A', relationships: [rel('c', 'y'), rel('b', 'z')] }), el('c'), el('b'), el('fresh')], [el('env', { applications: ['b', 'a'], uses: ['env.m'] }), el('env.m'), el('env.n')]),
+    base: plateau(
+      [el('a', { relationships: [rel('b', 'x'), rel('c', 'y')] }), el('b'), el('c'), el('gone')],
+      [el('env', { applications: ['a', 'b'], uses: ['env.n', 'env.m'] }), el('env.n'), el('env.m')]
+    ),
+    target: plateau(
+      [el('a', { name: 'A', relationships: [rel('c', 'y'), rel('b', 'z')] }), el('c'), el('b'), el('fresh')],
+      [el('env', { applications: ['b', 'a'], uses: ['env.m'] }), el('env.m'), el('env.n')]
+    ),
     on_one_chain: true
   };
-  const reverse = (side) => ({ application: side.application.slice().reverse().map((e) => (e.relationships ? Object.assign({}, e, { relationships: e.relationships.slice().reverse() }) : e)), technology: side.technology.slice().reverse() });
+  const reverse = (side) => ({
+    application: side.application
+      .slice()
+      .reverse()
+      .map((e) => (e.relationships ? Object.assign({}, e, { relationships: e.relationships.slice().reverse() }) : e)),
+    technology: side.technology.slice().reverse()
+  });
   const first = kernel.raw(input);
   assert.equal(first, kernel.raw(input), 'twice');
-  assert.equal(first, kernel.raw({ target: reverse(input.target), base: reverse(input.base), on_one_chain: true }), 'reordered');
+  assert.equal(
+    first,
+    kernel.raw({ target: reverse(input.target), base: reverse(input.base), on_one_chain: true }),
+    'reordered'
+  );
   assert.ok(!JSON.parse(first).error);
 });
 
@@ -96,14 +142,22 @@ test('compare reads the elements the editor builds from the fixture: a plateau a
   const side = () => {
     const state = sandbox.__state();
     // plain objects of this realm, as the editor sends them
-    return JSON.parse(JSON.stringify({ application: sandbox.toKernelElements(state.index.application, true).elements, technology: sandbox.toKernelElements(state.index.technology, true).elements }));
+    return JSON.parse(
+      JSON.stringify({
+        application: sandbox.toKernelElements(state.index.application, true).elements,
+        technology: sandbox.toKernelElements(state.index.technology, true).elements
+      })
+    );
   };
   const base = side();
   assert.ok(base.application.length >= 15 && base.technology.length >= 8);
   const same = kernel.compare({ base, target: side() });
   assert.equal(same.error, undefined);
   assert.deepEqual(same.changes, []);
-  assert.deepEqual(same.counts, { elements: { new: 0, changed: 0, removed: 0, wording_only: 0 }, relationships: { new: 0, changed: 0, removed: 0 } });
+  assert.deepEqual(same.counts, {
+    elements: { new: 0, changed: 0, removed: 0, wording_only: 0 },
+    relationships: { new: 0, changed: 0, removed: 0 }
+  });
   assert.equal(same.elements.length, base.application.length + base.technology.length);
 
   const target = side();
@@ -125,8 +179,14 @@ test('compare reads the elements the editor builds from the fixture: a plateau a
 
 test('compare reports its errors the way compute does: an object with an error, never a trap', async () => {
   const kernel = await loadEmbeddedKernel();
-  assert.match(kernel.compare({ base: plateau([el('a', { relationships: [rel('nowhere', 'x')] })]), target: plateau() }).error, /^dangling reference: nowhere/);
-  assert.match(kernel.compare({ base: plateau([el('a'), el('a')]), target: plateau() }).error, /^duplicate reference: a/);
+  assert.match(
+    kernel.compare({ base: plateau([el('a', { relationships: [rel('nowhere', 'x')] })]), target: plateau() }).error,
+    /^dangling reference: nowhere/
+  );
+  assert.match(
+    kernel.compare({ base: plateau([el('a'), el('a')]), target: plateau() }).error,
+    /^duplicate reference: a/
+  );
   assert.match(JSON.parse(kernel.raw('not json')).error, /^invalid input/);
   assert.match(kernel.compare({ base: plateau() }).error, /^invalid input/);
 });
@@ -158,11 +218,32 @@ test('replaces: moved, split and merged elements through the embedded module, th
   assert.equal(out.version, 5);
   const change = Object.fromEntries(out.elements.map((e) => [e.reference, e.change]));
   assert.deepEqual(change, { a: 'none', b: 'none', 'b.svc': 'moved', m: 'merged', t1: 'split', t2: 'split' });
-  assert.deepEqual(out.counts.elements, { new: 0, changed: 0, removed: 0, wording_only: 0, moved: 1, split: 2, merged: 1 });
+  assert.deepEqual(out.counts.elements, {
+    new: 0,
+    changed: 0,
+    removed: 0,
+    wording_only: 0,
+    moved: 1,
+    split: 2,
+    merged: 1
+  });
   assert.equal(out.warnings.length, 1);
-  assert.equal(raw, kernel.raw({ base: plateau([...base.application].reverse()), target: plateau([...target.application].reverse()), on_one_chain: true }), 'the order of the lists never shows');
+  assert.equal(
+    raw,
+    kernel.raw({
+      base: plateau([...base.application].reverse()),
+      target: plateau([...target.application].reverse()),
+      on_one_chain: true
+    }),
+    'the order of the lists never shows'
+  );
   // the union is drawn like any other: the state ends the stereotypes
-  const view = kernel.compute({ viewpoint: 'map', focal: '', elements: out.elements.map((e) => Object.assign({}, e, { relationships: [] })), opened: ['a', 'b'] });
+  const view = kernel.compute({
+    viewpoint: 'map',
+    focal: '',
+    elements: out.elements.map((e) => Object.assign({}, e, { relationships: [] })),
+    opened: ['a', 'b']
+  });
   assert.equal(view.error, undefined);
   assert.deepEqual(view.items.find((i) => i.reference === 'b.svc').stereotypes, ['moved']);
 });

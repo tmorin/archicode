@@ -28,13 +28,20 @@ test('every golden case: the emitter writes the expected text, and the parser re
 });
 
 test('an empty object and an empty array are written as flow collections, not as null or [object Object]', () => {
-  assert.equal(app.serializeYamlValue({ tags: {}, relationships: [], n: { a: [] } }, 0), 'tags: {}\nrelationships: []\nn:\n  a: []');
-  assert.deepEqual(parse('tags: {}\nrelationships: []\nitems:\n  - {}\n  - []'), { tags: {}, relationships: [], items: [{}, []] });
+  assert.equal(
+    app.serializeYamlValue({ tags: {}, relationships: [], n: { a: [] } }, 0),
+    'tags: {}\nrelationships: []\nn:\n  a: []'
+  );
+  assert.deepEqual(parse('tags: {}\nrelationships: []\nitems:\n  - {}\n  - []'), {
+    tags: {},
+    relationships: [],
+    items: [{}, []]
+  });
   assert.equal(app.serializeYamlValue({}, 0), '{}');
 });
 
 test('keys go through the same quoting as values', () => {
-  const tags = { 'a: b': 1, '# n': 2, '- d': 3, 'x #y': 4, 'k:': 5, '': 6, 'true': 7, '[x]': 8, plain: 9 };
+  const tags = { 'a: b': 1, '# n': 2, '- d': 3, 'x #y': 4, 'k:': 5, '': 6, true: 7, '[x]': 8, plain: 9 };
   const text = app.serializeYamlValue({ tags }, 0);
   assert.deepEqual(parse(text), { tags });
   assert.ok(text.includes('"a: b": 1') && text.includes('"# n": 2') && text.includes('"": 6'));
@@ -95,14 +102,27 @@ test('quoted keys lose their quotes, and the escapes of double quotes are read',
   assert.deepEqual(parse('"a b": 1\n\'c: d\': 2\n"e\\"f": 3'), { 'a b': 1, 'c: d': 2, 'e"f': 3 });
   assert.deepEqual(parse('- "k": v'), [{ k: 'v' }]);
   assert.deepEqual(parse('a: "x\\ty\\nz\\r\\u00e9\\U0001F642\\x41\\\\ \\" \\/"'), { a: 'x\ty\nz\ré\u{1F642}A\\ " /' });
-  assert.throws(() => app.parseYaml('a: "bad \\q"'), (e) => e.line === 1 && /escape/.test(e.message));
-  assert.throws(() => app.parseYaml('a: "bad \\u12"'), (e) => e.line === 1);
+  assert.throws(
+    () => app.parseYaml('a: "bad \\q"'),
+    (e) => e.line === 1 && /escape/.test(e.message)
+  );
+  assert.throws(
+    () => app.parseYaml('a: "bad \\u12"'),
+    (e) => e.line === 1
+  );
 });
 
 test('comments: a hash starts one only at the start or after a blank', () => {
-  assert.deepEqual(parse("a: don't # a comment\nb: 'it''s # kept' # a comment\nc: \"say \\\"hi # there\" # c\nd: x#y\ne: #f\n  z"), {
-    a: "don't", b: "it's # kept", c: 'say "hi # there', d: 'x#y', e: 'z'
-  });
+  assert.deepEqual(
+    parse("a: don't # a comment\nb: 'it''s # kept' # a comment\nc: \"say \\\"hi # there\" # c\nd: x#y\ne: #f\n  z"),
+    {
+      a: "don't",
+      b: "it's # kept",
+      c: 'say "hi # there',
+      d: 'x#y',
+      e: 'z'
+    }
+  );
   assert.equal(app.stripYamlComment("a: don't # c"), "a: don't ");
   assert.equal(app.stripYamlComment('a: "say \\"hi # there" # c'), 'a: "say \\"hi # there" ');
   assert.equal(app.stripYamlComment("a: 'it''s # kept' # c"), "a: 'it''s # kept' ");
@@ -115,15 +135,33 @@ test('comments: a hash starts one only at the start or after a blank', () => {
 
 test('numbers are read as numbers only when writing them back gives the very same text', () => {
   const parsed = parse('a: 12\nb: 1.5\nc: 01234\nd: 1.50\ne: 2.0\nf: 12345678901234567890\ng: -0\nh: -3');
-  assert.deepEqual(parsed, { a: 12, b: 1.5, c: '01234', d: '1.50', e: '2.0', f: '12345678901234567890', g: '-0', h: -3 });
+  assert.deepEqual(parsed, {
+    a: 12,
+    b: 1.5,
+    c: '01234',
+    d: '1.50',
+    e: '2.0',
+    f: '12345678901234567890',
+    g: '-0',
+    h: -3
+  });
   for (const text of ['01234', '1.50', '2.0', '12345678901234567890', '-0']) {
     assert.deepEqual(parse(app.serializeYamlValue({ v: parse('v: ' + text).v }, 0)), { v: parse('v: ' + text).v });
   }
 });
 
 test('booleans and null as the Java side reads them', () => {
-  assert.deepEqual(parse('a: yes\nb: No\nc: ON\nd: off\ne: True\nf: ~\ng: Null\nh:\ni: tRuE'),
-    { a: true, b: false, c: true, d: false, e: true, f: null, g: null, h: null, i: 'tRuE' });
+  assert.deepEqual(parse('a: yes\nb: No\nc: ON\nd: off\ne: True\nf: ~\ng: Null\nh:\ni: tRuE'), {
+    a: true,
+    b: false,
+    c: true,
+    d: false,
+    e: true,
+    f: null,
+    g: null,
+    h: null,
+    i: 'tRuE'
+  });
 });
 
 test('documents: a leading --- and a trailing ... are accepted, CRLF and a BOM too', () => {
@@ -155,8 +193,11 @@ test('whatever the parser cannot read is an error that names the line, never a s
     ['a: [1, 2] extra\n', 1]
   ];
   for (const [text, line] of failing) {
-    assert.throws(() => app.parseYaml(text), (e) => e.name === 'YamlParseError' && e.line === line && e.message.includes('line ' + line),
-      'expected a parse error at line ' + line + ' for ' + JSON.stringify(text));
+    assert.throws(
+      () => app.parseYaml(text),
+      (e) => e.name === 'YamlParseError' && e.line === line && e.message.includes('line ' + line),
+      'expected a parse error at line ' + line + ' for ' + JSON.stringify(text)
+    );
   }
 });
 
@@ -170,7 +211,12 @@ function writableFolder(dir) {
     const file = await getFileHandle(name, options);
     file.createWritable = async () => {
       const parts = [];
-      return { write: async (data) => { parts.push(data); }, close: async () => fs.writeFileSync(path.join(dir, name), parts.join('')) };
+      return {
+        write: async (data) => {
+          parts.push(data);
+        },
+        close: async () => fs.writeFileSync(path.join(dir, name), parts.join(''))
+      };
     };
     return file;
   };
@@ -196,12 +242,26 @@ const MANIFEST = 'header:\n  kind: archicode.morin.io/system\n  version: "1"\nco
 test('saving the settings keeps the other top-level keys of .archicode.yaml, in their order', async () => {
   const { sandbox, state, dir } = await openTemp({
     '.archicode.yaml': [
-      'application:', '  elements: []', 'technology:', '  elements:', '    - kind: environment', '      id: t1',
-      'styles:', '  by-tags: {red: {line-color: "#ff0000"}}',
-      'views:', '  - name: v1',
-      'settings:', '  manifests:', '    paths: [manifests]',
-      '  views:', '    labels: {a: b}', '  facets:', '    customs: []',
-      'stories:', '  - id: tour', ''
+      'application:',
+      '  elements: []',
+      'technology:',
+      '  elements:',
+      '    - kind: environment',
+      '      id: t1',
+      'styles:',
+      '  by-tags: {red: {line-color: "#ff0000"}}',
+      'views:',
+      '  - name: v1',
+      'settings:',
+      '  manifests:',
+      '    paths: [manifests]',
+      '  views:',
+      '    labels: {a: b}',
+      '  facets:',
+      '    customs: []',
+      'stories:',
+      '  - id: tour',
+      ''
     ].join('\n'),
     'manifests/app.s1.yaml': MANIFEST
   });
@@ -231,7 +291,8 @@ test('a .archicode.yaml that cannot be read is a fatal error that names the line
 });
 
 test('a manifest the parser cannot read is shown as unparseable: no element from it, and its text is kept as it is', async () => {
-  const broken = 'header:\n  kind: archicode.morin.io/system\ncontent:\n  id: s2\n  name: *n\n  elements:\n    - id: lost\n';
+  const broken =
+    'header:\n  kind: archicode.morin.io/system\ncontent:\n  id: s2\n  name: *n\n  elements:\n    - id: lost\n';
   const { state } = await openTemp({
     '.archicode.yaml': 'settings:\n  manifests:\n    paths: [manifests]\n',
     'manifests/app.s1.yaml': MANIFEST,
@@ -256,7 +317,8 @@ test('every YAML file of the repository (manual examples, workspaces, fixtures) 
       else if (/\.ya?ml$/.test(entry.name)) found.push(full);
     }
   };
-  for (const dir of ['src/doc/examples', 'src/test/workspaces', 'src/test/resources/viewpoint-kernel/workspace']) walk(path.join(REPO, dir));
+  for (const dir of ['src/doc/examples', 'src/test/workspaces', 'src/test/resources/viewpoint-kernel/workspace'])
+    walk(path.join(REPO, dir));
   assert.ok(found.length > 30);
   for (const file of found) {
     const parsed = parse(fs.readFileSync(file, 'utf8'));
@@ -265,10 +327,49 @@ test('every YAML file of the repository (manual examples, workspaces, fixtures) 
 });
 
 test('whatever text is thrown at the emitter comes back unchanged', () => {
-  const alphabet = ['a', 'Z', '0', '1', '.', '-', '+', ':', ' ', '#', '"', "'", '\\', '\n', '\t', '\r', '[', ']', '{', '}', ',', '&', '*', '!', '|', '>', '%', '@', '`', '?', '~', 'é', '\u{1F642}', ' ', '\u0000', '=', 'e'];
+  const alphabet = [
+    'a',
+    'Z',
+    '0',
+    '1',
+    '.',
+    '-',
+    '+',
+    ':',
+    ' ',
+    '#',
+    '"',
+    "'",
+    '\\',
+    '\n',
+    '\t',
+    '\r',
+    '[',
+    ']',
+    '{',
+    '}',
+    ',',
+    '&',
+    '*',
+    '!',
+    '|',
+    '>',
+    '%',
+    '@',
+    '`',
+    '?',
+    '~',
+    'é',
+    '\u{1F642}',
+    ' ',
+    '\u0000',
+    '=',
+    'e'
+  ];
   let seed = 42;
   const next = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-  const text = () => Array.from({ length: Math.floor(next() * 8) }, () => alphabet[Math.floor(next() * alphabet.length)]).join('');
+  const text = () =>
+    Array.from({ length: Math.floor(next() * 8) }, () => alphabet[Math.floor(next() * alphabet.length)]).join('');
   for (let i = 0; i < 3000; i++) {
     const value = { [text()]: text(), k: [text(), { [text()]: [text()] }] };
     const yaml = app.serializeYamlValue(value, 0);
@@ -277,7 +378,10 @@ test('whatever text is thrown at the emitter comes back unchanged', () => {
 });
 
 test('garbled files only ever fail with a YamlParseError', () => {
-  const sample = fs.readFileSync(path.join(REPO, 'src/test/resources/viewpoint-kernel/workspace/manifests/app.shop.yaml'), 'utf8');
+  const sample = fs.readFileSync(
+    path.join(REPO, 'src/test/resources/viewpoint-kernel/workspace/manifests/app.shop.yaml'),
+    'utf8'
+  );
   const inserts = [' ', '\n', '"', "'", '[', ']', '{', '}', ':', '-', '|', '>', '#', '\t', '&', '*', '!', ',', '\\'];
   let seed = 7;
   const next = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
@@ -285,7 +389,10 @@ test('garbled files only ever fail with a YamlParseError', () => {
     let text = sample;
     for (let m = 0; m < 3; m++) {
       const at = Math.floor(next() * text.length);
-      text = next() < 0.5 ? text.slice(0, at) + inserts[Math.floor(next() * inserts.length)] + text.slice(at) : text.slice(0, at) + text.slice(at + 1);
+      text =
+        next() < 0.5
+          ? text.slice(0, at) + inserts[Math.floor(next() * inserts.length)] + text.slice(at)
+          : text.slice(0, at) + text.slice(at + 1);
     }
     try {
       app.parseYaml(text);
@@ -304,8 +411,16 @@ test('keys that look like array indexes keep the order they were written in, thr
   const copy = app.copyOwnKeys(parsed.tags);
   app.setOwnKey(copy, '1', 'one');
   delete copy['10'];
-  assert.equal(app.serializeYamlValue({ tags: copy }, 0), 'tags:\n  zone: eu\n  "2": two\n  owner: me\n  "1": one', 'a new key goes last, a removed one is gone');
+  assert.equal(
+    app.serializeYamlValue({ tags: copy }, 0),
+    'tags:\n  zone: eu\n  "2": two\n  owner: me\n  "1": one',
+    'a new key goes last, a removed one is gone'
+  );
   app.setOwnKey(copy, '10', 'again');
   assert.deepEqual(Array.from(app.yamlKeysOf(copy)), ['zone', '2', 'owner', '1', '10']);
-  assert.deepEqual(Array.from(app.yamlKeysOf({ b: 1, a: 2 })), ['b', 'a'], 'a mapping without such a key is left alone');
+  assert.deepEqual(
+    Array.from(app.yamlKeysOf({ b: 1, a: 2 })),
+    ['b', 'a'],
+    'a mapping without such a key is left alone'
+  );
 });
