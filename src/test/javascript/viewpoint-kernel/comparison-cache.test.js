@@ -161,11 +161,11 @@ test('an edit of the plateau drawn asks again: a rename, a created element, a de
   const step = (label, expected) => {
     assert.ok(version() > seen, label + ': the version of the models moved');
     seen = version();
-    const state = sandbox.comparisonState();
-    assert.notEqual(state.layers, answers[answers.length - 1].layers, label + ': asked again');
-    assert.equal(sandbox.comparisonState().layers, state.layers, label + ': and only once');
-    if (expected) expected(state);
-    answers.push(state);
+    const answer = sandbox.comparisonState();
+    assert.notEqual(answer.layers, answers[answers.length - 1].layers, label + ': asked again');
+    assert.equal(sandbox.comparisonState().layers, answer.layers, label + ': and only once');
+    if (expected) expected(answer);
+    answers.push(answer);
   };
   const before = spy.compares;
 

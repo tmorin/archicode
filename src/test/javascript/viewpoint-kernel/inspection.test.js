@@ -382,7 +382,7 @@ test('the Map drops the panel and its handle together with the selection it drop
 });
 
 test('a name from the YAML never reaches the panel as markup', async () => {
-  const { sandbox, state, regions } = await page('map');
+  const { state, regions } = await page('map');
   const record = state.index.application.get(SELECTED);
   record.name = '<img src=x onerror=alert(1)>';
   record.description = '</div><script>alert(2)</script>';

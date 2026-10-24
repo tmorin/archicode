@@ -234,7 +234,7 @@ wave_manifest:
       slug: eslint-javascript
       phase: P2
       depends_on: [W-4]
-      run: null
+      run: 0169
       delegation: standard
       likely_paths:
         - 'package.json'

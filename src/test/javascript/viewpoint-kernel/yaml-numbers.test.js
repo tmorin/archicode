@@ -46,7 +46,6 @@ for (const c of DOCUMENT.cases) {
 }
 
 // ---- what the save keeps: a number is written back as it was written (the line-preserving save finds the line of `id: 010` for the `8` the page holds)
-const vm = require('node:vm');
 const WORKSPACE = 'settings:\n  manifests:\n    paths:\n      - manifests\n';
 const NUMBERS = [
   '# a shop whose ids are numbers',
@@ -127,7 +126,7 @@ test('a block with numbers moves to another manifest as written (the cut and the
   await page.sandbox.saveAllChanges();
   assert.match(onDisk(page, 'zero.yaml'), /id: 0x1F\n/);
   assert.doesNotMatch(onDisk(page, 'shop.yaml'), /0x1F/);
-  assert.match(onDisk(page, 'shop.yaml'), /id: 010   # an octal\n/);
+  assert.match(onDisk(page, 'shop.yaml'), /id: 010 {3}# an octal\n/);
 });
 
 test('.archicode.yaml keeps its numbers when it is saved (the text as written, quoted or not)', () => {
@@ -241,8 +240,8 @@ test('a tagged number is saved as written: the line, its tag and its comment sta
 
 test('a tag says what a plain scalar is before it is looked at as a number: `.inf` is a text under `!!str` and `!!int`', () => {
   const sandbox = createApp({});
-  const read = (text) => JSON.parse(JSON.stringify(sandbox.parseYaml(text)));
-  assert.deepEqual(read('a: !!str .inf\nb: !!int .inf\nc: !!int 1e3\nd: !!int 1:30\n'), {
+  const readBack = (text) => JSON.parse(JSON.stringify(sandbox.parseYaml(text)));
+  assert.deepEqual(readBack('a: !!str .inf\nb: !!int .inf\nc: !!int 1e3\nd: !!int 1:30\n'), {
     a: '.inf',
     b: '.inf',
     c: '1e3',

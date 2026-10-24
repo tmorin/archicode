@@ -7,11 +7,9 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
 
-const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 const system = (id, name) =>
@@ -86,7 +84,7 @@ test('the other keys of .archicode.yaml survive a save, comments and layout of t
     text.slice(0, text.indexOf('  views:')),
     'everything up to the next setting, comments included, is as written'
   );
-  assert.match(after, /  views:\n    path: out2\n/);
+  assert.match(after, / {2}views:\n {4}path: out2\n/);
   const reread = plain(sandbox.parseYaml(after));
   assert.deepEqual(reread.application, { elements: [] });
   assert.deepEqual(reread.settings.manifests, { paths: ['shared'] });

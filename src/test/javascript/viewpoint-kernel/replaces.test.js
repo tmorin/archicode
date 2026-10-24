@@ -7,14 +7,11 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { layeredFiles, openLayered, compareWith } = require('./layered-folders');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
 
@@ -56,7 +53,7 @@ const TARGET = {
 };
 const PLAIN_TARGET = Object.assign({}, TARGET);
 for (const name of Object.keys(PLAIN_TARGET))
-  PLAIN_TARGET[name] = PLAIN_TARGET[name].replace(/  replaces:(\n    - .*)*(?: \[.*\])?\n/, '');
+  PLAIN_TARGET[name] = PLAIN_TARGET[name].replace(/ {2}replaces:(\n {4}- .*)*(?: \[.*\])?\n/, '');
 
 const folder = (dir, files) =>
   Object.fromEntries(Object.entries(files).map(([name, text]) => ['plateaus/' + dir + '/' + name, text]));

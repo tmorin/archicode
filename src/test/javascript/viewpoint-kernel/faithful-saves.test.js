@@ -301,7 +301,7 @@ test('#54: a list on several lines that an edit changes keeps its comments as li
   assert.equal(
     out,
     TAGS.replace(
-      /  tags: \[[\s\S]*?\]  # on several lines/,
+      / {2}tags: \[[\s\S]*?\] {2}# on several lines/,
       '  tags:  # on several lines\n    # first\n    - "a.one"\n    - "a.two"   # second\n    - \'a.three\'\n    - \'a.four\'\n    # before the bracket'
     )
   );
@@ -325,7 +325,7 @@ test('#54: a map that an edit changes keeps the quotes of its keys, the quotes o
   assert.equal(
     out,
     TAGS.replace(
-      /  zone: \{.*\}   # one line/,
+      / {2}zone: \{.*\} {3}# one line/,
       '  zone: {"tier": \'gold\', heat: on, "cold": off, "label": plain, size: big}   # one line'
     )
   );
@@ -369,7 +369,7 @@ test('#54: a map on several lines, an item that is a flow map, and a nested list
   assert.equal(
     zone,
     text.replace(
-      /  zone: \{[\s\S]*?\n  \}\n/,
+      / {2}zone: \{[\s\S]*?\n {2}\}\n/,
       '  zone:\n    # where\n    place: south   # the place\n    "tier": gold\n    # and when\n    open: yes\n'
     )
   );
@@ -379,7 +379,7 @@ test('#54: a map on several lines, an item that is a flow map, and a nested list
   assert.equal(
     item,
     text.replace(
-      /    - \{[\s\S]*?ready: yes\}\n/,
+      / {4}- \{[\s\S]*?ready: yes\}\n/,
       '    - destination: "shop.till" # the till\n      "label": "settles"\n      ready: yes\n'
     )
   );
@@ -623,7 +623,10 @@ test('#57: a file that writes one list at the column of its key and another inde
 
 test("#57: a list that grows from nothing, and one that is emptied, are the emitter's lines for that key and the rest of the file stays", () => {
   const grown = save(
-    KEY_COLUMN.replace(/  tags:\n  # why these three\n  - flour   # one\n  - "grain"\n\n  - sack\n/, '  tags: []\n'),
+    KEY_COLUMN.replace(
+      / {2}tags:\n {2}# why these three\n {2}- flour {3}# one\n {2}- "grain"\n\n {2}- sack\n/,
+      '  tags: []\n'
+    ),
     (v) => {
       v.content.tags.push('flour');
     }

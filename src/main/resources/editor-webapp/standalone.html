@@ -2402,7 +2402,7 @@ function yamlStringNeedsQuoting(str) {
   if (str === '') return true;
   if (/^[ \t]|[ \t]$/.test(str)) return true;
   if (/[\u0000-\u001f\u007f\u0085\u2028\u2029\ufeff]/.test(str)) return true; // newlines, tabs, control characters
-  if (/^[-?:,\[\]{}#&*!|>'"%@`]/.test(str)) return true; // starts with an indicator
+  if (/^[-?:,[\]{}#&*!|>'"%@`]/.test(str)) return true; // starts with an indicator
   if (/:([ \t]|$)/.test(str) || /[ \t]#/.test(str)) return true; // `: ` and a trailing `:` make a mapping, ` #` a comment
   if (/^\.\.\.|^---/.test(str)) return true;
   if (/^(null|true|false|yes|no|on|off)$/i.test(str) || str === '~' || str === '=' || str === '<<') return true;
@@ -2953,14 +2953,14 @@ function closeYamlDecorations(patched, opened, emitted) {
  * map starts on the line below its dash (`-` or `- &s`, then the keys) is first written as the emitter writes it (see `mergeBareDashItems`) and goes back to its lines after.
  */
 function patchYamlTextPlain(oldText, newValue) {
-  let merged = null;
+  let merged;
   try {
     merged = mergeBareDashItems(oldText);
   } catch (e) {
     merged = null; // a layout this does not know: the file as it is
   }
   if (merged !== null) {
-    let back = null;
+    let back;
     try {
       back = splitBareDashItems(patchYamlTextColumns(merged.text, newValue), merged.items);
     } catch (e) {
@@ -3121,8 +3121,8 @@ function patchYamlTextAt(oldText, newValue) {
   const textLines = oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
   const widest = marked === null ? 0 : textLines.reduce((most, line) => Math.max(most, line.length), 0);
   const itemMarks = new Set(opened.lists.map((list, n) => (list.kind === 'item' ? n : -1)).filter((n) => n !== -1)); // the collections in brackets that are items of a list, by the number of their mark
-  const attempt = (styled, brackets) => {
-    const patched = patchYamlLines(brackets ? marked : opened.text, emitted, newValue, styled, itemMarks);
+  const attempt = (styledLines, brackets) => {
+    const patched = patchYamlLines(brackets ? marked : opened.text, emitted, newValue, styledLines, itemMarks);
     if (patched === null) return null;
     if (!brackets) return closeFlowLists(patched, opened.lists);
     const bracketed = bracketChangedFlows(patched, opened, widest);
@@ -3340,14 +3340,14 @@ function openFlowListsRead(text) {
       while (at < line.length && isYamlWs(line[at])) at++;
     }
     const keyed = found !== null && at < line.length && (line[at] === '[' || line[at] === '{');
-    const item = !keyed && /^ *- +[\[{]/.test(line);
+    const item = !keyed && /^ *- +[[{]/.test(line);
     if (!keyed && !item) { out.push(line); continue; }
-    const m = keyed ? [line.slice(0, at), lead, line.slice(lead.length, found.end - 1).replace(/[ \t]+$/, '')] : line.match(/^( *)(- +)(?=[\[{])/); // [text before the collection, indentation (and dashes), key as written]
+    const m = keyed ? [line.slice(0, at), lead, line.slice(lead.length, found.end - 1).replace(/[ \t]+$/, '')] : line.match(/^( *)(- +)(?=[[{])/); // [text before the collection, indentation (and dashes), key as written]
     if (!keyed) at = m[0].length;
     const p = { lines, i, col: at, leaves: [], keys: [], comments: [] };
     let node;
-    let comment = '';
-    let tailText = ''; // what follows the closing bracket, as written
+    let comment;
+    let tailText; // what follows the closing bracket, as written
     try {
       node = parseYamlFlowNode(p, i);
       tailText = lines[p.i].slice(p.col);
@@ -3504,7 +3504,7 @@ function bracketChangedFlows(text, opened, widest) {
     const region = lines.slice(i, end);
     const delta = yamlIndentOf(region[0]) - yamlIndentOf(start.expanded[0]);
     if (region.length === start.expanded.length && region.every((line, k) => line === shiftYamlLine(start.expanded[k], delta))) continue; // as it was opened: `closeFlowLists` puts it back
-    let line = null;
+    let line;
     try {
       line = bracketedLine(region, start, widest);
     } catch (e) {
@@ -3591,8 +3591,8 @@ function yamlBlockLinesToFlow(input, pad) {
     if (token === '[]' || token === '{}') return token;
     if (token[0] === '"') return /^"(?:[^"\\]|\\.)*"$/.test(token) ? token : null;
     if (token[0] === "'") return /^'(?:[^']|'')*'$/.test(token) ? token : null;
-    if (/^[\[{&*!|>%@`#]/.test(token)) return null;
-    return /[,\[\]{}]/.test(token) ? '"' + escapeYamlDoubleQuoted(token) + '"' : token;
+    if (/^[[{&*!|>%@`#]/.test(token)) return null;
+    return /[,[\]{}]/.test(token) ? '"' + escapeYamlDoubleQuoted(token) + '"' : token;
   };
   const isItem = (text) => text === '-' || text.startsWith('- ');
   const node = (indent) => {
@@ -3626,7 +3626,7 @@ function yamlBlockLinesToFlow(input, pad) {
       const found = scanYamlKey(lines[i], indent, 0);
       if (found === null) return null;
       let key = lines[i].slice(indent, found.end - 1).replace(/[ \t]+$/, '');
-      if (!/^["']/.test(key) && /[,\[\]{}]/.test(key)) key = '"' + escapeYamlDoubleQuoted(key) + '"';
+      if (!/^["']/.test(key) && /[,[\]{}]/.test(key)) key = '"' + escapeYamlDoubleQuoted(key) + '"';
       const rest = lines[i].slice(found.end).trim();
       let value;
       if (rest === '') {
@@ -3671,7 +3671,7 @@ function readYamlScalarLine(line) {
     while (at < line.length && isYamlWs(line[at])) at++;
   }
   const token = stripYamlComment(line).replace(/\s+$/, '').slice(at);
-  if (token === '' || /^[\[{&*!|>#%@`?]/.test(token)) return null;
+  if (token === '' || /^[[{&*!|>#%@`?]/.test(token)) return null;
   let quote = '';
   let value = token;
   try {
@@ -3807,7 +3807,7 @@ function yamlEmittedWordsOf(original, at) {
   const before = yamlModelNumbers;
   yamlModelNumbers = !yamlPlainReading;
   let value;
-  let heldAsText = false;
+  let heldAsText;
   try {
     yamlPlainNumberSeen = null;
     value = resolveYamlPlain(stripYamlComment(line).replace(/\s+$/, '').slice(read.valueAt));
@@ -3953,9 +3953,6 @@ function patchYamlLines(oldText, emitted, newValue, styled, itemMarks) {
   const before = serializeYamlValue(oldValue, 0).split('\n');
   const after = emitted.split('\n');
 
-  // the words of a line: no quote, no trailing comment, no space around it; its indentation is compared on its own
-  const indentOf = yamlIndentOf;
-  const wordsOf = yamlWordsOf;
   // where each emitted line of the old value sits in the original text
   const located = locateEmittedLines(original, before);
   if (located === null) return null;
@@ -4100,15 +4097,15 @@ function patchYamlLines(oldText, emitted, newValue, styled, itemMarks) {
   // kind within three kept lines of it (else it is not known which is which)
   const going = [];
   const coming = [];
-  steps.forEach((step, i) => {
+  steps.forEach((step, at) => {
     if (step.drop !== undefined) {
       const line = original[place[step.drop]];
-      going.push({ i, step, line, id: identityOf(yamlKeylessBlockHeader(line) === null ? line : before[step.drop]) }); // `- |` is the value the emitter writes on its line (#154)
-    } else if (step.add !== undefined) coming.push({ i, step, id: identityOf(step.add) });
+      going.push({ i: at, step, line, id: identityOf(yamlKeylessBlockHeader(line) === null ? line : before[step.drop]) }); // `- |` is the value the emitter writes on its line (#154)
+    } else if (step.add !== undefined) coming.push({ i: at, step, id: identityOf(step.add) });
   });
   const goneIds = new Set(going.map((g) => g.id));
   const comeIds = new Set(coming.map((c) => c.id));
-  const near = (i, j) => steps.slice(Math.min(i, j), Math.max(i, j)).filter((step) => step.keep !== undefined).length <= 3;
+  const near = (from, to) => steps.slice(Math.min(from, to), Math.max(from, to)).filter((step) => step.keep !== undefined).length <= 3;
   for (const gone of going) {
     if (gone.id === null || gone.step.matched || commentOf(gone.line).trim() === '') continue;
     // the comment of an item in brackets is the item's, not its first key's: only the first line of an item takes it
@@ -4387,7 +4384,7 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
     const endsWithBreak = /\n$/.test(oldText);
     const opened = openFlowLists(oldText); // the flow collections of the file are read as the blocks the emitter writes, and put back where the move left them
     const source = opened ? opened.text : oldText;
-    const original = source.replace(/^﻿/, '').split(/\r\n|\r|\n/);
+    const original = source.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
     if (endsWithBreak) original.pop();
     const before = emittedBlockOf(oldValue, oldPath);
     const after = emittedBlockOf(newValue, newPath);
@@ -4458,7 +4455,7 @@ function cutBlockFromText(oldText, oldValue, oldPath) {
     const endsWithBreak = /\n$/.test(oldText);
     const opened = openFlowLists(oldText);
     const source = opened ? opened.text : oldText;
-    const original = source.replace(/^﻿/, '').split(/\r\n|\r|\n/);
+    const original = source.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
     if (endsWithBreak) original.pop();
     const before = emittedBlockOf(oldValue, oldPath);
     if (before === null) return null;
@@ -4512,7 +4509,7 @@ function pasteBlockInText(oldText, oldValue, newValue, newPath, carried, indent)
     const endsWithBreak = /\n$/.test(oldText);
     const opened = openFlowLists(oldText);
     const source = opened ? opened.text : oldText;
-    const original = source.replace(/^﻿/, '').split(/\r\n|\r|\n/);
+    const original = source.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
     if (endsWithBreak) original.pop();
     const before = serializeYamlValue(oldValue, 0).split('\n');
     const after = emittedBlockOf(newValue, newPath);
@@ -8889,7 +8886,7 @@ async function readManifestFolder(rootHandle, relDir, options) {
       let rawText = '';
       let header = null;
       let content = null;
-      let error = null;
+      let error;
       let lastKnownDiskModified = null; // TDD-0010 DEC-8
       let bom = false;
       try {
@@ -8939,9 +8936,9 @@ async function loadWorkspace(dirHandle) {
 
   // FR-4 / DEC-10: .archicode.yaml is fatal to the open attempt if missing/unparseable.
   let workspaceRaw;
-  let workspaceLastKnownDiskModified = null; // TDD-0010 DEC-8
-  let workspaceText = ''; // the file as it is: the next Save keeps of it what the edit did not touch
-  let workspaceBom = false; // it starts with a UTF-8 byte-order mark (`workspaceText` does not, #119)
+  let workspaceLastKnownDiskModified; // TDD-0010 DEC-8
+  let workspaceText; // the file as it is: the next Save keeps of it what the edit did not touch
+  let workspaceBom; // it starts with a UTF-8 byte-order mark (`workspaceText` does not, #119)
   // The file cannot be had (absent, not a file, refused by the browser or the server): the typed failure of the page (`setFatalError(..., 'unreadable')`), the one the landing card words as "could not be read".
   // What was read and found wrong (a YAML that is not valid, a document that is not a mapping, a key or a path the command line refuses) is told as it is, whatever file name its sentence holds (#146).
   try {
@@ -11162,21 +11159,6 @@ function commitFileEdit(relPath, newText) {
   rebuildIndexAndRender();
 }
 
-/**
- * DEC-8 — after an `id` rename's `commitElementEdit` call returns
- * `{ renamedTo: { from, to } }`, rewrite every reference under the old
- * prefix (`AppState.selection.key` and every `AppState.expanded` entry)
- * to the new prefix, so a rename of the currently-selected/expanded
- * element (or one of its ancestors) does not leave the tree pointing at
- * a reference that no longer exists after the rebuild `commitElementEdit`
- * already ran. Re-renders once more at the end (the rebuild inside
- * `commitElementEdit` already rendered once, with the *stale* key).
- */
-function rewriteReferencePrefix(oldPrefix, newPrefix, layer) {
-  rewriteUiReferences(oldPrefix, newPrefix, layer);
-  render();
-}
-
 /** `value` with the reference prefix `oldRef` (the reference itself, or a descendant of it, on a '.' boundary) replaced by `newRef`; `value` itself when it does not point there. */
 function rewriteReferenceValue(value, oldRef, newRef) {
   if (typeof value !== 'string') return value;
@@ -11397,7 +11379,7 @@ function moveContextOf(reference, layer) {
 
 /** Why the element cannot get a manifest of its own named after `reference`, or null: the name of the file is the reference, and a `/` or a `\` in an id (a hand-written manifest may have one) would make it a folder. */
 function manifestNameProblem(ctx, reference) {
-  return /[\/\\]/.test(reference) ? 'A manifest of its own is needed for “' + ctx.reference + '” there, and its reference “' + reference + '” has a “/” or a “\\” in it, which cannot be in the name of a file: rename the element first.' : null;
+  return /[/\\]/.test(reference) ? 'A manifest of its own is needed for “' + ctx.reference + '” there, and its reference “' + reference + '” has a “/” or a “\\” in it, which cannot be in the name of a file: rename the element first.' : null;
 }
 
 /**
@@ -11938,7 +11920,7 @@ function validateRelationshipDraft(destination, label) {
  * is required, else reject (keep the previous value).
  */
 function validateManifestsPaths(rawPathsText) {
-  const paths = String(rawPathsText == null ? '' : rawPathsText)
+  const paths = String(rawPathsText === null || rawPathsText === undefined ? '' : rawPathsText)
     .split('\n')
     .map((p) => p.trim())
     .filter((p) => p !== '');
@@ -12855,7 +12837,7 @@ function describedBy(key) {
 
 /** The folder a facet's views are written to, from the template/views-path currently in use — "invalid template" instead of a throw while the user is mid-edit. */
 function facetDirectoryPreviewHtml(facetName, template, viewsPath) {
-  const parsed = parseDirectoryNameTemplate(String(template == null ? '' : template).trim());
+  const parsed = parseDirectoryNameTemplate(String(template === null || template === undefined ? '' : template).trim());
   return '\u2192 ' + (parsed.valid ? '<code>' + escapeHtml(parsed.format(String(viewsPath).trim(), facetName)) + '</code>' : 'invalid template');
 }
 
@@ -13342,8 +13324,8 @@ function renderElementPropertiesHtml(record, forPlateau) {
   const origin = (field) => originNoteHtml(record, field, forPlateau);
   html += '<div class="field-row"><span class="field-label">Id</span><span class="field-value">' + escapeHtml(record.id) + '</span></div>';
   html += '<div class="field-row"><span class="field-label">Reference</span><span class="field-value">' + escapeHtml(record.reference) + '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + (record.name != null ? escapeHtml(record.name) : '<span class="muted">none</span>') + origin('name') + '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' + (record.description != null ? escapeHtml(record.description) : '<span class="muted">none</span>') + origin('description') + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + (record.name !== null && record.name !== undefined ? escapeHtml(record.name) : '<span class="muted">none</span>') + origin('name') + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' + (record.description !== null && record.description !== undefined ? escapeHtml(record.description) : '<span class="muted">none</span>') + origin('description') + '</span></div>';
 
   html += '<div class="field-row"><span class="field-label">Qualifiers</span><span class="field-value">' + renderQualifierPillsHtml(record.qualifiers) + origin('qualifiers') + '</span></div>';
   html += '<div class="field-row"><span class="field-label">Tags</span><span class="field-value">' + renderTagListHtml(record.tags) + origin('tags') + '</span></div>';
@@ -13513,7 +13495,7 @@ function formatCommaKvList(obj) {
 
 /** Parse a comma-separated text input into a trimmed, non-empty-entries string[]. */
 function parseCommaList(text) {
-  return String(text == null ? '' : text)
+  return String(text === null || text === undefined ? '' : text)
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s !== '');
@@ -13915,10 +13897,10 @@ function renderElementEditionFormHtml(reference) {
             '<span class="inline-error" id="edit-id-error"></span>' +
           '</span></div>';
   html += '<div class="field-row"><label class="field-label" for="edit-name-input">Name</label><span class="field-value">' +
-            '<input type="text" id="edit-name-input" value="' + escapeHtml(record.name != null ? record.name : '') + '">' +
+            '<input type="text" id="edit-name-input" value="' + escapeHtml(record.name !== null && record.name !== undefined ? record.name : '') + '">' +
           '</span></div>';
   html += '<div class="field-row"><label class="field-label" for="edit-description-input">Description</label><span class="field-value">' +
-            '<textarea id="edit-description-input" class="auto-grow-textarea">' + escapeHtml(record.description != null ? record.description : '') + '</textarea>' +
+            '<textarea id="edit-description-input" class="auto-grow-textarea">' + escapeHtml(record.description !== null && record.description !== undefined ? record.description : '') + '</textarea>' +
           '</span></div>';
   html += '</div>';
 
@@ -14748,7 +14730,7 @@ function clearChangesFilter() {
  */
 function renderCurrentChangeDetailHtml(state, current, shown) {
   if (!current || !shown.some((row) => changeRowKey(row) === changeRowKey(current))) return '';
-  let block = '';
+  let block;
   if (current.thing === 'element') block = renderWhatChangedHtml(current.layer, current.reference, false);
   else {
     const rel = { from: current.reference, destination: current.destination, label: current.label, change: current.change };
@@ -18695,7 +18677,7 @@ function mountDiagramIfNeeded() {
   if (!canvas) { diagramScene = null; pendingDiagramFocus = null; return; }
   const recipe = diagramRecipeOf(canvas);
   if (!recipe) return;
-  const { isMap, reference, record, viewpoint, facet, mapState, shows, hideUnlinked } = recipe;
+  const { isMap, reference, viewpoint, facet, mapState } = recipe;
   const readonly = recipe.host === 'library'; // the page of a view only shows the drawing
   // run 0039: a comparison needs the kernel before the input can be built (the union is its answer): load it, then draw again
   if ((comparisonState() || {}).pending) {
@@ -19121,10 +19103,6 @@ let libraryTab = 'stories'; // the Library shows 'stories' or 'views'
 let storyNotice = null;
 
 const STORY_DIAGRAM_VIEWPOINTS = ['overview', 'detailed', 'deep'];
-
-function isPlainObject(value) {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 function stringList(value) {
   return Array.isArray(value) ? value.filter((entry) => typeof entry === 'string' && entry) : [];
@@ -21458,7 +21436,7 @@ function renderViewFactsHtml(view) {
   const notice = (field) => viewEditNotice && viewEditNotice.view === view.id && viewEditNotice.field === field
     ? '<div class="inline-error" role="alert">' + escapeHtml(viewEditNotice.text) + '</div>' : '';
   const typedOr = (name, value) => viewEditNotice && viewEditNotice.view === view.id && viewEditNotice.field === name && viewEditNotice.typed !== null ? viewEditNotice.typed : value; // a refused text stays in its field, to be corrected
-  const field = (id, label, control, field) => '<div class="view-field"><label for="' + id + '">' + label + '</label>' + control + notice(field) + '</div>';
+  const field = (id, label, control, name) => '<div class="view-field"><label for="' + id + '">' + label + '</label>' + control + notice(name) + '</div>';
   const option = (value, label, selected, extra) => '<option value="' + escapeHtml(value) + '"' + (selected ? ' selected' : '') + (extra || '') + '>' + escapeHtml(label) + '</option>';
 
   const layer = viewLayerOf(view);
@@ -22683,8 +22661,8 @@ function handleAppClick(e) {
         result = commitCreateTopLevelElement({
           category, headerKind: chosenKind, attachUnderReference: attachUnder, id, name, description
         }, { afterConfirm: () => { AppState.selection = { kind: 'element', key: newReference, layer: category, mode: 'edit' }; render(); } });
-      } catch (e) { // wave 014 (run 0082): a plateau that cannot take the element says why
-        setInlineErrorText('create-form-error', e && e.message ? e.message : String(e));
+      } catch (err) { // wave 014 (run 0082): a plateau that cannot take the element says why
+        setInlineErrorText('create-form-error', err && err.message ? err.message : String(err));
         break;
       }
       if (result && result.pending) break; // the author is asked first; the form stays until the answer
@@ -22716,10 +22694,10 @@ function handleAppClick(e) {
       if (pendingDeleteConfirmation) {
         try {
           commitDeleteElement(pendingDeleteConfirmation.reference, pendingDeleteConfirmation.category, pendingDeleteConfirmation.affected);
-        } catch (e) {
+        } catch (err) {
           const failed = pendingDeleteConfirmation.reference;
           pendingDeleteConfirmation = null;
-          saveStatus = { state: 'error', failedFile: failed, message: e && e.message ? e.message : String(e) };
+          saveStatus = { state: 'error', failedFile: failed, message: err && err.message ? err.message : String(err) };
           render();
         }
       }

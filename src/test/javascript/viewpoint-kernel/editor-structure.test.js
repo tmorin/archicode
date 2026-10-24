@@ -653,7 +653,7 @@ test('the layered Brightcart with two stories and a view added to the ones it sh
     assert.deepEqual(
       ids(sandbox.storiesList()),
       shipped.stories
-        .map((story) => story.id)
+        .map((entry) => entry.id)
         .concat(['cart_story', 'seller_story'])
         .sort(),
       drawn + ': every story'

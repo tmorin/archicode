@@ -13,9 +13,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
-const { inPlateau, layeredFiles, openLayered, compareWith } = require('./layered-folders');
+const { inPlateau, layeredFiles, openLayered } = require('./layered-folders');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
 const text = (html) =>
@@ -219,8 +218,6 @@ async function open(options = {}) {
 const ON_DISK = Object.fromEntries(Object.entries(MANIFESTS).map(([name, body]) => [name, inPlateau('target', body)]));
 const fileOf = (mem, name) => mem.files.get(target(name)).text;
 const movedFiles = (mem) => mem.writes.slice().sort();
-/** The texts of the target manifests as they are on disk now. */
-const targetTexts = (mem) => Object.fromEntries(Object.keys(MANIFESTS).map((name) => [name, fileOf(mem, name)]));
 /** The names of the files whose text is not the original. */
 const changedFiles = (mem) => Object.keys(MANIFESTS).filter((name) => fileOf(mem, name) !== ON_DISK[name]);
 const move = (sandbox, reference, parent, layer) =>
@@ -656,9 +653,9 @@ test('a reference that cannot be rewritten as text, a manifest that cannot be re
 
 /** A click as handleAppClick reads it: the nearest data-action element, with these attributes. */
 function click(sandbox, attributes) {
-  const target = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
+  const button = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
   sandbox.handleAppClick({
-    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    target: { closest: (selector) => (selector === '[data-action]' ? button : null) },
     preventDefault() {},
     stopPropagation() {},
     detail: 1

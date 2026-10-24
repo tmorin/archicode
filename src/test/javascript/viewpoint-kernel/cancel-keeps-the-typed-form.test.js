@@ -155,12 +155,6 @@ const dialogOf = (sandbox) => run(sandbox, 'appDialog');
 const kept = (sandbox) => run(sandbox, 'keptElementForm');
 const draftTyped = (sandbox) => run(sandbox, 'draftTyped');
 
-const TYPED = {
-  'edit-id-input': 'billing',
-  'edit-name-input': 'Typed name',
-  'edit-description-input': 'Typed description',
-  'add-qualifier-input': 'later'
-};
 function typeAll(screen, typed) {
   for (const [id, value] of Object.entries(typed)) screen.type(id, value);
 }

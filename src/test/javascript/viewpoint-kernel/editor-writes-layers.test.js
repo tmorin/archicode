@@ -579,7 +579,7 @@ test('a new story and a new view belong to no plateau: no `plateau:` in their he
   for (const file of files)
     assert.match(
       out.files[file].after,
-      /^header:\n  kind: archicode\.morin\.io\/(story|view)\n  version: "1"\ncontent:\n/
+      /^header:\n {2}kind: archicode\.morin\.io\/(story|view)\n {2}version: "1"\ncontent:\n/
     );
   // drawn in baseline, they are there too
   sandbox.drawPlateau('baseline');

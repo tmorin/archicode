@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { run, plain, NONE, startPage, addView, openView, click, boxesOf, linksOf } = require('./library-page');
+const { run, plain, startPage, addView, openView, click, boxesOf, linksOf } = require('./library-page');
 const { createApp } = require('./harness');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
@@ -291,7 +291,7 @@ test('a text equal to the default is not kept, Hide unlinked off is not kept, a 
   await page.sandbox.saveAllChanges();
   assert.match(
     page.mem.files.get('manifests/view.api_view.yaml').text,
-    /properties:\n    # the element it is about\n    element: shop\.web\.api\n$/
+    /properties:\n {4}# the element it is about\n {4}element: shop\.web\.api\n$/
   );
 });
 

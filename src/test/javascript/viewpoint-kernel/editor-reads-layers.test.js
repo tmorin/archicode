@@ -1217,8 +1217,8 @@ test('a plateau a patch of an earlier layer cannot be built on is told with the 
 test('what the cascade of a REMOVE took out of an element that stays says so in the origin of that field', async () => {
   const { sandbox, state } = await openLayered();
   sandbox.drawPlateau('saas');
-  const vm = state.index.technology.get('staging.vm');
-  const origin = sandbox.fieldOriginOf(vm, 'applications');
+  const stagingVm = state.index.technology.get('staging.vm');
+  const origin = sandbox.fieldOriginOf(stagingVm, 'applications');
   assert.equal(origin.kind, 'patch');
   assert.equal(origin.operator, 'REMOVE');
   assert.equal(origin.plateau, 'saas');

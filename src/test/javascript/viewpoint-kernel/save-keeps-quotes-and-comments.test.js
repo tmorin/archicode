@@ -30,7 +30,11 @@ function save(text, change, page = app) {
   change(value);
   const out = page.patchYamlText(text, value);
   assert.deepEqual(plain(page.parseYaml(out)), value, 'what is written says what the edit says\n' + out);
-  assert.equal(/[\u0001-\u0007]/.test(out), false, 'no mark is left');
+  assert.equal(
+    [...out].some((c) => c >= '\u0001' && c <= '\u0007'),
+    false,
+    'no mark is left'
+  );
   return out;
 }
 
@@ -395,7 +399,7 @@ function sweepShipped(before, differing) {
   let edits = 0;
   for (const file of shippedYaml()) {
     const text = fs.readFileSync(file, 'utf8');
-    if (/:\s*[\[{][^\]}\s]|^\s*- [\[{]/m.test(text)) continue;
+    if (/:\s*[[{][^\]}\s]|^\s*- [[{]/m.test(text)) continue;
     let value;
     try {
       value = before.parseYamlAsModel(text);

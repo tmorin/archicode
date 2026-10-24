@@ -55,13 +55,6 @@ function typeAddress(sandbox, hash) {
   for (const fn of sandbox.__windowListeners.hashchange) fn();
 }
 
-const where = (sandbox, state) => ({
-  plateau: state.layers.current,
-  compare: run(sandbox, 'layerCompareChoice()'),
-  page: run(sandbox, 'currentPerspective'),
-  hash: sandbox.location.hash
-});
-
 // ---- the page Plateaus (#99) ----
 
 test('the page is called Plateaus, at #/timeline/plateaus, and #/plateaus is no route any more', async () => {

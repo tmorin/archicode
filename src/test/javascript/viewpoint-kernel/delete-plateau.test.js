@@ -260,9 +260,9 @@ test('a leaf is deleted: its files are queued, then removed by the save; every o
   assert.deepEqual(out.removed, SAAS_FILES);
   assert.deepEqual(out.changed, [], 'no other file was written');
   assert.deepEqual(out.added, []);
-  for (const [p, text] of Object.entries(BRIGHTCART)) {
+  for (const [p, contents] of Object.entries(BRIGHTCART)) {
     if (SAAS_FILES.includes(p)) assert.equal(opened.mem.files.has(p), false, p + ' is gone');
-    else assert.equal(opened.mem.files.get(p).text, text, p + ' is untouched');
+    else assert.equal(opened.mem.files.get(p).text, contents, p + ' is untouched');
   }
   // the folder opened again reads the same plateaus
   const again = await open(Object.fromEntries(Array.from(opened.mem.files).map(([p, f]) => [p, f.text])));

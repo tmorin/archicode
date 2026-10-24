@@ -152,9 +152,9 @@ async function open(options = {}) {
 
 /** A click as handleAppClick reads it: the nearest data-action element, with these attributes. */
 function click(sandbox, attributes) {
-  const target = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
+  const button = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
   sandbox.handleAppClick({
-    target: { closest: (selector) => (selector === '[data-action]' ? target : null) },
+    target: { closest: (selector) => (selector === '[data-action]' ? button : null) },
     preventDefault() {},
     stopPropagation() {},
     detail: 1
@@ -392,16 +392,16 @@ test('a removed box that is only the place of what was replaced says what replac
   const item = result.items.find((i) => i.reference === 'library.catalog');
   assert.equal(item.change, 'removed');
   assert.deepEqual(plain(item.replacedBy), ['library.catalog-a', 'library.catalog-b']);
-  const text = sandbox.diagramItemText(item, undefined, 'application');
-  assert.equal(text.title, '− Catalog (replaced by library.catalog-a, library.catalog-b)');
+  const texts = sandbox.diagramItemText(item, undefined, 'application');
+  assert.equal(texts.title, '− Catalog (replaced by library.catalog-a, library.catalog-b)');
   assert.equal(
-    sandbox.diagramTitleHtml(text.title, text),
+    sandbox.diagramTitleHtml(texts.title, texts),
     '<tspan class="dg-glyph">−</tspan> <tspan class="dg-struck">Catalog</tspan> (replaced by library.catalog-a, library.catalog-b)',
     'only the name is struck'
   );
   // a long title wrapped by the layout: the line that is the note alone is not struck
   assert.equal(
-    sandbox.diagramTitleHtml('library.catalog-a, library.catalog-b)', text),
+    sandbox.diagramTitleHtml('library.catalog-a, library.catalog-b)', texts),
     'library.catalog-a, library.catalog-b)'
   );
   // a removed box that is really removed (its replacement is not told) is what it was
@@ -630,7 +630,7 @@ test('the inspector of a moved element says what it replaces and what else chang
 });
 
 test('a moved element that did not change otherwise tells only the identity', async () => {
-  const target = Object.assign({}, TARGET, {
+  const variant = Object.assign({}, TARGET, {
     'app.archive.counter.yaml': element(
       'container',
       'archive',
@@ -639,7 +639,7 @@ test('a moved element that did not change otherwise tells only the identity', as
       '  replaces:\n    - library.desk\n'
     )
   });
-  const { sandbox } = await open({ target });
+  const { sandbox } = await open({ target: variant });
   const html = sandbox.renderWhatChangedHtml('application', 'archive.counter', false);
   assert.equal(
     text(html),

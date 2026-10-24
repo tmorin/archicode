@@ -34,6 +34,12 @@ npm run format          # writes
 npm run format:check    # checks, exit 1 on a file that Prettier would change
 ```
 
+Lint (ESLint 10, flat config `eslint.config.mjs`, pinned by `package-lock.json`; wave 023 run W-6, #160 step 4, decisions T8 and T9): bug rules only, none that Prettier owns (ESLint's recommended set plus `no-shadow` and `eqeqeq`; `no-unused-vars` ignores arguments and caught errors). `npm run lint` first runs `scripts/extract-editor-script.mjs`, which copies the three executable inline scripts of `standalone.html` (`theme-boot.js`, `module.mjs`, `page.js`) to `target/eslint-editor/` padded with blank lines, so that a finding `page.js:12345` is line 12345 of the HTML, then lints `src/test` (the JavaScript tests and the `.mjs` generators), the copies, the config and `scripts/`, with `--max-warnings 0`. It is the step "Lint the JavaScript" of the `Build` job, after the format check. There is no baseline file: a finding is fixed (in the page only by a rename or a deletion, the node suite and the comparison with the released page guarding it), or its rule is turned off in `eslint.config.mjs` with its count and its reason (today one: `no-control-regex` in the editor script, 16 findings that are the point of the code). `format:check` also covers `eslint.config.mjs` and `scripts/**/*.mjs`.
+
+```bash
+npm run lint            # extracts the page script, then ESLint; exit 1 on a finding
+```
+
 ## JDK version
 
 This project builds and runs on Java 25 — `.sdkmanrc`, `pom.xml` (`maven.compiler.release`), and CI (`.github/workflows/ci-build.yaml`) all pin or target Java 25 consistently. There is no version drift between them to work around.

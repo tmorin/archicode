@@ -1,12 +1,18 @@
 {
   "private": true,
   "scripts": {
-    "format": "prettier --write \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/resources/**/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/resources/**/*.mjs\"",
+    "format": "prettier --write \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" eslint.config.mjs",
+    "format:check": "prettier --check \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" eslint.config.mjs",
+    "lint": "node scripts/extract-editor-script.mjs && eslint --max-warnings 0 eslint.config.mjs scripts src/test target/eslint-editor",
     "test:unit": "node --test \"src/test/javascript/**/*.test.js\""
   },
   "dependencies": {
     "prettier": "^3.9.9",
     "prettier-plugin-java": "^2.11.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.12.0",
+    "globals": "17.12.0"
   }
 }

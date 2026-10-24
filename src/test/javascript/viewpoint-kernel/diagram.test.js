@@ -416,10 +416,7 @@ test('framing: a diagram that fits is centered whole, one that does not keeps th
   );
   // the scale
   assert.equal(sandbox.diagramAutoScale(view, { width: 800, height: 300 }), 1, 'never enlarged');
-  assert.equal(
-    sandbox.diagramAutoScale(view, { width: 1500, height: 300 }),
-    0.8 > (1000 - 48) / 1500 ? 0.8 : (1000 - 48) / 1500
-  );
+  assert.equal(sandbox.diagramAutoScale(view, { width: 1500, height: 300 }), Math.max(0.8, (1000 - 48) / 1500));
   assert.equal(
     sandbox.diagramAutoScale(view, { width: 9000, height: 5000 }),
     0.8,
@@ -498,7 +495,7 @@ test('"Hide unlinked" leaves out the boxes no link reaches, keeps the focal one 
 });
 
 test('the toolbar of the map offers "Hide unlinked", pressed when it is on', async () => {
-  const { sandbox, state } = await openFixture();
+  const { sandbox } = await openFixture();
   assert.match(sandbox.renderDiagramCanvasHtml(null), /data-action="toggle-hide-unlinked" aria-pressed="false"/);
   assert.equal(run(sandbox, 'diagramHideUnlinked'), false);
 });
@@ -1056,7 +1053,7 @@ test('Center keeps a readable size with or without an element to put in the midd
   // a map that is readable whole opens whole
   run(sandbox, "diagramScale = 'auto'");
   vm.runInContext('diagramScene = { hasSvg: true, width: 1100, height: 500, focal: null }', sandbox);
-  assert.equal(sandbox.resolveDiagramScale(canvas), (1000 - 48) / 1100 > 0.8 ? (1000 - 48) / 1100 : 0.8);
+  assert.equal(sandbox.resolveDiagramScale(canvas), Math.max((1000 - 48) / 1100, 0.8));
 });
 
 test('the status line of the map speaks of the workspace', async () => {
