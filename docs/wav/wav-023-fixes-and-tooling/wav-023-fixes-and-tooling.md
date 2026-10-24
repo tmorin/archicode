@@ -208,7 +208,7 @@ wave_manifest:
       slug: prettier-scripts-and-java-in-ci
       phase: P1
       depends_on: []
-      run: null
+      run: 0167
       delegation: standard
       likely_paths:
         - 'package.json'
@@ -222,7 +222,7 @@ wave_manifest:
       slug: prettier-javascript-tests
       phase: P1
       depends_on: [W-4]
-      run: null
+      run: 0168
       delegation: standard
       likely_paths:
         - 'src/test/javascript/**'
@@ -354,7 +354,7 @@ wave_manifest:
 |---|-----|------|------------|-------|-------|---------------|
 | W-3 | — | `rust-fmt-and-clippy` | — | rustfmt and clippy on the kernel (#160 step 3) | `components = ["rustfmt", "clippy"]` in `rust-toolchain.toml` (a compiler that does not change, so `embed.sh --check` must still rebuild the committed `.wasm`); measure `cargo fmt --check` and `cargo clippy --all-targets` first and write the counts in the log; `cargo fmt` first, its diff checked as formatter-only (a second `cargo fmt` is a no-op, `cargo test` unchanged) before any clippy fix is made; fix every clippy warning (Q1: a lint that would change the computation is allowed on the item with its reason, listed); re-embed with `embed.sh` and record whether the `.wasm` moved (a panic location carries a line number); CI steps `cargo fmt --check` and `cargo clippy ... -D warnings` in `Build`; CLAUDE.md. | the counts before and after; `cargo test` 240; the kernel conformance tests of Java and node; V-C; V-E for fmt and clippy; `embed.sh --check` |
 | W-4 | — | `prettier-scripts-and-java-in-ci` | — | one command formats and one checks (#160 steps 1 and 2, config only) | npm scripts `format` and `format:check` (Java now; JavaScript added by W-5); the step in `Build`; Prettier options for `*.js` chosen by Q2 on a scratch copy (counts of changed lines per candidate in the log; the repository files are not rewritten here); `.prettierignore` (the page, generated and vendored files); CLAUDE.md "Build & Test" names the two commands instead of the raw `npx prettier --write`. | the CI step runs and is green; V-E for Java; the options and the measurement in the log |
-| W-5 | — | `prettier-javascript-tests` | W-4 | the JavaScript tests are formatted (#160 step 2) | `prettier --write` on `src/test/javascript` (118 files at the measurement of 2026-10-24) and nothing else in the commit's content; `format:check` gains the JavaScript and the CI step follows; `standalone.html` stays out (`.prettierignore`, #161). | `--debug-check` over the files; a second `--write` is a no-op; `git diff --stat` lists only test JavaScript, the script and the config; 2565 node tests pass; V-E for JavaScript |
+| W-5 | — | `prettier-javascript-tests` | W-4 | the JavaScript tests are formatted (#160 step 2) | `prettier --write` on `src/test/javascript` (118 files at the measurement of 2026-10-24; W-4 counted 119 `.js` files plus the 3 `.mjs` generators of the Brightcart fixture) and nothing else in the commit's content; `format:check` gains the JavaScript and the CI step follows; `standalone.html` stays out (`.prettierignore`, #161). | `--debug-check` over the files; a second `--write` is a no-op; `git diff --stat` lists only test JavaScript, the script and the config; 2565 node tests pass; V-E for JavaScript |
 
 **Gate:** the five criteria of P1 in the manifest.
 

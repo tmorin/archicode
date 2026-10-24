@@ -27,10 +27,11 @@ scripts/byte-identity.sh                                 # V-C (wave 023): the j
 
 Maven needs no Rust: `src/main/wasm/viewpoint_kernel.wasm` is committed.
 
-Format Java sources (no npm script is wired up, so call Prettier directly):
+Format (Prettier, pinned by `package-lock.json`; run `npm ci` once; options in `.prettierrc.yaml`, files left out in `.prettierignore`: the editor page `standalone.html` stays out until #161). `format:check` is the step "Check the format" of the `Build` job of CI; today it covers `src/**/*.java`, and the JavaScript tests are added to both scripts by wave 023 run W-5 (the options for `*.js` and `*.mjs` are already in `.prettierrc.yaml`):
 
 ```bash
-npx prettier --write "src/**/*.java"
+npm run format          # writes
+npm run format:check    # checks, exit 1 on a file that Prettier would change
 ```
 
 ## JDK version
