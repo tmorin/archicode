@@ -126,4 +126,29 @@ class InitTest {
         assertEquals(0, run("init", empty.toString()).exit());
         assertEquals("/views*/\n", Files.readString(empty.resolve(".gitignore")));
     }
+
+    @Test
+    void theHintQuotesAFolderThatTheShellWouldSplit() {
+        assertEquals("my-architecture", InitCommand.shellQuoted("my-architecture"));
+        assertEquals("'my architecture'", InitCommand.shellQuoted("my architecture"));
+        assertEquals("'it'\\''s'", InitCommand.shellQuoted("it's"));
+        val target = dir.resolve("my architecture");
+        val init = run("init", target.toString());
+        assertEquals(0, init.exit(), init.err());
+        assertTrue(init.out().contains("cd '" + target + "' && archicode query graph"), init.out());
+    }
+
+    @Test
+    @SneakyThrows
+    void aDanglingLinkWhereAFileGoesRefusesAndLeavesNothingHalfWritten() {
+        Files.createDirectories(dir.resolve("manifests"));
+        Files.createSymbolicLink(dir.resolve("manifests/shop.yaml"), dir.resolve("nowhere.yaml"));
+        val before = snapshot(dir);
+        val init = run("init", dir.toString());
+        assertEquals(1, init.exit(), init.err());
+        assertTrue(init.err().startsWith("error: "), init.err());
+        assertTrue(init.err().lines().count() <= 2, init.err());
+        assertEquals(before, snapshot(dir));
+        assertTrue(Files.notExists(dir.resolve(".archicode.yaml")));
+    }
 }
