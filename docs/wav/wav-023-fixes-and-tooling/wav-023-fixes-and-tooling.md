@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 023
-status: proposed
+status: in-progress
 date: 2026-10-24
 related:
   - docs/wav/wav-023-fixes-and-tooling/wbc-023-fixes-and-tooling.md
@@ -14,7 +14,7 @@ related:
 
 ## Purpose
 
-When this wave is done, no mistake an author can make in a manifest ends in a stack trace on a command that loads a workspace (a sweep over the shipped files shows it, and a saved view with no `properties` says `has no element` like `properties: {}` does), and a dangling reference says the file, the element that declares it and the key. The Rust, the Java and the JavaScript tests are formatted by one tool each (`rustfmt`, Prettier), clippy and ESLint run, all of it checked by the `Build` job, with nothing the tools write changed. **Every finding the tools report is fixed, not baselined** (clippy, ESLint on the tests and on the editor script, the mistake sweep). **Line coverage is above 90 % for the Java and for the Rust kernel, checked by the build**, and the part of the editor script the node suite runs is measured and cannot go down. For Java, a research has answered whether static analysis can run with no server; once the author accepts its recommendation, the tool runs and the findings on `src/main/java` and `src/test/java` are fixed too.
+When this wave is done, no mistake an author can make in a manifest ends in a stack trace on a command that loads a workspace (a sweep over the shipped files shows it, and a saved view with no `properties` says `has no element` like `properties: {}` does), and a dangling reference says the file, the element that declares it and the key. The Rust, the Java and the JavaScript tests are formatted by one tool each (`rustfmt`, Prettier), clippy and ESLint run, all of it checked by the `Build` job, with nothing the tools write changed. **Every finding the tools report is fixed, not baselined** (clippy, ESLint on the tests and on the editor script, the mistake sweep). **Line coverage is above 90 % for the Java and for the Rust kernel, checked by the build**, and the part of the editor script the node suite runs is measured and cannot go down. The JavaScript tests are two named suites, unit/integration (`npm run test:unit`) and end-to-end in a real browser (`npm run test:e2e`), the second in the framework a dedicated run chose by trying the candidates. For Java, a research has answered whether static analysis can run with no server; once the author accepts its recommendation, the tool runs and the findings on `src/main/java` and `src/test/java` are fixed too.
 
 ## Non-Goals
 
@@ -28,7 +28,7 @@ When this wave is done, no mistake an author can make in a manifest ends in a st
 
 ## Decision Prerequisites
 
-- **D1. The Java tool.** Question: which static analysis, if any, does the project adopt for Java (no server, no secret)? Input: the recommendation of W-7 (what, how it runs, a first count of findings, cost). Recorded: by the author in the progress log ("D1: adopt X", "D1: IDE route only" or "D1: none"), and on #160. Gates: P4 (W-11) only, so the author can answer while the coverage runs go on; the orchestrator stops only if W-11 is reached with no answer. If D1 is "adopt X", W-11 adopts and fixes; if "IDE route only" or "none", W-11 only writes CLAUDE.md and step 6 of #160 as far as they apply; if the author wants the wave closed first, W-11 is cancelled and #160 stays open.
+- **D1. The Java tool.** Question: which static analysis, if any, does the project adopt for Java (no server, no secret)? Input: the recommendation of W-7 (what, how it runs, a first count of findings, cost). Recorded: by the author in the progress log ("D1: adopt X", "D1: IDE route only" or "D1: none"), and on #160. Gates: P5 (W-11) only, so the author can answer while the coverage runs go on; the orchestrator stops only if W-11 is reached with no answer. If D1 is "adopt X", W-11 adopts and fixes; if "IDE route only" or "none", W-11 only writes CLAUDE.md and step 6 of #160 as far as they apply; if the author wants the wave closed first, W-11 is cancelled and #160 stays open.
 
 The scope is otherwise the author's decisions of 2026-10-24 (#160; the findings are fixed, not baselined; line coverage above 90 %) and the open bugs #158 and #159. The points below are open questions with a default; none blocks the first run.
 
@@ -42,6 +42,9 @@ The scope is otherwise the author's decisions of 2026-10-24 (#160; the findings 
 - **Q5. What "above 90 %" measures.** Decided by the author: above 90 %. Default reading: JaCoCo **line** coverage of the whole bundle (`src/main/java`) and the same for **instructions**, both above 0.90, enforced by `jacoco:check` in `verify`; **branch** coverage is reported (it is 32 % in the only report that exists) and the run proposes its own floor from what it reaches, for the author to raise. For the Rust kernel, line coverage above 0.90 by `cargo llvm-cov`, enforced in CI. The author may ask for branch coverage above 90 % as well, which is a larger wave.
 - **Q6. The editor page.** The page is one script of 22,000 lines in an HTML file; the node suite (2565 tests) runs it, but no figure for how much of it exists. W-10 measures it (V8 coverage of the script the tests load), publishes the figure by area, and fixes it as a floor that CI refuses to lower (a ratchet: the only baseline of the wave, because coverage can only be raised by tests, not by editing). Raising it to 90 % belongs after #161. If the measure shows the node suite already covers more than 90 %, the floor is 90 %.
 
+- **Q7. The e2e framework (decided by W-12, with evidence).** The author asked for a dedicated run that chooses the best e2e framework or solution for ArchiCode. The criteria W-12 starts from, each answered by trying, not by reading: (1) it drives a real browser against `archicode editor serve` (the packaged jar, and the native runner if it costs nothing) on a free port; (2) headless on Linux in GitHub Actions with no paid plan, no server of ours and no secret (T5); (3) it works with the editor's way of opening a folder: `editor serve` gives the page a server-backed folder, while the browser's own folder picker (File System Access API) cannot be driven by a script, so the suite uses the served folder and the run says what that leaves untested; (4) the file the page writes can be read back from disk to assert it (the editor's output is its contract); (5) stability: auto-waiting, retries, a flakiness check of three runs; (6) cost: install size, download of browsers in CI and locally, licence, maintenance state at the date of the run, Node 22; (7) how well it fits an agent: a failure says which step and what was on screen (trace, screenshot, readable logs), and the tests are plain JavaScript or TypeScript files that Prettier and ESLint read. Candidates to try (not a closed list): Playwright, Cypress, WebdriverIO, Selenium WebDriver, Puppeteer with `node --test`, and the in-app browser tools of the agent as a non-CI complement. The run names the runner-up. The author can overturn the choice by reading the log; nothing else in the wave depends on which framework wins, except W-13.
+- **Q8. What the e2e suite covers.** Flows chosen for risk, not for line count: open a folder served by `editor serve` (the landing card and the error card for a folder without `.archicode.yaml`); the pages Applications, Environments, Elements, Plateaus, Stories and Settings load a shipped example with no console error; edit an element's description and save, then read the file on disk (the line-preserving save: comments and quotes kept); create an element; rename with the dialog; draw a view and see its boxes; compare two plateaus and see the Changes panel; play a story in the player (keys, Escape, focus); the address (`#/timeline/...`) opens the right page and Back/Forward work. W-12 and W-13 may shorten the list with a reason; they do not add flows that duplicate what the unit/integration suite already proves.
+
 ## Plan decisions
 
 - **T1. Byte-identity base.** The jar built from `git archive` of the tag `archicode-0.19.0`, outside the repository. `views generate`, `stories generate`, `query graph`, `query views`, `diff`, `plateau list` and `query schemas workspace` on every shipped workspace give the same files and exit codes as the base jar (wave 022's sweep, V7 below), and the editor's save writes the bytes of the base page (the comparison of `save-keeps-quotes-and-comments.test.js`). Exceptions, listed by the run that makes them: the error sentence of a view with no `properties` (W-1), the sentence of a dangling reference (W-2), what the sweep of W-1 finds and fixes (each listed with the case that shows it), and the renames and deletions that the findings of clippy, ESLint and the Java tool ask for (W-3, W-6, W-11): none may move an output, so V-C applies to them as to the formatting.
@@ -49,10 +52,11 @@ The scope is otherwise the author's decisions of 2026-10-24 (#160; the findings 
 - **T3. One formatter per language, checked in CI, run by npm scripts.** Rust: `cargo fmt`. Java and JavaScript: Prettier. `package.json` gets `format` and `format:check`; CLAUDE.md names them in Build & Test. The JavaScript reformatting is a commit of formatter output only (a second `--write` is a no-op) and nothing else, in a run of its own (W-5), so that `git blame` can skip it; for Rust the kernel is small and W-3 holds the formatting, the clippy fixes and the CI step, with the formatting checked as formatter-only before the fixes are made.
 - **T4. A check must be seen to fail.** Each new CI step is shown red once, locally, on a deliberately wrong file (recorded in the run: the command, the exit code), then restored; a step that has never been seen to fail is not trusted.
 - **T5. No analysis tool that needs a server or a secret** (the author's decision). A build that needs the network at test time is not acceptable either.
-- **T6. All eleven runs serialized, concurrency 1**, as in the last five waves: every run edits `CLAUDE.md`, the tooling runs share `ci-build.yaml`, `package.json` and `.prettierrc.yaml`, W-1 and W-2 share `KernelViewpointFactory`.
+- **T6. All thirteen runs serialized, concurrency 1**, as in the last five waves: every run edits `CLAUDE.md`, the tooling runs share `ci-build.yaml`, `package.json` and `.prettierrc.yaml`, W-1 and W-2 share `KernelViewpointFactory`.
 - **T8. Findings are fixed.** (Author, 2026-10-24.) No baseline file and no count that is allowed to stay: each finding of a tool is fixed, or its rule or lint is turned off with a reason written where the tool is configured (T9). A fix that would change behaviour is not made to satisfy a tool.
 - **T9. A turned-off rule is a decision, so it is visible.** In the config, one line per rule or lint with the reason; the log lists them with their counts; the gate reads the list. It is the only place a finding may stay.
 - **T10. Coverage is earned by assertions, not by running lines.** (Author: above 90 %, high quality.) A test written for coverage asserts what the code returns, writes or throws; a test that only calls a method does not count towards the review of the run. Nothing is excluded from the measure but code the compiler generates (Lombok marked `@Generated` through `lombok.config`, so it is not a line to cover), and each other exclusion is a line in the plugin's config with a reason (T9). A line the tests cannot reach because it is dead is deleted, not excluded.
+- **T11. Two suites, named.** (Author, 2026-10-24.) The JavaScript tests are of two kinds and both are in this wave: unit/integration (today's `node --test` suite, which loads the page and the kernel in Node: `npm run test:unit`) and end-to-end (a real browser against the served application: `npm run test:e2e`). The coverage floor of W-10 is the unit/integration suite's; the e2e suite is not counted in it and does not replace any unit/integration test. Test files of the two suites live apart (`src/test/javascript/` stays unit/integration; e2e files in `src/test/e2e/` unless W-12 finds a reason).
 - **T7. Draft PR after W-3.** The first run that changes CI is the first that can be proved on a runner: the pull request is opened as a draft after W-3 so that `Build` and `Native` see the new steps while the next run is written (the lesson of waves 021 and 022).
 
 ## Validation architecture
@@ -68,6 +72,7 @@ The risk of this wave is a fix that moves something it should not, and a check t
 | V-E | **A check with teeth** (W-3 to W-6) | T4: a deliberately wrong file per language and per tool is made, the command exits non-zero, the file is restored. For ESLint, a seeded finding fails and the tree is clean with no baseline; for the Java tool, a seeded finding fails; for coverage, a seeded drop below the floor fails. | a CI step is green whatever it is given |
 | V-G | **Coverage is measured from the real run** (W-8 to W-10) | The figure comes from all the tests that run in `verify` (plain JUnit and `@QuarkusTest`: the existing report counts only the second and says 47 % of instructions, 32 % of branches, so it is not the figure), with `jacoco:check` at 0.90 for lines and instructions; the same for the kernel with `cargo llvm-cov`; the page by V8 coverage. The figure and the report are the same locally and on the runner. | the figure on the runner differs from the local one, or a floor is not enforced |
 | V-H | **The tests that earn it assert something** (W-8, W-9) | On a scratch copy (nothing committed), a mutation tool (PIT for Java, `cargo-mutants` for the kernel) runs on the packages the run added most tests to; the mutation score of those packages is in the log. A package with high line coverage and a low mutation score is a defect of the run (T10). | tests that execute lines and assert nothing |
+| V-I | **The e2e suite can fail and does not flake** (W-12, W-13) | A seeded break of the page (a renamed `data-action`, a save that writes the wrong line) makes the e2e suite fail with a message that names the step; three runs in a row of the unchanged tree pass; the same suite passes on the runner of CI. W-12's choice is made from the same two flows tried in each candidate, with the numbers (time, install size, failures over three runs). | the suite passes on a broken page, or fails on a good one |
 | V-F | **CI is the second runner** | The CI run of the draft pull request (`Build`, `Native`, `Targets`) is green on the tip of each run; the step names match CLAUDE.md. | a step passes locally and fails on the runner |
 
 Which run adds what:
@@ -85,6 +90,8 @@ Which run adds what:
 | W-9 | V-G (Rust), V-E for the floor | V-D |
 | W-10 | V-G (page: measure and ratchet), V-E for the ratchet | V-C |
 | W-11 | V-E for the Java tool; V-C for every fix | V-A, V-C, V-G |
+| W-12 | V-I (the trials) | — |
+| W-13 | V-I, V-E for the e2e step | V-C, V-F |
 
 Each run runs the gate set before it completes, and the orchestrator reruns it from disk (as in waves 021 and 022).
 
@@ -94,7 +101,7 @@ Each run runs the gate set before it completes, and the orchestrator reruns it f
 wave_manifest:
   wave: 023
   slug: fixes-and-tooling
-  status: proposed
+  status: in-progress
   sources: []
   phases:
     - id: P0
@@ -133,6 +140,14 @@ wave_manifest:
           - 'the mutation score of the packages W-8 and W-9 added the most tests to is in the log (V-H), with the weak spots named; the unit tests added by W-8 to W-10 are formatted and pass ESLint and the Java tool when it is adopted'
           - '`./mvnw -o verify -DskipITs=false`, `cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml`, `src/main/rust/viewpoint-kernel/embed.sh --check`, `node --test "src/test/javascript/**/*.test.js"`, `npm run format:check` and `npm run lint` pass'
     - id: P4
+      name: End-to-end tests
+      gate:
+        criteria:
+          - 'the choice of the e2e framework is recorded in the run of W-12 with the criteria of Q7, each candidate tried on the same two flows against `archicode editor serve` (measured, not described), the runner-up and why it lost, and the decision is also posted as a comment on #160 or on a new issue; no candidate that needs a server of ours, a paid plan or a secret is chosen'
+          - 'the e2e suite (W-13) runs from one command (`npm run test:e2e`) against the packaged application started as `archicode editor serve` on a free port, in headless mode, on the machine and in the `Build` job of CI; it covers the flows listed in Q8 with assertions on what the page shows and on the files it writes; it is run three times in a row with no failure (flakiness check) and fails on a seeded break of the page (V-E)'
+          - 'the unit/integration tests and the e2e tests are two named suites: `npm run test:unit` (`node --test`, as today) and `npm run test:e2e`; CLAUDE.md "Build & Test" names both; the e2e files are formatted by Prettier and pass ESLint (W-5, W-6); the figure of W-10 is that of the unit/integration suite, e2e adds no line to it'
+          - '`./mvnw -o verify -DskipITs=false`, `cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml`, `src/main/rust/viewpoint-kernel/embed.sh --check`, `node --test "src/test/javascript/**/*.test.js"`, `npm run test:e2e`, `npm run format:check` and `npm run lint` pass'
+    - id: P5
       name: Java analysis, if the author adopts it
       gate:
         criteria:
@@ -145,7 +160,7 @@ wave_manifest:
       slug: view-without-properties-and-mistake-sweep
       phase: P0
       depends_on: []
-      run: null
+      run: 0164
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/viewpoint/**'
@@ -283,7 +298,7 @@ wave_manifest:
       focus: 'how much of the editor script the node suite runs is measured by area and cannot go down; tests are added where the figure is cheap to raise (Q6)'
     - id: W-11
       slug: java-analysis-adopted-and-findings-fixed
-      phase: P4
+      phase: P5
       depends_on: [W-7, W-8]
       run: null
       delegation: standard
@@ -296,6 +311,31 @@ wave_manifest:
         - '.github/workflows/ci-build.yaml'
         - 'CLAUDE.md'
       focus: 'the Java tool the author accepted (D1) runs with no server and every finding on the Java, tests included, is fixed; the ten inert suppressions re-read if it is SonarLint (#160 steps 5 and 6)'
+    - id: W-12
+      slug: e2e-framework-choice
+      phase: P4
+      depends_on: [W-6]
+      run: null
+      delegation: standard
+      likely_paths:
+        - 'docs/wav/wav-023-fixes-and-tooling/run/**'
+      focus: 'choose the best end-to-end test framework or solution for ArchiCode by trying the candidates on the same two flows against editor serve, and record the decision with its evidence (Q7, T11)'
+    - id: W-13
+      slug: e2e-suite
+      phase: P4
+      depends_on: [W-12, W-5]
+      run: null
+      delegation: standard
+      likely_paths:
+        - 'package.json'
+        - 'package-lock.json'
+        - 'src/test/e2e/**'
+        - 'scripts/**'
+        - 'eslint.config.*'
+        - '.prettierignore'
+        - '.github/workflows/ci-build.yaml'
+        - 'CLAUDE.md'
+      focus: 'an end-to-end suite in the chosen framework runs the flows of Q8 against the served application, in CI, without flaking (Q8, T11)'
 ```
 
 ## Phase P0 — No stack trace, and say where
@@ -336,13 +376,22 @@ wave_manifest:
 
 **Gate:** the five criteria of P3 in the manifest.
 
-## Phase P4 — Java analysis, if the author adopts it
+## Phase P4 — End-to-end tests
+
+| # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
+|---|-----|------|------------|-------|-------|---------------|
+| W-12 | — | `e2e-framework-choice` | W-6 | the e2e framework for ArchiCode, chosen by trial (Q7, T11) | Build a minimal harness that starts `archicode editor serve` on a free port on a copy of a shipped example and gives a test its URL and its folder. In a scratch folder (nothing committed but the run document and the winning spike), try each candidate of Q7 on the same two flows (open the example and see a page without a console error; edit a description, save, read the file back from disk), recording install size, time, failures over three runs, how the failure reads, headless behaviour on the CI image (a trial on the draft PR's runner is allowed in a scratch workflow dispatch, not committed to `main`'s workflow), licence and last release date. Decide, name the runner-up and the reasons, say what the choice leaves untested (the browser's folder picker), and list the dependencies and the CI cost W-13 will add. | the table of trials with measured numbers; the decision and the runner-up; what is untested; the comment on #160 (or a new issue); the spike of the winner works on the machine |
+| W-13 | — | `e2e-suite` | W-12, W-5 | the e2e suite for the flows of Q8 (T11) | The winner of W-12: the dependency, `npm run test:e2e`, the harness, the flows of Q8 in `src/test/e2e/`, assertions on the page and on the files written; the browser installed in CI by a pinned step; the step in `Build` after the packaging so that it runs on the jar (the native runner only if W-12 found it free); retries off (a retry hides a flake), traces/screenshots uploaded on failure only; the three-runs check; a seeded break (V-E, V-I); formatting and ESLint cover the files (W-5, W-6); CLAUDE.md names the two suites. | V-I; the three green runs; the CI run of the draft PR green with the step; both suites named in CLAUDE.md; V-C trivially (tests only) |
+
+**Gate:** the four criteria of P4 in the manifest.
+
+## Phase P5 — Java analysis, if the author adopts it
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
 | W-11 | — | `java-analysis-adopted-and-findings-fixed` | W-7, W-8 | the accepted Java tool runs, its findings are fixed (#160 steps 5 and 6) | Read D1 in the log first. If "adopt X": wire X as D1 says (Maven plugin in `verify`, a script, both), run it on `src/main/java` and `src/test/java` (the tests W-8 wrote are in scope), fix every finding (a rule that reports only non-bugs is turned off in the tool's config with count and reason, T9; a fix never changes behaviour and never lowers a coverage floor), re-read the ten `@SuppressWarnings("java:S...")` if X is SonarLint, update the Conventions paragraph and "Build & Test" of CLAUDE.md, a step in `Build` if D1 says so. If "IDE route only" or "none": CLAUDE.md only. | V-E for X; V-C for every fix; V-G floors still hold; the count of findings before and after and the rules turned off, in the log |
 
-**Gate:** the four criteria of P4 in the manifest.
+**Gate:** the four criteria of P5 in the manifest.
 
 ## Dependency View
 
@@ -351,10 +400,11 @@ P0:  W-1   W-2                (independent, serialized)
 P1:  W-3   W-4 ── W-5
 P2:  W-6 (after W-4)   W-7
 P3:  W-8   W-9   W-10 (after W-6)
-P4:  W-11 (after W-7, W-8, and D1)
+P4:  W-12 ── W-13 (W-13 also after W-5, W-6)
+P5:  W-11 (after W-7, W-8, and D1)
 ```
 
-Order of execution: W-1 to W-10 in order, then W-11 once D1 is answered.
+Order of execution: W-1 to W-10, then W-12, W-13, then W-11 once D1 is answered (W-11 comes last so that the Java tool also reads every test the wave wrote).
 
 ## Risks
 
@@ -373,8 +423,12 @@ Order of execution: W-1 to W-10 in order, then W-11 once D1 is answered.
 - **A coverage tool in CI that is not on the runner.** `cargo llvm-cov` and PIT need installing; they are pinned, and PIT is not in CI (scratch copy only, V-H). The step uses the pinned version and the CI run of the draft PR is the proof.
 - **A new dependency in `package.json` (W-4, W-6).** ESLint and its plugins join Prettier as `dependencies`/`devDependencies`; `npm ci` must be what CI runs, with the lockfile committed. Versions older than two weeks, and no `postinstall` script from a package that was not already there.
 - **The research finds nothing usable (W-7).** A legitimate result: the recommendation is then the IDE route and the alternatives with their counts; the wave is complete without an adoption.
+- **E2e is the likeliest source of flakes (W-12, W-13).** A browser, a server and a file system. The answers: no retries, auto-waiting assertions rather than sleeps, a free port and a temp copy per test, a three-runs check, and traces kept on failure only. A flow that cannot be made stable is dropped from the suite with a reason in the log, not retried.
+- **The e2e suite and the folder picker.** The editor's own way of opening a folder cannot be scripted; the suite runs the served-folder path (`editor serve`). That is a stated gap of the suite, not a hidden one (W-12 records it; the manual's editor pages say what the picker does).
+- **A browser download in CI.** The browser binaries come from the framework's own host at install time; the step pins the version and the CI run of the draft PR is the proof. If the chosen framework needs a download that the repository's rules do not allow, W-12 does not choose it.
+- **W-12 and W-13 share nothing with the Java coverage runs but `ci-build.yaml` and `CLAUDE.md`**, and W-13 shares `package.json`, `eslint.config.*` and `.prettierignore` with W-4/W-6: serialized.
 - **The wave may wait for the author at D1.** Only if W-11 is reached with no answer; the log says so, and the wave is then `completed` with W-11 named as an exception.
 
 ## Completion Criteria
 
-The three gates in the manifest hold on the final tree. The progress log records the base of T1, the counts of clippy and of the ESLint baseline, whether the `.wasm` bytes moved, every entry of `known-traces.json` with its issue, and the deferred items as issues (the traces not fixed, the clippy lints allowed, the rules turned off, the coverage of the editor page above its floor which waits for #161). `CLAUDE.md` lists #158 and #159 as fixed, #160 with what is built (and what waits, if W-11 did not run), the coverage floors and how they are measured, and the new commands in "Build & Test". The log lists every rule and lint turned off with its count and reason, the coverage figure before and after for Java, Rust and the page, and the mutation scores. The pull request closes #158 and #159, and #160 when W-11 has run.
+The three gates in the manifest hold on the final tree. The progress log records the base of T1, the counts of clippy and of the ESLint baseline, whether the `.wasm` bytes moved, every entry of `known-traces.json` with its issue, and the deferred items as issues (the traces not fixed, the clippy lints allowed, the rules turned off, the coverage of the editor page above its floor which waits for #161). `CLAUDE.md` lists #158 and #159 as fixed, #160 with what is built (and what waits, if W-11 did not run), the coverage floors and how they are measured, and the new commands in "Build & Test". The log lists every rule and lint turned off with its count and reason, the coverage figure before and after for Java, Rust and the page, the mutation scores, and the e2e decision with its trials and runner-up. The pull request closes #158 and #159, and #160 when W-11 has run.
