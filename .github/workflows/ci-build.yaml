@@ -310,12 +310,15 @@ jobs:
           distribution: "temurin"
           cache: maven
       - name: "Publish snapshot artifacts"
+        # `-Dmaven.test.skip` leaves no test classes, and PMD reads the tests with the classes of the build to resolve their types: without
+        # them it reports a finding that `verify` (job Java) does not, so the two publishing builds skip it; Java has run it on the same sources
         if: ${{ github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore(release)') }}
         run: |
           ./mvnw deploy \
             --batch-mode \
             -Dmaven.test.skip \
             -Dplugin.asciidoctor.skip=true \
+            -Dpmd.skip=true \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.container-image.tag=latest
@@ -330,6 +333,7 @@ jobs:
             --batch-mode \
             -Dmaven.test.skip \
             -Dplugin.asciidoctor.skip=true \
+            -Dpmd.skip=true \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true
         env:
