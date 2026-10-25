@@ -80,8 +80,9 @@ public class InitCommand implements Runnable {
             for (val manifest : MANIFESTS) {
                 write(root.resolve(manifest), "init/" + manifest, manifest, written, created);
             }
-        } catch (RuntimeException e) {
-            // nothing is left half written: what this run created goes, whatever stopped it
+        } catch (Exception e) {
+            // nothing is left half written: what this run created goes, whatever stopped it; write() throws the
+            // IOException of the file system sneakily, so a RuntimeException clause would never see it
             created.forEach(InitCommand::deleteQuietly);
             throw e;
         }

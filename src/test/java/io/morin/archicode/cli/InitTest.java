@@ -3,6 +3,7 @@ package io.morin.archicode.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -150,5 +151,27 @@ class InitTest {
         assertTrue(init.err().lines().count() <= 2, init.err());
         assertEquals(before, snapshot(dir));
         assertTrue(Files.notExists(dir.resolve(".archicode.yaml")));
+    }
+
+    @Test
+    @SneakyThrows
+    void aFolderTheFileSystemRefusesInTheMiddleLeavesNothingHalfWritten() {
+        val manifests = Files.createDirectories(dir.resolve("manifests"));
+        assertTrue(manifests.toFile().setWritable(false, false));
+        try {
+            assumeFalse(Files.isWritable(manifests), "the user can write whatever the mode (root)");
+            val before = snapshot(dir);
+            val init = run("init", dir.toString());
+            assertEquals(1, init.exit(), init.err());
+            assertTrue(init.err().startsWith("error: "), init.err());
+            assertTrue(init.err().lines().count() <= 2, init.err());
+            assertEquals(before, snapshot(dir));
+            assertTrue(Files.notExists(dir.resolve(".archicode.yaml")));
+            // a second init is not told that the folder already holds a workspace
+            val again = run("init", dir.toString());
+            assertFalse(again.err().contains("already holds"), again.err());
+        } finally {
+            manifests.toFile().setWritable(true, false);
+        }
     }
 }
