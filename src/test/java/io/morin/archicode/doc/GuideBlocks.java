@@ -31,7 +31,7 @@ public final class GuideBlocks {
             if (language == null && line.startsWith("```")) {
                 language = line.substring(3).strip();
                 text.setLength(0);
-            } else if (language != null && line.equals("```")) {
+            } else if (language != null && "```".equals(line)) {
                 out.add(new Block(language, text.toString()));
                 language = null;
             } else if (language != null) {
@@ -45,7 +45,7 @@ public final class GuideBlocks {
     public static Map<String, String> files(String guide) {
         val out = new LinkedHashMap<String, String>();
         for (val block : blocks(guide)) {
-            if (block.language().equals("yaml") && block.text().startsWith("# file: ")) {
+            if ("yaml".equals(block.language()) && block.text().startsWith("# file: ")) {
                 val end = block.text().indexOf('\n');
                 out.put(block.text().substring("# file: ".length(), end).strip(), block.text());
             }
@@ -67,7 +67,7 @@ public final class GuideBlocks {
     public static List<Command> commands(String guide) {
         val out = new ArrayList<Command>();
         for (val block : blocks(guide)) {
-            if (!block.language().equals("bash")) {
+            if (!"bash".equals(block.language())) {
                 continue;
             }
             for (val line : block.text().split("\n")) {

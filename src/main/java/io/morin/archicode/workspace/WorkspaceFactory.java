@@ -1,7 +1,6 @@
 package io.morin.archicode.workspace;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.morin.archicode.ArchiCodeException;
@@ -235,7 +234,7 @@ public class WorkspaceFactory {
             .filter(e -> e.layer().equals(layer) && e.change() == Change.REMOVED)
             .forEach(e -> removed.add(e.reference()));
         for (val reference : removed) {
-            val parent = io.morin.archicode.resource.workspace.Workspace.Utilities.findParentReference(reference);
+            val parent = Workspace.Utilities.findParentReference(reference);
             if (parent.isPresent() && removed.contains(parent.get())) {
                 continue;
             }
@@ -253,16 +252,16 @@ public class WorkspaceFactory {
 
     /** Whether an element holds, at any depth, an element that is not among {@code kept}. */
     private static boolean holdsOthers(Element element, String reference, Set<String> kept) {
-        if (!(element instanceof Parent<?> parent)) {
-            return false;
-        }
-        return parent
-            .getElements()
-            .stream()
-            .anyMatch(child -> {
-                val childReference = reference + "." + child.getId();
-                return !kept.contains(childReference) || holdsOthers(child, childReference, kept);
-            });
+        return (
+            element instanceof Parent<?> parent &&
+            parent
+                .getElements()
+                .stream()
+                .anyMatch(child -> {
+                    val childReference = reference + "." + child.getId();
+                    return !kept.contains(childReference) || holdsOthers(child, childReference, kept);
+                })
+        );
     }
 
     /**

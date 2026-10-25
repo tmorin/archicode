@@ -2,6 +2,7 @@ package io.morin.archicode.workspace;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -90,6 +91,6 @@ class FacetKernelContractTest {
             List.of("warning: facet journey: a facet left nothing", "warning: facet journey: the path selects nothing"),
             warnings.drain()
         );
-        assertEquals(true, faceted.isFaceted());
+        assertTrue(faceted.isFaceted());
     }
 }

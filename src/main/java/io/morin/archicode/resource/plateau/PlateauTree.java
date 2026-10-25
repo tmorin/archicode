@@ -73,7 +73,7 @@ public final class PlateauTree {
 
         /** Whether it exists only because headers name it (never true of {@code baseline}). */
         public boolean headerOnly() {
-            return manifest == null && !id.equals(Plateau.BASELINE) && !headers.isEmpty();
+            return manifest == null && !Plateau.BASELINE.equals(id) && !headers.isEmpty();
         }
     }
 
@@ -98,7 +98,7 @@ public final class PlateauTree {
     /** What the manifests say, read once: the mistakes, the ids, who declares each, and the parent of each. */
     private record Analysis(
         List<String> problems,
-        TreeSet<String> ids,
+        Set<String> ids,
         Map<String, List<Declared>> declaredBy,
         Map<String, String> parents
     ) {}
@@ -149,7 +149,7 @@ public final class PlateauTree {
         for (val id : ids) {
             val first = declaredBy.getOrDefault(id, List.of()).stream().findFirst();
             val override = first.map(d -> d.plateau().getOverride()).orElse(null);
-            if (id.equals(Plateau.BASELINE)) {
+            if (Plateau.BASELINE.equals(id)) {
                 if (override != null) {
                     problems.add(
                         "the plateau `baseline` (`" +
@@ -202,7 +202,7 @@ public final class PlateauTree {
         val parents = analysis.parents();
 
         val nodes = new LinkedHashMap<String, Node>();
-        val children = new TreeMap<String, TreeSet<String>>();
+        val children = new TreeMap<String, Set<String>>();
         parents.forEach((id, parent) -> children.computeIfAbsent(parent, p -> new TreeSet<>()).add(id));
         val order = new ArrayList<String>();
         preorder(Plateau.BASELINE, children, order);
@@ -214,7 +214,7 @@ public final class PlateauTree {
                     id,
                     own.map(d -> d.plateau().getName()).orElse(null),
                     own.map(d -> d.plateau().getHorizon()).orElse(null),
-                    id.equals(Plateau.BASELINE) ? null : parents.get(id),
+                    Plateau.BASELINE.equals(id) ? null : parents.get(id),
                     own.map(d -> d.plateau().getPatches()).orElse(List.of()),
                     own.map(Declared::source).orElse(null),
                     headers.getOrDefault(id, List.of()).stream().distinct().sorted().toList()
@@ -225,7 +225,7 @@ public final class PlateauTree {
     }
 
     /** The order of the tree: a plateau, then what overrides it (each followed by what overrides it), the siblings by id. */
-    private static void preorder(String id, Map<String, TreeSet<String>> children, List<String> out) {
+    private static void preorder(String id, Map<String, Set<String>> children, List<String> out) {
         out.add(id);
         for (val child : children.getOrDefault(id, new TreeSet<>())) {
             preorder(child, children, out);
@@ -311,7 +311,7 @@ public final class PlateauTree {
         }
         val own = horizonPeriod(node.horizon());
         val above = horizonPeriod(parent.horizon());
-        if (own == null || above == null || own[1] >= above[0]) {
+        if (own.length == 0 || above.length == 0 || own[1] >= above[0]) {
             return Optional.empty();
         }
         return Optional.of(
@@ -327,15 +327,18 @@ public final class PlateauTree {
         );
     }
 
+    /** What a horizon label that reads as no period gives: no first day and no last day. */
+    private static final long[] NO_PERIOD = {};
+
     /**
-     * The period a horizon label reads as, the first and the last day as numbers that sort ({@code yyyymmdd}), or null when it
-     * reads as none: {@code 2026}, {@code 2026-10}, {@code 2026-10-18}, a quarter ({@code 2026-Q4}, {@code 2026Q4}) or a half
+     * The period a horizon label reads as, the first and the last day as numbers that sort ({@code yyyymmdd}), or an empty
+     * array when it reads as none: {@code 2026}, {@code 2026-10}, {@code 2026-10-18}, a quarter ({@code 2026-Q4}, {@code 2026Q4}) or a half
      * ({@code 2026-H2}). The editor reads labels the same way ({@code horizonPeriod} in {@code standalone.html}): keep them
      * alike.
      */
     static long[] horizonPeriod(String label) {
         if (label == null) {
-            return null;
+            return NO_PERIOD;
         }
         val text = label.trim();
         var m = HORIZON_YEAR.matcher(text);
@@ -360,32 +363,32 @@ public final class PlateauTree {
             val half = Integer.parseInt(m.group(2));
             return period(m.group(1), (half - 1) * 6 + 1, half * 6);
         }
-        return null;
+        return NO_PERIOD;
     }
 
     /** From the first day of {@code firstMonth} to the last day of {@code lastMonth}. */
     private static long[] period(String year, int firstMonth, int lastMonth) {
         try {
             if (Integer.parseInt(year) < 100) {
-                return null; // the page's Date.UTC reads two-digit years as 19xx: such a label reads as none in both
+                return NO_PERIOD; // the page's Date.UTC reads two-digit years as 19xx: such a label reads as none in both
             }
             val start = java.time.LocalDate.of(Integer.parseInt(year), firstMonth, 1);
             val end = java.time.YearMonth.of(Integer.parseInt(year), lastMonth).atEndOfMonth();
             return new long[] { number(start), number(end) };
         } catch (java.time.DateTimeException e) {
-            return null;
+            return NO_PERIOD;
         }
     }
 
     private static long[] day(String year, int month, int day) {
         try {
             if (Integer.parseInt(year) < 100) {
-                return null;
+                return NO_PERIOD;
             }
             val date = number(java.time.LocalDate.of(Integer.parseInt(year), month, day));
             return new long[] { date, date };
         } catch (java.time.DateTimeException e) {
-            return null;
+            return NO_PERIOD;
         }
     }
 
@@ -694,7 +697,7 @@ public final class PlateauTree {
      * @return the redeclarations, one sentence each, by reference; empty when there is none
      */
     public List<String> redeclared(Map<String, Map<String, Map<String, List<String>>>> declarations) {
-        val messages = new TreeMap<String, TreeSet<String>>(); // by reference, then by message
+        val messages = new TreeMap<String, Set<String>>(); // by reference, then by message
         for (val node : nodes.values()) {
             val own = declarations.getOrDefault(node.id(), Map.of());
             for (val ancestor : ancestors(node.id())) {

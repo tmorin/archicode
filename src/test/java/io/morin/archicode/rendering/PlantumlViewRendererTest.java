@@ -21,6 +21,7 @@ import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -57,7 +58,7 @@ class PlantumlViewRendererTest {
             "target",
             this.getClass().getSimpleName(),
             testcase,
-            viewpoint.getView().getLayer().name().toLowerCase()
+            viewpoint.getView().getLayer().name().toLowerCase(Locale.ROOT)
         );
         if (outDir.toFile().mkdirs()) {
             log.trace("{} has been created", outDir);

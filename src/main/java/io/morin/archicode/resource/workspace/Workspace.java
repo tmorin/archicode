@@ -93,10 +93,10 @@ public class Workspace {
             val candidateParts = splitReference(candidate);
             val referenceParts = splitReference(parentOf(reference));
             // leave early if the candidate cannot be an ancestor
-            if (candidateParts.length <= referenceParts.length) {
-                return false;
-            }
-            return isActualStartWithExpected(candidateParts, referenceParts);
+            return (
+                candidateParts.length > referenceParts.length &&
+                isActualStartWithExpected(candidateParts, referenceParts)
+            );
         }
 
         /**
@@ -110,10 +110,10 @@ public class Workspace {
             val candidateParts = splitReference(candidate);
             val referenceParts = splitReference(reference);
             // leave early if the candidate cannot be an ancestor
-            if (candidateParts.length <= referenceParts.length) {
-                return false;
-            }
-            return isActualStartWithExpected(candidateParts, referenceParts);
+            return (
+                candidateParts.length > referenceParts.length &&
+                isActualStartWithExpected(candidateParts, referenceParts)
+            );
         }
 
         /**
@@ -127,10 +127,10 @@ public class Workspace {
             val candidateParts = splitReference(candidate);
             val referenceParts = splitReference(reference);
             // leave early if the candidate cannot be an ancestor
-            if (candidateParts.length >= referenceParts.length) {
-                return false;
-            }
-            return isActualStartWithExpected(referenceParts, candidateParts);
+            return (
+                candidateParts.length < referenceParts.length &&
+                isActualStartWithExpected(referenceParts, candidateParts)
+            );
         }
 
         /**

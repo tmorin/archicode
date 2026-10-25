@@ -137,7 +137,9 @@ public class EditorHttpServer {
         server.createContext("/", exchange -> handleRoot(exchange, token, hosts));
         server.createContext(API_PREFIX, exchange -> handleApi(exchange, root, token, hosts, maxBodyBytes));
         server.start();
-        log.info("editor http server listening on {}:{}", host, server.getAddress().getPort());
+        if (log.isInfoEnabled()) {
+            log.info("editor http server listening on {}:{}", host, server.getAddress().getPort());
+        }
         return new Running(server, token);
     }
 
@@ -147,8 +149,9 @@ public class EditorHttpServer {
     /** Stop the server, releasing its port immediately and shutting down its handler pool. */
     public void stop(@NonNull Running running) {
         running.server().stop(0);
-        if (running.server().getExecutor() instanceof ExecutorService executorService) {
-            executorService.shutdownNow();
+        // shutdownNow, not close: the handlers are cut short, close would wait for them
+        if (running.server().getExecutor() instanceof ExecutorService) {
+            ((ExecutorService) running.server().getExecutor()).shutdownNow();
         }
     }
 
@@ -235,7 +238,9 @@ public class EditorHttpServer {
             if (!started) text(exchange, refusal.status, refusal.getMessage());
             return;
         }
-        log.error("the editor server failed on {}", exchange.getRequestURI().getRawPath(), e);
+        if (log.isErrorEnabled()) {
+            log.error("the editor server failed on {}", exchange.getRequestURI().getRawPath(), e);
+        }
         if (!started) text(exchange, 500, "the editor server failed, see its log");
     }
 
@@ -333,7 +338,7 @@ public class EditorHttpServer {
                         }
                         replace(target, bytes);
                     } catch (FileAlreadyExistsException | NotDirectoryException e) {
-                        throw new Refusal(409, "a file is in the way: " + relative);
+                        throw new Refusal(409, "a file is in the way: " + relative, e);
                     }
                     text(exchange, existed ? 200 : 201, "ok");
                 }
@@ -366,7 +371,7 @@ public class EditorHttpServer {
                 .onUnmappableCharacter(CodingErrorAction.REPORT)
                 .decode(ByteBuffer.wrap(bytes));
         } catch (CharacterCodingException e) {
-            throw new Refusal(400, "the file is not valid UTF-8");
+            throw new Refusal(400, "the file is not valid UTF-8", e);
         }
         return bytes;
     }
@@ -439,8 +444,7 @@ public class EditorHttpServer {
 
     private boolean hostAllowed(HttpExchange exchange, Set<String> hosts) {
         val header = exchange.getRequestHeaders().getFirst("Host");
-        if (header == null) return false;
-        return hosts.contains(normalizeHost(header));
+        return header != null && hosts.contains(normalizeHost(header));
     }
 
     /** A host name as compared: lower-case, without its port nor its trailing dot, an IPv6 address in brackets. */
@@ -470,7 +474,7 @@ public class EditorHttpServer {
                 val value = eq < 0 ? "" : URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
                 result.put(key, value);
             } catch (IllegalArgumentException e) {
-                throw new Refusal(400, "malformed query");
+                throw new Refusal(400, "malformed query", e);
             }
         }
         return result;
@@ -505,6 +509,11 @@ public class EditorHttpServer {
 
         Refusal(int status, String message) {
             super(message);
+            this.status = status;
+        }
+
+        Refusal(int status, String message, Throwable cause) {
+            super(message, cause);
             this.status = status;
         }
     }

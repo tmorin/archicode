@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -180,19 +181,19 @@ class EditorReadSchemaTest {
 
     /** A value a key of this spec takes. */
     private static Object dummy(String spec) {
-        if (spec.equals("bool")) {
+        if ("bool".equals(spec)) {
             return true;
         }
-        if (spec.equals("int")) {
+        if ("int".equals(spec)) {
             return 1;
         }
         if (spec.startsWith("enum:")) {
             return spec.substring(5).split(",")[0];
         }
-        if (spec.equals("texts") || spec.startsWith("[")) {
+        if ("texts".equals(spec) || spec.startsWith("[")) {
             return List.of();
         }
-        if (spec.equals("text-map") || spec.equals("object-map") || spec.startsWith("{")) {
+        if ("text-map".equals(spec) || "object-map".equals(spec) || spec.startsWith("{")) {
             return Map.of();
         }
         return "x";
@@ -226,7 +227,7 @@ class EditorReadSchemaTest {
                     .getKnownPropertyIds()
                     .stream()
                     .map(String::valueOf)
-                    .filter(k -> !k.startsWith("$") && !k.equals("kind"))
+                    .filter(k -> !k.startsWith("$") && !"kind".equals(k))
                     .collect(Collectors.toCollection(TreeSet::new));
                 assertEquals(known, new TreeSet<>(fields(types, name).keySet()), "the keys of " + name);
             }
@@ -234,7 +235,7 @@ class EditorReadSchemaTest {
         // every type of the table is read from a class here, but the ones that are lenient (a view, a story: unknown keys are ignored) and the base
         for (val name : names(types)) {
             assertTrue(
-                types.get(name).path("lenient").asBoolean(false) || name.equals("Element") || CLASSES.containsKey(name),
+                types.get(name).path("lenient").asBoolean(false) || "Element".equals(name) || CLASSES.containsKey(name),
                 name + " is a type of the table that this test does not read from a class"
             );
         }
@@ -381,7 +382,7 @@ class EditorReadSchemaTest {
             assertEquals(kind, schemaKind.get("kind").asText());
             compareType(types, kinds, type, schemaKind.get("content"), manifest, kind, diffs);
             val elements = fields(types, type).get("elements");
-            if (!type.equals("View") && !type.equals("Story") && !type.equals("Plateau")) {
+            if (!"View".equals(type) && !"Story".equals(type) && !"Plateau".equals(type)) {
                 val iface = elements == null ? null : elements.substring(2, elements.length() - 1);
                 val held = iface == null ? new TreeSet<String>() : new TreeSet<>(names(kinds.get(iface)));
                 assertEquals(
@@ -454,7 +455,7 @@ class EditorReadSchemaTest {
         val aliases = aliases(types, type);
         val expectedKeys = new TreeSet<>(expected.keySet());
         expectedKeys.removeAll(aliases.keySet()); // another name of a key is not a key of the schema: it is an alias of one
-        if (type.equals("Relationship")) {
+        if ("Relationship".equals(type)) {
             expectedKeys.remove("qualifier"); // known difference, see above
         }
         if (!expectedKeys.equals(actual)) {
@@ -477,7 +478,7 @@ class EditorReadSchemaTest {
         val required = new TreeSet<>(required(types, type));
         val requiredActual = new TreeSet<String>();
         properties.fields().forEachRemaining(e -> {
-            if (e.getValue().path("required").asBoolean(false) && !e.getKey().equals("kind")) {
+            if (e.getValue().path("required").asBoolean(false) && !"kind".equals(e.getKey())) {
                 requiredActual.add(e.getKey());
             }
         });
@@ -518,30 +519,30 @@ class EditorReadSchemaTest {
         String where,
         List<String> diffs
     ) {
-        if (spec.equals("any")) {
+        if ("any".equals(spec)) {
             return;
         }
-        if (spec.equals("text")) {
+        if ("text".equals(spec)) {
             expectType(schema, "string", where, diffs);
-        } else if (spec.equals("int")) {
+        } else if ("int".equals(spec)) {
             expectType(schema, "integer", where, diffs);
-        } else if (spec.equals("bool")) {
+        } else if ("bool".equals(spec)) {
             expectType(schema, "boolean", where, diffs);
-        } else if (spec.equals("texts")) {
+        } else if ("texts".equals(spec)) {
             expectType(schema, "array", where, diffs);
             expectType(schema.path("items"), "string", where + "[]", diffs);
-        } else if (spec.equals("text-map")) {
+        } else if ("text-map".equals(spec)) {
             expectType(schema, "object", where, diffs);
             expectType(schema.path("additionalProperties"), "string", where + "{}", diffs);
-        } else if (spec.equals("object-map")) {
+        } else if ("object-map".equals(spec)) {
             expectType(schema, "object", where, diffs);
             if (!schema.path("additionalProperties").isObject()) {
                 diffs.add(where + ": a map of objects");
             }
         } else if (spec.startsWith("enum:")) {
-            val expected = new TreeSet<>(Arrays.asList(spec.substring(5).toUpperCase().split(",")));
+            val expected = new TreeSet<>(Arrays.asList(spec.substring(5).toUpperCase(Locale.ROOT).split(",")));
             val actual = new TreeSet<String>();
-            schema.path("enum").forEach(e -> actual.add(e.asText().toUpperCase()));
+            schema.path("enum").forEach(e -> actual.add(e.asText().toUpperCase(Locale.ROOT)));
             if (!expected.equals(actual)) {
                 diffs.add(where + ": the enum is " + expected + " in the table, " + actual + " in the schema");
             }

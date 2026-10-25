@@ -10,9 +10,11 @@ public class GapFormatConverter implements CommandLine.ITypeConverter<GapFormat>
         try {
             return GapFormat.of(value);
         } catch (IllegalArgumentException e) {
-            throw new CommandLine.TypeConversionException(
+            var failure = new CommandLine.TypeConversionException(
                 "expected one of text, markdown or json but was '" + value + "'"
             );
+            failure.initCause(e);
+            throw failure;
         }
     }
 }

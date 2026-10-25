@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
@@ -41,7 +42,7 @@ final class ManifestCorpus {
         String id,
         String title,
         Verdict verdict,
-        /** The file the error names, from the root of the workspace; null unless the verdict is STRUCTURAL. */
+        // named: the file the error names, from the root of the workspace; null unless the verdict is STRUCTURAL
         String named,
         List<Entry> manifests,
         String error,
@@ -76,7 +77,7 @@ final class ManifestCorpus {
     private static boolean candidate(Path file) {
         val name = file.getFileName().toString();
         return (
-            !name.equals(".archicode.yaml") &&
+            !".archicode.yaml".equals(name) &&
             Arrays.stream(MapperFormat.values()).anyMatch(f -> f.getExtensions().stream().anyMatch(name::endsWith))
         );
     }
@@ -172,7 +173,7 @@ final class ManifestCorpus {
         val matcher = java.util.regex.Pattern.compile(STRUCTURAL).matcher(last);
         if (
             matcher.matches() &&
-            !matcher.group(1).equals(".archicode.yaml") &&
+            !".archicode.yaml".equals(matcher.group(1)) &&
             !last.contains("with no `header.parent`")
         ) {
             return new Case(
@@ -200,7 +201,7 @@ final class ManifestCorpus {
 
     /** The files the cases list by id, as {@code id -> category}, from {@code schemas/not-expressible.json}. */
     @SneakyThrows
-    static TreeMap<String, String> notExpressible() {
+    static Map<String, String> notExpressible() {
         val out = new TreeMap<String, String>();
         val file = Brightcart.MAPPER.readTree(
             Files.readString(Path.of("src/test/resources/schemas/not-expressible.json"))

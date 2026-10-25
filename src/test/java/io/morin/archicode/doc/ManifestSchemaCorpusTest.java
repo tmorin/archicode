@@ -69,7 +69,8 @@ class ManifestSchemaCorpusTest {
         var loads = 0;
         var index = 0;
         for (val node : ManifestCorpus.caseNodes()) {
-            val c = ManifestCorpus.altered(node, Files.createDirectory(dir.resolve("case" + index++)));
+            val c = ManifestCorpus.altered(node, Files.createDirectory(dir.resolve("case" + index)));
+            index++;
             switch (c.verdict()) {
                 case LOADS -> {
                     loads++;

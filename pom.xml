@@ -48,6 +48,7 @@
         <quarkus.platform.version>3.40.1</quarkus.platform.version>
         <skipITs>true</skipITs>
         <jacoco.version>0.8.15</jacoco.version>
+        <pmd.version>7.28.0</pmd.version>
         <surefire-plugin.version>3.6.0</surefire-plugin.version>
         <plugin.asciidoctor.skip>false</plugin.asciidoctor.skip>
     </properties>
@@ -270,9 +271,9 @@
                         </goals>
                     </execution>
                     <execution>
-                        <!-- The floors (wave 023, W-8): the lines and the instructions of src/main/java stay above 90 %, as the
-                             author asked; the branches have a guard-rail below the figure they have (92 %), to be raised to
-                             90 % by the author. A build below a floor fails here, after the report is written. -->
+                        <!-- The floors (wave 023, W-8 and W-11): the lines, the instructions and the branches of src/main/java
+                             stay at 90 % or above, as the author asked (the figures are 98.5, 98.6 and 92.9 %). A build below a
+                             floor fails here, after the report is written. -->
                         <id>check</id>
                         <phase>verify</phase>
                         <goals>
@@ -296,12 +297,60 @@
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.88</minimum>
+                                            <minimum>0.90</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
                             </rules>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- Static analysis of src/main/java and src/test/java (wave 023, run 0177, #160 step 5): PMD, no server and no
+                     secret. The rules are src/main/pmd/ruleset.xml (PMD's quickstart minus three rules, each with its count and its
+                     reason); a finding fails the build, there is no baseline. PMD needs the compiled classes to resolve types, so
+                     the one command for an agent is `./mvnw test-compile pmd:check`. PMD works on sources: the classes the chicory
+                     compiler writes (ViewpointKernelModule*) have none and are not looked at. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>3.28.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-core</artifactId>
+                        <version>${pmd.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-java</artifactId>
+                        <version>${pmd.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <rulesets>
+                        <ruleset>${project.basedir}/src/main/pmd/ruleset.xml</ruleset>
+                    </rulesets>
+                    <includeTests>true</includeTests>
+                    <failOnViolation>true</failOnViolation>
+                    <failurePriority>5</failurePriority>
+                    <!-- a file PMD cannot analyse fails the build too (the default skips it and counts no violation) -->
+                    <skipPmdError>false</skipPmdError>
+                    <printFailingErrors>true</printFailingErrors>
+                    <linkXRef>false</linkXRef>
+                    <excludes>
+                        <!-- the source the chicory compiler writes in target/generated-sources, not ours: the wrapper of the
+                             WebAssembly of the viewpoint kernel (the same code JaCoCo leaves out) -->
+                        <exclude>**/ViewpointKernelModule*.java</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -383,6 +432,9 @@
                      no test would write the file the report and the check read, and the check would fail on 0.00: the three
                      executions of jacoco-maven-plugin (agent, report, check) do nothing. -->
                 <jacoco.skip>true</jacoco.skip>
+                <!-- PMD reads sources and the compiled classes, and needs no test: the Build job's `verify` has run it on the same
+                     sources, so here it would only repeat it. -->
+                <pmd.skip>true</pmd.skip>
             </properties>
             <build>
                 <plugins>

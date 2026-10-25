@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.TreeSet;
 import java.util.stream.Stream;
@@ -87,7 +88,9 @@ class SortedQueryOutputTest {
 
     @SneakyThrows
     private List<String> idsAndLayers(String format) {
-        val views = mapperFactory.create(MapperFormat.valueOf(format.toUpperCase())).readTree(queryViews(format).out());
+        val views = mapperFactory
+            .create(MapperFormat.valueOf(format.toUpperCase(Locale.ROOT)))
+            .readTree(queryViews(format).out());
         val keys = new ArrayList<String>();
         for (val view : views) {
             keys.add(view.get("id").asText() + "/" + view.get("layer").asText());

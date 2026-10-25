@@ -15,7 +15,7 @@ public enum RenderingShape {
 
     public static RenderingShape getDefault(Item item) {
         if (item.getKind() == Item.Kind.PERSON) {
-            return RenderingShape.PERSON;
+            return PERSON;
         }
         return getDefault();
     }

@@ -36,9 +36,10 @@ import org.jboss.logmanager.Logger;
 import picocli.CommandLine;
 
 @Slf4j
-@SuppressWarnings("java:S6813")
 @CommandLine.Command(name = "generate", description = "Generate the views of the workspace.")
 public class GenerateViewsCommand implements Runnable {
+
+    // Picocli sets the options on fields, so the services are injected into fields too (the command has no constructor)
 
     @CommandLine.ParentCommand
     ViewsGroup viewsGroup;
@@ -128,7 +129,6 @@ public class GenerateViewsCommand implements Runnable {
     String viewPropertiesAsPath;
 
     @Override
-    @SuppressWarnings("java:S3252")
     public void run() {
         Logger.getGlobal().setLevel(Level.INFO);
 
@@ -307,7 +307,9 @@ public class GenerateViewsCommand implements Runnable {
      *                         applied to (a view cannot be drawn in a plateau that lacks what it names, whatever the facet)
      */
     private void renderWorkspace(Workspace workspace, Workspace plateauWorkspace, Comparison comparison) {
-        log.info("render workspace in {}", workspace.getSettings().getViews().getPath());
+        if (log.isInfoEnabled()) {
+            log.info("render workspace in {}", workspace.getSettings().getViews().getPath());
+        }
 
         val outputDirPath = outputDirectory(workspace);
 
@@ -398,7 +400,9 @@ public class GenerateViewsCommand implements Runnable {
             )
             .filter(view -> viewIds.isEmpty() || viewIds.contains(view.getId()))
             .forEach(view -> {
-                log.info("render {}", view.getId());
+                if (log.isInfoEnabled()) {
+                    log.info("render {}", view.getId());
+                }
                 val viewpoint = viewpointServiceRepository
                     .get(view.getViewpoint())
                     .createViewpointFactory(comparison, drawsOnlyChanges(comparison))

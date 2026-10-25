@@ -16,6 +16,7 @@ import io.morin.archicode.viewpoint.Viewpoint;
 import io.morin.archicode.viewpoint.kernel.KernelStates;
 import io.morin.archicode.workspace.Workspace;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -46,7 +47,7 @@ class ChangeMarksTest {
     }
 
     private Item item(String id, Change change, String... stereotypes) {
-        return ViewpointFixtures.createItemBuilder(Solution.builder().id(id).name(id.toUpperCase()).build())
+        return ViewpointFixtures.createItemBuilder(Solution.builder().id(id).name(id.toUpperCase(Locale.ROOT)).build())
             .change(change)
             .stereotypes(List.of(stereotypes))
             .build();

@@ -255,15 +255,15 @@ class RemovedElementCopyTest {
         val union = workspaceFactory.createUnion(target, base, comparison);
 
         for (val reference : new String[] { "shop", "prod" }) {
-            val layerBase = reference.equals("shop") ? base.appIndex : base.techIndex;
-            val layerUnion = reference.equals("shop") ? union.appIndex : union.techIndex;
+            val layerBase = "shop".equals(reference) ? base.appIndex : base.techIndex;
+            val layerUnion = "shop".equals(reference) ? union.appIndex : union.techIndex;
             val expected = layerBase.getElementByReference(reference);
             val actual = layerUnion.getElementByReference(reference);
             assertSame(expected, actual);
             // what another element replaced is left behind, the rest of what it held stays
             assertTrue(((Parent<?>) actual).getElements().size() < ((Parent<?>) expected).getElements().size());
             // the baseline is as it was
-            assertTrue(layerBase.searchElement(reference.equals("shop") ? "shop.web" : "prod.vm").isPresent());
+            assertTrue(layerBase.searchElement("shop".equals(reference) ? "shop.web" : "prod.vm").isPresent());
         }
     }
 }

@@ -21,7 +21,7 @@ import lombok.val;
  * {@code workspace-file-name-cases.json} says which cases are which, for both tools.
  */
 @Getter
-public class WorkspaceFileException extends ArchiCodeException {
+public final class WorkspaceFileException extends ArchiCodeException {
 
     /** Why the file could not be had. */
     public enum Reason {

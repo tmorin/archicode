@@ -78,7 +78,7 @@ class ComposeReplacesCasesTest {
 
         val rows = new ArrayList<String>();
         for (val row : answer.getChanges()) {
-            if (row.thing().equals("element")) {
+            if ("element".equals(row.thing())) {
                 val replaces = row.replaces() == null ? List.<String>of() : row.replaces();
                 rows.add(
                     row.layer() +

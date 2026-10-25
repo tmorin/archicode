@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import lombok.SneakyThrows;
@@ -57,7 +58,7 @@ class AgentWalkIT {
     private static List<List<String>> startingCommands(String guide) {
         val out = new ArrayList<List<String>>();
         for (val block : GuideBlocks.blocks(guide)) {
-            if (!block.language().equals("sh")) {
+            if (!"sh".equals(block.language())) {
                 continue;
             }
             for (val line : block.text().split("\n")) {
@@ -78,7 +79,7 @@ class AgentWalkIT {
     }
 
     @SneakyThrows
-    private static TreeSet<String> references(String graph) {
+    private static Set<String> references(String graph) {
         val out = new TreeSet<String>();
         JSON.readTree(graph)
             .get("elements")
@@ -121,9 +122,7 @@ class AgentWalkIT {
         val files = GuideBlocks.files(guide);
         val start = startingCommands(guide);
         assertEquals(List.of("init"), start.get(0).subList(0, 1), () -> "the guide starts with init: " + start);
-        assertTrue(start.stream().anyMatch(c -> c.subList(0, 2).equals(List.of("query", "graph"))), () ->
-            start.toString()
-        );
+        assertTrue(start.stream().anyMatch(c -> c.subList(0, 2).equals(List.of("query", "graph"))), start::toString);
 
         // 2. init, in a folder that does not exist yet, as the guide's first command says.
         val folder = dir.resolve("my-architecture");

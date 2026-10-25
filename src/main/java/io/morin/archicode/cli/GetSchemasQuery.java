@@ -9,6 +9,7 @@ import io.morin.archicode.MapperFormat;
 import io.morin.archicode.manifest.ManifestSchema;
 import io.morin.archicode.resource.workspace.Workspace;
 import jakarta.inject.Inject;
+import java.util.Locale;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -33,7 +34,7 @@ public class GetSchemasQuery implements Runnable {
 
         @Override
         public SchemaType convert(String value) {
-            return SchemaType.valueOf(value.toUpperCase());
+            return SchemaType.valueOf(value.toUpperCase(Locale.ROOT));
         }
     }
 

@@ -24,7 +24,7 @@ class ManualExamplesTest {
     void shouldLoadEveryWorkspaceOfTheManual() {
         List<Path> workspaces;
         try (val files = Files.walk(Path.of("src/doc/examples"))) {
-            workspaces = files.filter(f -> f.getFileName().toString().equals(".archicode.yaml")).toList();
+            workspaces = files.filter(f -> ".archicode.yaml".equals(f.getFileName().toString())).toList();
         }
         for (val workspace : workspaces) {
             assertDoesNotThrow(() -> workspaceFactory.create(workspace.toAbsolutePath()), workspace.toString());

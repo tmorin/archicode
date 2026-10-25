@@ -3,7 +3,6 @@ package io.morin.archicode.resource.plateau;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -31,13 +30,17 @@ class PlateauTreeDetailsTest {
 
     @Test
     void shouldReadNoPeriodFromALabelThatIsNoDate() {
-        assertNull(PlateauTree.horizonPeriod(null));
-        assertNull(PlateauTree.horizonPeriod("soon"));
-        assertNull(PlateauTree.horizonPeriod("2026-13"), "there is no thirteenth month");
-        assertNull(PlateauTree.horizonPeriod("2026-02-30"), "nor a thirtieth of February");
-        assertNull(PlateauTree.horizonPeriod("0099"), "a year before 100 is read as 19xx by the page: none in both");
-        assertNull(PlateauTree.horizonPeriod("0099-10"));
-        assertNull(PlateauTree.horizonPeriod("0099-10-18"));
+        assertArrayEquals(new long[0], PlateauTree.horizonPeriod(null));
+        assertArrayEquals(new long[0], PlateauTree.horizonPeriod("soon"));
+        assertArrayEquals(new long[0], PlateauTree.horizonPeriod("2026-13"), "there is no thirteenth month");
+        assertArrayEquals(new long[0], PlateauTree.horizonPeriod("2026-02-30"), "nor a thirtieth of February");
+        assertArrayEquals(
+            new long[0],
+            PlateauTree.horizonPeriod("0099"),
+            "a year before 100 is read as 19xx by the page: none in both"
+        );
+        assertArrayEquals(new long[0], PlateauTree.horizonPeriod("0099-10"));
+        assertArrayEquals(new long[0], PlateauTree.horizonPeriod("0099-10-18"));
     }
 
     @Test

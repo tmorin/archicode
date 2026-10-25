@@ -173,7 +173,7 @@ class StepPlateausTest {
             val story = workspace
                 .getStories()
                 .stream()
-                .filter(s -> s.getId().equals("migration"))
+                .filter(s -> "migration".equals(s.getId()))
                 .findFirst()
                 .orElseThrow();
             // the story is the same whatever plateau is drawn, and its steps carry the two keys

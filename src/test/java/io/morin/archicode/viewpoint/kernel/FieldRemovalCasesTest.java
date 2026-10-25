@@ -103,7 +103,7 @@ class FieldRemovalCasesTest {
     void theFieldIsWhereThePlateauLeavesIt(String name, JsonNode c, JsonNode want) {
         Workspace workspace = workspaceFactory.create(write(c), null, want.get("plateau").asText());
         val reference = want.get("reference").asText();
-        Element element = want.get("layer").asText().equals("technology")
+        Element element = "technology".equals(want.get("layer").asText())
             ? workspace.techIndex.getElementByReference(reference)
             : workspace.appIndex.getElementByReference(reference);
         val got = switch (want.get("field").asText()) {
@@ -125,7 +125,7 @@ class FieldRemovalCasesTest {
 
         val rows = new ArrayList<String>();
         for (val row : answer.getChanges()) {
-            if (row.thing().equals("element")) {
+            if ("element".equals(row.thing())) {
                 val natures = row.natures() == null ? List.<String>of() : row.natures();
                 rows.add(
                     row.layer() +

@@ -12,6 +12,7 @@ import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Test;
@@ -73,7 +74,10 @@ class PatchTakesAFieldOutTest {
         assertTrue(result.out().contains("elements      +0 ~1 -0"), result.out());
         assertTrue(result.out().contains("changed  element"), result.out());
         assertTrue(result.out().contains("description"), result.out());
-        assertFalse(result.out().toLowerCase().contains("cascade"), "nothing left the graph: " + result.out());
+        assertFalse(
+            result.out().toLowerCase(Locale.ROOT).contains("cascade"),
+            "nothing left the graph: " + result.out()
+        );
         assertEquals(3, run(workspace("F01"), "diff", "--plateau", "lean", "--fail-on", "changed").exit());
         assertEquals(
             0,

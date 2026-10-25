@@ -95,7 +95,7 @@ class GetGraphQueryTest {
             graph
                 .getElements()
                 .stream()
-                .anyMatch(e -> e.getReference().equals("sys"))
+                .anyMatch(e -> "sys".equals(e.getReference()))
         );
     }
 

@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 import lombok.val;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -106,7 +107,7 @@ class NativeReflectionConfigTest {
         try (val file = new JarFile(jar.toFile())) {
             missing = file
                 .stream()
-                .map(entry -> entry.getName())
+                .map(ZipEntry::getName)
                 .filter(name -> name.startsWith("com/") && name.endsWith(".class"))
                 .map(name -> name.substring(0, name.length() - ".class".length()).replace('/', '.'))
                 .filter(name -> !registered.contains(name))

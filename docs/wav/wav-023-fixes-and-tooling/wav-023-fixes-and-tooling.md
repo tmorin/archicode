@@ -302,7 +302,7 @@ wave_manifest:
       slug: java-analysis-adopted-and-findings-fixed
       phase: P5
       depends_on: [W-7, W-8]
-      run: null
+      run: 0177
       delegation: standard
       likely_paths:
         - 'pom.xml'

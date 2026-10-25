@@ -50,7 +50,7 @@ class ViewInPlateau {
             if (properties != null) {
                 properties.path(list).forEach(entry -> {
                     if (entry.isTextual()) {
-                        if (list.equals("pinned")) {
+                        if ("pinned".equals(list)) {
                             pinned.add(entry.asText());
                         }
                         if (index.searchElement(entry.asText()).isEmpty()) {

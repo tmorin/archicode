@@ -80,9 +80,8 @@ class EditorServeIT {
             .redirectOutput(log.toFile())
             .directory(dir.toFile())
             .start();
-        try {
+        try (var client = HttpClient.newHttpClient()) {
             val address = awaitAddress(process, log);
-            val client = HttpClient.newHttpClient();
             val base = "http://127.0.0.1:" + address.group(1) + "/";
 
             val page = get(client, base + "?token=" + address.group(2));

@@ -175,10 +175,9 @@ class WorkspaceFileNameTest {
                 new String[] { "plateau", "list" }
             )) {
                 val result = run(
-                    java.util.stream.Stream.concat(
-                        java.util.stream.Stream.of("-w", workspaceFile.toString()),
-                        java.util.Arrays.stream(command)
-                    ).toArray(String[]::new)
+                    Stream.concat(Stream.of("-w", workspaceFile.toString()), java.util.Arrays.stream(command)).toArray(
+                        String[]::new
+                    )
                 );
                 assertEquals(1, result.exit(), String.join(" ", command));
                 assertEquals(expected, result.err(), String.join(" ", command));
@@ -222,7 +221,7 @@ class WorkspaceFileNameTest {
     }
 
     @Test
-    void shouldSayItToo_whenTheEditorIsServedFromAFolderThatWasNotRenamed() {
+    void shouldSayItTooWhenTheEditorIsServedFromAFolderThatWasNotRenamed() {
         build("F01");
         val result = run("-w", dir.resolve(".archicode.yaml").toString(), "editor", "serve", "--port", "0");
         assertEquals(1, result.exit());
@@ -236,8 +235,7 @@ class WorkspaceFileNameTest {
         Files.createDirectories(dir.resolve("sub"));
         Files.writeString(dir.resolve("sub/.archicode.yaml"), "settings: {}\n");
         val running = editorHttpServer.start("127.0.0.1", 0, dir.resolve(".archicode.yaml"), java.util.Set.of());
-        try {
-            val client = java.net.http.HttpClient.newHttpClient();
+        try (var client = java.net.http.HttpClient.newHttpClient()) {
             val base = "http://127.0.0.1:" + running.server().getAddress().getPort() + "/api/fs/";
             java.util.function.BiFunction<String, String, java.net.http.HttpResponse<String>> get = (route, path) -> {
                 try {
@@ -262,7 +260,7 @@ class WorkspaceFileNameTest {
     }
 
     @Test
-    void an_exception_of_the_file_system_without_a_reason_is_still_told_in_words(@TempDir Path folder) {
+    void anExceptionOfTheFileSystemWithoutAReasonIsStillToldInWords(@TempDir Path folder) {
         val path = folder.resolve(".archicode.yaml");
         // built from a path alone, these two carry the path as their message and no reason
         assertEquals(

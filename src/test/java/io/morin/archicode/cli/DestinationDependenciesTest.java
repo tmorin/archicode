@@ -42,7 +42,7 @@ class DestinationDependenciesTest {
                 .getFacets()
                 .getCustoms()
                 .stream()
-                .filter(f -> f.getName().equals("no-externals"))
+                .filter(f -> "no-externals".equals(f.getName()))
                 .findFirst()
                 .orElseThrow();
             workspace = workspaceFactory.create(workspace, facet);

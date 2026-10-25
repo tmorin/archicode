@@ -115,19 +115,19 @@ public class Item implements Comparable<Item> {
 
         public static Kind from(@NonNull Element element) {
             if (element instanceof Component) {
-                return Kind.COMPONENT;
+                return COMPONENT;
             } else if (element instanceof Container) {
-                return Kind.CONTAINER;
+                return CONTAINER;
             } else if (element instanceof System) {
-                return Kind.SYSTEM;
+                return SYSTEM;
             } else if (element instanceof Solution) {
-                return Kind.SOLUTION;
+                return SOLUTION;
             } else if (element instanceof Person) {
-                return Kind.PERSON;
+                return PERSON;
             } else if (element instanceof Environment) {
-                return Kind.ENVIRONMENT;
+                return ENVIRONMENT;
             } else if (element instanceof Node) {
-                return Kind.NODE;
+                return NODE;
             }
             throw new ArchiCodeException("unable to find a matching for", element);
         }

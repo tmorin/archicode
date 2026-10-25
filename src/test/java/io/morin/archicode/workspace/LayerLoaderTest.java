@@ -18,6 +18,7 @@ import io.morin.archicode.resource.element.application.Container;
 import io.morin.archicode.resource.element.application.Nesting;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.application.Person;
+import io.morin.archicode.resource.element.application.Relationship;
 import io.morin.archicode.resource.element.application.Solution;
 import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
@@ -63,7 +64,9 @@ class LayerLoaderTest {
 
     /** A folder of its own for each workspace a test writes: a file removed from the map is not left from the one before. */
     private Path fresh() {
-        return dir.resolve("w" + written++);
+        val folder = dir.resolve("w" + written);
+        written++;
+        return folder;
     }
 
     private Workspace load(String plateau) {
@@ -105,7 +108,7 @@ class LayerLoaderTest {
                     .getElementByReference("shop.api")
                     .getRelationships()
                     .stream()
-                    .map(r -> r.getDestination())
+                    .map(Relationship::getDestination)
                     .toList()
             ),
             "the relationship towards the element that left went with it"
@@ -115,7 +118,7 @@ class LayerLoaderTest {
                 .getElementByReference("backoffice.console")
                 .getRelationships()
                 .stream()
-                .noneMatch(r -> r.getDestination().equals("shop.cache"))
+                .noneMatch(r -> "shop.cache".equals(r.getDestination()))
         );
         assertEquals(
             Set.of("shop.web", "shop.api", "shop.db"),
@@ -134,7 +137,7 @@ class LayerLoaderTest {
         val toDb = api
             .getRelationships()
             .stream()
-            .filter(r -> r.getDestination().equals("shop.db"))
+            .filter(r -> "shop.db".equals(r.getDestination()))
             .toList();
         assertEquals(1, toDb.size());
         assertEquals(
@@ -173,7 +176,7 @@ class LayerLoaderTest {
         assertEquals("2028-Q1", marketplace.getPlateau().getHorizon());
         assertEquals("inhouse", marketplace.getPlateau().getBaseline(), "what the plateau overrides");
         assertEquals(
-            java.util.List.of("inhouse", "marketplace"),
+            List.of("inhouse", "marketplace"),
             marketplace.getRemovals().stream().map(Removal::plateau).toList()
         );
     }
@@ -417,7 +420,7 @@ class LayerLoaderTest {
                 .getElementByReference("shop.web")
                 .getRelationships()
                 .stream()
-                .filter(r -> r.getDestination().equals("shop.api"))
+                .filter(r -> "shop.api".equals(r.getDestination()))
                 .toList();
             assertEquals("", calls.get(0).getLabel(), plateau + ": the empty label is still there");
         }
@@ -481,19 +484,15 @@ class LayerLoaderTest {
         val inhouse = load(files, "inhouse");
         val baseline = load(files, "baseline");
         assertEquals(
-            java.util.List.of("commerce.cart", "commerce.catalog"),
+            List.of("commerce.cart", "commerce.catalog"),
             removal.effects(inhouse).stream().map(Removal.Effect::element).toList(),
             "the elements inside the removed one are inhouse's"
         );
-        assertEquals(
-            java.util.List.of(),
-            removal.effects(baseline),
-            "baseline has none of it: no part of the difference"
-        );
+        assertEquals(List.of(), removal.effects(baseline), "baseline has none of it: no part of the difference");
         // the removal of inhouse itself is, against baseline: the entries taken out of the elements baseline has
         assertEquals(3, Removal.cascade(bb.getRemovals(), baseline).size());
         assertEquals(
-            java.util.List.of(),
+            List.of(),
             Removal.cascade(inhouse.getRemovals(), load(files, "marketplace")),
             "the future has no part of it either"
         );
@@ -660,14 +659,14 @@ class LayerLoaderTest {
             ((Parent<?>) target.appIndex.getElementByReference("shop"))
                 .getElements()
                 .stream()
-                .anyMatch(e -> e.getId().equals("cache")),
+                .anyMatch(e -> "cache".equals(e.getId())),
             "the tree of the target does not hold what only the baseline had"
         );
         assertTrue(
             ((Parent<?>) union.appIndex.getElementByReference("shop"))
                 .getElements()
                 .stream()
-                .anyMatch(e -> e.getId().equals("cache"))
+                .anyMatch(e -> "cache".equals(e.getId()))
         );
         assertEquals("inhouse", union.getPlateau().getId());
         assertEquals("baseline", union.getBaseline().getId());
@@ -798,7 +797,7 @@ class LayerLoaderTest {
             "environment",
             Environment.builder().id("x").build(),
             "node",
-            io.morin.archicode.resource.element.technology.Node.builder().id("x").build()
+            Node.builder().id("x").build()
         );
         assertEquals(new TreeSet<>(instances.keySet()), new TreeSet<>(textsOf(JSON.valueToTree(table.fieldNames()))));
         instances.forEach((kind, element) ->

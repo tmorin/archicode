@@ -4,6 +4,7 @@ import io.morin.archicode.rendering.RenderingShape;
 import io.morin.archicode.rendering.ViewRenderer;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Viewpoint;
+import java.util.Locale;
 import java.util.Optional;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -53,10 +54,10 @@ class ItemRenderer {
                     .getElement()
                     .getTags()
                     .getOrDefault(ViewRenderer.TAG_RENDERING_SHAPE, RenderingShape.getDefault(item).name())
-                    .toUpperCase()
+                    .toUpperCase(Locale.ROOT)
             )
                 .name()
-                .toLowerCase();
+                .toLowerCase(Locale.ROOT);
 
             // <shape> <id> <stereotypes> <<atomic>> [
             buf.append(shape);
@@ -66,7 +67,7 @@ class ItemRenderer {
             buf.append(
                 PlantumlUtilities.generateStereotypes(
                     ChangeMarks.stereotypes(viewpoint, item),
-                    item.getKind().name().toLowerCase(),
+                    item.getKind().name().toLowerCase(Locale.ROOT),
                     "atomic"
                 )
             );
@@ -123,7 +124,7 @@ class ItemRenderer {
             val compositeFormatter = viewpoint.getWorkspace().getFormatters().getComposite();
 
             // <code>rectangle <id> as "<label>\n<qualifiers>" <<stereotypes>> {</code>
-            buf.append(shape.name().toLowerCase());
+            buf.append(shape.name().toLowerCase(Locale.ROOT));
             buf.append(" ");
             buf.append(names.of(item));
             buf.append(" as \"");

@@ -15,8 +15,6 @@ import io.morin.archicode.MapperFormat;
 import io.morin.archicode.manifest.ManifestParser;
 import io.morin.archicode.resource.element.Replaces;
 import io.morin.archicode.resource.element.application.Application;
-import io.morin.archicode.resource.element.technology.Environment;
-import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.plateau.Patch;
 import io.morin.archicode.resource.plateau.PlateauTree;
@@ -28,7 +26,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -96,7 +93,9 @@ public class LayerLoader {
         Indexes drawn = null;
         val files = new Files();
         for (val node : chain) {
-            log.info("load the plateau {}", node.id());
+            if (log.isInfoEnabled()) {
+                log.info("load the plateau {}", node.id());
+            }
             val own = parsed.ofPlateau(node.id());
             var indexes = index(resources, own.elements(), files);
             // before the patches: a patch may remove a parent, and the elements declared under it go with it
@@ -187,7 +186,7 @@ public class LayerLoader {
         }
         for (val report : answer.path("patches")) {
             // a REMOVE that names a field takes the field out of the elements it selects: nothing leaves the graph, so it is no removal
-            if (report.path("operator").asText().equals("REMOVE") && report.has("removed")) {
+            if ("REMOVE".equals(report.path("operator").asText()) && report.has("removed")) {
                 removals.add(removal(node.id(), report));
             }
         }

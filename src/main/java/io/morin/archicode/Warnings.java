@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.NonNull;
 import lombok.val;
 
@@ -22,7 +23,7 @@ public class Warnings {
 
     static final String PREFIX = "warning: ";
 
-    private final LinkedHashSet<String> pending = new LinkedHashSet<>();
+    private final Set<String> pending = new LinkedHashSet<>();
 
     /**
      * Keep a warning for the error output.

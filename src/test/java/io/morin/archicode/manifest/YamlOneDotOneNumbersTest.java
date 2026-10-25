@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;

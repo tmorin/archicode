@@ -45,12 +45,7 @@ public class DetailedViewpointService implements ViewpointService {
         newProperties.setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode));
 
         return Optional.of(element)
-            .filter(v -> {
-                if (v instanceof Parent<?> parent) {
-                    return !parent.getElements().isEmpty();
-                }
-                return false;
-            })
+            .filter(v -> v instanceof Parent<?> parent && !parent.getElements().isEmpty())
             .map(parent ->
                 View.builder()
                     .viewpoint(NAME)

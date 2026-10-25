@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.morin.archicode.cli.ErrorOutput;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -131,7 +130,7 @@ class BrightcartLayeredViewsTest {
         var checked = 0;
         var named = 0;
         for (val notable : Brightcart.expected("notable-cases")) {
-            if (!notable.get("id").asText().equals("N13")) {
+            if (!"N13".equals(notable.get("id").asText())) {
                 continue;
             }
             for (val check : notable.get("checks")) {
@@ -307,10 +306,5 @@ class BrightcartLayeredViewsTest {
     @SneakyThrows
     private static String read(Path file) {
         return Files.readString(file);
-    }
-
-    @SneakyThrows
-    private static JsonNode readTree(String json) {
-        return Brightcart.MAPPER.readTree(json);
     }
 }

@@ -24,7 +24,7 @@ class GenerateFacetExampleTest extends AbstractGenerateViews {
         }
     )
     @ParameterizedTest
-    void facet_example_step(String wksPathAsString) {
+    void facetExampleStep(String wksPathAsString) {
         val wksPath = Path.of(wksPathAsString);
         val viewpointNames = Set.of("deep");
         val viewIds = Set.of("EcommercePlatform-deep");
