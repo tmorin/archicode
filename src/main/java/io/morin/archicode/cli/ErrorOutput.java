@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.Warnings;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.net.BindException;
 import java.nio.charset.CharacterCodingException;
@@ -11,6 +12,8 @@ import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystemException;
 import java.nio.file.NoSuchFileException;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +46,13 @@ public class ErrorOutput implements CommandLine.IExecutionExceptionHandler, Comm
     public static final int CHANGES_FOUND = 3;
 
     private static final String PREFIX = "error: ";
+
+    /** What a {@link FileNotFoundException} says: {@code <path> (<reason>)}, the path first, the reason of the system last. */
+    private static final Pattern FILE_NOT_FOUND = Pattern.compile("^(.+) \\(([^()]+)\\)$", Pattern.DOTALL);
+
+    private static final String NO_SUCH_FILE = "No such file or directory";
+
+    private static final String PERMISSION_DENIED = "Permission denied";
 
     Warnings warnings;
 
@@ -113,6 +123,14 @@ public class ErrorOutput implements CommandLine.IExecutionExceptionHandler, Comm
         if (e instanceof NoSuchFileException || e instanceof AccessDeniedException) {
             return 1;
         }
+        if (e instanceof FileNotFoundException) {
+            // the same files as above, told by the other family of exceptions (java.io: a FileReader, a File, a stream)
+            val file = fileNotFound(e);
+            if (file == null) {
+                return Integer.MAX_VALUE;
+            }
+            return NO_SUCH_FILE.equals(file.group(2)) || PERMISSION_DENIED.equals(file.group(2)) ? 1 : 2;
+        }
         if (e instanceof FileSystemException) {
             return 2;
         }
@@ -135,6 +153,16 @@ public class ErrorOutput implements CommandLine.IExecutionExceptionHandler, Comm
         if (e instanceof JsonProcessingException json) {
             return ArchiCodeException.unreadable(null, json, false).getMessage();
         }
+        if (e instanceof FileNotFoundException) {
+            // the same words as the exceptions of java.nio.file for the same files
+            val file = fileNotFound(e);
+            val name = file.group(1);
+            return switch (file.group(2)) {
+                case NO_SUCH_FILE -> "`" + name + "` does not exist";
+                case PERMISSION_DENIED -> "`" + name + "` cannot be accessed: permission denied";
+                default -> "`" + name + "` cannot be read or written: " + file.group(2);
+            };
+        }
         if (e instanceof FileSystemException file) {
             val name = file.getFile();
             if (name == null) {
@@ -153,6 +181,15 @@ public class ErrorOutput implements CommandLine.IExecutionExceptionHandler, Comm
         }
         // a CharacterCodingException: the text of a file is not valid in the encoding it is read in
         return "a file is not valid text (UTF-8): " + reasonOf(e);
+    }
+
+    /** The path and the reason of a {@link FileNotFoundException}, or null when its message is no {@code <path> (<reason>)}. */
+    private static Matcher fileNotFound(Throwable e) {
+        if (e.getMessage() == null) {
+            return null;
+        }
+        val matcher = FILE_NOT_FOUND.matcher(e.getMessage());
+        return matcher.matches() ? matcher : null;
     }
 
     /** What the failure says, or its name when it says nothing. */
