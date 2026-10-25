@@ -175,7 +175,7 @@ public class ArchiCodeException extends RuntimeException {
     /** Whether the value is a group written as the kind of a manifest: {@code group}, or the old {@code container-group}... */
     private static boolean isGroupKind(String path, String written) {
         return (
-            path.equals("header.kind") &&
+            "header.kind".equals(path) &&
             written
                 .trim()
                 .toLowerCase(Locale.ROOT)

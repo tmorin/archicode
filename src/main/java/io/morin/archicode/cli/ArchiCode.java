@@ -23,8 +23,9 @@ import picocli.CommandLine;
         InitCommand.class
     }
 )
-@SuppressWarnings("java:S6813")
 public class ArchiCode {
+
+    // Picocli sets the options on fields, so the services are injected into fields too (the command has no constructor)
 
     @Inject
     WorkspaceFactory workspaceFactory;

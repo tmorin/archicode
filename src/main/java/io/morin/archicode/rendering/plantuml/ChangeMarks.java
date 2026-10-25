@@ -2,7 +2,6 @@ package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.resource.workspace.Styles;
-import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
@@ -173,7 +172,7 @@ class ChangeMarks {
         if (state.isEmpty()) {
             return name;
         }
-        return glyph(state.get()) + " " + (state.get().equals(REMOVED) ? "--" + name + "--" : name);
+        return glyph(state.get()) + " " + (REMOVED.equals(state.get()) ? "--" + name + "--" : name);
     }
 
     /**

@@ -59,7 +59,7 @@ class ComparisonLoadTest {
         return Mockito.mockingDetails(manifestParser)
             .getInvocations()
             .stream()
-            .filter(invocation -> invocation.getMethod().getName().equals("parse"))
+            .filter(invocation -> "parse".equals(invocation.getMethod().getName()))
             .count();
     }
 

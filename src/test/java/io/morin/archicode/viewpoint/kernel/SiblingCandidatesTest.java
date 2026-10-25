@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.ArchiCodeException;
+import io.morin.archicode.resource.plateau.PlateauTree;
 import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
@@ -62,11 +63,7 @@ class SiblingCandidatesTest {
     void theTreeSaysWhichPlateausATargetStandsOnSinceTheOneItSharesWithTheBase() {
         val tree = workspaceFactory.plateauTree(BRIGHTCART.toAbsolutePath());
         val ids = (java.util.function.BiFunction<String, String, List<String>>) (target, base) ->
-            tree
-                .standsOn(target, base)
-                .stream()
-                .map(n -> n.id())
-                .toList();
+            tree.standsOn(target, base).stream().map(PlateauTree.Node::id).toList();
         assertEquals(List.of("baseline", "inhouse"), ids.apply("marketplace", "baseline"));
         assertEquals(List.of("inhouse"), ids.apply("marketplace", "inhouse"));
         assertEquals(
@@ -122,13 +119,13 @@ class SiblingCandidatesTest {
             comparison
                 .getElements()
                 .stream()
-                .anyMatch(e -> e.reference().equals("partners.commerce-live") && e.change().word().equals("removed"))
+                .anyMatch(e -> "partners.commerce-live".equals(e.reference()) && "removed".equals(e.change().word()))
         );
         assertTrue(
             comparison
                 .getElements()
                 .stream()
-                .anyMatch(e -> e.reference().equals("partners.tax-live") && e.change().word().equals("new"))
+                .anyMatch(e -> "partners.tax-live".equals(e.reference()) && "new".equals(e.change().word()))
         );
     }
 

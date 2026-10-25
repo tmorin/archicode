@@ -107,7 +107,7 @@ public final class ManifestDiscovery {
             return "is absolute";
         }
         for (String segment : path.split("[/\\\\]", -1)) {
-            if (segment.equals("..")) {
+            if ("..".equals(segment)) {
                 return "contains `..`";
             }
         }
@@ -151,7 +151,7 @@ public final class ManifestDiscovery {
      */
     static List<String> segments(String path) {
         return Arrays.stream(path.split("/"))
-            .filter(s -> !s.isEmpty() && !s.equals("."))
+            .filter(s -> !s.isEmpty() && !".".equals(s))
             .toList();
     }
 
@@ -323,7 +323,9 @@ public final class ManifestDiscovery {
                 }
             }
         } catch (IOException e) {
-            throw new ArchiCodeException("unable to read the path %s", name(wksDir, folder));
+            val failure = new ArchiCodeException("unable to read the path %s", name(wksDir, folder));
+            failure.initCause(e);
+            throw failure;
         }
     }
 }

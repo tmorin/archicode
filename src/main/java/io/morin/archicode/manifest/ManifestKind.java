@@ -11,6 +11,7 @@ import io.morin.archicode.resource.story.Story;
 import io.morin.archicode.resource.view.View;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -33,7 +34,7 @@ public enum ManifestKind {
     STORY(Story.class, Story.class),
     PLATEAU(Plateau.class, Plateau.class);
 
-    private static final Map<String, List<ManifestKind>> INDEX = Arrays.stream(ManifestKind.values()).collect(
+    private static final Map<String, List<ManifestKind>> INDEX = Arrays.stream(values()).collect(
         Collectors.groupingBy(ManifestKind::getId)
     );
     private final Class<?> type;
@@ -41,10 +42,10 @@ public enum ManifestKind {
 
     @JsonValue
     public String getId() {
-        return "archicode.morin.io/" + this.name().toLowerCase().replace("_", "-");
+        return "archicode.morin.io/" + this.name().toLowerCase(Locale.ROOT).replace("_", "-");
     }
 
     public String getSubTypeName() {
-        return this.name().toLowerCase();
+        return this.name().toLowerCase(Locale.ROOT);
     }
 }

@@ -44,7 +44,7 @@ class ShippedFilesTest {
         for (val root : ROOTS) {
             try (val files = Files.walk(Path.of(root))) {
                 files
-                    .filter(f -> f.getFileName().toString().equals(".archicode.yaml"))
+                    .filter(f -> ".archicode.yaml".equals(f.getFileName().toString()))
                     .forEach(f -> found.add(f.toString().replace('\\', '/')));
             }
         }
@@ -102,7 +102,7 @@ class ShippedFilesTest {
             if (tree.isLayered()) {
                 ids.addAll(tree.ids());
             }
-        } catch (RuntimeException e) {
+        } catch (RuntimeException ignored) {
             // a workspace the tree cannot be read of is loaded once, and tells why
         }
         return ids;
@@ -217,7 +217,7 @@ class ShippedFilesTest {
             .filter(
                 f ->
                     f.getFileName().toString().endsWith(".yaml") &&
-                    !f.getFileName().toString().equals(".archicode.yaml")
+                    !".archicode.yaml".equals(f.getFileName().toString())
             )
             .sorted()
             .findFirst()

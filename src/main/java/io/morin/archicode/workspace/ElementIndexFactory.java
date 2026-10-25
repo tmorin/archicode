@@ -61,7 +61,9 @@ public class ElementIndexFactory {
                 // a reference that is not made of elements (an id with a dot, issue #104): there is nothing to index above it
                 return;
             }
-            log.debug("reindex {} {} {}", parentReference, removedElement, removedElement.hashCode());
+            if (log.isDebugEnabled()) {
+                log.debug("reindex {} {} {}", parentReference, removedElement, removedElement.hashCode());
+            }
             index.elementByReferenceIndex.put(parentReference, removedElement);
             index.referenceByElementIndex.put(removedElement, parentReference);
             reindexAncestors(parentReference);
@@ -162,7 +164,7 @@ public class ElementIndexFactory {
         );
     }
 
-    @SuppressWarnings({ "unchecked", "java:S6880" })
+    @SuppressWarnings("unchecked")
     public ElementIndex create() {
         log.debug("index the elements of the resources {}", root);
 
@@ -228,21 +230,23 @@ public class ElementIndexFactory {
             throw new ArchiCodeException("%s", String.join("\n", refused.values()));
         }
 
-        log.info(
-            "{} - size of elementByReferenceIndex : {}",
-            root.getClass().getSimpleName(),
-            index.elementByReferenceIndex.size()
-        );
-        log.info(
-            "{} - size of referenceByElementIndex : {}",
-            root.getClass().getSimpleName(),
-            index.referenceByElementIndex.size()
-        );
-        log.info(
-            "{} - size of sourceElementsByDestinationIndex : {}",
-            root.getClass().getSimpleName(),
-            index.sourceElementsByDestinationIndex.size()
-        );
+        if (log.isInfoEnabled()) {
+            log.info(
+                "{} - size of elementByReferenceIndex : {}",
+                root.getClass().getSimpleName(),
+                index.elementByReferenceIndex.size()
+            );
+            log.info(
+                "{} - size of referenceByElementIndex : {}",
+                root.getClass().getSimpleName(),
+                index.referenceByElementIndex.size()
+            );
+            log.info(
+                "{} - size of sourceElementsByDestinationIndex : {}",
+                root.getClass().getSimpleName(),
+                index.sourceElementsByDestinationIndex.size()
+            );
+        }
         return index;
     }
 }

@@ -93,7 +93,7 @@ public final class Brightcart {
     /** The arguments after {@code archicode} of the command a comparison records: {@code diff --plateau saas}. */
     static List<String> arguments(JsonNode comparison) {
         val words = Arrays.asList(comparison.get("command").asText().split(" "));
-        if (!words.get(0).equals("archicode")) {
+        if (!"archicode".equals(words.get(0))) {
             throw new IllegalArgumentException(comparison.get("command").asText());
         }
         return words.subList(1, words.size());
@@ -123,7 +123,7 @@ public final class Brightcart {
     static List<String> elementRows(JsonNode changes) {
         val out = new ArrayList<String>();
         for (val row : changes) {
-            if (row.get("thing").asText().equals("element")) {
+            if ("element".equals(row.get("thing").asText())) {
                 out.add(
                     row.get("layer").asText() + "|" + row.get("reference").asText() + "|" + row.get("change").asText()
                 );
@@ -139,11 +139,11 @@ public final class Brightcart {
     static List<String> relationshipRows(JsonNode changes) {
         val out = new ArrayList<String>();
         for (val row : changes) {
-            if (!row.get("thing").asText().equals("relationship")) {
+            if (!"relationship".equals(row.get("thing").asText())) {
                 continue;
             }
             val labelChanged =
-                row.get("change").asText().equals("changed") && row.get("natures").toString().contains("\"label\"");
+                "changed".equals(row.get("change").asText()) && row.get("natures").toString().contains("\"label\"");
             out.add(
                 String.join(
                     "|",
@@ -162,7 +162,7 @@ public final class Brightcart {
     static List<String> expectedElementRows(String id) {
         val out = new ArrayList<String>();
         for (val e : expected("changes").get(id).get("elements")) {
-            if (!e.get("state").asText().equals("contains-changes")) {
+            if (!"contains-changes".equals(e.get("state").asText())) {
                 out.add(e.get("layer").asText() + "|" + e.get("ref").asText() + "|" + e.get("state").asText());
             }
         }
@@ -193,14 +193,14 @@ public final class Brightcart {
             val parts = check.get("relationship");
             for (val row : changes) {
                 if (
-                    row.get("thing").asText().equals("relationship") &&
+                    "relationship".equals(row.get("thing").asText()) &&
                     row.get("reference").asText().equals(parts.get(0).asText()) &&
                     row.get("destination").asText().equals(parts.get(1).asText()) &&
                     (row.at("/before/label").asText("").equals(parts.get(2).asText()) ||
                         row.get("label").asText().equals(parts.get(2).asText()))
                 ) {
                     val labelChanged =
-                        row.get("change").asText().equals("changed") &&
+                        "changed".equals(row.get("change").asText()) &&
                         row.get("natures").toString().contains("\"label\"");
                     return labelChanged ? "label-changed" : row.get("change").asText();
                 }
@@ -209,7 +209,7 @@ public final class Brightcart {
         }
         for (val row : changes) {
             if (
-                row.get("thing").asText().equals("element") &&
+                "element".equals(row.get("thing").asText()) &&
                 row.get("layer").asText().equals(check.get("layer").asText()) &&
                 row.get("reference").asText().equals(check.get("ref").asText())
             ) {

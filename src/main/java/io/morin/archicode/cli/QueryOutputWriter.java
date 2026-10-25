@@ -40,8 +40,8 @@ public class QueryOutputWriter {
         printStream.println(content);
     }
 
-    @SuppressWarnings("java:S106")
     public void write(@NonNull String content) {
+        // the standard output is where a query prints its result
         write(content, System.out);
     }
 }

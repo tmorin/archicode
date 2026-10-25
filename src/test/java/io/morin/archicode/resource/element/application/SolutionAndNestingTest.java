@@ -43,14 +43,17 @@ class SolutionAndNestingTest {
         // an element type with no declared subtypes: nothing can be declared under the parent
         interface Leaf extends io.morin.archicode.resource.element.Element {}
         val bare = new Parent<Leaf>() {
+            @Override
             public Set<Leaf> getElements() {
                 return Set.of();
             }
 
+            @Override
             public Parent<Leaf> withElements(Set<Leaf> elements) {
                 return this;
             }
 
+            @Override
             public Class<Leaf> elementType() {
                 return Leaf.class;
             }

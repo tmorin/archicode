@@ -11,7 +11,9 @@ import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import lombok.SneakyThrows;
@@ -129,8 +131,9 @@ class BrightcartLayeredDiffTest {
                     replacing.get("split").asInt(),
                     replacing.get("merged").asInt()
                 ),
-                lines.get(next++)
+                lines.get(next)
             );
+            next++;
         }
         assertEquals("relationships " + Brightcart.triple(comparison.get("relationships")), lines.get(next));
     }
@@ -175,10 +178,10 @@ class BrightcartLayeredDiffTest {
         for (val notable : Brightcart.expected("notable-cases")) {
             for (val check : notable.get("checks")) {
                 val comparison = Brightcart.comparison(check.get("in").asText());
-                if (!comparison.get("verified").asText().equals("archicode diff")) {
+                if (!"archicode diff".equals(comparison.get("verified").asText())) {
                     continue; // P6: the model's alone
                 }
-                if (check.get("state").asText().equals("contains-changes")) {
+                if ("contains-changes".equals(check.get("state").asText())) {
                     continue; // a state of the drawing: see BrightcartLayeredViewsTest
                 }
                 val changes = tables.computeIfAbsent(comparison.get("id").asText(), k ->
@@ -206,7 +209,7 @@ class BrightcartLayeredDiffTest {
         for (val part : List.of("orders.placement", "orders.history")) {
             var seen = 0;
             for (val row : changes) {
-                if (row.get("thing").asText().equals("relationship") && row.get("reference").asText().equals(part)) {
+                if ("relationship".equals(row.get("thing").asText()) && row.get("reference").asText().equals(part)) {
                     seen++;
                     assertEquals("new", row.get("change").asText(), part + " " + row.get("destination").asText());
                 }
@@ -216,9 +219,9 @@ class BrightcartLayeredDiffTest {
         val selfLink = new ArrayList<String>();
         for (val row : changes) {
             if (
-                row.get("thing").asText().equals("relationship") &&
-                row.get("reference").asText().equals("accounts.profiles") &&
-                row.get("destination").asText().equals("accounts.profiles")
+                "relationship".equals(row.get("thing").asText()) &&
+                "accounts.profiles".equals(row.get("reference").asText()) &&
+                "accounts.profiles".equals(row.get("destination").asText())
             ) {
                 selfLink.add(row.get("change").asText());
             }
@@ -261,7 +264,7 @@ class BrightcartLayeredDiffTest {
         // the text and the Markdown say it in their own section
         for (val format : List.of("text", "markdown")) {
             val out = cli().diff(workspace, Brightcart.comparison("P1"), format).out();
-            assertTrue(out.toLowerCase(java.util.Locale.ROOT).contains("cascade"), format + ": " + out);
+            assertTrue(out.toLowerCase(Locale.ROOT).contains("cascade"), format + ": " + out);
         }
         // against a descendant nothing is removed between the two: no cascade
         val future = cli().in(
@@ -303,7 +306,7 @@ class BrightcartLayeredDiffTest {
         }
     }
 
-    private static TreeSet<String> cascade(JsonNode diff) {
+    private static Set<String> cascade(JsonNode diff) {
         val rows = new TreeSet<String>();
         for (val row : diff.path("cascade")) {
             rows.add(
@@ -373,13 +376,13 @@ class BrightcartLayeredDiffTest {
         var composed = "";
         for (val row : diff.get("changes")) {
             if (
-                row.path("thing").asText().equals("element") &&
-                row.path("reference").asText().equals("discovery.search")
+                "element".equals(row.path("thing").asText()) &&
+                "discovery.search".equals(row.path("reference").asText())
             ) {
                 composed = row.path("change").asText() + " " + row.path("replaces");
             }
             assertTrue(
-                !row.path("reference").asText().equals("shop.app.search"),
+                !"shop.app.search".equals(row.path("reference").asText()),
                 "what discovery.search replaces is not removed: " + row
             );
         }
@@ -478,7 +481,7 @@ class BrightcartLayeredDiffTest {
                 format
             );
             assertEquals(0, result.exit(), result.err());
-            assertFalse(result.out().toLowerCase().contains("candidates"), format + ": " + result.out());
+            assertFalse(result.out().toLowerCase(Locale.ROOT).contains("candidates"), format + ": " + result.out());
         }
         // the table and the counts are the ones of expected/, P5
         val json = readTree(

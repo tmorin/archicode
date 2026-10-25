@@ -11,6 +11,8 @@ import io.morin.archicode.MapperFactory;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.plateau.Patch;
 import io.morin.archicode.resource.plateau.PlateauTree;
+import io.morin.archicode.resource.story.Story;
+import io.morin.archicode.resource.view.View;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -133,22 +135,8 @@ class PlateauTreeTest {
         // the views and the stories are the workspace's, not a plateau's
         assertEquals(Set.of(), later.views());
         assertEquals(Set.of(), later.stories());
-        assertEquals(
-            List.of("v"),
-            parsed
-                .views()
-                .stream()
-                .map(v -> v.getId())
-                .toList()
-        );
-        assertEquals(
-            List.of("tour"),
-            parsed
-                .stories()
-                .stream()
-                .map(v -> v.getId())
-                .toList()
-        );
+        assertEquals(List.of("v"), parsed.views().stream().map(View::getId).toList());
+        assertEquals(List.of("tour"), parsed.stories().stream().map(Story::getId).toList());
         assertEquals("manifests/later-view.yaml", parsed.placedViews().get(0).source());
         // the whole workspace is still there
         assertEquals(Set.of("shop", "mail"), references(parsed));

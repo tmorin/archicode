@@ -56,21 +56,24 @@ class AliasExpandingYamlParser extends YAMLParser {
 
     @Override
     protected Event getEvent() throws IOException {
-        while (true) {
-            val event = replay.isEmpty() ? super.getEvent() : replay.pollFirst();
-            if (event instanceof AliasEvent alias) {
-                val events = anchored.get(alias.getAnchor());
-                if (events == null) {
-                    throw new UndefinedAlias(alias);
-                }
-                for (int i = events.size() - 1; i >= 0; i--) {
-                    replay.addFirst(events.get(i));
-                }
-                continue;
+        var event = nextEvent();
+        while (event instanceof AliasEvent alias) {
+            val events = anchored.get(alias.getAnchor());
+            if (events == null) {
+                throw new UndefinedAlias(alias);
             }
-            record(event);
-            return event;
+            for (int i = events.size() - 1; i >= 0; i--) {
+                replay.addFirst(events.get(i));
+            }
+            event = nextEvent();
         }
+        record(event);
+        return event;
+    }
+
+    /** The next event: what an alias put back to be replayed, else the next one of the document. */
+    private Event nextEvent() throws IOException {
+        return replay.isEmpty() ? super.getEvent() : replay.pollFirst();
     }
 
     private void record(Event event) {

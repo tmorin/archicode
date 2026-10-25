@@ -91,7 +91,7 @@ class StateTagRuleTest {
         val start = lines.indexOf("." + stereotype + " {");
         assertTrue(start >= 0, "a style for " + stereotype + " in " + puml);
         var end = start + 1;
-        while (!(lines.get(end).equals("}") && lines.get(end + 1).equals("}"))) {
+        while (!("}".equals(lines.get(end)) && "}".equals(lines.get(end + 1)))) {
             end++;
         }
         return lines.subList(start, end + 2);

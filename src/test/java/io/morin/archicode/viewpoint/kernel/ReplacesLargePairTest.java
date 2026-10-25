@@ -74,7 +74,6 @@ class ReplacesLargePairTest {
     }
 
     /** The pair is a few hundred elements per plateau, more than the ~170 of the real pair wave 008 measured. */
-    /** The pair is a few hundred elements per plateau, more than the ~170 of the real pair wave 008 measured. */
     @Test
     void thePairIsLarge() {
         val elements = answers().get("elements");
@@ -230,7 +229,7 @@ class ReplacesLargePairTest {
             val reasons = c
                 .reasons()
                 .stream()
-                .filter(r -> !r.equals("parent"))
+                .filter(r -> !"parent".equals(r))
                 .toList();
             if (!reasons.isEmpty()) {
                 expected.put(key(c), reasons);

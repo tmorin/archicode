@@ -64,7 +64,7 @@ class ArchiCodeExceptionTest {
     }
 
     @Test
-    void shouldFormatTheMessageLikeString_format() {
+    void shouldFormatTheMessageLikeStringFormat() {
         assertEquals(
             "unable to find the view v1",
             new ArchiCodeException("unable to find the view %s", "v1").getMessage()
@@ -215,7 +215,7 @@ class ArchiCodeExceptionTest {
         }
         val empty = MismatchedInputException.from(
             null,
-            java.util.List.class,
+            List.class,
             "Cannot coerce empty String (\"\") to `java.util.List`\n at [Source]"
         );
         assertEquals("`f` is not valid: the value has the wrong shape (found a string)", sentence("f", empty, false));

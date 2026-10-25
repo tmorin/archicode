@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.morin.archicode.MapperFactory;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 
 /**

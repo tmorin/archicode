@@ -69,13 +69,12 @@ class MistakeSweepTest {
                 return false;
             }
             for (val line : err.lines().toList()) {
-                if (line.startsWith("warning: ")) {
-                    continue;
+                val told =
+                    line.startsWith("warning: ") ||
+                    (exit == 1 && line.startsWith("error: ") && !line.startsWith("error: unexpected "));
+                if (!told) {
+                    return false;
                 }
-                if (exit == 1 && line.startsWith("error: ") && !line.startsWith("error: unexpected ")) {
-                    continue;
-                }
-                return false;
             }
             return exit == 0 || err.contains("error: ");
         }

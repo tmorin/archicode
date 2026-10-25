@@ -11,5 +11,7 @@ public interface ViewRendererService {
 
     ViewRenderer createViewRenderer();
 
-    default void setMapperFactory(MapperFactory mapperFactory) {}
+    default void setMapperFactory(MapperFactory mapperFactory) {
+        // most renderers read no document: nothing to do
+    }
 }

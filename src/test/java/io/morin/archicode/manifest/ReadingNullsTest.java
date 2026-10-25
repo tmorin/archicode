@@ -1,6 +1,7 @@
 package io.morin.archicode.manifest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -93,7 +94,7 @@ class ReadingNullsTest {
     @Test
     void shouldReadOnlyTheKebabCaseSpellingOfAKeyOfTheFacets() {
         val facets = YAML.readValue("global-enabled: false\ndirectory-name-template: x\n", Settings.Facets.class);
-        assertEquals(false, facets.isGlobalEnabled());
+        assertFalse(facets.isGlobalEnabled());
         assertEquals("x", facets.getDirectoryNameTemplate());
         // the camel-case spelling was removed in 0.17: the sentence says what to write (shared cases N76, N91 to N93)
         for (val key : List.of("globalEnabled", "directoryNameTemplate")) {

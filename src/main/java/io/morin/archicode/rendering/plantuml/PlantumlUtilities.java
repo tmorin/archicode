@@ -5,6 +5,7 @@ import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -198,7 +199,7 @@ class PlantumlUtilities {
     String generateQualifiers(@NonNull Item item) {
         val buf = new StringBuilder();
         buf.append("[");
-        buf.append(item.getKind().name().toLowerCase());
+        buf.append(item.getKind().name().toLowerCase(Locale.ROOT));
 
         Optional.ofNullable(item.getElement().getQualifiers())
             .map(qualifiers -> String.join(", ", qualifiers))

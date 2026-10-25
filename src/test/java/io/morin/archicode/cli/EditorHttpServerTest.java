@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;
@@ -122,7 +123,7 @@ class EditorHttpServerTest {
         val first = rawGet(page, "127.0.0.1");
         val cookie = first
             .lines()
-            .filter(l -> l.toLowerCase().startsWith("set-cookie:"))
+            .filter(l -> l.toLowerCase(Locale.ROOT).startsWith("set-cookie:"))
             .findFirst()
             .orElseThrow()
             .substring("set-cookie:".length())
@@ -136,7 +137,7 @@ class EditorHttpServerTest {
         val reload = rawGet("/", "127.0.0.1", session);
         assertEquals(200, status(reload), "the cookie alone opens the page");
         assertTrue(reload.contains("viewpoint-kernel-wasm"));
-        assertFalse(reload.toLowerCase().contains("set-cookie"), "only the token in the address sets it");
+        assertFalse(reload.toLowerCase(Locale.ROOT).contains("set-cookie"), "only the token in the address sets it");
 
         assertEquals(403, status(rawGet("/", "127.0.0.1")), "no token, no cookie");
         assertEquals(
@@ -146,8 +147,8 @@ class EditorHttpServerTest {
         assertEquals(403, status(rawGet("/", "127.0.0.1", "Cookie: other=" + running.token() + "\r\n")));
         assertEquals(403, status(rawGet("/", "attacker.example", session)), "the host is still checked");
         assertEquals(401, status(rawGet("/api/fs/info", "127.0.0.1", session)), "the cookie does not open the API");
-        assertFalse(first.toLowerCase().contains("set-cookie: wrong"));
-        assertFalse(rawGet("/", "127.0.0.1").toLowerCase().contains("set-cookie"), "refusals set none");
+        assertFalse(first.toLowerCase(Locale.ROOT).contains("set-cookie: wrong"));
+        assertFalse(rawGet("/", "127.0.0.1").toLowerCase(Locale.ROOT).contains("set-cookie"), "refusals set none");
     }
 
     @Test

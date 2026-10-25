@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<!-- The rules PMD applies to src/main/java and src/test/java (wave 023, run 0177, #160 step 5, decision D1).
+
+     PMD's own `quickstart` ruleset, minus the rules and with the properties below. Every difference from the quickstart is here, in
+     the open, with its count and its reason (decision T9); none is written in the code as an annotation or a comment. The code has no
+     finding left (decision T8: no baseline file), so any finding of a rule that is not turned off here fails `verify`.
+     The counts are those of the first run of the tool on the tree of wave 023, before the findings were fixed.
+
+     Run it with `./mvnw test-compile pmd:check` (PMD resolves types from the compiled classes); the report is target/pmd.xml. -->
+<ruleset name="archicode"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    <description>PMD quickstart, minus the rules turned off below (each with its count and its reason).</description>
+
+    <rule ref="rulesets/java/quickstart.xml">
+        <!-- 26 findings (18 in main, 8 in tests): the code writes `if (x) return;` on purpose; the layout belongs to the formatter, and a missing brace is not a bug -->
+        <exclude name="ControlStatementBraces"/>
+        <!-- 22 findings (2 in main, 20 in tests): the loopback and wildcard addresses of the local editor server (`127.0.0.1`, `0.0.0.0`) are the point, and the tests use the same literals -->
+        <exclude name="AvoidUsingHardCodedIP"/>
+        <!-- 72 findings, all in tests: the fixtures name their locals after the manifest ids they build (`rel_to_con_aba`) -->
+        <exclude name="LocalVariableNamingConventions"/>
+        <!-- 34 findings (17 in main, 17 in tests): Prettier (prettier-plugin-java) writes these parentheses itself, around every `return` expression that wraps over several lines and around `i * 7` in `(i * 7) % 40`; a fixed file is written back with them by `npm run format`, so a finding cannot be fixed and stay formatted -->
+        <exclude name="UselessParentheses"/>
+        <!-- the four rules below are set again, with their properties, further down -->
+        <exclude name="LooseCoupling"/>
+        <exclude name="GuardLogStatement"/>
+        <exclude name="CloseResource"/>
+        <exclude name="CompareObjectsWithEquals"/>
+    </rule>
+
+    <!-- LooseCoupling with one more type allowed: 4 findings (3 in main, 1 in tests), all on `Replaces`, the model's own set of the
+         references an element replaces (a LinkedHashSet that also keeps what the author wrote, `getWritten()`). It is named as that class
+         on purpose: its deserializer and serializer are for it, and `instanceof Replaces` tells a value read from a manifest from any
+         other set. `java.util.Properties` is the rule's own default. -->
+    <rule ref="rulesets/java/quickstart.xml/LooseCoupling">
+        <properties>
+            <property name="allowedTypes" value="java.util.Properties,io.morin.archicode.resource.element.Replaces"/>
+        </properties>
+    </rule>
+
+    <!-- GuardLogStatement without `warn` among the log levels: 7 findings in main, all `warnings.warn(...)`, the `Warnings` bean that
+         carries the warnings of the commands to the error output (the log level is ERROR and hides log.warn, so no code calls log.warn).
+         The rule matches the method name only, and a guard around `Warnings.warn` would drop the warning. The guards are paired with the
+         levels by position, so `isWarnEnabled` leaves with `warn`. -->
+    <rule ref="rulesets/java/quickstart.xml/GuardLogStatement">
+        <properties>
+            <property name="logLevels" value="trace,debug,info,error,log,finest,finer,fine,warning,severe"/>
+            <property name="guardsMethods" value="isTraceEnabled,isDebugEnabled,isInfoEnabled,isErrorEnabled,isLoggable"/>
+        </properties>
+    </rule>
+
+    <!-- CloseResource with two more types that are not closed: 11 findings (1 in main, 10 in tests). A PrintStream or a PrintWriter in this
+         code is System.out put back after a capture, the error writer that a command line hands out, or a wrapper of a
+         ByteArrayOutputStream (a type the default list already allows); none owns a file, and closing System.out would be the bug.
+         The other types are the rule's own default. -->
+    <rule ref="rulesets/java/quickstart.xml/CloseResource">
+        <properties>
+            <property name="allowedResourceTypes" value="java.io.ByteArrayOutputStream,java.io.ByteArrayInputStream,java.io.StringWriter,java.io.CharArrayWriter,java.util.stream.Stream,java.util.stream.IntStream,java.util.stream.LongStream,java.util.stream.DoubleStream,java.io.PrintStream,java.io.PrintWriter"/>
+        </properties>
+    </rule>
+
+    <!-- CompareObjectsWithEquals with three types that are compared by identity on purpose: 4 findings in main. `ElementIndex` is the
+         index of a layer (two layers can be equal and still be two: DanglingReferences, KernelViewpointFactory), `Comparison` is the key
+         of a cache (the one comparison: KernelViewpointFactory) and `Comparison.Row` is a record, so two equal rows are still two rows
+         (GapReport tells a row from the others that look like it). Enums and classes are the rule's own default. -->
+    <rule ref="rulesets/java/quickstart.xml/CompareObjectsWithEquals">
+        <properties>
+            <property name="typesThatCompareByReference" value="java.lang.Enum,java.lang.Class,io.morin.archicode.workspace.ElementIndex,io.morin.archicode.viewpoint.kernel.Comparison,io.morin.archicode.viewpoint.kernel.Comparison$Row"/>
+        </properties>
+    </rule>
+</ruleset>

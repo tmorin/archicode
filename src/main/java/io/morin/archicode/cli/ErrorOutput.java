@@ -105,7 +105,7 @@ public class ErrorOutput implements CommandLine.IExecutionExceptionHandler, Comm
     static String message(Throwable failure) {
         String best = null;
         var bestRank = Integer.MAX_VALUE;
-        for (Throwable e = failure; e != null; e = e.getCause() == e ? null : e.getCause()) {
+        for (Throwable e = failure; e != null; e = e.equals(e.getCause()) ? null : e.getCause()) {
             val rank = rank(e);
             if (rank < bestRank) {
                 best = describe(e);

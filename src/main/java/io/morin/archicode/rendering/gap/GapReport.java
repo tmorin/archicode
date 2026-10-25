@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.core.util.Separators;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.Change;
@@ -16,6 +15,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -164,7 +164,7 @@ public class GapReport {
      * element had them before the split or not; empty for any other row.
      */
     private static List<String> ofSplit(Comparison.Row row, Set<String> splits) {
-        if (splits.isEmpty() || !row.thing().equals("relationship") || row.change() != Change.NEW) {
+        if (splits.isEmpty() || !"relationship".equals(row.thing()) || row.change() != Change.NEW) {
             return List.of();
         }
         val owners = new LinkedHashSet<String>();
@@ -585,7 +585,7 @@ public class GapReport {
 
     /** The thing: the reference of an element; `source -> destination (label)` for a relationship. */
     private static String reference(Comparison.Row row) {
-        if (!row.thing().equals("relationship")) {
+        if (!"relationship".equals(row.thing())) {
             return row.reference();
         }
         return row.reference() + " -> " + row.destination() + (row.label() == null ? "" : " (" + row.label() + ")");
@@ -615,7 +615,7 @@ public class GapReport {
         }
         if (row.change() != Change.CHANGED) {
             if (
-                row.thing().equals("element") &&
+                "element".equals(row.thing()) &&
                 row.name() != null &&
                 !row.name().isBlank() &&
                 !row.before().containsKey("name")
@@ -639,7 +639,7 @@ public class GapReport {
             for (val other : rows) {
                 if (
                     other != row &&
-                    other.thing().equals("element") &&
+                    "element".equals(other.thing()) &&
                     other.layer().equals(row.layer()) &&
                     other.replaces().stream().anyMatch(row.replaces()::contains)
                 ) {
@@ -691,13 +691,13 @@ public class GapReport {
         return (b == null ? "(none)" : quoted(b.asText())) + " -> " + (a == null ? "(none)" : quoted(a.asText()));
     }
 
-    private static TreeSet<String> union(TreeMap<String, String> a, TreeMap<String, String> b) {
+    private static Set<String> union(Map<String, String> a, Map<String, String> b) {
         val keys = new TreeSet<String>(a.keySet());
         keys.addAll(b.keySet());
         return keys;
     }
 
-    private static String setDifference(TreeSet<String> was, TreeSet<String> is) {
+    private static String setDifference(Set<String> was, Set<String> is) {
         val parts = new ArrayList<String>();
         is.stream()
             .filter(v -> !was.contains(v))

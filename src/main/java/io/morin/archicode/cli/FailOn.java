@@ -48,7 +48,7 @@ class FailOn {
                         known()
                     );
                 }
-                if (!word.equals(ANY) && !KernelStates.words().contains(word)) {
+                if (!ANY.equals(word) && !KernelStates.words().contains(word)) {
                     throw new ArchiCodeException("`--fail-on` does not know the state `%s`: use %s", word, known());
                 }
                 words.add(word);

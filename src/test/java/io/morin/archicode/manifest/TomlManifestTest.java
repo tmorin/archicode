@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -62,7 +63,7 @@ class TomlManifestTest {
         val found = new ArrayList<Path>();
         for (val root : ROOTS) {
             try (val files = Files.walk(Path.of(root))) {
-                files.filter(f -> f.getFileName().toString().equals(".archicode.yaml")).forEach(found::add);
+                files.filter(f -> ".archicode.yaml".equals(f.getFileName().toString())).forEach(found::add);
             }
         }
         return found.stream().sorted().toList();
@@ -71,7 +72,7 @@ class TomlManifestTest {
     /** A manifest has a header and a content; the workspace file and the other YAML files do not. */
     private boolean isManifest(Path file) {
         val name = file.getFileName().toString();
-        if (!(name.endsWith(".yaml") || name.endsWith(".yml")) || name.equals(".archicode.yaml")) {
+        if (!(name.endsWith(".yaml") || name.endsWith(".yml")) || ".archicode.yaml".equals(name)) {
             return false;
         }
         try {
@@ -175,7 +176,8 @@ class TomlManifestTest {
                 skipped.add(workspace.toString().replace('\\', '/')); // pinned by ShippedFilesTest
                 continue;
             }
-            val twin = twinOf(absolute, dir.resolve("twin-" + twins++));
+            val twin = twinOf(absolute, dir.resolve("twin-" + twins));
+            twins++;
             for (val plateau : plateaus) {
                 try {
                     assertEquals(
@@ -305,7 +307,8 @@ class TomlManifestTest {
         assertFalse(yamls.isEmpty(), "a manifest of kind " + kind);
         var compared = 0;
         for (val yaml : yamls) {
-            val toml = dir.resolve(kind.name() + "-" + compared++ + ".toml");
+            val toml = dir.resolve(kind.name() + "-" + compared + ".toml");
+            compared++;
             Files.writeString(toml, tomlOf(yaml));
             assertEquals(itemOf(yaml), itemOf(toml), yaml.toString());
         }
@@ -324,13 +327,13 @@ class TomlManifestTest {
             Files.createDirectories(folder.resolve("manifests"));
             Files.writeString(
                 folder.resolve("manifests/shop." + format),
-                format.equals("yaml") ? SHOP_YAML : tomlOfText(SHOP_YAML)
+                "yaml".equals(format) ? SHOP_YAML : tomlOfText(SHOP_YAML)
             );
             for (val kind : List.of(ManifestKind.VIEW, ManifestKind.STORY)) {
                 val text = kind == ManifestKind.VIEW ? VIEW_SAMPLE : STORY_SAMPLE;
                 Files.writeString(
-                    folder.resolve("manifests/" + kind.name().toLowerCase() + "." + format),
-                    format.equals("yaml") ? text : tomlOfText(text)
+                    folder.resolve("manifests/" + kind.name().toLowerCase(Locale.ROOT) + "." + format),
+                    "yaml".equals(format) ? text : tomlOfText(text)
                 );
             }
             models.add(modelOf(workspaceFactory.create(folder.resolve(".archicode.yaml"))));
@@ -416,7 +419,7 @@ class TomlManifestTest {
         for (val format : List.of("yaml", "toml")) {
             val yaml =
                 "header:\n  kind: archicode.morin.io/system\n  version: \"1\"\ncontent:\n  id: s\n  colour: red\n";
-            Files.writeString(dir.resolve("manifests/s." + format), format.equals("yaml") ? yaml : tomlOfText(yaml));
+            Files.writeString(dir.resolve("manifests/s." + format), "yaml".equals(format) ? yaml : tomlOfText(yaml));
             val message = assertThrows(ArchiCodeException.class, () ->
                 workspaceFactory.create(dir.resolve(".archicode.yaml"))
             ).getMessage();

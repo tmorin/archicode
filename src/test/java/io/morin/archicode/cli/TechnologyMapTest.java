@@ -8,8 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.Item;
-import io.morin.archicode.viewpoint.Link;
-import io.morin.archicode.viewpoint.Viewpoint;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;

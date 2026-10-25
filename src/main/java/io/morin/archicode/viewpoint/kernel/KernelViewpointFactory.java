@@ -218,7 +218,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
     public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create the {} viewpoint of {}", viewpoint, view);
 
-        val map = viewpoint.equals(MAP);
+        val map = MAP.equals(viewpoint);
         // the map has no focal element: every element of the layer is in play, `pinned`, `hidden` and `opened` say which
         val focal = map
             ? ""
@@ -392,7 +392,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
             if (element.layer().equals(mainLayer)) {
                 identities.put(element.reference(), element);
             }
-            if (element.layer().equals("application")) {
+            if ("application".equals(element.layer())) {
                 identities.put("application\0" + element.reference(), element);
             }
         }
@@ -551,7 +551,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 return candidate;
             }
         }
-        if (rel.path("change").asText("none").equals("removed")) {
+        if ("removed".equals(rel.path("change").asText("none"))) {
             // a relationship only the base had: the elements of the target do not declare it, the comparison knows it
             return Relationship.builder()
                 .destination(destination)

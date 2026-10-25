@@ -15,7 +15,7 @@ class GenerateDesignExampleTest extends AbstractGenerateViews {
 
     @Test
     @SneakyThrows
-    void design_example_step_1() {
+    void designExampleStep1() {
         val wksPath = Path.of("src/doc/examples/design_example_step_1/workspace_relationship.yaml");
         val viewpointNames = Set.of("overview");
         val viewIds = Set.<String>of();
@@ -24,7 +24,7 @@ class GenerateDesignExampleTest extends AbstractGenerateViews {
 
     @Test
     @SneakyThrows
-    void design_example_step_2() {
+    void designExampleStep2() {
         val wksPath = Path.of("src/doc/examples/design_example_step_2/workspace_refined.yaml");
         val viewpointNames = Set.of("overview", "detailed");
         val viewIds = Set.<String>of();
@@ -33,7 +33,7 @@ class GenerateDesignExampleTest extends AbstractGenerateViews {
 
     @Test
     @SneakyThrows
-    void design_example_step_3() {
+    void designExampleStep3() {
         val wksPath = Path.of("src/doc/examples/design_example_step_3/workspace_refined.yaml");
         val viewpointNames = Set.<String>of();
         val viewIds = Set.<String>of();

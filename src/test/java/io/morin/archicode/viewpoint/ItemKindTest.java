@@ -41,30 +41,37 @@ class ItemKindTest {
     @Test
     void shouldRefuseAnElementThatIsOfNoKnownKind() {
         val stranger = new Element() {
+            @Override
             public String getId() {
                 return "x";
             }
 
+            @Override
             public String getName() {
                 return null;
             }
 
+            @Override
             public String getDescription() {
                 return null;
             }
 
+            @Override
             public Set<String> getQualifiers() {
                 return Set.of();
             }
 
+            @Override
             public Map<String, String> getTags() {
                 return Map.of();
             }
 
+            @Override
             public Set<Relationship> getRelationships() {
                 return Set.of();
             }
 
+            @Override
             public Set<String> getReplaces() {
                 return Set.of();
             }

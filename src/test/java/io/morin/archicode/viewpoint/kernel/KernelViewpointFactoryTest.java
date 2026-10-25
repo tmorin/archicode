@@ -133,7 +133,7 @@ class KernelViewpointFactoryTest {
                 .getItems()
                 .stream()
                 .flatMap(Item::stream)
-                .filter(i -> i.getReference().equals("ref"))
+                .filter(i -> "ref".equals(i.getReference()))
                 .count()
         );
     }

@@ -49,7 +49,8 @@ public class DanglingReferences {
                 val file = files.get(reference);
                 var position = 0;
                 for (val relationship : orEmpty(element.getRelationships())) {
-                    val at = "relationships[" + position++ + "].destination";
+                    val at = "relationships[" + position + "].destination";
+                    position++;
                     if (layer.searchElement(relationship.getDestination()).isEmpty()) {
                         problems.add(
                             problem(reference, relationship.getDestination(), "has a relationship towards", file, at)
@@ -59,7 +60,8 @@ public class DanglingReferences {
                 position = 0;
                 if (element instanceof Environment environment) {
                     for (val used : orEmpty(environment.getUses())) {
-                        val at = "uses[" + position++ + "]";
+                        val at = "uses[" + position + "]";
+                        position++;
                         if (layer.searchElement(used).isEmpty()) {
                             problems.add(problem(reference, used, "uses", file, at));
                         }
@@ -68,7 +70,8 @@ public class DanglingReferences {
                 position = 0;
                 if (element instanceof Node node) {
                     for (val hosted : orEmpty(node.getApplications())) {
-                        val at = "applications[" + position++ + "]";
+                        val at = "applications[" + position + "]";
+                        position++;
                         if (application.searchElement(hosted).isEmpty()) {
                             problems.add(problem(reference, hosted, "hosts", file, at));
                         }

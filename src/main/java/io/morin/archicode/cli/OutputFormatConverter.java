@@ -1,11 +1,12 @@
 package io.morin.archicode.cli;
 
+import java.util.Locale;
 import picocli.CommandLine;
 
 public class OutputFormatConverter implements CommandLine.ITypeConverter<OutputFormat> {
 
     @Override
     public OutputFormat convert(String value) {
-        return OutputFormat.valueOf(value.toUpperCase());
+        return OutputFormat.valueOf(value.toUpperCase(Locale.ROOT));
     }
 }

@@ -2,6 +2,7 @@ package io.morin.archicode.workspace;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,7 +47,7 @@ class UnionWorkspaceTest {
             shop
                 .getElements()
                 .stream()
-                .anyMatch(e -> e.getId().equals("legacy"))
+                .anyMatch(e -> "legacy".equals(e.getId()))
         );
         assertEquals("shop", union.appIndex.getReferenceByElement(union.appIndex.getElementByReference("shop")));
         // the plateau and its baseline are known, for the legend
@@ -59,15 +60,15 @@ class UnionWorkspaceTest {
             ((Parent<?>) target.appIndex.getElementByReference("shop"))
                 .getElements()
                 .stream()
-                .anyMatch(e -> e.getId().equals("legacy"))
+                .anyMatch(e -> "legacy".equals(e.getId()))
         );
         assertTrue(base.appIndex.searchElement("shop.legacy").isPresent());
         // the union is made from the plateau already loaded, and is a new tree each time: neither the target nor an earlier union
         // sees what a later one adds, and nothing was parsed again
         val again = workspaceFactory.createUnion(target, base, comparison);
-        assertFalse(again == union);
-        assertFalse(again.getApplication() == union.getApplication());
-        assertFalse(again.getApplication() == target.getApplication());
+        assertNotSame(union, again);
+        assertNotSame(union.getApplication(), again.getApplication());
+        assertNotSame(target.getApplication(), again.getApplication());
         assertEquals(
             union.appIndex.listAllElementReferences(e -> true),
             again.appIndex.listAllElementReferences(e -> true)
@@ -78,7 +79,7 @@ class UnionWorkspaceTest {
             ((Parent<?>) again.appIndex.getElementByReference("shop"))
                 .getElements()
                 .stream()
-                .filter(e -> e.getId().equals("legacy"))
+                .filter(e -> "legacy".equals(e.getId()))
                 .count()
         );
     }

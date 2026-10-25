@@ -109,7 +109,7 @@ public record Removal(
     }
 
     private static ElementIndex indexOf(Workspace workspace, String layer) {
-        return layer.equals("technology") ? workspace.techIndex : workspace.appIndex;
+        return "technology".equals(layer) ? workspace.techIndex : workspace.appIndex;
     }
 
     /** Whether the element of {@code base} held the entry that was taken out. */

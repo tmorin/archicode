@@ -27,7 +27,7 @@ class Width {
             if (columns > 0) {
                 return columns;
             }
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException ignored) {
             // the same sentence as for a number that is not above zero
         }
         throw new ArchiCodeException(

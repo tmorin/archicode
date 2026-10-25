@@ -1,6 +1,7 @@
 package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
@@ -160,7 +161,7 @@ class DiffDetailsTest {
         assertEquals("eu", change.at("/after/tags/zone").asText());
         assertEquals(0, change.at("/before/qualifiers").size());
         assertEquals("[\"x\",\"y\"]", change.at("/after/qualifiers").toString());
-        assertEquals(true, change.at("/before/description").isNull());
+        assertTrue(change.at("/before/description").isNull());
     }
 
     @Test

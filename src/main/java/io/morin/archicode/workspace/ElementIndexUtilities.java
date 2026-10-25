@@ -19,7 +19,9 @@ public class ElementIndexUtilities {
                 val elementReference = candidate.getReference();
                 val element = candidate.getElement();
 
-                log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
+                if (log.isDebugEnabled()) {
+                    log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
+                }
                 index.elementByReferenceIndex.put(elementReference, element);
                 index.referenceByElementIndex.put(element, elementReference);
             },
@@ -27,7 +29,9 @@ public class ElementIndexUtilities {
                 val elementReference = candidate.getReference();
                 val element = candidate.getElement();
 
-                log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
+                if (log.isDebugEnabled()) {
+                    log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
+                }
                 index.elementByReferenceIndex.put(elementReference, element);
                 index.referenceByElementIndex.put(element, elementReference);
             }
@@ -46,14 +50,18 @@ public class ElementIndexUtilities {
                 val parentReference = index.referenceByElementIndex.get(p);
                 val elementReference = String.format("%s.%s", parentReference, element.getId());
 
-                log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
+                if (log.isDebugEnabled()) {
+                    log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
+                }
                 index.elementByReferenceIndex.put(elementReference, element);
                 index.referenceByElementIndex.put(element, elementReference);
             },
             () -> {
                 val elementReference = element.getId();
 
-                log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
+                if (log.isDebugEnabled()) {
+                    log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
+                }
                 index.elementByReferenceIndex.put(elementReference, element);
                 index.referenceByElementIndex.put(element, elementReference);
             }

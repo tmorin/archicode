@@ -167,7 +167,7 @@ class PlateauComparerTest {
         val a = comparison
             .getElements()
             .stream()
-            .filter(e -> e.reference().equals("sys.a"))
+            .filter(e -> "sys.a".equals(e.reference()))
             .findFirst()
             .orElseThrow();
         Assertions.assertEquals(List.of("relationships-added", "relationships-removed"), a.natures());
@@ -210,7 +210,7 @@ class PlateauComparerTest {
         val row = comparison
             .getChanges()
             .stream()
-            .filter(r -> r.reference().equals("sys.a") && r.thing().equals("element"))
+            .filter(r -> "sys.a".equals(r.reference()) && "element".equals(r.thing()))
             .findFirst()
             .orElseThrow();
         Assertions.assertEquals(Change.CHANGED, row.change());
@@ -265,7 +265,7 @@ class PlateauComparerTest {
         val host = comparison
             .getChanges()
             .stream()
-            .filter(r -> r.layer().equals("technology") && r.reference().equals("dev.host"))
+            .filter(r -> "technology".equals(r.layer()) && "dev.host".equals(r.reference()))
             .findFirst()
             .orElseThrow();
         Assertions.assertEquals(Change.CHANGED, host.change());
@@ -400,8 +400,8 @@ class PlateauComparerTest {
             viewpoint
                 .getLinks()
                 .stream()
-                .filter(l -> l.getTo().getReference().equals("ext.x"))
-                .filter(l -> l.getFrom().getReference().equals("sys.a"))
+                .filter(l -> "ext.x".equals(l.getTo().getReference()))
+                .filter(l -> "sys.a".equals(l.getFrom().getReference()))
                 .count()
         );
     }
@@ -457,7 +457,7 @@ class PlateauComparerTest {
             comparison
                 .getChanges()
                 .stream()
-                .noneMatch(r -> r.reference().equals("shop.report")),
+                .noneMatch(r -> "shop.report".equals(r.reference())),
             "and it has no row"
         );
         Assertions.assertEquals(2, comparison.getCounts().elements().removed(), "the chart and the mailer");
@@ -469,7 +469,7 @@ class PlateauComparerTest {
         val row = comparison
             .getChanges()
             .stream()
-            .filter(r -> r.thing().equals("element") && r.reference().equals("stock.place"))
+            .filter(r -> "element".equals(r.thing()) && "stock.place".equals(r.reference()))
             .findFirst()
             .orElseThrow();
         Assertions.assertEquals(Change.MERGED, row.change());
@@ -493,7 +493,7 @@ class PlateauComparerTest {
             comparison
                 .getChanges()
                 .stream()
-                .noneMatch(r -> r.thing().equals("relationship") || r.reference().equals("prod.cluster")),
+                .noneMatch(r -> "relationship".equals(r.thing()) || "prod.cluster".equals(r.reference())),
             "the node that hosted the till hosts the one that replaced it"
         );
     }
@@ -602,7 +602,7 @@ class PlateauComparerTest {
         val says = comparison
             .getElements()
             .stream()
-            .filter(e -> e.layer().equals("application"))
+            .filter(e -> "application".equals(e.layer()))
             .collect(Collectors.toMap(Comparison.ElementChange::reference, Function.identity()));
         // what the union says: the boxes above a change, whatever their depth, and no other
         Assertions.assertTrue(says.get("shop").containsChanges());

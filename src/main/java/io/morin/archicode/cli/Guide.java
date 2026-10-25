@@ -191,7 +191,7 @@ public class Guide {
             if (!aliases.isEmpty()) {
                 out.append(" (also `").append(String.join("`, `", aliases)).append("`)");
             }
-            out.append(": ").append(typeOf(node, header && key.equals("kind")));
+            out.append(": ").append(typeOf(node, header && "kind".equals(key)));
             val inner = objectOf(node);
             if (inner != null && inner.has("properties")) {
                 val id = inner.path("id").asText("");

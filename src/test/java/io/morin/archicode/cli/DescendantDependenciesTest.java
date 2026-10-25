@@ -72,6 +72,6 @@ class DescendantDependenciesTest {
         val detailed = links(draw("detailed", "prod.dc"));
         assertTrue(detailed.stream().anyMatch(l -> l.startsWith("prod.dc.app-vm -> partners")), detailed.toString());
         val itemsOfTheOverview = draw("overview", "prod").getItems().stream().flatMap(Item::stream).toList();
-        assertTrue(itemsOfTheOverview.stream().anyMatch(i -> i.getReference().equals("partners")));
+        assertTrue(itemsOfTheOverview.stream().anyMatch(i -> "partners".equals(i.getReference())));
     }
 }

@@ -57,7 +57,7 @@ class PlateauComparisonTest {
         try (val files = Files.walk(fixture)) {
             for (val source : files.toList()) {
                 if (
-                    source.getFileName().toString().equals("expected-counts.json") ||
+                    "expected-counts.json".equals(source.getFileName().toString()) ||
                     (source.startsWith(REPLACES) && fixture == FIXTURE)
                 ) {
                     continue; // the contract the editor's tests read too, not a file of the workspace; and a workspace of its own
@@ -579,7 +579,7 @@ class PlateauComparisonTest {
             assertEquals(want.get("reference"), got.get("reference"), "row " + i);
             assertEquals(want.get("change"), got.get("change"), "row " + i);
             assertEquals(want.get("natures"), got.get("natures"), "row " + i);
-            if (want.get("thing").asText().equals("relationship")) {
+            if ("relationship".equals(want.get("thing").asText())) {
                 assertEquals(want.get("destination"), got.get("destination"), "row " + i);
                 assertEquals(want.get("label").asText(), got.path("label").asText(""), "row " + i);
             }
@@ -629,7 +629,7 @@ class PlateauComparisonTest {
 
     private static JsonNode rowOf(JsonNode json, String reference) {
         for (val row : json.get("changes")) {
-            if (row.get("thing").asText().equals("element") && row.get("reference").asText().equals(reference)) {
+            if ("element".equals(row.get("thing").asText()) && row.get("reference").asText().equals(reference)) {
                 return row;
             }
         }
@@ -1186,7 +1186,7 @@ class PlateauComparisonTest {
         assertEquals(5, json.at("/counts/relationships/new").asInt());
         val owners = new java.util.TreeMap<String, String>();
         for (val row : json.get("changes")) {
-            if (row.get("thing").asText().equals("relationship")) {
+            if ("relationship".equals(row.get("thing").asText())) {
                 owners.put(
                     row.get("reference").asText() + " -> " + row.get("destination").asText(),
                     row.has("of_split") ? row.get("of_split").toString() : "-"

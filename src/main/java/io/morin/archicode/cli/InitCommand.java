@@ -121,7 +121,7 @@ public class InitCommand implements Runnable {
             return ".gitignore (" + GITIGNORE_LINE + ")";
         }
         val text = Files.readString(file, StandardCharsets.UTF_8);
-        if (text.lines().anyMatch(line -> line.strip().equals(GITIGNORE_LINE))) {
+        if (text.lines().anyMatch(line -> GITIGNORE_LINE.equals(line.strip()))) {
             return ".gitignore (already has " + GITIGNORE_LINE + ")";
         }
         val separator = text.isEmpty() || text.endsWith("\n") ? "" : "\n";
@@ -137,7 +137,7 @@ public class InitCommand implements Runnable {
     private static void deleteQuietly(Path file) {
         try {
             Files.deleteIfExists(file);
-        } catch (IOException e) {
+        } catch (IOException ignored) {
             // the error that stopped the run is the one the author reads
         }
     }

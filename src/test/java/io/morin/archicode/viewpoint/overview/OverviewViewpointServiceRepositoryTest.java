@@ -77,7 +77,7 @@ class OverviewViewpointServiceRepositoryTest {
                 .getLinks()
                 .stream()
                 .filter(l -> l.getFrom().getReference().equals(viewReference))
-                .anyMatch(l -> l.getTo().getReference().equals("sol_a.sys_ab")),
+                .anyMatch(l -> "sol_a.sys_ab".equals(l.getTo().getReference())),
             "sol_a.sys_aa.con_aaa -> sol_a.sys_ab"
         );
         assertTrue(
@@ -85,14 +85,14 @@ class OverviewViewpointServiceRepositoryTest {
                 .getLinks()
                 .stream()
                 .filter(l -> l.getFrom().getReference().equals(viewReference))
-                .anyMatch(l -> l.getTo().getReference().equals("sol_a.sys_aa.con_aab")),
+                .anyMatch(l -> "sol_a.sys_aa.con_aab".equals(l.getTo().getReference())),
             "sol_a.sys_aa.con_aaa -> sol_a.sys_aa.con_aab"
         );
         assertTrue(
             context
                 .getLinks()
                 .stream()
-                .filter(l -> l.getFrom().getReference().equals("sol_a.sys_ab"))
+                .filter(l -> "sol_a.sys_ab".equals(l.getFrom().getReference()))
                 .anyMatch(l -> l.getTo().getReference().equals(viewReference)),
             "sol_a.sys_ab -> sol_a.sys_aa.con_aaa"
         );
@@ -100,7 +100,7 @@ class OverviewViewpointServiceRepositoryTest {
             context
                 .getLinks()
                 .stream()
-                .filter(l -> l.getFrom().getReference().equals("sol_a.sys_aa.con_aab"))
+                .filter(l -> "sol_a.sys_aa.con_aab".equals(l.getFrom().getReference()))
                 .anyMatch(l -> l.getTo().getReference().equals(viewReference)),
             "sol_a.sys_aa.con_aab -> sol_a.sys_aa.con_aaa"
         );
@@ -119,7 +119,7 @@ class OverviewViewpointServiceRepositoryTest {
                 .getLinks()
                 .stream()
                 .filter(l -> l.getFrom().getReference().equals(viewReference))
-                .anyMatch(l -> l.getTo().getReference().equals("sol_a.sys_ab")),
+                .anyMatch(l -> "sol_a.sys_ab".equals(l.getTo().getReference())),
             "sol_a.sys_aa -> sol_a.sys_ab"
         );
     }

@@ -17,7 +17,6 @@ import io.morin.archicode.workspace.StateTags;
 import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,7 +44,6 @@ import picocli.CommandLine;
  * a step names is a warning and that facet's folder is skipped.
  */
 @Slf4j
-@SuppressWarnings("java:S6813")
 @CommandLine.Command(
     name = "generate",
     description = {
@@ -55,6 +53,8 @@ import picocli.CommandLine;
     }
 )
 public class GenerateStoriesCommand implements Runnable {
+
+    // Picocli sets the options on fields, so the services are injected into fields too (the command has no constructor)
 
     @CommandLine.ParentCommand
     StoriesGroup storiesGroup;

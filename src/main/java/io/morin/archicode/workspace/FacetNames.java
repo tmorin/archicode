@@ -38,10 +38,10 @@ public class FacetNames {
         if (name.isEmpty()) {
             return Optional.of("is empty");
         }
-        if (name.equals(".")) {
+        if (".".equals(name)) {
             return Optional.of("is `.`, the folder itself");
         }
-        if (name.equals("..")) {
+        if ("..".equals(name)) {
             return Optional.of("is `..`, the folder above");
         }
         for (int i = 0; i < name.length(); i++) {

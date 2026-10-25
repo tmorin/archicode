@@ -17,7 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import lombok.SneakyThrows;
 import lombok.val;
@@ -109,7 +109,7 @@ class ManifestSchemaTest {
 
     /** The keys the reader knows for a class that refuses unknown keys. */
     @SneakyThrows
-    private static TreeSet<String> known(Class<?> type, String kind) {
+    private static Set<String> known(Class<?> type, String kind) {
         val mapper = new MapperFactory().create(MapperFormat.JSON);
         val json = new java.util.LinkedHashMap<String, Object>();
         if (kind != null) {
@@ -122,12 +122,12 @@ class ManifestSchemaTest {
         } catch (UnrecognizedPropertyException e) {
             val out = new TreeSet<String>();
             e.getKnownPropertyIds().forEach(id -> out.add(String.valueOf(id)));
-            out.removeIf(id -> id.startsWith("$") || id.equals("kind"));
+            out.removeIf(id -> id.startsWith("$") || "kind".equals(id));
             return out;
         }
     }
 
-    private static TreeSet<String> keys(JsonNode object) {
+    private static Set<String> keys(JsonNode object) {
         val out = new TreeSet<String>();
         object.get("properties").fieldNames().forEachRemaining(out::add);
         out.remove("kind");
@@ -161,7 +161,7 @@ class ManifestSchemaTest {
         assertEquals(known(Patch.Where.class, null), keys(patch.at("/properties/where")));
     }
 
-    private static TreeSet<String> difference(TreeSet<String> a, TreeSet<String> b) {
+    private static Set<String> difference(Set<String> a, Set<String> b) {
         val out = new TreeSet<>(a);
         out.removeAll(b);
         return out;

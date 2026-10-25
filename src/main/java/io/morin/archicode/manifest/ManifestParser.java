@@ -120,10 +120,10 @@ public class ManifestParser {
             // the plateau of the manifest: the one its header names, else baseline (a manifest of kind plateau names its own)
             val written = resource.getHeader().getPlateau();
             val plateau = written == null ? Plateau.BASELINE : written;
-            if (written != null && (item instanceof View || item instanceof Story)) {
-                // a view and a story exist whatever plateau is drawn: the key is accepted, means nothing and is not told (wave 016,
-                // run 0107, decision of the author on issue #29), and it names no plateau: a plateau that only a story names is none
-            } else if (written != null && !(item instanceof Plateau)) {
+            // a view and a story exist whatever plateau is drawn: the key is accepted, means nothing and is not told (wave 016,
+            // run 0107, decision of the author on issue #29), and it names no plateau: a plateau that only a story names is none
+            val belongsToNoPlateau = item instanceof View || item instanceof Story;
+            if (written != null && !belongsToNoPlateau && !(item instanceof Plateau)) {
                 plateauHeaders.computeIfAbsent(written, id -> new ArrayList<>()).add(source);
                 if (layeredBy == null) {
                     layeredBy = "`" + source + "` says `plateau: " + written + "` in its header";
@@ -306,9 +306,9 @@ public class ManifestParser {
         }
         if (where.isEmpty()) {
             return Optional.of(
-                key.equals("content")
+                "content".equals(key)
                     ? "Missing content.id"
-                    : key.equals("header")
+                    : "header".equals(key)
                       ? "Missing header.kind"
                       : "Missing " + key
             );
@@ -356,13 +356,13 @@ public class ManifestParser {
      * files, in an order that does not depend on the order the file system lists them in.
      */
     private static List<String> duplicates(Map<String, Map<String, Map<String, List<String>>>> declarations) {
-        val messages = new TreeMap<String, TreeSet<String>>(); // by reference, then by message
+        val messages = new TreeMap<String, Set<String>>(); // by reference, then by message
         declarations.values().forEach(plateau ->
             plateau.forEach((namespace, ids) ->
                 ids.forEach((id, sources) -> {
                     if (sources.size() > 1) {
                         // an element has a reference, in a layer; a view and a story have an id of their own
-                        val noun = namespace.equals("view") || namespace.equals("story") ? namespace : "reference";
+                        val noun = "view".equals(namespace) || "story".equals(namespace) ? namespace : "reference";
                         messages.computeIfAbsent(id, r -> new TreeSet<>()).add(duplicateMessage(noun, id, sources));
                     }
                 })

@@ -4,6 +4,7 @@ import io.morin.archicode.viewpoint.Viewpoint;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -26,7 +27,7 @@ public class Renderer {
         val outputViewpointPath = Paths.get(
             outputDirPath.toString(),
             viewRendererService.getDirectory(),
-            viewpoint.getView().getLayer().name().toLowerCase()
+            viewpoint.getView().getLayer().name().toLowerCase(Locale.ROOT)
         );
 
         if (outputViewpointPath.toFile().mkdirs()) {

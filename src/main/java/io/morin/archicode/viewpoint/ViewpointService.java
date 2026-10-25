@@ -34,5 +34,7 @@ public interface ViewpointService {
         return Optional.empty();
     }
 
-    default void setMapperFactory(@NonNull MapperFactory mapperFactory) {}
+    default void setMapperFactory(@NonNull MapperFactory mapperFactory) {
+        // most viewpoints read no document: nothing to do
+    }
 }

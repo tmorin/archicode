@@ -1,6 +1,7 @@
 package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -160,8 +161,8 @@ class FacetOnAComparisonTest {
         assertTrue(faceted.contains(REMOVED_LINK), faceted);
         assertEquals(whole, faceted, "a facet that removes nothing changes nothing");
         // the plateau itself has lost the relationship
-        assertTrue(
-            !Files.readString(dir.resolve("views-later/plantuml/application/a-overview.puml")).contains("calls")
+        assertFalse(
+            Files.readString(dir.resolve("views-later/plantuml/application/a-overview.puml")).contains("calls")
         );
     }
 
