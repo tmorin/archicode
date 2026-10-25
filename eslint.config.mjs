@@ -41,6 +41,17 @@ export default [
     rules: base
   },
   {
+    // the end-to-end suite and its config: CommonJS run by Playwright's test runner. The browser globals are for the
+    // few callbacks a test hands to the page (page.evaluate); the code of the test itself runs in Node.
+    files: ['src/test/e2e/**/*.js', 'playwright.config.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      ecmaVersion: 'latest',
+      globals: { ...globals.node, ...globals.browser }
+    },
+    rules: base
+  },
+  {
     // the generators of the fixtures: ES modules
     files: ['src/test/resources/**/*.mjs'],
     languageOptions: { sourceType: 'module', ecmaVersion: 'latest', globals: { ...globals.node } },

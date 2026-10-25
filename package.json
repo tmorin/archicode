@@ -1,10 +1,11 @@
 {
   "private": true,
   "scripts": {
-    "format": "prettier --write \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" eslint.config.mjs",
-    "format:check": "prettier --check \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" eslint.config.mjs",
-    "lint": "node scripts/extract-editor-script.mjs && eslint --max-warnings 0 eslint.config.mjs scripts src/test target/eslint-editor",
+    "format": "prettier --write \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/e2e/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" eslint.config.mjs playwright.config.js",
+    "format:check": "prettier --check \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/e2e/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" eslint.config.mjs playwright.config.js",
+    "lint": "node scripts/extract-editor-script.mjs && eslint --max-warnings 0 eslint.config.mjs playwright.config.js scripts src/test target/eslint-editor",
     "test:unit": "node --test \"src/test/javascript/**/*.test.js\"",
+    "test:e2e": "playwright test",
     "test:coverage": "node scripts/editor-coverage.mjs",
     "test:timing": "ARCHICODE_TIMING=1 node --test --test-name-pattern=\"#125: the first\" src/test/javascript/viewpoint-kernel/performance-budget.test.js"
   },
@@ -14,6 +15,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
     "eslint": "10.12.0",
     "globals": "17.12.0"
   }
