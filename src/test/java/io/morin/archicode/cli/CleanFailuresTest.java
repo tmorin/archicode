@@ -14,6 +14,7 @@ import io.morin.archicode.ArchiCodeException;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
@@ -324,6 +325,56 @@ class CleanFailuresTest {
             "a sentence",
             ErrorOutput.message(new IOException("wrapped", new ArchiCodeException("a sentence", new Object[0])))
         );
+    }
+
+    @Test
+    void aFileNotFoundExceptionIsToldLikeTheOtherFailuresOfAFile() {
+        assertEquals(
+            "`/x/y.json` does not exist",
+            ErrorOutput.message(new FileNotFoundException("/x/y.json (No such file or directory)"))
+        );
+        assertEquals(
+            "`/x` cannot be accessed: permission denied",
+            ErrorOutput.message(new FileNotFoundException("/x (Permission denied)"))
+        );
+        assertEquals(
+            "`/x` cannot be read or written: Is a directory",
+            ErrorOutput.message(new FileNotFoundException("/x (Is a directory)"))
+        );
+        // wrapped, and a path that holds parentheses
+        assertEquals(
+            "`/a (b)/c` does not exist",
+            ErrorOutput.message(
+                new IllegalStateException("wrapped", new FileNotFoundException("/a (b)/c (No such file or directory)"))
+            )
+        );
+        // one that does not say <path> (<reason>) says nothing the author can act on
+        assertNull(ErrorOutput.message(new FileNotFoundException("no parenthesis")));
+        assertNull(ErrorOutput.message(new FileNotFoundException()));
+    }
+
+    @Test
+    @SneakyThrows
+    void viewsGenerateSaysWhichRenderingEnginesThereAre() {
+        val init = run("init", dir.toString());
+        assertEquals(0, init.exit(), init.err());
+        val workspace = dir.resolve(".archicode.yaml").toString();
+        for (val option : List.of("-e", "--engine")) {
+            val result = run("-w", workspace, "views", "generate", option, "nope");
+            assertOneLine(result, "error: unknown rendering engine `nope` (known: plantuml)");
+        }
+    }
+
+    @Test
+    @SneakyThrows
+    void viewsGenerateSaysWhichPropertiesFileDoesNotExist() {
+        val init = run("init", dir.toString());
+        assertEquals(0, init.exit(), init.err());
+        val workspace = dir.resolve(".archicode.yaml").toString();
+        for (val option : List.of("-p", "--properties-path")) {
+            val result = run("-w", workspace, "views", "generate", option, "missing.json");
+            assertOneLine(result, "error: `" + dir.toAbsolutePath().resolve("missing.json") + "` does not exist");
+        }
     }
 
     @Test
