@@ -316,7 +316,7 @@ wave_manifest:
       slug: e2e-framework-choice
       phase: P4
       depends_on: [W-6]
-      run: null
+      run: 0174
       delegation: standard
       likely_paths:
         - 'docs/wav/wav-023-fixes-and-tooling/run/**'
