@@ -1,0 +1,5 @@
+# Commits that only reformat code, so that `git blame` skips them.
+# Use it with:  git config blame.ignoreRevsFile .git-blame-ignore-revs   (GitHub reads this file by itself)
+
+# style: Prettier formats the JavaScript tests and the Brightcart generators (wave 023, run W-5, #160): 121 files, formatter output only
+56428a75e95836ad1039c10965b54ef66e3e5b03
