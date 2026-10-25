@@ -138,6 +138,37 @@ jobs:
           path: target/jacoco-report
           if-no-files-found: warn
           retention-days: 7
+      - name: "Find the Playwright version"
+        # the version `npm ci` installed (package-lock.json pins it): the key of the browser cache below
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: "Cache the Playwright browsers"
+        # the browsers of one Playwright version are fixed builds (Chromium, Firefox: about 1 GB); a new version of the
+        # library is a new key
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}-chromium-firefox
+      - name: "Install the browsers of the end-to-end tests"
+        # the browsers of the pinned version (nothing is downloaded when the cache hit) and the system libraries they
+        # need (apt, always); no server of ours, no token
+        run: npx playwright install --with-deps chromium firefox
+      - name: "Run the end-to-end tests"
+        # `npm run test:e2e`: a real browser (Chromium, then Firefox) against `archicode editor serve` on the jar that
+        # `./mvnw verify` has just built (target/quarkus-app), on a copy of a shipped example per test; one worker and
+        # no retry (playwright.config.js). Run the same command to see them; src/test/e2e
+        id: e2e
+        run: npm run test:e2e
+      - name: "Keep the end-to-end results"
+        # the HTML report and, for a test that failed, its trace, screenshot, video and page snapshot
+        # (target/e2e/test-results/<test>/): only when the tests failed. 7 days.
+        if: ${{ failure() && steps.e2e.outcome == 'failure' }}
+        uses: "actions/upload-artifact@v7.0.2"
+        with:
+          name: e2e-results
+          path: target/e2e
+          if-no-files-found: warn
+          retention-days: 7
       - name: "Publish snapshot artifacts"
         if: ${{ github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore(release)') }}
         run: |

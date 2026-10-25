@@ -147,6 +147,7 @@ wave_manifest:
           - 'the e2e suite (W-13) runs from one command (`npm run test:e2e`) against the packaged application started as `archicode editor serve` on a free port, in headless mode, on the machine and in the `Build` job of CI; it covers the flows listed in Q8 with assertions on what the page shows and on the files it writes; it is run three times in a row with no failure (flakiness check) and fails on a seeded break of the page (V-E)'
           - 'the unit/integration tests and the e2e tests are two named suites: `npm run test:unit` (`node --test`, as today) and `npm run test:e2e`; CLAUDE.md "Build & Test" names both; the e2e files are formatted by Prettier and pass ESLint (W-5, W-6); the figure of W-10 is that of the unit/integration suite, e2e adds no line to it'
           - '`./mvnw -o verify -DskipITs=false`, `cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml`, `src/main/rust/viewpoint-kernel/embed.sh --check`, `node --test "src/test/javascript/**/*.test.js"`, `npm run test:e2e`, `npm run format:check` and `npm run lint` pass'
+          - 'the Build job of CI is split into jobs that run in parallel (W-14), every check of the old job runs in exactly one of them with the same command, a final job named `Build` needs them all and carries the publishing steps with their conditions, and the CI run of the draft pull request shows the duration of each job and a critical path shorter than the sum of the parts (the figures are in the log)'
     - id: P5
       name: Java analysis, if the author adopts it
       gate:
@@ -325,7 +326,7 @@ wave_manifest:
       slug: e2e-suite
       phase: P4
       depends_on: [W-12, W-5]
-      run: null
+      run: 0175
       delegation: standard
       likely_paths:
         - 'package.json'
@@ -337,6 +338,17 @@ wave_manifest:
         - '.github/workflows/ci-build.yaml'
         - 'CLAUDE.md'
       focus: 'an end-to-end suite in the chosen framework runs the flows of Q8 against the served application, in CI, without flaking (Q8, T11)'
+    - id: W-14
+      slug: ci-parallel-jobs
+      phase: P4
+      depends_on: [W-13]
+      run: 0176
+      delegation: standard
+      likely_paths:
+        - '.github/workflows/ci-build.yaml'
+        - 'CLAUDE.md'
+        - 'docs/wav/wav-023-fixes-and-tooling/run/**'
+      focus: 'the Build job is split into parallel jobs (Java, Page, Kernel, E2E) and a last job named Build publishes only when every part passed, so that the critical path of CI is the slowest part and not the sum (the author, 2026-10-25)'
 ```
 
 ## Phase P0 — No stack trace, and say where
@@ -383,8 +395,9 @@ wave_manifest:
 |---|-----|------|------------|-------|-------|---------------|
 | W-12 | — | `e2e-framework-choice` | W-6 | the e2e framework for ArchiCode, chosen by trial (Q7, T11) | Build a minimal harness that starts `archicode editor serve` on a free port on a copy of a shipped example and gives a test its URL and its folder. In a scratch folder (nothing committed but the run document and the winning spike), try each candidate of Q7 on the same two flows (open the example and see a page without a console error; edit a description, save, read the file back from disk), recording install size, time, failures over three runs, how the failure reads, headless behaviour on the CI image (a trial on the draft PR's runner is allowed in a scratch workflow dispatch, not committed to `main`'s workflow), licence and last release date. Decide, name the runner-up and the reasons, say what the choice leaves untested (the browser's folder picker), and list the dependencies and the CI cost W-13 will add. | the table of trials with measured numbers; the decision and the runner-up; what is untested; the comment on #160 (or a new issue); the spike of the winner works on the machine |
 | W-13 | — | `e2e-suite` | W-12, W-5 | the e2e suite for the flows of Q8 (T11) | The winner of W-12: the dependency, `npm run test:e2e`, the harness, the flows of Q8 in `src/test/e2e/`, assertions on the page and on the files written; the browser installed in CI by a pinned step; the step in `Build` after the packaging so that it runs on the jar (the native runner only if W-12 found it free); retries off (a retry hides a flake), traces/screenshots uploaded on failure only; the three-runs check; a seeded break (V-E, V-I); formatting and ESLint cover the files (W-5, W-6); CLAUDE.md names the two suites. | V-I; the three green runs; the CI run of the draft PR green with the step; both suites named in CLAUDE.md; V-C trivially (tests only) |
+| W-14 | — | `ci-parallel-jobs` | W-13 | the Build job runs as parallel jobs | Split `Build` of `ci-build.yaml` into `Java` (`./mvnw verify`, the coverage report), `Page` (npm ci, format, lint, editor coverage, timing), `Kernel` (cargo test, fmt, clippy, coverage, the committed-WebAssembly check) and `E2E` (the Playwright suite, with its own jar or the artifact of `Java`, whichever measures better), and a last job named `Build` that needs them all and carries the snapshot, release and website steps with their conditions; same commands, triggers, permissions and cache keys; `Targets` and `Native` untouched. | the CI run of the draft pull request: each job green, the duration of each, the critical path against today's 8 minutes plus the e2e steps; nothing published on a failing part (read from the conditions); V-C trivially |
 
-**Gate:** the four criteria of P4 in the manifest.
+**Gate:** the five criteria of P4 in the manifest.
 
 ## Phase P5 — Java analysis, if the author adopts it
 
@@ -401,11 +414,11 @@ P0:  W-1   W-2                (independent, serialized)
 P1:  W-3   W-4 ── W-5
 P2:  W-6 (after W-4)   W-7
 P3:  W-8   W-9   W-10 (after W-6)
-P4:  W-12 ── W-13 (W-13 also after W-5, W-6)
+P4:  W-12 ── W-13 ── W-14 (W-13 also after W-5, W-6)
 P5:  W-11 (after W-7, W-8, and D1)
 ```
 
-Order of execution: W-1 to W-10, then W-12, W-13, then W-11 once D1 is answered (W-11 comes last so that the Java tool also reads every test the wave wrote).
+Order of execution: W-1 to W-10, then W-12, W-13, W-14, then W-11 once D1 is answered (W-11 comes last so that the Java tool also reads every test the wave wrote).
 
 ## Risks
 
