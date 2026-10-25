@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 023
-status: proposed
+status: completed
 date: 2026-10-24
 related:
   - docs/wav/wav-022-agent-way-in/wav-022-agent-way-in.md

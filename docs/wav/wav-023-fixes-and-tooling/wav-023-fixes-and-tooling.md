@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 023
-status: in-progress
+status: completed
 date: 2026-10-24
 related:
   - docs/wav/wav-023-fixes-and-tooling/wbc-023-fixes-and-tooling.md
@@ -101,7 +101,7 @@ Each run runs the gate set before it completes, and the orchestrator reruns it f
 wave_manifest:
   wave: 023
   slug: fixes-and-tooling
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P0
