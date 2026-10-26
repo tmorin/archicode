@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="archicode-version" content="0.19.0">
+<meta name="archicode-version" content="0.20.0">
 <title>ArchiCode · Architecture as code</title>
 <meta name="description" content="Describe your systems and their relationships in YAML, in your repository. ArchiCode generates PlantUML views from that model.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6e5c'/%3E%3Cpath d='M9 22l7-12 7 12z' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
@@ -190,7 +190,7 @@ footer a { color: var(--muted); }
     <p class="prose">ArchiCode keeps the model (elements and relationships) apart from the views. You edit the model, and the views are generated from it.</p>
 
     <h3>Model</h3>
-    <p class="prose">The workspace is a YAML, TOML or JSON file, optionally completed by manifests: more files in the same formats. Each element has a kind and an id, and optionally relationships. A JSON Schema (<code>archicode query schemas workspace</code>) lets your IDE validate and complete the files.</p>
+    <p class="prose">The workspace is a YAML, TOML or JSON file, optionally completed by manifests: more files in the same formats. Each element has a kind and an id, and optionally relationships. A JSON Schema (<code>archicode query schemas workspace</code>) lets your IDE validate and complete the files. To start, <code>archicode init</code> writes a small workspace, and <code>archicode guide</code> prints a guide, made for an agent that writes the files, with the kinds and the commands generated from the code (<a href="docs/#guide">how</a>).</p>
     <div class="pair">
       <div class="card">
         <header><span>.archicode.yaml</span></header>
