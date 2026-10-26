@@ -79,7 +79,7 @@ test('a link to a step opens the player on it', async ({ page, serve }) => {
   await expect(player).toContainText('Step 3 of 4');
   // the step is told at the plateau `to-be`, whatever the editor behind it draws
   await expect(player).toContainText('Plateau To be');
-  await expect(player).toContainText('Overview of warehouse');
+  await expect(player).toContainText('Detailed of warehouse');
   await player.getByRole('button', { name: 'Close' }).click();
   await expect(player).toHaveCount(0);
 });
