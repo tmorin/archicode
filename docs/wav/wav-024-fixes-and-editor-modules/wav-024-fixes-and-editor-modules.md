@@ -46,10 +46,10 @@ wave_manifest:
       gate:
         criteria:
           - '`./mvnw verify` and `npm run test:unit` pass'
-          - '`npm run test:e2e` passes with no exception for `/favicon.ico` left in src/test/e2e/fixtures.js'
+          - '`npm run test:e2e` passes with no exception for `/favicon.ico` left in src/test/e2e/fixtures.js (the gate reads the results recorded in the wave prg: three local passes of 2026-10-26, 38 of 38 each; it does not run the suite again)'
           - 'the issue numbers #166, #167 and #170 are each named in a commit message of the wave'
           - '`archicode editor serve` answers GET /favicon.ico with a status that is not 404 (EditorServeIT)'
-          - 'the E2E job is green on a run of the wave pull request (the teardown flake of run 40267805459 does not come back; decided by the author on 2026-10-26: one green run is enough)'
+          - 'the E2E job is green on a run of the wave pull request (the teardown flake of run 40267805459 does not come back; decided by the author on 2026-10-26: one green run is enough; the gate reads run 40349186285 of pull request #174, which passed, and does not start a new run)'
     - id: P2
       name: Design of the modules
       gate:
