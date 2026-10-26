@@ -49,7 +49,7 @@ wave_manifest:
           - '`npm run test:e2e` passes with no exception for `/favicon.ico` left in src/test/e2e/fixtures.js'
           - 'the issue numbers #166, #167 and #170 are each named in a commit message of the wave'
           - '`archicode editor serve` answers GET /favicon.ico with a status that is not 404 (EditorServeIT)'
-          - 'the E2E job is green on three consecutive runs of the wave pull request (the teardown flake of run 40267805459 does not come back)'
+          - 'the E2E job is green on a run of the wave pull request (the teardown flake of run 40267805459 does not come back; decided by the author on 2026-10-26: one green run is enough)'
     - id: P2
       name: Design of the modules
       gate:
@@ -210,7 +210,7 @@ wave_manifest:
 | W-1 | — | `editor-favicon` | — | no console error on load (#166) | a `<link rel="icon" href="data:,">` or a 204 for `/favicon.ico` in `EditorHttpServer` (the run chooses one and says why); remove the exception in the e2e `pageErrors` fixture and its comment in CLAUDE.md | `EditorServeIT` asserts the status is not 404; the e2e suite passes with no exception |
 | W-2 | — | `migration-story-step-3` | — | a slide with content (#167) | read the step, change its viewpoint or view in `domain_plateaus` (the `detailed` viewpoint is the suggestion); update every place the manual quotes it | a test that every step of every shipped story draws at least one element or is stated empty on purpose; the unit and Java suites pass |
 | W-3 | — | `view-problem-sentences` | — | one voice for the view problems (#170) | one case file for the view problems (as `dangling-reference-cases.json`), read by a Java test and a node test; align the words of whichever tool is changed, at least `has no element`; list the other view problems and align those the file covers | the two tests read the same file; `library-view-edit.test.js` and others updated for the words; CLAUDE.md "Not aligned, recorded" sentence removed |
-| W-10 | — | `e2e-teardown-flake` | — | the E2E suite fails only on a real error (run 40267805459) | the `pageErrors` fixture and the `serve` fixture: a request the page sends during teardown (after the server stops) is either waited for before the stop or told apart from an error the page raised while the test ran; `fixtures.js` comment updated | the E2E job green on three consecutive runs of the wave pull request; the same test shows no flake in a repeated run locally (`--repeat-each`) |
+| W-10 | — | `e2e-teardown-flake` | — | the E2E suite fails only on a real error (run 40267805459) | the `pageErrors` fixture and the `serve` fixture: a request the page sends during teardown (after the server stops) is either waited for before the stop or told apart from an error the page raised while the test ran; `fixtures.js` comment updated | the E2E job green on a run of the wave pull request; the same test shows no flake in a repeated run locally (`--repeat-each`) |
 
 **Gate:** see manifest (P1).
 
