@@ -169,6 +169,15 @@ public class EditorHttpServer {
                 return;
             }
             val path = exchange.getRequestURI().getPath();
+            if ("/favicon.ico".equals(path)) {
+                // a browser asks for it on its own, without the token: no icon, and no 404 in its console
+                if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                    write(exchange, 204, "image/x-icon", new byte[0]);
+                } else {
+                    text(exchange, 405, "method not allowed");
+                }
+                return;
+            }
             if (!"/".equals(path) && !"/index.html".equals(path)) {
                 text(exchange, 404, "not found");
                 return;

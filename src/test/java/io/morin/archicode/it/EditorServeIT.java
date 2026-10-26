@@ -89,6 +89,12 @@ class EditorServeIT {
             assertTrue(page.body().contains("<html"), () -> "not the editor page: " + page.body());
             assertTrue(page.body().contains("viewpoint-kernel-wasm"), "it is the standalone editor, with the kernel");
 
+            assertTrue(page.body().contains("<link rel=\"icon\""), "the page declares its own icon");
+
+            val icon = get(client, base + "favicon.ico");
+            assertEquals(204, icon.statusCode(), "the icon a browser asks for is answered, without a token and a 404");
+            assertEquals("", icon.body(), "the icon route has no body");
+
             val refused = get(client, base);
             assertEquals(403, refused.statusCode(), "the page is not served without the token");
         } finally {
