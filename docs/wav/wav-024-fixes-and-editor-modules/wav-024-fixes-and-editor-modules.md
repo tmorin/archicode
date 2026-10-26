@@ -119,7 +119,7 @@ wave_manifest:
       slug: editor-modules-design
       phase: P2
       depends_on: [W-1, W-2, W-3]
-      run: null
+      run: 0182
       delegation: hard_judgment
       delegation_reason: 'rests on an unresolved decision prerequisite (D1, how the split page is distributed)'
       likely_paths:
@@ -227,7 +227,7 @@ wave_manifest:
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
 | W-5 | — | `editor-assembly-and-first-cuts` | W-4 | assembly, layers and the first guards, before any logic moves | `scripts/build-editor.mjs` (assemble, `--check`, `--check-identical <commit>`); `src/main/editor/layers.json` and its ratchet (the current violations, counted); the check that the top-level names equal a committed list and that the page functions named by Java comments exist; tests, coverage and lint read the sources; `embed.sh` through the assembler; CI "Page" job and the website `sed`; `EditorHttpServer` and `quarkus.native.resources.includes`; first cuts (CSS, theme boot, kernel base64) | node suite, Java suite, e2e, `embed.sh --check`, `EditorServeIT` pass; the assembled file equals the old page apart from the part headers |
-| W-6 | — | `editor-extract-yaml-and-save` | W-5 | pure parts | YAML reading, `patchYamlText` and the helpers of the save, as named by the design, one commit each | node suite green after each commit; `save-generator.js` and the comparison with `archicode-0.17.0` unchanged |
+| W-6 | — | `editor-extract-yaml-and-save` | W-5 | pure parts | YAML reading, `patchYamlText` and the helpers of the save, as named by the design, one commit each | each move or relocate passes its byte check against its parent; the node suite is green at the end of each step (RFC-003); `save-generator.js` and the comparison with `archicode-0.17.0` unchanged |
 | W-7 | — | `editor-extract-model-and-kernel` | W-6 | stateful core | file handles and folder reading, `READ_SCHEMA`, the plateau tree and layer loader, the kernel bridge, the caches | as W-6, plus `EditorReadSchemaTest` and the discovery tests |
 | W-8 | — | `editor-extract-pages-and-player` | W-7 | UI | diagram, pages, stories, the player, the bootstrap | as W-7, plus the e2e suite |
 | W-11 | — | `editor-state-notifies` | W-8 | the cycles of state and rendering | `modelsChanged()` publishes a version; presentation subscribes and redraws; the commit pipeline stops calling renderers; the ratchet count falls (the listed violations go) | e2e and node suites green; the ratchet count is lower than after W-5 |
@@ -254,7 +254,7 @@ P3:  W-5 -> W-6 -> W-7 -> W-8 -> W-11 -> W-9
 - **W-5 to W-9 all edit the editor sources:** they are a chain (`depends_on`), so there is no same-batch overlap; verdict `serialize` for any attempt to split a P3 run in two.
 - **The Native job cannot be run locally** (no Mandrel here, wave 023's finding): a change to `pom.xml` or to the resources of the native image (W-5) is proved only by CI; the run says so and the PR waits for the Native job.
 - **The page is the file 52 others name:** Java comments name its functions; W-4 lists them, and a rename is a change to those comments in the same commit.
-- **Size:** a split of 22,000 lines is the largest change to one file in the history; the guard is the node suite (2,565 tests) after every commit and the comparison with the released pages. If W-4 finds the state too entangled to cut the stateful parts safely, W-7 and W-8 are re-planned into a later wave rather than forced.
+- **Size:** a split of 22,000 lines is the largest change to one file in the history; the guards are the byte check of each move (RFC-003), the node suite (2,565 tests) at the end of each step, and the comparison with the released pages. If W-4 finds the state too entangled to cut the stateful parts safely, W-7 and W-8 are re-planned into a later wave rather than forced.
 - **D1 unanswered:** W-4 stalls and nothing in P3 starts.
 - **PR/main CI:** a pom or publishing change is proved only on main's run or a tag (see memory: CI PR vs main).
 

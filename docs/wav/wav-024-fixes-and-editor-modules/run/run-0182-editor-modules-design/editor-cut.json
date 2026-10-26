@@ -1,0 +1,490 @@
+{
+  "commit": "af1ed2d",
+  "page": "src/main/resources/editor-webapp/standalone.html",
+  "sha256Prefix": "a653717d5564c237",
+  "note": "First line (of the HTML) of each part of the main script, in the order of the page; a part runs up to the line before the next one, the last to line 23161. Layers: 0 core, 1 model, 2 persistence, 3 application, 4 presentation, 5 composition. relocate: top-level let and const that a part of a lower layer reads or writes; they move to model/ui-state.js, placed after model/app-state.js.",
+  "layers": [
+    "core",
+    "model",
+    "persistence",
+    "application",
+    "presentation",
+    "composition"
+  ],
+  "parts": [
+    {
+      "first": 1030,
+      "file": "core/yaml-parser.js",
+      "layer": "core",
+      "run": "W-6"
+    },
+    {
+      "first": 2373,
+      "file": "core/yaml-serializer.js",
+      "layer": "core",
+      "run": "W-6"
+    },
+    {
+      "first": 2527,
+      "file": "core/yaml-patch-text.js",
+      "layer": "core",
+      "run": "W-6"
+    },
+    {
+      "first": 3086,
+      "file": "core/yaml-patch-flow.js",
+      "layer": "core",
+      "run": "W-6"
+    },
+    {
+      "first": 3580,
+      "file": "core/yaml-patch-lines.js",
+      "layer": "core",
+      "run": "W-6"
+    },
+    {
+      "first": 4273,
+      "file": "core/yaml-block-moves.js",
+      "layer": "core",
+      "run": "W-6"
+    },
+    {
+      "first": 4576,
+      "file": "persistence/remembered-folders.js",
+      "layer": "persistence",
+      "run": "W-7"
+    },
+    {
+      "first": 5006,
+      "file": "model/app-state.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 5109,
+      "file": "model/settings.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 5411,
+      "file": "core/manifest-kinds.js",
+      "layer": "core",
+      "run": "W-7"
+    },
+    {
+      "first": 5439,
+      "file": "model/element-index.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 5562,
+      "file": "model/plateau-tree.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 5827,
+      "file": "model/layer-loader.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 6418,
+      "file": "model/origin-and-cascade.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 6492,
+      "file": "application/plateau-choice.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 6848,
+      "file": "presentation/plateau-band.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 7062,
+      "file": "application/layer-writes.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 7296,
+      "file": "application/plateau-patches.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 7725,
+      "file": "application/plateau-commands.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 8201,
+      "file": "model/index-builder.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 8381,
+      "file": "core/read-schema.js",
+      "layer": "core",
+      "run": "W-7"
+    },
+    {
+      "first": 8823,
+      "file": "persistence/workspace-loading.js",
+      "layer": "persistence",
+      "run": "W-7"
+    },
+    {
+      "first": 9075,
+      "file": "persistence/folder-access.js",
+      "layer": "persistence",
+      "run": "W-7"
+    },
+    {
+      "first": 9438,
+      "file": "application/folder-session.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 9571,
+      "file": "core/escape-html.js",
+      "layer": "core",
+      "run": "W-7"
+    },
+    {
+      "first": 9583,
+      "file": "presentation/page-registry.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 9628,
+      "file": "composition/address-routing.js",
+      "layer": "composition",
+      "run": "W-8"
+    },
+    {
+      "first": 9933,
+      "file": "presentation/shell-state.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 10003,
+      "file": "model/record-lookup.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 10137,
+      "file": "application/commit-pipeline.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 10626,
+      "file": "persistence/save.js",
+      "layer": "persistence",
+      "run": "W-7"
+    },
+    {
+      "first": 11326,
+      "file": "application/move.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 11791,
+      "file": "model/form-validation.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 12146,
+      "file": "presentation/top-panel.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 12304,
+      "file": "presentation/left-panel.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 12704,
+      "file": "presentation/help-and-settings.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 13170,
+      "file": "presentation/theme.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 13301,
+      "file": "presentation/element-view.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 13484,
+      "file": "presentation/element-form.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 14124,
+      "file": "presentation/inspection.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 14239,
+      "file": "presentation/changes-panel.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 15129,
+      "file": "presentation/right-panel.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 15496,
+      "file": "presentation/pages-plateaus-files.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 15637,
+      "file": "presentation/diagram-state.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 15783,
+      "file": "presentation/map-state.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 15921,
+      "file": "model/kernel-bridge.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 16061,
+      "file": "model/comparison.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 16334,
+      "file": "presentation/diagram-controls.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 16534,
+      "file": "model/styles.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 16728,
+      "file": "presentation/diagram-states.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 17008,
+      "file": "presentation/diagram-layout.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 17704,
+      "file": "presentation/diagram-interaction.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 18375,
+      "file": "presentation/diagram-page.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 19085,
+      "file": "model/stories-model.js",
+      "layer": "model",
+      "run": "W-7"
+    },
+    {
+      "first": 19249,
+      "file": "application/view-recipe.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 19400,
+      "file": "application/story-entries.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 19599,
+      "file": "presentation/view-edit.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 19887,
+      "file": "presentation/dialogs.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 20171,
+      "file": "application/story-actions.js",
+      "layer": "application",
+      "run": "W-8"
+    },
+    {
+      "first": 20592,
+      "file": "presentation/story-menu.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 20631,
+      "file": "presentation/story-scene.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 20777,
+      "file": "presentation/story-player.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 21279,
+      "file": "presentation/stories-pages.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 21655,
+      "file": "presentation/shell.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 21762,
+      "file": "composition/events.js",
+      "layer": "composition",
+      "run": "W-8"
+    },
+    {
+      "first": 22798,
+      "file": "presentation/landing.js",
+      "layer": "presentation",
+      "run": "W-8"
+    },
+    {
+      "first": 22972,
+      "file": "composition/render.js",
+      "layer": "composition",
+      "run": "W-8"
+    },
+    {
+      "first": 23109,
+      "file": "composition/bootstrap.js",
+      "layer": "composition",
+      "run": "W-8"
+    }
+  ],
+  "relocate": {
+    "to": "model/ui-state.js",
+    "layer": "model",
+    "names": [
+      "REMOVED_PLATEAUS_KEY",
+      "NO_PLATEAU",
+      "treeExpandedApplications",
+      "treeExpandedEnvironments",
+      "DEFAULT_PERSPECTIVE",
+      "currentPerspective",
+      "panelSizeStorage",
+      "rawYamlEditDraft",
+      "activeFileEditorView",
+      "activeJsonEditorViews",
+      "lastRenderedViewKey",
+      "pendingDeleteConfirmation",
+      "saveStatus",
+      "filesFolded",
+      "filesFoldsOwner",
+      "filesSelectionSeen",
+      "helpOpen",
+      "removedPick",
+      "candidateMessage",
+      "changesTabPick",
+      "elementTab",
+      "diagramFacet",
+      "diagramMaximized",
+      "diagramHideUnlinked",
+      "DIAGRAM_SHOW_NAMES",
+      "DIAGRAM_SHOW_DEFAULTS",
+      "diagramScale",
+      "diagramSeq",
+      "diagramCache",
+      "diagramScene",
+      "diagramShownView",
+      "diagramCenter",
+      "viewpointKernelPromise",
+      "elkPromise",
+      "diagramHost",
+      "parkedDiagramHost",
+      "KERNEL_CONTRACT_VERSION",
+      "LEAF_KINDS",
+      "mapOpened",
+      "mapPinned",
+      "mapHidden",
+      "technologyMapState",
+      "MAP_PARTS",
+      "technologyMapParts",
+      "navActiveKey",
+      "scrollNavToSelection",
+      "mapSelectionCheck",
+      "kernelWarningsShown",
+      "headerMenuOpen",
+      "diagramKeyOpen",
+      "diagramLinkStop",
+      "treeQuietCache",
+      "libraryPick",
+      "viewEditNotice",
+      "appDialog",
+      "storyBarEditing",
+      "storyBarNotice",
+      "removedStep",
+      "pendingFocusSelector",
+      "keptElementForm"
+    ]
+  }
+}
