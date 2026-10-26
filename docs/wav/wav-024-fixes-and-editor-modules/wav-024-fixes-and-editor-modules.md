@@ -73,6 +73,7 @@ wave_manifest:
       run: 0178
       delegation: standard
       likely_paths:
+        - 'CLAUDE.md'
         - 'src/main/java/io/morin/archicode/editor/**'
         - 'src/main/resources/editor-webapp/standalone.html'
         - 'src/test/e2e/**'
@@ -85,6 +86,7 @@ wave_manifest:
       run: 0179
       delegation: standard
       likely_paths:
+        - 'CLAUDE.md'
         - 'src/doc/examples/domain_plateaus/**'
         - 'src/doc/**/*.adoc'
         - 'src/test/javascript/**/story-steps-plateaus.test.js'
@@ -96,6 +98,7 @@ wave_manifest:
       run: 0180
       delegation: standard
       likely_paths:
+        - 'CLAUDE.md'
         - 'src/main/java/io/morin/archicode/viewpoint/**'
         - 'src/main/resources/editor-webapp/standalone.html'
         - 'src/test/javascript/**'
@@ -109,6 +112,7 @@ wave_manifest:
       run: 0181
       delegation: standard
       likely_paths:
+        - 'CLAUDE.md'
         - 'src/test/e2e/**'
       focus: 'the E2E suite does not fail on a console error that a page sends after its server has stopped (run 40267805459, edit-and-save.spec.js:165 on chromium)'
     - id: W-4
@@ -245,7 +249,8 @@ P3:  W-5 -> W-6 -> W-7 -> W-8 -> W-11 -> W-9
 
 - **Overlap W-1 / W-3 (`standalone.html`, `src/test/e2e`, the Java tests):** verdict `serialize`. Both edit the page and shared tests; W-1 first.
 - **Overlap W-10 / W-1 (`src/test/e2e/**`):** verdict `serialize`. Both edit the E2E fixtures; W-10 after W-1.
-- **Overlap W-2 / W-1 and W-2 / W-3:** verdict `concurrent-safe` — W-2 edits `src/doc/examples/domain_plateaus` and the manual, which the other two do not touch; the test files each run changes are different ones.
+- **Overlap W-1 / W-2 / W-3 / W-10 on `CLAUDE.md`:** verdict `serialize`. Each run edits its own paragraph of the file. The first attempt ran W-1 and W-2 together and W-3 and W-10 together, which left the four edits in one working tree with no commit between them. Each run now commits before the next starts.
+- **Overlap W-1 / W-2 on `src/test/e2e/**`:** not a collision in the first attempt (W-2 changed `story-player.spec.js`, W-1 the fixtures), but verdict `serialize` because both are in the E2E suite and run in one lane.
 - **W-5 to W-9 all edit the editor sources:** they are a chain (`depends_on`), so there is no same-batch overlap; verdict `serialize` for any attempt to split a P3 run in two.
 - **The Native job cannot be run locally** (no Mandrel here, wave 023's finding): a change to `pom.xml` or to the resources of the native image (W-5) is proved only by CI; the run says so and the PR waits for the Native job.
 - **The page is the file 52 others name:** Java comments name its functions; W-4 lists them, and a rename is a change to those comments in the same commit.
