@@ -7,6 +7,11 @@
 //   pageErrors (automatic) collects what the page says on the console as an error and the exceptions it does not catch;
 //                          the test fails at its end when there is one, whichever flow it was. A flow that expects an
 //                          error has no place in this suite: the errors of the editor are sentences on the page.
+//
+// The order (wave 024, run 0181, W-10): `pageErrors` lists `serve` among its parameters, so that Playwright sets `serve`
+// up first and tears it down last. `pageErrors` judges the page after the test body, while its server is still up: a
+// fixture that does not depend on `serve` may end after it, and a request the page sends as the server stops is refused
+// and reported as an error nobody did wrong. No filter and no wait stand in for that order.
 
 const { test: base, expect } = require('@playwright/test');
 const { startServer } = require('./harness');
@@ -29,16 +34,11 @@ const test = base.extend({
   ],
 
   pageErrors: [
-    async ({ page }, use) => {
+    async ({ page, serve }, use) => {
+      void serve; // the dependency is the point: see the head comment
       const errors = [];
       page.on('console', (message) => {
         if (message.type() !== 'error') {
-          return;
-        }
-        // #166: the editor has no <link rel="icon"> and the server answers /favicon.ico with 404, which a full Chromium
-        // (not Playwright's headless shell, not its Firefox) reports as a console error. That resource only: remove
-        // this exception when #166 is fixed.
-        if (message.location().url.endsWith('/favicon.ico')) {
           return;
         }
         errors.push(`console.error: ${message.text()}`);
