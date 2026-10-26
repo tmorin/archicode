@@ -1,0 +1,187 @@
+{
+  "comment": "The two mistakes of a saved view (or of a story step with its own recipe) that both tools tell: no element, and an element that exists nowhere (run 0180, wave 024, W-3, issue #170). `view` is the id of the saved view, or of the story when `step` is given (the place of the step, from 1; a step that carries its own recipe is named step_NN). `cli` is, for each command, the `error:` lines it prints without the prefix (exit 1); `editor.problem` is what viewProblem (stepProblem for a step) returns, and it equals every line of `cli`. Left different on purpose: an unknown viewpoint (a warning for the command line, a status for the editor: the two tools do not draw the same viewpoints); a plateau that lacks the element (the command line warns and skips, the editor says the element is not in the plateau); a map pinned on missing entries (the command line refuses if any is missing, the editor only if none exists: behaviour, not words); a facet that removes the element (told once, run 0119); a view that names an element declared in no plateau of a layered workspace (the load sentence, K04 and K05); the states of the page own lists (`This view does not exist.`, `This step has no view.`). Read by ViewProblemCasesTest and view-problems.test.js.",
+  "cases": [
+    {
+      "id": "V01",
+      "what": "an overview with no properties key says it has no element",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/view.probe.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  viewpoint: \"overview\"\n  layer: \"application\"\n"
+      },
+      "view": "probe",
+      "cli": {
+        "views generate -i probe": [
+          "the view `probe` has no element: write the reference of one in `properties.element`"
+        ]
+      },
+      "editor": {
+        "problem": "the view `probe` has no element: write the reference of one in `properties.element`"
+      }
+    },
+    {
+      "id": "V02",
+      "what": "an overview with empty properties says the same",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/view.probe.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  viewpoint: \"overview\"\n  layer: \"application\"\n  properties: {}\n"
+      },
+      "view": "probe",
+      "cli": {
+        "views generate -i probe": [
+          "the view `probe` has no element: write the reference of one in `properties.element`"
+        ]
+      },
+      "editor": {
+        "problem": "the view `probe` has no element: write the reference of one in `properties.element`"
+      }
+    },
+    {
+      "id": "V03",
+      "what": "an overview whose element is the empty text says the same",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/view.probe.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  viewpoint: \"overview\"\n  layer: \"application\"\n  properties:\n    element: \"\"\n"
+      },
+      "view": "probe",
+      "cli": {
+        "views generate -i probe": [
+          "the view `probe` has no element: write the reference of one in `properties.element`"
+        ]
+      },
+      "editor": {
+        "problem": "the view `probe` has no element: write the reference of one in `properties.element`"
+      }
+    },
+    {
+      "id": "V04",
+      "what": "a detailed view with no element says the same",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/view.probe.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  viewpoint: \"detailed\"\n  layer: \"application\"\n"
+      },
+      "view": "probe",
+      "cli": {
+        "views generate -i probe": [
+          "the view `probe` has no element: write the reference of one in `properties.element`"
+        ]
+      },
+      "editor": {
+        "problem": "the view `probe` has no element: write the reference of one in `properties.element`"
+      }
+    },
+    {
+      "id": "V05",
+      "what": "a deep view with no element says the same",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/view.probe.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  viewpoint: \"deep\"\n  layer: \"application\"\n"
+      },
+      "view": "probe",
+      "cli": {
+        "views generate -i probe": [
+          "the view `probe` has no element: write the reference of one in `properties.element`"
+        ]
+      },
+      "editor": {
+        "problem": "the view `probe` has no element: write the reference of one in `properties.element`"
+      }
+    },
+    {
+      "id": "V06",
+      "what": "a step with its own recipe and no properties is called step_01",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/story.tour.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"tour\"\n  steps:\n    - viewpoint: \"overview\"\n      layer: \"application\"\n      text: \"no properties here\"\n"
+      },
+      "view": "tour",
+      "step": 1,
+      "cli": {
+        "stories generate": [
+          "the view `step_01` has no element: write the reference of one in `properties.element`"
+        ]
+      },
+      "editor": {
+        "problem": "the view `step_01` has no element: write the reference of one in `properties.element`"
+      }
+    },
+    {
+      "id": "V07",
+      "what": "an overview of an element that exists nowhere names the view and the element",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/view.probe.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  viewpoint: \"overview\"\n  layer: \"application\"\n  properties:\n    element: gone\n"
+      },
+      "view": "probe",
+      "cli": {
+        "views generate -i probe": [
+          "the view `probe` names `gone`, which does not exist"
+        ]
+      },
+      "editor": {
+        "problem": "the view `probe` names `gone`, which does not exist"
+      }
+    },
+    {
+      "id": "V08",
+      "what": "a detailed view of an element that exists nowhere says the same (the kernel says unknown focal element)",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/view.probe.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  viewpoint: \"detailed\"\n  layer: \"application\"\n  properties:\n    element: gone\n"
+      },
+      "view": "probe",
+      "cli": {
+        "views generate -i probe": [
+          "the view `probe` names `gone`, which does not exist"
+        ]
+      },
+      "editor": {
+        "problem": "the view `probe` names `gone`, which does not exist"
+      }
+    },
+    {
+      "id": "V09",
+      "what": "a deep view of an element that exists nowhere says the same",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/view.probe.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  viewpoint: \"deep\"\n  layer: \"application\"\n  properties:\n    element: gone\n"
+      },
+      "view": "probe",
+      "cli": {
+        "views generate -i probe": [
+          "the view `probe` names `gone`, which does not exist"
+        ]
+      },
+      "editor": {
+        "problem": "the view `probe` names `gone`, which does not exist"
+      }
+    },
+    {
+      "id": "V10",
+      "what": "a step of an element that exists nowhere is called step_01",
+      "plateau": null,
+      "files": {
+        "manifests/system.shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/story.tour.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"tour\"\n  steps:\n    - viewpoint: \"overview\"\n      layer: \"application\"\n      properties:\n        element: gone\n      text: \"no properties here\"\n"
+      },
+      "view": "tour",
+      "step": 1,
+      "cli": {
+        "stories generate": [
+          "the view `step_01` names `gone`, which does not exist"
+        ]
+      },
+      "editor": {
+        "problem": "the view `step_01` names `gone`, which does not exist"
+      }
+    }
+  ]
+}

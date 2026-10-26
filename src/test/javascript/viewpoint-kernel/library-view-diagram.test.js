@@ -430,7 +430,7 @@ test('a view that cannot be drawn keeps its message and has no canvas', async ()
   });
   const unknown = addView(page, { id: 'weird', name: 'Weird', viewpoint: 'sideways', properties: { element: 'shop' } });
   for (const [view, message] of [
-    [elementGone, /The element “shop\.web\.removed” does not exist any more/],
+    [elementGone, /names `shop\.web\.removed`, which does not exist/],
     [mapGone, /None of the elements it was pinned on exists any more/],
     [unknown, /does not draw the viewpoint “sideways”/]
   ]) {
@@ -462,7 +462,7 @@ test('an element deleted while its view is on screen turns the page into the mes
   run(page.sandbox, "AppState.index.application.delete('shop.web.api');");
   page.sandbox.render();
   assert.equal(page.canvas(), null);
-  assert.match(page.html(), /does not exist any more/);
+  assert.match(page.html(), /which does not exist/);
 });
 
 // ============================================================ 5. Visiting the page changes nothing the Map and Elements show

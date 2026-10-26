@@ -19193,9 +19193,10 @@ function stepView(step) {
  * Why a step cannot be drawn now, or null when it can. A step is drawn in the plateau it says (`at`, else the plateau drawn, which is what the page has when the step is
  * played) and compared with the one it names (`against`): the plateau that is not one, and one the editor cannot draw, are told before the view is looked at, and the
  * view is looked at in the plateau of the step, not in the one that happens to be drawn now. `plateau` (the scene of the story player, wave 021): the plateau the step is drawn
- * at once the home is applied (a step that names none is drawn at the home), null for a workspace whose plateaus are not drawn; absent, what the step says.
+ * at once the home is applied (a step that names none is drawn at the home), null for a workspace whose plateaus are not drawn; absent (undefined), what the step says.
+ * `number` is the place of the step in its story, from 1: a step that carries its own recipe is named `step_NN` in the sentences, as the command line names it.
  */
-function stepProblem(step, plateau) {
+function stepProblem(step, plateau, number) {
   const plateauProblem = stepPlateauProblem(step);
   if (plateauProblem) return plateauProblem.problem;
   const at = plateau !== undefined ? plateau : stepPlateauKeys(step).at;
@@ -19203,7 +19204,7 @@ function stepProblem(step, plateau) {
     const view = findSavedView(step.view);
     return view ? viewProblem(view, at) : 'The view “' + step.view + '” does not exist any more.';
   }
-  return typeof step.viewpoint === 'string' && step.viewpoint ? viewProblem(step, at) : 'This step has no view.';
+  return typeof step.viewpoint === 'string' && step.viewpoint ? viewProblem(step, at, 'step_' + String(number).padStart(2, '0')) : 'This step has no view.';
 }
 
 /**
@@ -19325,12 +19326,13 @@ function indexOfPlateau(plateau) {
 
 /**
  * Why a saved view cannot be drawn now, or null when it can. `plateau` is the plateau it is looked at in (a step that is told at one, wave 015 run 0101): absent, the
- * plateau drawn.
+ * plateau drawn. `name` is how the sentences call the view (default its id; a step with its own recipe is `step_NN`).
  */
-function viewProblem(view, plateau) {
+function viewProblem(view, plateau, name) {
   if (!isPlainObject(view)) return 'This view does not exist.';
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const index = indexOfPlateau(plateau);
+  const viewName = typeof name === 'string' ? name : view.id;
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = viewLayerOf(view);
@@ -19339,9 +19341,9 @@ function viewProblem(view, plateau) {
   }
   if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
   const layer = viewLayerOf(view);
-  if (typeof properties.element !== 'string' || !properties.element) return 'This view has no element.';
+  if (typeof properties.element !== 'string' || !properties.element) return 'the view `' + viewName + '` has no element: write the reference of one in `properties.element`';
   if (!index[layer].has(properties.element)) {
-    return viewLacksInPlateau([properties.element], layer, plateau) || 'The element “' + properties.element + '” does not exist any more.';
+    return viewLacksInPlateau([properties.element], layer, plateau) || 'the view `' + viewName + '` names `' + properties.element + '`, which does not exist';
   }
   return null;
 }
@@ -20346,7 +20348,7 @@ function goToStoryStep(storyId, index) {
   if (!story || index < 0 || index >= steps.length) return;
   selectedStoryId = storyId;
   drawPlateausOfStep(storyId, steps[index]);
-  const problem = stepProblem(steps[index]) || applySavedView(stepView(steps[index]));
+  const problem = stepProblem(steps[index], undefined, index + 1) || applySavedView(stepView(steps[index]));
   if (problem && !mapIsShown() && currentPerspective !== 'elements') { currentPerspective = 'map'; useDiagramHost('main'); } // somewhere to show the bar
   activeStory = { id: storyId, step: index };
   storyBarEditing = false;
@@ -20618,7 +20620,7 @@ function renderStoryStepMenuHtml(story, current, className, options) {
   const opts = options || {};
   const id = escapeHtml(story.id);
   const entries = steps.map((step, i) => {
-    const problem = stepProblem(step, stepPlateauAt(step, opts.home));
+    const problem = stepProblem(step, stepPlateauAt(step, opts.home), i + 1);
     return '<option value="' + i + '"' + (i === current ? ' selected' : '') + (problem ? ' title="' + escapeHtml(problem) + '"' : '') + '>' +
       (i + 1) + '. ' + escapeHtml(storyStepTitle(step)) + (problem ? ' — cannot be shown: ' + escapeHtml(problem) : '') + '</option>';
   });
@@ -20748,7 +20750,7 @@ async function storyStepScene(storyId, index, options) {
   const { layered, wanted } = stepDrawnAt(step, home);
   const scene = {
     storyId, index, count: steps.length, title: storyStepTitle(step), text: typeof step.text === 'string' ? step.text : '', announcement: storyStepAnnouncement(story, index),
-    plateau: wanted.plateau, against: wanted.against, told: stepPlateauKeys(step), problem: stepProblem(step, layered ? wanted.plateau : null), comparison: null, diagram: null
+    plateau: wanted.plateau, against: wanted.against, told: stepPlateauKeys(step), problem: stepProblem(step, layered ? wanted.plateau : null, index + 1), comparison: null, diagram: null
   };
   if (scene.problem) return scene;
   const viewKey = 'story|' + storyId + '|' + index + '|' + wanted.plateau + '|' + (wanted.against || '');
@@ -21284,7 +21286,7 @@ function renderStoryBarHtml() {
   if (!story || activeStory.step < 0 || activeStory.step >= steps.length) return '';
   const n = activeStory.step;
   const view = stepView(steps[n]);
-  const problem = stepProblem(steps[n]);
+  const problem = stepProblem(steps[n], undefined, n + 1);
   const here = !!view && !problem && viewMatchesScreen(view) && stepPlateausMatchScreen(steps[n]);
   const text = steps[n].text || '';
   const words = storyBarEditing
@@ -21369,7 +21371,7 @@ function renderStepPlateausHtml(story, step, index) {
 
 function renderStoryStepHtml(story, step, index, count) {
   const view = stepView(step);
-  const problem = stepProblem(step);
+  const problem = stepProblem(step, undefined, index + 1);
   const id = escapeHtml(story.id);
   const current = !!activeStory && activeStory.id === story.id && activeStory.step === index;
   const button = (action, label, extra) => '<button type="button" data-action="' + action + '" data-story="' + id + '" data-step="' + index + '"' + (extra || '') + '>' + label + '</button>';

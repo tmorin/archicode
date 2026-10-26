@@ -134,7 +134,7 @@ test('a view that cannot be drawn keeps its message, its facts and its steps in 
   await openView(page, view);
   const region = page.sandbox.renderLibraryPerspectiveHtml();
   assert.equal(region.right, null);
-  assert.match(region.center, /does not exist any more/);
+  assert.match(region.center, /which does not exist/);
   assert.match(region.center, /class="view-facts"/);
   assert.match(region.center, /data-action="library-go-story" data-story="tour"/);
   assert.ok(!page.html().includes('id="panel-right"') && !page.html().includes('diagram-canvas'));
