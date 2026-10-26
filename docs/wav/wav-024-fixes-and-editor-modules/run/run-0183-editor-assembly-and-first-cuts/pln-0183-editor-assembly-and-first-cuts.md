@@ -1,7 +1,7 @@
 ---
 title: 'PLN: the editor page assembler, its guards and the first cuts'
 type: pln
-status: draft
+status: done
 owner: tmorin
 date: 2026-10-26
 run: 0183
@@ -25,7 +25,7 @@ Files outside the `likely_paths` of the row W-5 that this plan edits, named here
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'The editor page is assembled from files under src/main/editor by scripts/build-editor.mjs, the assembled file equals the page of today byte for byte, and the guards that W-6 to W-9 rely on (byte identity to a parent commit, statement identity, the layer ratchet with its maximum, the committed name lists) exist, are tested and run in CI, with no consumer of the page edited and the editor unchanged for its users.'
   technical_approach: 'Apply the Stage 5 review findings to the TDD, write the assembler and its tests (5.1a), move the page into src/main/editor and rebuild it identical (5.1b), write the checker with its modes, lists and the ratchet maximum 162 (5.2), then the hooks, the move-commit script, the Page job steps, embed.sh through the assembler and CLAUDE.md (5.3), and the generated-file comment as a last conditional change (5.4); prove the unchanged consumers by running them.'
   total_tasks: 13
@@ -224,7 +224,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-012
-      status: 'pending'
+      status: 'done'
       title: 'Run the exit evidence of the run and record it'
       depends_on: [task-011]
       produces:
@@ -234,7 +234,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-013
-      status: 'pending'
+      status: 'done'
       title: 'Write the exit evidence and the untouched-paths proof into the run document'
       depends_on: [task-012]
       produces:
@@ -687,6 +687,7 @@ task_catalog:
         - 'The coverage floor fails: the tools tests do not load the page and cannot move it; find what did and do not lower the floor.'
         - 'The e2e suite fails once: run the failing spec alone as the P1 gate did, record both results, do not retry silently.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-013
       title: 'Write the exit evidence and the untouched-paths proof into the run document'
       source_requirements:
@@ -715,6 +716,7 @@ task_catalog:
         - 'A path of IMP-7 differs: revert that edit by editing the file back (no destructive git) and log it as a finding.'
         - 'The wording would say that CI is green before the pull request exists: write pending.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -1297,7 +1299,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 13
@@ -1329,7 +1331,7 @@ execution_manifest:
   lowest_confidence_tasks:
     - task-005
     - task-004
-  next_action: 'task-001: apply R-1 to R-6 to the TDD, after re-checking the page hash.'
+  next_action: 'gate-001: the author reads the pull request run (Page, Native, Java, Kernel, E2E, Build) once the pull request exists; the commits of the five steps are made as the wave git workflow says.'
   criteria:
     - 'All thirteen tasks done and their verification green, task-011 either kept or dropped with its reason logged.'
     - 'The assembled page equals the old page byte for byte through 5.1b to 5.3; ratchet.max 162 is committed once and the checker prints upward pairs: 0 (max 162).'
