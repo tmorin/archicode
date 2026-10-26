@@ -428,10 +428,18 @@ test('the layer: the element stays when the other layer has it, else the view ne
   await pickLayer(page, 'technology');
   assert.equal(view.layer, 'technology');
   assert.equal('element' in view.properties, false, 'shop.web.api is not a technology element');
-  assert.equal(page.sandbox.viewProblem(view), 'This view has no element.');
+  assert.equal(
+    page.sandbox.viewProblem(view),
+    'the view `api_view` has no element: write the reference of one in `properties.element`'
+  );
   assert.equal(page.canvas(), null, 'no canvas');
   const center = page.center();
-  assert.match(center, /This view has no element\./);
+  assert.ok(
+    center.includes(
+      'the view `api_view` has no element: write the reference of one in `properties.element`'.replace(/&/g, '&amp;')
+    ),
+    'the sentence is on the page'
+  );
   assert.match(
     center,
     /id="view-edit-element" data-view-field="element" list="archicode-technology-references" value=""/,
@@ -969,8 +977,16 @@ test('a view with no `properties` key at all says the same as one with `properti
   for (const viewpoint of ['overview', 'detailed', 'deep']) {
     view.viewpoint = viewpoint;
     delete view.properties;
-    assert.equal(page.sandbox.viewProblem(view), 'This view has no element.', viewpoint + ' without properties');
+    assert.equal(
+      page.sandbox.viewProblem(view),
+      'the view `api_view` has no element: write the reference of one in `properties.element`',
+      viewpoint + ' without properties'
+    );
     view.properties = {};
-    assert.equal(page.sandbox.viewProblem(view), 'This view has no element.', viewpoint + ' with properties: {}');
+    assert.equal(
+      page.sandbox.viewProblem(view),
+      'the view `api_view` has no element: write the reference of one in `properties.element`',
+      viewpoint + ' with properties: {}'
+    );
   }
 });

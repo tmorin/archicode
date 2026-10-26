@@ -86,7 +86,10 @@ test('a view of the technology layer in capitals can be drawn: no problem, the p
 
 test('a view of the technology layer that names an application element is broken, whatever the case of its layer', async () => {
   const { sandbox } = await open();
-  assert.equal(sandbox.viewProblem(sandbox.findSavedView('v_wrong')), 'The element “shop” does not exist any more.');
+  assert.equal(
+    sandbox.viewProblem(sandbox.findSavedView('v_wrong')),
+    'the view `v_wrong` names `shop`, which does not exist'
+  );
 });
 
 test('the diagram on screen is the view whose layer is in capitals: no second view is made for it', async () => {

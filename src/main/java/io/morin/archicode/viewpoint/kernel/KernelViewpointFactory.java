@@ -227,7 +227,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
                   .orElse("");
         if (!map && focal.isBlank()) {
             throw new ArchiCodeException(
-                "the view %s has no element: write the reference of one in `properties.element`",
+                "the view `%s` has no element: write the reference of one in `properties.element`",
                 view.getId()
             );
         }
@@ -283,7 +283,16 @@ public class KernelViewpointFactory implements ViewpointFactory {
             ViewpointKernel.getInstance().compute(objectMapper.writeValueAsString(input))
         );
         if (output.has("error")) {
-            val message = danglingSentence(workspace, output.get("error").asText());
+            val raw = output.get("error").asText();
+            var message = danglingSentence(workspace, raw);
+            if (
+                !map &&
+                message.equals(raw) &&
+                (raw.equals("dangling reference: " + focal) || raw.equals("unknown focal element: " + focal))
+            ) {
+                // the focal element exists nowhere: the sentence the editor says too (run 0180, #170)
+                message = "the view `%s` names `%s`, which does not exist".formatted(view.getId(), focal);
+            }
             throw new ArchiCodeException("%s", map ? "the view " + view.getId() + ": " + message : message);
         }
         if (output.path("version").asInt() != ViewpointKernel.CONTRACT_VERSION) {

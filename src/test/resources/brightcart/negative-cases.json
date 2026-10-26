@@ -2817,7 +2817,7 @@
               "the view `cart_view` (`catalog/view.cart.yaml`) names `commerce.cartt`, which exists in no plateau"
             ],
             "viewProblems": {
-              "cart_view": "The element “commerce.cartt” does not exist any more."
+              "cart_view": "the view `cart_view` names `commerce.cartt`, which does not exist"
             }
           }
         },
@@ -2829,7 +2829,7 @@
               "the view `cart_view` (`catalog/view.cart.yaml`) names `commerce.cartt`, which exists in no plateau"
             ],
             "viewProblems": {
-              "cart_view": "The element “commerce.cartt” does not exist any more."
+              "cart_view": "the view `cart_view` names `commerce.cartt`, which does not exist"
             }
           }
         }

@@ -24,7 +24,7 @@ import picocli.CommandLine;
 class ViewWithoutPropertiesTest {
 
     private static final String SENTENCE =
-        "error: the view probe has no element: write the reference of one in `properties.element`\n";
+        "error: the view `probe` has no element: write the reference of one in `properties.element`\n";
 
     @Inject
     CommandLine.IFactory factory;
@@ -110,7 +110,21 @@ class ViewWithoutPropertiesTest {
         val result = run(workspace(viewpoint, ""), "stories", "generate");
         assertEquals(1, result.exit(), result.err());
         assertFalse(result.err().contains("unexpected"), result.err());
-        assertEquals(SENTENCE.replace("probe", "step_01"), result.err());
+        assertEquals(SENTENCE.replace("`probe`", "`step_01`"), result.err());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "overview", "detailed", "deep" })
+    void anElementThatExistsNowhereIsNamed(String viewpoint) {
+        val result = run(
+            workspace(viewpoint, "  properties:\n    element: gone\n"),
+            "views",
+            "generate",
+            "-i",
+            "probe"
+        );
+        assertEquals(1, result.exit(), result.err());
+        assertEquals("error: the view `probe` names `gone`, which does not exist\n", result.err());
     }
 
     @Test
