@@ -21,7 +21,7 @@ content:
       at: "to-be"
       against: "baseline"
       text: "The same system next year, with what changed marked: orders are split in two, invoices and receipts are merged."
-    - viewpoint: "overview"
+    - viewpoint: "detailed"
       layer: "application"
       properties:
         element: "warehouse"

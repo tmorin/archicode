@@ -224,7 +224,7 @@ class GenerateStoriesTest {
         val result = stories(workspace);
         assertEquals(0, result.exit(), result.err());
         val steps = workspace.resolveSibling("views-stories/migration");
-        for (val step : List.of("01-overview", "02-overview", "03-overview", "04-overview")) {
+        for (val step : List.of("01-overview", "02-overview", "03-detailed", "04-overview")) {
             assertTrue(Files.isDirectory(steps.resolve(step)), step);
         }
         // told at to-be and compared with baseline: the shop holds changes

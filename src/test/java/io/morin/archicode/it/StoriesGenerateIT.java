@@ -107,9 +107,10 @@ class StoriesGenerateIT {
         val folder = Shipped.copy(EXAMPLES.resolve("domain_plateaus"), dir, "plateaus");
         succeeded(launcher.launch("-w", workspace(folder), "stories", "generate"));
         for (val step : new String[] { "01", "02", "03", "04" }) {
+            val viewpoint = "03".equals(step) ? "detailed" : "overview";
             notEmpty(
                 folder.resolve(
-                    "views-stories/migration/" + step + "-overview/plantuml/application/step_" + step + ".puml"
+                    "views-stories/migration/" + step + "-" + viewpoint + "/plantuml/application/step_" + step + ".puml"
                 )
             );
         }
