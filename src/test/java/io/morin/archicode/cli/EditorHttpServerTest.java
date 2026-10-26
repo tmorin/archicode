@@ -105,6 +105,17 @@ class EditorHttpServerTest {
     }
 
     @Test
+    void answersTheIconOfTheBrowserWithoutContentAndWithoutTheToken() {
+        val response = call("GET", "/favicon.ico", null, null, null);
+        assertEquals(204, response.statusCode());
+        assertEquals("", response.body());
+        assertFalse(response.headers().firstValue("Set-Cookie").isPresent());
+        assertEquals(405, call("POST", "/favicon.ico", "x", null, null).statusCode());
+        assertEquals(403, status(rawGet("/favicon.ico", "attacker.example")), "the host is checked first");
+        assertEquals(404, call("GET", "/other", null, null, null).statusCode());
+    }
+
+    @Test
     void doesNotReleaseTheEditorWithoutTheTokenOfTheServer() {
         for (val path : new String[] { "/", "/?token=", "/?token=wrong", "/index.html?other=1" }) {
             val response = call("GET", path, null, null, null);
