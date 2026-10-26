@@ -24,7 +24,7 @@ related:
 
 ## Decision Prerequisites
 
-- **D1. How the split page is distributed.** Decided by RFC-001 (`rfc/rfc-001-editor-distribution.md`), pending the author's acceptance: the editor stays one distributed file, assembled from parts in `src/main/editor/` by `scripts/build-editor.mjs` (no dependency); the committed `standalone.html` is the output and CI checks it. ES modules and a bundler are rejected for now. Gates P2 and P3.
+- **D1. How the split page is distributed.** Accepted by the author on 2026-10-26 (RFC-001, `rfc/rfc-001-editor-distribution.md`): the editor stays one distributed file, assembled from parts in `src/main/editor/` by `scripts/build-editor.mjs` (no dependency); the committed `standalone.html` is the output and CI checks it. ES modules and a bundler are rejected for now. Gates P2 and P3.
 - **D2. The size of the first cut.** Whether CSS, the theme boot, the kernel's base64 and the small module script are separate files in W-5 (default: yes, they are the safe cuts). Decided by W-4's design.
 
 ## Wave Manifest

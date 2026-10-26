@@ -1,7 +1,7 @@
 ---
 type: rfc
 rfc: 001
-status: proposed
+status: accepted
 date: 2026-10-26
 issue: 'gh:tmorin/archicode#161'
 related:
