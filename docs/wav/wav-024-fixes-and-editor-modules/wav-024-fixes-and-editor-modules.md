@@ -129,7 +129,7 @@ wave_manifest:
       slug: editor-assembly-and-first-cuts
       phase: P3
       depends_on: [W-4]
-      run: null
+      run: 0183
       delegation: hard_judgment
       delegation_reason: 'changes the published editor and the release pipeline (website assembly, jar and native serving) - live capability'
       likely_paths:
