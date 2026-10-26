@@ -109,6 +109,19 @@ jobs:
       - name: "Install the Node.js dependencies"
         # package-lock.json is committed: the same Prettier on every run
         run: npm ci
+      - name: "Check the editor page is the assembly of its parts"
+        # Before any hook of npm can rewrite the page: standalone.html must equal what scripts/build-editor.mjs assembles
+        # from src/main/editor, and the names, the load order and the ratchet of scripts/check-editor.mjs must hold.
+        # Run `npm run editor:build` to write the page, `npm run editor:check` to see this check
+        run: npm run editor:check
+      - name: "Check the move commits"
+        # A commit `refactor: move ...` must leave the assembled page byte for byte what its parent's was, a commit
+        # `refactor: relocate ...` its declarations and comments; the other commits are not looked at. Pull request only.
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/check-editor-moves.sh "$BASE_SHA" "$HEAD_SHA"
       - name: "Check the format"
         # Prettier of .prettierrc.yaml; run `npm run format` to fix
         run: npm run format:check

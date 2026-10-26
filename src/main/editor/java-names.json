@@ -1,0 +1,75 @@
+{
+  "names": {
+    "READ_SCHEMA": [
+      "src/main/java/io/morin/archicode/resource/element/application/Nesting.java",
+      "src/test/java/io/morin/archicode/manifest/EditorReadSchemaTest.java"
+    ],
+    "dottedIdProblem": [
+      "src/main/java/io/morin/archicode/manifest/ManifestParser.java"
+    ],
+    "plateauShapeProblem": [
+      "src/main/java/io/morin/archicode/resource/plateau/Plateau.java"
+    ],
+    "parseManifestText": [
+      "src/main/java/io/morin/archicode/manifest/ManifestParser.java"
+    ],
+    "REMOVED_PLATEAUS_KEY": [
+      "src/main/java/io/morin/archicode/workspace/WorkspaceFactory.java"
+    ],
+    "facetNameProblem": [
+      "src/main/java/io/morin/archicode/workspace/FacetNames.java"
+    ],
+    "manifestsPathSentence": [
+      "src/main/java/io/morin/archicode/manifest/ManifestDiscovery.java"
+    ],
+    "readManifestFolder": [
+      "src/main/java/io/morin/archicode/manifest/ManifestDiscovery.java"
+    ],
+    "buildPlateauTree": [
+      "src/main/java/io/morin/archicode/resource/plateau/PlateauTree.java"
+    ],
+    "horizonPeriod": [
+      "src/main/java/io/morin/archicode/resource/plateau/PlateauTree.java",
+      "src/test/java/io/morin/archicode/resource/plateau/PlateauTreeDetailsTest.java"
+    ],
+    "layerProblemsOf": [
+      "src/main/java/io/morin/archicode/workspace/DanglingReferences.java"
+    ],
+    "entryProblemsOf": [
+      "src/main/java/io/morin/archicode/workspace/LayerLoader.java"
+    ],
+    "foldParentProblems": [
+      "src/main/java/io/morin/archicode/workspace/LayerLoader.java"
+    ],
+    "rootProblem": [
+      "src/main/java/io/morin/archicode/workspace/ElementIndexFactory.java"
+    ],
+    "stepPlateauProblems": [
+      "src/main/java/io/morin/archicode/workspace/LayerLoader.java",
+      "src/main/java/io/morin/archicode/workspace/WorkspaceFactory.java",
+      "src/test/java/io/morin/archicode/workspace/StepPlateausTest.java"
+    ],
+    "duplicateReferenceMessage": [
+      "src/main/java/io/morin/archicode/manifest/ManifestParser.java"
+    ],
+    "FORMER_WORKSPACE_FILE_SENTENCE": [
+      "src/main/java/io/morin/archicode/workspace/WorkspaceFactory.java"
+    ],
+    "diagramHasNothingToDraw": [
+      "src/test/java/io/morin/archicode/doc/StoriesNotEmptyTest.java"
+    ],
+    "VIEW_PROPERTY_ORDER": [
+      "src/test/java/io/morin/archicode/cli/GuideViewPropertiesTest.java"
+    ],
+    "MAP_PARTS": [
+      "src/test/java/io/morin/archicode/cli/GuideViewPropertiesTest.java"
+    ],
+    "DIAGRAM_SHOW_NAMES": [
+      "src/test/java/io/morin/archicode/cli/GuideViewPropertiesTest.java"
+    ]
+  },
+  "pathOnly": [
+    "src/main/java/io/morin/archicode/cli/EditorHttpServer.java",
+    "src/test/java/io/morin/archicode/NativeReflectionConfigTest.java"
+  ]
+}

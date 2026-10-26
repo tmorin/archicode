@@ -146,7 +146,7 @@ wave_manifest:
       slug: editor-extract-yaml-and-save
       phase: P3
       depends_on: [W-5]
-      run: null
+      run: 0184
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/**'

@@ -1,0 +1,19 @@
+{
+  "layers": [
+    "core",
+    "model",
+    "persistence",
+    "application",
+    "presentation",
+    "composition"
+  ],
+  "parts": [
+    {
+      "file": "unsorted/script.js",
+      "layer": "unsorted"
+    }
+  ],
+  "ratchet": {
+    "max": 162
+  }
+}

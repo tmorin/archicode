@@ -2,6 +2,8 @@
 # Builds the viewpoint kernel to WebAssembly and puts it where it is used:
 #   - src/main/wasm/viewpoint_kernel.wasm, which Maven translates to JVM bytecode for the CLI (Chicory);
 #   - base64-encoded in the standalone editor (the <script id="viewpoint-kernel-wasm"> block of standalone.html).
+# In write mode the page is assembled by scripts/build-editor.mjs (node, no npm install) from src/main/editor, which
+# reads the wasm just written; the check mode compares the block in the page and needs no node.
 # Both must come from the same build; a test checks that they do.
 #
 #   embed.sh          rebuild and write both
@@ -47,8 +49,10 @@ if mode == '--check':
         sys.exit('\n'.join(problems) + '\nrun src/main/rust/viewpoint-kernel/embed.sh and commit the result')
     print('the committed WebAssembly is the one the sources build (%d bytes)' % len(built))
 else:
-    html = pattern.sub(lambda m: block, html, count=1) if pattern.search(html) else html.replace('</body>', block + '\n</body>', 1)
-    open(html_path, 'w', encoding='utf-8').write(html)
     open(committed_path, 'wb').write(built)
-    print('embedded %d bytes of WebAssembly (%d base64 characters)' % (len(built), len(b64)))
+    print('wrote %d bytes of WebAssembly (%d base64 characters)' % (len(built), len(b64)))
 PY
+
+if [ "${1:-}" != "--check" ]; then
+  node "$here/../../../../scripts/build-editor.mjs"
+fi

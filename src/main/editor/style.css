@@ -1,0 +1,953 @@
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #666666;
+    --border: #d0d0d0;
+    --control-border: #8a8a8a;
+    --accent: #2b6cb0;
+    --danger: #b00020;
+    --panel-bg: #f7f7f8;
+    --modified: #b7791f;
+    --on-accent: #ffffff;
+    --on-modified: #1a1a1a; /* text on the --modified badge: 4.8:1 (white on it is 3.6:1) */
+    --header-h: 3rem;
+    --chg-new: #00775a;
+    --chg-changed: #a85d00;
+    --chg-removed: #6b6b6b;
+    --chg-removed-text: #595959;
+    --chg-moved: #0072b2;
+    --chg-split: #a8467f;
+    --chg-merged: #2d86b8;
+    --chg-contains: #4f6f8f; /* the states of a comparison (run 0039; moved, split and merged: wave 009, the blue, the purple and the light blue of the command line, darkened where a line on white needs it): a line and a tint, never the only way a state is told (a glyph, a line style and the word are too) */
+  }
+  /* The scheme is the system's, unless Settings forces one: data-theme="light" or "dark" on the root element (no attribute
+     is "system"). The dark variables are written twice, for the system's dark and for the forced one: test-checked to match. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --on-accent: #10243a;
+      --on-modified: #10243a;
+      --bg: #1e1e1e;
+      --fg: #e8e8e8;
+      --muted: #999999;
+      --border: #3a3a3a;
+      --control-border: #767676;
+      --accent: #6cb0f0;
+      --danger: #ff6b6b;
+      --panel-bg: #262626;
+      --modified: #f0c674;
+      --chg-new: #3ddc97;
+      --chg-changed: #ffb454;
+      --chg-removed: #a0a0a0;
+      --chg-removed-text: #b0b0b0;
+      --chg-contains: #8db4d8;
+      --chg-moved: #56b4e9;
+      --chg-split: #e69ac4;
+      --chg-merged: #9fd3f2;
+    }
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --on-accent: #10243a;
+    --on-modified: #10243a;
+    --bg: #1e1e1e;
+    --fg: #e8e8e8;
+    --muted: #999999;
+    --border: #3a3a3a;
+    --control-border: #767676;
+    --accent: #6cb0f0;
+    --danger: #ff6b6b;
+    --panel-bg: #262626;
+    --modified: #f0c674;
+    --chg-new: #3ddc97;
+    --chg-changed: #ffb454;
+    --chg-removed: #a0a0a0;
+    --chg-removed-text: #b0b0b0;
+    --chg-contains: #8db4d8;
+    --chg-moved: #56b4e9;
+    --chg-split: #e69ac4;
+    --chg-merged: #9fd3f2;
+  }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  #app { min-height: 100vh; display: flex; flex-direction: column; }
+  /* !important: it keeps these controls the same whatever a more specific reset or a later rule says about a
+     button's or an input's border, padding and background. */
+  button { font: inherit; padding: 0.4rem 0.9rem !important; border: 1px solid var(--border) !important; border-radius: 4px !important; background: var(--panel-bg) !important; color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--accent) !important; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button:disabled:hover { border-color: var(--border) !important; }
+  input[type="text"], textarea, select { font: inherit; padding: 0.3rem 0.5rem !important; border: 1px solid var(--control-border) !important; border-radius: 4px !important; background: var(--bg) !important; color: var(--fg); }
+  /* A stacked field's own input/select spans its field-value column, matching the
+     full-width textarea below it (form UX review follow-up) — scoped to a direct
+     child so it never widens the inline relationship/add-row inputs elsewhere. */
+  .field-value > input[type="text"], .field-value > select { width: 100%; }
+  /* Auto-grow textarea (form UX review follow-up): height is set in JS from
+     scrollHeight, capped at AUTO_GROW_MAX_LINES; resize:none because a manual
+     drag handle would fight that automatic height. */
+  .auto-grow-textarea { width: 100%; resize: none; overflow-y: hidden; display: block; }
+  /* Landing screen: every state shown before a workspace is open (first launch,
+     reopen, busy, error, unsupported browser) shares this one centered card. */
+  .landing { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+  .landing-card { width: 100%; max-width: 28rem; display: flex; flex-direction: column; gap: 0.9rem; padding: 1.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg); }
+  .landing-brand { display: flex; align-items: center; gap: 0.5rem; color: var(--accent); font-weight: 600; letter-spacing: 0.01em; }
+  .landing-card h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
+  .landing-text, .landing-note, .landing-hint { margin: 0; line-height: 1.5; }
+  .landing-note, .landing-hint { color: var(--muted); font-size: 0.875rem; }
+  .landing-card .error-panel { margin: 0; overflow-wrap: anywhere; white-space: pre-line; }
+  .landing-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.25rem; }
+  .landing-actions button { display: inline-flex; align-items: center; gap: 0.5rem; }
+  button.btn-primary { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--on-accent); font-weight: 600; }
+  button.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+  button.btn-primary:disabled:hover { border-color: var(--accent) !important; }
+  /* Danger: outlined by default, filled on hover (Delete); filled always for the final confirmation. */
+  button.btn-danger { color: var(--danger); border-color: var(--danger) !important; }
+  button.btn-danger:hover:not(:disabled) { background: var(--danger) !important; border-color: var(--danger) !important; color: var(--on-accent); }
+  button.btn-danger-solid { background: var(--danger) !important; border-color: var(--danger) !important; color: var(--on-accent); font-weight: 600; }
+  button.btn-danger-solid:hover { filter: brightness(1.08); border-color: var(--danger) !important; }
+  /* Ghost: a rare, low-emphasis action (Close folder). */
+  button.btn-ghost { background: transparent !important; border-color: transparent !important; color: var(--muted); }
+  button.btn-ghost:hover { color: var(--fg); border-color: var(--border) !important; }
+  .landing button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* The remembered folders (run 0020): one row per folder, its Open button (the workspace's name, then the folder's when
+     they differ) and its Remove button. A long list scrolls inside the card, which stays on screen; the padding keeps
+     the focus outline of the rows inside the scrolled area. */
+  .landing-folders { display: flex; flex-direction: column; gap: 0.5rem; padding-top: 0.9rem; border-top: 1px solid var(--border); }
+  .landing-folders h2 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+  .landing-folder-list { list-style: none; margin: -4px; padding: 4px; display: flex; flex-direction: column; gap: 0.4rem; max-height: min(20rem, 45vh); overflow-y: auto; }
+  .landing-folder { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; }
+  /* a line between two folders, and Remove kept at the right: on a narrow card it wraps under its own folder, not the next */
+  .landing-folder + .landing-folder { padding-top: 0.4rem; border-top: 1px solid var(--border); }
+  .landing-folder-open { flex: 1 1 10rem; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; text-align: left; background: var(--bg) !important; }
+  .landing-folder-name, .landing-folder-dir, .landing-folder-dir > span { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .landing-folder-name { font-weight: 600; }
+  .landing-folder-dir { display: flex; align-items: center; gap: 0.3rem; color: var(--muted); font-size: 0.8rem; }
+  .landing-folder-dir svg { flex: none; width: 0.8rem; height: 0.8rem; }
+  .landing-folder-remove { flex: none; margin-left: auto; font-size: 0.8rem; }
+  .landing-folder-problem { flex-basis: 100%; margin: 0; color: var(--danger); font-size: 0.8rem; line-height: 1.4; }
+  .landing-folder-state { display: flex; align-items: flex-start; gap: 0.3rem; max-width: 100%; color: var(--muted); font-size: 0.8rem; font-weight: 400; line-height: 1.4; }
+  .landing-folder-state svg { flex: none; width: 0.8rem; height: 0.8rem; margin-top: 0.15rem; }
+  .landing-notice { margin: 0; padding: 0.5rem 0.75rem; border-left: 3px solid var(--accent); border-radius: 2px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 0.875rem; line-height: 1.5; }
+  .landing-busy { display: flex; align-items: center; gap: 0.75rem; margin: 0; }
+  .landing-spinner { flex: none; width: 1.1rem; height: 1.1rem; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: landing-spin 0.8s linear infinite; }
+  @keyframes landing-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .landing-spinner { animation: none; border-top-color: var(--border); border-right-color: var(--accent); } }
+  .diagnostics { padding: 1rem; }
+  .diagnostics ul { line-height: 1.6; }
+  .error-panel { margin: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+  .error-panel ul { margin: 0.5rem 0 0; }
+  code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+  /* ---- Resizable grid shell (layout adapted from archi-edtior.html reference) ----
+     Grid structure and panel sizing/resizing live as the layout helpers above
+     + inline styles directly in the markup (renderShellHtml); the rules below
+     are the content-level concerns: panel backgrounds/borders and the resize
+     handles' own appearance. */
+  html, body { height: 100%; }
+  #app { height: 100vh; }
+  .app-shell { height: 100%; }
+
+  /* The bar wraps instead of clipping: down to 360px the folder name, the tabs, the save button and "?" stay reachable. */
+  .top-panel { border-bottom: 1px solid var(--border); background: var(--panel-bg); flex-wrap: wrap; gap: 0.25rem 1rem; padding-top: 0.25rem; padding-bottom: 0.25rem; min-height: var(--header-h); }
+  .folder-name { font-weight: 600; cursor: default; }
+  .folder-root-slash { color: var(--muted); margin-left: 0.1rem; }
+
+  /* Both headers share one control size (2rem) so buttons line up from the top bar down to the center header. */
+  .top-panel button, .element-header button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.875rem; line-height: 1.25; white-space: nowrap; }
+  .top-panel .perspective-tabs { flex-shrink: 0; }
+  .plateau-label { font-size: 0.8rem; color: var(--muted); }
+  /* The band of plateaus (wave 014, run 0080; wave 015, run 0097): the plateau drawn and what it is compared with, two lists and a button, in one row that wraps under the width of
+     the window and never makes the page scroll sideways. A list takes what is left of the row, down to a size that still reads. */
+  .plateau-band { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 1rem; padding: 0.3rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .plateau-band button { height: 2rem; padding: 0 0.7rem !important; font-size: 0.85rem; line-height: 1.25; white-space: nowrap; }
+  .band-field { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 11rem; min-width: 0; max-width: 28rem; }
+  .band-field .plateau-label { flex: none; }
+  .band-field select { flex: 1 1 auto; min-width: 0; width: 100%; height: 2rem; font-size: 0.85rem; text-overflow: ellipsis; }
+  .band-mistakes { border-color: var(--danger) !important; color: var(--danger); flex: none; }
+  .band-flag { color: var(--danger); font-weight: 700; }
+  /* The pages below Timeline (wave 014, run 0081): a bar of their own under the band, as quiet as the band; it wraps and never makes the page scroll sideways. */
+  .page-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; padding: 0.2rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .page-tabs button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.85rem; line-height: 1.25; white-space: nowrap; }
+  .page-tabs .button-group { flex-wrap: wrap; max-width: 100%; row-gap: 0.25rem; }
+  /* The Plateaus page: the plateaus as a list, each indented by its depth in the tree; it wraps and never holds a width of its own. */
+  .timeline-view { padding-bottom: 1.25rem; min-width: 0; }
+  .timeline-body { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+  .timeline-note, .timeline-status { margin: 0; font-size: 0.875rem; color: var(--muted); overflow-wrap: anywhere; }
+  .timeline-list { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; min-width: 0; }
+  .timeline-item { display: grid; gap: 0.3rem; min-width: 0; margin-left: calc(var(--depth, 0) * 1rem); padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-bg); }
+  .timeline-item.timeline-drawn { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .timeline-main { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem; min-width: 0; }
+  .timeline-name { font-weight: 600; padding: 0.15rem 0.6rem !important; text-align: left; max-width: 100%; overflow-wrap: anywhere; }
+  .timeline-id, .timeline-horizon { overflow-wrap: anywhere; min-width: 0; }
+  .timeline-horizon, .timeline-state { font-size: 0.75rem; opacity: 0.8; }
+  .timeline-state { border: 1px solid var(--border); border-radius: 999px; padding: 0 0.45rem; }
+  .timeline-facts { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+  .timeline-changes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; min-width: 0; }
+  .timeline-count-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.3rem; }
+  .timeline-actions { display: flex; }
+  .timeline-actions button { height: 1.75rem; padding: 0 0.7rem !important; font-size: 0.8rem; }
+  .band-readonly { color: var(--muted); }
+  /* Writing in a layer (wave 014, run 0082): where a write goes, and the controls of the plateau drawn. */
+  .band-writing { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.5rem; font-size: 0.8rem; min-width: 0; max-width: 100%; }
+  .band-writing strong { overflow-wrap: anywhere; }
+  .band-writing button { height: 1.75rem; padding: 0 0.7rem !important; font-size: 0.8rem; }
+  .timeline-actions { gap: 0.4rem; flex-wrap: wrap; }
+  .layer-confirm-list { margin: 0.3rem 0 0.2rem 1.2rem; padding: 0; list-style: disc; overflow-wrap: anywhere; }
+  .app-dialog select { width: 100%; box-sizing: border-box; }
+  .band-errors { font-size: 0.85rem; margin-bottom: 0.6rem; }
+  .band-errors ul { margin: 0.2rem 0 0 1.2rem; list-style: disc; overflow-wrap: anywhere; }
+  .field-origin { margin-left: 0.5rem; font-size: 0.72rem; color: var(--muted); font-style: italic; }
+  .field-origin[data-origin="patch"] { color: var(--accent); }
+  .origin-block { margin-top: 0.4rem; }
+  .origin-patches { margin: 0; padding-left: 1rem; list-style: disc; font-size: 0.8rem; }
+  .changes-cascade .change-cascade { margin: 0.25rem 0 0.75rem; padding-left: 1rem; list-style: disc; font-size: 0.8rem; line-height: 1.5; }
+  .cascade-effect { font-weight: 600; }
+  .top-panel > .folder-name { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .help-wrap { position: relative; flex-shrink: 0; }
+  .top-actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; min-width: 0; max-width: 100%; }
+  .top-actions > button, .top-actions > .button-group { flex-shrink: 0; }
+  .top-panel .help-button { width: 2rem; padding: 0 !important; border-radius: 50% !important; flex-shrink: 0; font-weight: 600; }
+  .top-panel .help-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .help-menu { position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; width: min(21rem, calc(100vw - 2rem)); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+  .help-menu ul { padding: 0.1rem 0; }
+  .help-menu li a { display: block; padding: 0.35rem 1rem; color: var(--accent); }
+  .help-menu li a:hover, .help-menu li a:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); text-decoration: underline; outline: none; }
+  .help-note { margin: 0; padding: 0.4rem 1rem 0; font-size: 0.8rem; line-height: 1.4; color: var(--muted); border-top: 1px solid var(--border); }
+  .help-note + .help-note { border-top: none; padding-top: 0.2rem; padding-bottom: 0.2rem; }
+  .settings-help a, .landing-note a { color: var(--accent); text-decoration: underline; }
+  .top-panel .save-status { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .left-panel { overflow-y: auto; border-right: 1px solid var(--border); background: var(--panel-bg); padding-bottom: 1rem; }
+  .right-panel, .bottom-panel { overflow: auto; background: var(--panel-bg); padding: 1rem; }
+  .right-panel h3, .bottom-panel h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 0.5rem; }
+  .right-panel { border-left: 1px solid var(--border); }
+  .bottom-panel { border-top: 1px solid var(--border); }
+
+  /* ---- The inspection panel (right region): the data of the selected element, beside the diagram ----
+     Only the variables of the theme are used. The rows of the Details page stack here (label above value): the panel is
+     about 18rem wide, where the 140px label column of the page would leave nothing to the value. */
+  .inspection { display: flex; flex-direction: column; gap: 0.5rem; }
+  .inspection-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .inspection-head h3 { margin: 0; }
+  .inspection-close { flex: none; width: 1.75rem; height: 1.75rem; padding: 0 !important; line-height: 1; }
+  .inspection-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.4rem; font-weight: 600; font-size: 1.05rem; overflow-wrap: anywhere; }
+  .inspection-note { margin: 0; padding: 0.3rem 0.5rem; font-size: 0.8rem; color: var(--muted); border: 1px dashed var(--border); border-radius: 4px; }
+  .removed-relationships { margin: 0; padding-left: 1.1rem; overflow-wrap: anywhere; }
+  .inspection-note[hidden] { display: none; }
+  .inspection .field-row { flex-direction: column; gap: 0.1rem; }
+  .inspection .tag-list { padding-left: 0; list-style: none; }
+  .inspection .field-label { width: auto; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  /* a selected link: its two ends, then one block per declared relationship */
+  .inspection-end-name { font-weight: 600; overflow-wrap: anywhere; }
+  .inspection-subhead { margin: 0.25rem 0 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .inspection-rel { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
+  .inspection-rel-label { font-weight: 600; overflow-wrap: anywhere; }
+  .inspection-rel-path { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+  /* the relationship of the link that was clicked, when several links join the same two boxes: said in words, the border only repeats it */
+  .inspection-rel-marked { border-color: var(--accent); }
+  .inspection-rel-mark { margin-left: 0.4rem; padding: 0 0.4rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; white-space: nowrap; }
+
+  /* ---- The comparison in the right-hand panel (run 0040): the Selected | Changes tabs, the list, and "What changed". A state is a chip with its glyph and its
+     word; the colour of its line (--chg-*) only repeats it. ---- */
+  .right-tabs.button-group { display: flex; margin: -1rem -1rem 0.6rem; padding: 0.6rem 1rem 0.4rem; position: sticky; top: -1rem; z-index: 3; background: var(--panel-bg); }
+  .right-tabs .field-count { color: inherit; border-color: currentColor; }
+  .right-tabs button { flex: 1 1 0; padding: 0.3rem 0.5rem !important; font-size: 0.85rem; white-space: nowrap; }
+  .change-chip { max-width: none; font-size: 0.72rem; padding: 0 0.45rem; color: var(--st-text, var(--fg)); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.2rem; }
+  .change-chip .change-glyph { font-weight: 800; font-size: 0.85rem; line-height: 1; }
+  .changes-panel { display: flex; flex-direction: column; gap: 0.5rem; }
+  .changes-compared { margin: 0; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+  .changes-counts { display: flex; flex-direction: column; gap: 0.3rem; }
+  .changes-count-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.3rem; }
+  .changes-count-label { flex: 0 0 100%; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .changes-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; }
+  .changes-note { margin: 0; font-size: 0.8rem; color: var(--muted); }
+  .change-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+  .change-row { display: flex !important; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; width: 100%; text-align: left; padding: 0.3rem 0.5rem !important; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .change-row.selected { border-color: var(--accent) !important; box-shadow: inset 3px 0 0 var(--accent); }
+  .change-row .change-chip { align-self: center; }
+  .change-main { flex: 1 1 8rem; min-width: 0; }
+  .change-name { font-weight: 600; }
+  .change-ref, .change-layer, .change-natures { color: var(--muted); font-size: 0.75rem; }
+  .change-row .change-natures { flex: 0 0 100%; }
+  .change-rel-path { font-weight: 600; }
+  .change-rel-label { color: var(--muted); }
+  .change-none { margin: 0; font-size: 0.8rem; }
+  /* reading a long list (wave 015, run 0103, #27): the two filters, "12 of 167", and the buttons that walk the list */
+  .changes-reading { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.4rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .changes-filters { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; }
+  .changes-filter { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.75rem; color: var(--muted); flex: 1 1 8rem; min-width: 0; }
+  .changes-filter select { font-size: 0.82rem; max-width: 100%; }
+  .changes-shown { margin: 0; font-size: 0.82rem; font-weight: 600; }
+  .changes-walk { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
+  .changes-position { font-size: 0.8rem; color: var(--muted); }
+  .changes-detail { padding: 0.4rem 0; }
+  .what-changed { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
+  .what-changed .inspection-subhead { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
+  .change-natures { margin: 0; }
+  .change-diff { display: flex; flex-direction: column; gap: 0.15rem; padding-top: 0.25rem; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+  .change-diff-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .change-before, .change-after { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .change-side { flex: 0 0 4.2rem; font-size: 0.72rem; font-weight: 600; color: var(--muted); }
+  .change-before .change-text { text-decoration: line-through; text-decoration-thickness: 1px; }
+  .change-text { white-space: pre-wrap; }
+  .change-rels { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .change-rel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .change-rel .change-diff, .change-rel .change-natures { flex: 0 0 100%; }
+  .rel-change { display: flex; flex-direction: column; gap: 0.25rem; }
+  /* the mark after the name of an element in the trees: a glyph (the word is in its tooltip and in what a screen reader reads) */
+  .tree-change { flex: none; min-width: 1rem; text-align: center; font-weight: 800; font-size: 0.8rem; line-height: 1.2; padding: 0 0.15rem; border: 1px solid var(--chg-new); border-radius: 3px; color: var(--fg); }
+  .tree-change[data-state="changed"] { border-color: var(--chg-changed); border-style: dotted; }
+  .tree-change[data-state="contains-changes"] { border-color: var(--chg-contains); border-style: dashed; font-weight: 600; }
+  .tree-change[data-state="moved"] { border-color: var(--chg-moved); border-style: dashed; border-width: 2px; }
+  .tree-change[data-state="split"] { border-color: var(--chg-split); border-style: dashed; border-width: 2px; border-top-style: dotted; border-bottom-style: dotted; }
+  .tree-change[data-state="merged"] { border-color: var(--chg-merged); border-style: double; border-width: 3px; }
+  /* what an element replaces (wave 009), the candidates the kernel proposes and the warnings it gives, in the Changes panel and the form */
+  .change-from { color: var(--muted); font-size: 0.75rem; flex: 0 0 100%; overflow-wrap: anywhere; }
+  .change-candidates { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .change-candidate { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.4rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .change-candidate-pair { display: flex; flex-direction: column; gap: 0.1rem; }
+  .change-candidate-side { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.4rem; }
+  .change-candidate-role { flex: 0 0 4.2rem; font-size: 0.72rem; font-weight: 600; color: var(--muted); }
+  .change-candidate-reasons { color: var(--muted); font-size: 0.75rem; }
+  .change-candidate-actions { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .change-candidate-actions button { padding: 0.2rem 0.6rem !important; font-size: 0.8rem; }
+  .changes-message { margin: 0; padding: 0.4rem 0.5rem; border: 1px solid var(--danger); border-radius: 4px; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .changes-warnings { margin: 0; padding-left: 1.1rem; font-size: 0.8rem; overflow-wrap: anywhere; list-style: disc; }
+  .changes-warnings li + li { margin-top: 0.3rem; }
+  .replaces-flag { margin-left: 0.3rem; font-size: 0.72rem; color: var(--muted); font-style: italic; }
+
+  [data-resize] { background: var(--border); flex-shrink: 0; }
+  [data-resize]:hover, [data-resize][data-active] { background: var(--accent); }
+
+  .nav-section { border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
+  .nav-section:last-child { border-bottom: none; }
+  .nav-row { padding: 0.35rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; }
+  .nav-row:focus-visible, .tree-branch-title:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .nav-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .nav-row.active { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
+  .file-row { justify-content: space-between; }
+  .file-relpath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-row.has-error .file-relpath { color: var(--danger); }
+  .warning-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-modified); background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
+  .file-plateau-warning { padding: 0.5rem 0; color: var(--fg); }
+  /* The Files page groups its files by plateau (wave 015, run 0098): the heading of a group is the heading of a branch of the trees, its rows are a little further in. */
+  .files-note { padding: 0.2rem 1rem 0.4rem; font-size: 0.75rem; color: var(--muted); }
+  .files-group-name { font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+  .files-group-count { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--muted); flex-shrink: 0; white-space: nowrap; }
+  .files-group .tree-branch-title { min-width: 0; }
+  .files-group .file-row { padding-left: 1.5rem; }
+  .error-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-accent); background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
+  .modified-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-modified); background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
+
+  .tree-branch-header { padding: 0.35rem 0.5rem 0.35rem 1rem; cursor: pointer; font-weight: 600; user-select: none; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .tree-branch-header.static { cursor: default; }
+  .tree-branch-header.static:hover { background: none; }
+  .tree-branch-header:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .tree-branch-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-branch-add-btn { padding: 0.1rem 0.5rem !important; font-size: 0.75rem; flex-shrink: 0; }
+  .tree-branch-body { padding-bottom: 0.25rem; }
+  .tree-empty { padding: 0.25rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
+  .tree-node-children { margin-left: 0; } /* indentation is the padding of each row, so that a hover or selection bar reaches the edge */
+  .tree-node-row { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 1rem 0.25rem calc(1rem + (var(--level, 1) - 1) * 1rem); cursor: pointer; }
+  .tree-node-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .modified-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--modified); flex-shrink: 0; }
+  .nav-facet-note { padding: 0.2rem 1rem 0.4rem; font-size: 0.8rem; color: var(--muted); }
+  .nav-unread-note ul { margin: 0.2rem 0 0; padding-left: 1rem; }
+  .nav-duplicate-note { margin: 0.2rem 0.75rem 0.5rem; padding: 0.4rem 0.6rem; font-size: 0.8rem; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); overflow-wrap: anywhere; }
+  .nav-duplicate-note ul { margin: 0.2rem 0 0; padding-left: 1rem; }
+  .nav-facet-note button { padding: 0 !important; border: none !important; background: none !important; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+  .tree-node-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .tree-node-row.active { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
+  .tree-node-row.quiet .tree-node-label, .tree-node-row.quiet .tree-node-kind { opacity: 0.45; }
+  .tree-toggle { width: 1rem; flex-shrink: 0; text-align: center; color: var(--muted); user-select: none; }
+  .tree-toggle-empty { visibility: hidden; }
+  .tree-node-kind { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; flex-shrink: 0; }
+  /* the badge of a stereotype the workspace styled: its name is the carrier, the colours (--st-*) repeat the style; also in the legend of a diagram */
+  .stereotype-badge { flex-shrink: 0; max-width: 6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.65rem; font-weight: 600; line-height: 1.35; padding: 0 0.4rem; border-radius: 999px;
+    background: var(--st-fill, transparent); border: 1px solid var(--st-stroke, var(--border)); color: var(--st-text, var(--muted)); }
+  .tree-node-row.quiet .stereotype-badge, .map-scope-row.off-map .stereotype-badge, .map-scope-row.left-out .stereotype-badge { opacity: 0.45; }
+  .map-scope-row .stereotype-badge { font-size: 0.6rem; padding: 0 0.3rem; max-width: 4.5rem; }
+  /* a narrow left panel: the badges give way first (down to an ellipsis) so that the name keeps a few letters */
+  .tree-node-row .stereotype-badge { flex-shrink: 8; min-width: 1.3rem; }
+  .tree-node-label { flex: 1 1 auto; min-width: 3.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* No vertical padding here on purpose — every view supplies its own top
+     and bottom inset instead (see each below). A view with a sticky
+     .element-header needs nothing to cancel at the top; and *any* child
+     whose own height/margin tricks are meant to reach this panel's real
+     bottom edge (.file-view) must do so against a parent with zero
+     padding of its own, or the two fights (the child's reach-the-bottom
+     math and the parent's own padding) double up into a second,
+     unwanted scrollbar on .center-panel itself, on top of the child's. */
+  .center-panel { overflow-y: auto; padding: 0 1.75rem; }
+  .center-panel > .center-placeholder { padding: 1.25rem 0; }
+  .center-placeholder { color: var(--muted); }
+  .shell-error-panel { margin: 1rem; white-space: pre-line; }
+
+  .settings-view h2, .file-view h2, .element-header h2, .create-element-form h2 { margin-top: 0; }
+  /* These two have no sticky header of their own (unlike element/file
+     views below), so — unlike those — they still need their own top and
+     bottom inset now that .center-panel itself provides neither. */
+  .create-element-form { padding: 1.25rem 0; }
+  .settings-view { padding-bottom: 1.25rem; }
+  /* Element view/edit have a sticky header supplying their own top inset
+     already; only the bottom is still needed. */
+  .element-view, .element-edition-form { padding-bottom: 1.25rem; }
+
+  /* The edit area fills whatever room the Files perspective's center panel
+     actually has (now that perspective hides right/bottom and gives it
+     the full width) rather than guessing a size from the viewport — a
+     flex column whose textarea grows to fill it. .center-panel has no
+     padding of its own (see above), so height:100% alone already reaches
+     its real bottom edge, with nothing left over to reclaim. */
+  .file-view { display: flex; flex-direction: column; height: 100%; }
+  /* Edge-to-edge: no gap below the header (its shared margin-bottom is for
+     views with content below that wants breathing room; a text editor
+     doesn't), and the edit area bleeds past .center-panel's left/right
+     padding the same way the header's own background already does —
+     borderless on the sides that now coincide with the panel's real edge,
+     since there's nothing left to visually separate there. */
+  .file-view .element-header { margin-bottom: 0; }
+  /* Shared by both the plain-textarea fallback and the CodeMirror host div
+     (form UX review follow-up, "un éditeur YAML en lieu et place du
+     textarea") — the box itself (background/border/edge-to-edge bleed/flex
+     sizing) is identical either way; only the content-rendering specifics
+     below differ per surface. */
+  .file-view .raw-yaml {
+    background: var(--panel-bg);
+    border: 1px solid var(--border); border-left: none; border-right: none; border-radius: 0;
+    margin: 0 -1.75rem; flex: 1 1 auto; min-height: 0;
+  }
+  .file-view textarea.raw-yaml {
+    padding: 1rem 1.75rem; overflow: auto; white-space: pre;
+    resize: none; /* the browser's own drag-to-resize grip makes no sense on a textarea whose size is already driven by the flex layout around it */
+  }
+  /* CodeMirror manages its own internal scrolling (.cm-scroller) — the host
+     div only needs to hand it a definite height to fill (a flex item with
+     flex:1 1 auto already has one, same as the textarea above). */
+  .file-view div.raw-yaml .cm-editor { height: 100%; padding: 0 1.75rem; }
+
+  /* Diagram perspective: a flex column filling the center panel exactly (like .file-view), so the header stays put
+     and only the canvas scrolls — and only when the diagram is bigger than the room it has. The stage bleeds to the
+     panel's edges; the tools float over its corner without scrolling with it. */
+  .diagram-view { display: flex; flex-direction: column; height: 100%; }
+  .diagram-view .element-header { margin-bottom: 0; flex: none; }
+  .diagram-stage { position: relative; flex: 1 1 0; min-height: 0; margin: 0 -1.75rem; background: var(--panel-bg); }
+  .diagram-canvas { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; }
+  .diagram-canvas.panning { cursor: grabbing; user-select: none; }
+  .diagram-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .diagram-canvas svg { position: absolute; left: 0; top: 0; display: block; max-width: none; transform-origin: 0 0; }
+  .diagram-canvas > .muted, .diagram-canvas > .error-panel { position: absolute; left: 0.75rem; top: 0.75rem; right: 0.75rem; }
+  .diagram-empty button { margin-left: 0.25rem; }
+  .map-scope-hint { color: var(--muted); font-size: 0.8rem; padding: 0 1rem 0.5rem; }
+  .map-scope-row { position: relative; padding-left: calc(0.5rem + (var(--level, 1) - 1) * 0.75rem); padding-right: 0.5rem; }
+  .nav-tools { display: inline-flex; gap: 0.1rem; }
+  .tree-branch-actions { display: inline-flex; align-items: center; gap: 0.15rem; flex-shrink: 0; }
+  .tree-branch-actions .map-scope-btn { width: 1.4rem; height: 1.4rem; }
+  .map-scope-row.off-map .tree-node-label, .map-scope-row.off-map .tree-node-kind { opacity: 0.45; }
+  .map-scope-row .tree-node-kind { font-size: 0.6rem; padding: 0 0.2rem; }
+  .map-scope-row .tree-node-label { flex: 1 1 auto; min-width: 0; }
+  /* Pin and Hide float over the end of the row when they are wanted: they take no room from the name the rest of the time.
+     (The page-wide button rule sets padding, border and background with !important: these must say it too.) */
+  .map-scope-row { --row-bg: var(--panel-bg); }
+  .map-scope-row.pinned { --row-bg: color-mix(in srgb, var(--accent) 9%, var(--panel-bg)); background: var(--row-bg); }
+  .map-scope-row:hover { --row-bg: color-mix(in srgb, var(--accent) 10%, var(--panel-bg)); }
+  .map-scope-row .map-scope-actions { position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 0.1rem;
+    padding-left: 1.25rem; background: linear-gradient(to right, transparent, var(--row-bg) 1.25rem); opacity: 0; pointer-events: none; }
+  .map-scope-row:hover .map-scope-actions, .map-scope-row:focus-within .map-scope-actions { opacity: 1; pointer-events: auto; }
+  .map-scope-row { cursor: default; }
+  .map-scope-row.foldable { cursor: pointer; }
+  .map-scope-btn { display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; padding: 0 !important; border: 1px solid transparent !important; border-radius: 5px !important;
+    background: transparent !important; color: var(--muted); cursor: pointer; }
+  .map-scope-btn svg { display: block; width: 15px; height: 15px; flex: none; }
+  .map-scope-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 16%, transparent) !important; color: var(--fg); border-color: transparent !important; }
+  .map-scope-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .map-scope-btn[aria-pressed="true"] { color: var(--accent); }
+  .map-scope-btn:disabled { cursor: not-allowed; opacity: 0.3; }
+  /* a pinned element: tinted row, accent kind, bold name and the pin itself — readable at a glance, without hovering */
+  .map-scope-mark { display: inline-flex; color: var(--accent); flex-shrink: 0; margin-right: 0.15rem; }
+  .map-scope-mark svg { width: 13px; height: 13px; }
+  .map-scope-row.pinned .tree-node-kind { color: var(--accent); border-color: var(--accent); }
+  .map-scope-row.pinned .tree-node-label { font-weight: 600; }
+  .map-scope-row.left-out .tree-node-label, .map-scope-row.left-out .tree-node-kind { opacity: 0.4; text-decoration: line-through; }
+  /* no hover on a touch screen: the buttons stay, after the name */
+  @media (hover: none) { .map-scope-row .map-scope-actions { position: static; transform: none; background: none; opacity: 1; pointer-events: auto; padding-left: 0; } }
+  /* floats over the top left of the map, as the tools float over its bottom: no band, no height taken from the drawing */
+  .map-chips { position: absolute; top: 0.6rem; left: 0.75rem; right: 0.75rem; z-index: 2; display: flex; flex-wrap: wrap; gap: 0.4rem; pointer-events: none; }
+  .map-chips > * { pointer-events: auto; }
+  .map-chips-clear { height: 1.7rem; padding: 0 0.7rem !important; border-radius: 999px !important; font-size: 0.82rem; color: var(--muted); background: color-mix(in srgb, var(--panel-bg) 92%, transparent) !important; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
+  .map-chip { display: inline-flex; align-items: center; gap: 0.1rem; border: 1px solid var(--border); border-radius: 999px; padding: 0 0.15rem 0 0.7rem; height: 1.7rem; font-size: 0.82rem; background: color-mix(in srgb, var(--panel-bg) 92%, transparent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
+  .map-chip-pin { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg)); }
+  /* (the page-wide button rule uses !important for padding, border and background: the chip's cross has to as well) */
+  .map-chip button { display: inline-flex; align-items: center; justify-content: center; width: 1.3rem; height: 1.3rem; padding: 0 !important; border: 0 !important; border-radius: 999px !important;
+    background: transparent !important; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; }
+  .map-chip button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--fg); }
+  .diagram-canvas > .dg-list { position: absolute; inset: 0; overflow: auto; padding: 0.75rem; cursor: auto; }
+  .diagram-tools { position: absolute; right: 1.5rem; bottom: 1.5rem; display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 2rem); gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
+  /* the page of a view in the Library: the diagram of the Map in the centre; the right-hand panel holds the view, then what is selected */
+  .library-view-notices { flex: none; }
+  .library-panel { display: flex; flex-direction: column; gap: 1rem; }
+  .library-panel h3 { margin: 0.75rem 0 0.4rem; }
+  .library-panel > section > h3:first-child { margin-top: 0; }
+  .library-panel .view-facts { grid-template-columns: minmax(0, 1fr); gap: 0.05rem; margin: 0.25rem 0 0; }
+  .library-panel .view-facts dt { margin-top: 0.4rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .library-panel .view-uses li { overflow-wrap: anywhere; }
+  .library-selection { padding-top: 1rem; border-top: 1px solid var(--border); }
+  /* the attributes of a view as controls (run 0029): label over control, in the narrow panel and in the centre of a view that cannot be drawn */
+  .view-edit { display: flex; flex-direction: column; gap: 0.7rem; margin: 0.6rem 0 0.9rem; }
+  .story-body .view-edit { max-width: 30rem; }
+  .view-field { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; border: 0; padding: 0; margin: 0; }
+  .view-field > label, .view-field > legend { padding: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .view-field select, .view-field input[type="text"] { width: 100%; box-sizing: border-box; }
+  .view-field .inline-error { margin-left: 0; }
+  .view-field .view-element-name { font-size: 0.82rem; overflow-wrap: anywhere; }
+  .view-checks { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  .view-check { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+  .view-pills { display: flex; flex-wrap: wrap; }
+  .view-pills:empty { display: none; }
+  .view-pills .pill { overflow-wrap: anywhere; }
+  .view-pills .pill-missing { border-style: dashed; color: var(--danger); }
+  .inspection-open { align-self: flex-start; margin-top: 0.25rem; }
+  .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
+  /* a narrow centre: a group of the toolbar that is wider than the toolbar wraps inside it (it was cut on the left, and the buttons were out of reach) */
+  .diagram-tools .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
+  .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
+  .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
+    color: var(--muted); font-size: 0.8rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
+  #diagram-hint { flex: none; max-width: 100%; color: var(--accent); }
+  .diagram-status > span:first-child { flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dg-legend { flex: none; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.35rem; align-items: center; }
+  .dg-legend svg { overflow: visible; }
+  .dg-legend-stereotypes { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
+  /* the key to a comparison: one entry per state, each with a sample of its box and of its link, its glyph and its word */
+  .dg-legend-compare { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; align-items: center; margin-top: 0.15rem; }
+  .dg-legend-title { color: var(--muted); }
+  .dg-legend-state { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.1rem 0.3rem; }
+  /* the key folded (wave 018, run 0130, #132): one row, a sample, a glyph, a word and a count for each state (the sample carries the line style); the sentences and the note open with the Key button */
+  .dg-legend-toggle { height: 1.4rem; min-width: 0; padding: 0 0.5rem !important; font-size: 0.78rem; }
+  .dg-legend-toggle[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .dg-legend-compare:not(.dg-key-open) { gap: 0.25rem 0.6rem; }
+  .dg-legend-compare:not(.dg-key-open) > * { flex: none; white-space: nowrap; }
+  /* on a narrow screen the folded row stays one row and scrolls along, rather than taking one row for each state */
+  @media (max-width: 700px) { .dg-legend-compare:not(.dg-key-open) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; } }
+  .dg-legend-compare:not(.dg-key-open) .dg-legend-how, .dg-legend-compare:not(.dg-key-open) .dg-legend-note, .dg-legend-compare:not(.dg-key-open) .dg-legend-title { display: none; } /* the pair compared is on the band, and in the title of the button */
+  .dg-legend-compare.dg-key-open { max-height: var(--dg-key-max, 30vh); overflow-y: auto; }
+  .dg-legend-state .dg-glyph { font-size: 0.95rem; }
+  .dg-legend-how, .dg-legend-count { color: var(--muted); font-size: 0.78rem; }
+  .dg-legend-note { color: var(--muted); font-size: 0.78rem; }
+  .diagram-note { margin: 0 0 0.5rem; color: var(--muted); }
+  .diagram-fallback { margin: 0; padding-left: 1.25rem; }
+  .viewpoint-switch { display: inline-flex; gap: 0.5rem; flex: none; margin-left: 0.5rem; }
+  .viewpoint-switch button { padding: 0 0.6rem !important; }
+  /* buttons joined side by side, one border between two of them, the corners rounded at the ends only */
+  /* Stories */
+  .story-body { max-width: 56rem; } /* the header runs the whole width of the center; what is under it is kept to a readable measure */
+  .story-body h3 { margin: 1.5rem 0 0.5rem; font-size: 1rem; }
+  .story-intro { margin: 1rem 0; }
+  .story-step.current { border-left: 3px solid var(--accent); padding-left: 0.5rem; }
+  .story-current-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-accent); background: var(--accent); border-radius: 3px; padding: 0.05rem 0.35rem; }
+  .story-add { align-items: center; flex-wrap: wrap; }
+  .story-add label { color: var(--muted); font-size: 0.85rem; }
+  .story-undo { margin: 0.5rem 0; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; gap: 0.75rem; }
+  .story-empty { margin: 1rem 0; color: var(--muted); }
+  .story-empty ol { margin: 0.25rem 0 0.5rem 1.25rem; padding: 0; }
+  .story-danger { margin: 2rem 0 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+  .story-repair { margin: 0 0 0.4rem; }
+  .story-bar-words { margin: 0.4rem 0 0; white-space: pre-wrap; max-height: 5.5rem; overflow-y: auto; }
+  .story-bar-notice { margin-top: 0.35rem; font-size: 0.85rem; color: var(--accent); }
+  .story-bar-actions button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .app-dialog-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.4); }
+  .app-dialog { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; width: min(26rem, calc(100vw - 2rem)); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
+  .app-dialog h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+  .app-dialog-wide { width: min(36rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow-y: auto; }
+  .move-parents { max-height: 14rem; overflow-y: auto; margin-top: 0.4rem; border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.5rem; }
+  .move-parent[hidden], .move-empty[hidden] { display: none; }
+  .move-parent small { display: block; }
+  .move-impact, .move-replaces, .move-note, .move-ways, .move-blocked { margin: 0.6rem 0 0; font-size: 0.9rem; }
+  .move-excluded { margin: 0.6rem 0 0; font-size: 0.9rem; }
+  .move-excluded ul { margin: 0.3rem 0 0; padding-left: 1.2rem; max-height: 12rem; overflow-y: auto; }
+  .app-dialog-subject { margin: 0 0 0.75rem; color: var(--muted); }
+  .app-dialog-field { display: block; margin-bottom: 0.4rem; color: var(--muted); font-size: 0.9rem; }
+  .app-dialog input[type="text"] { width: 100%; box-sizing: border-box; }
+  .app-dialog-choices { border: 0; padding: 0; margin: 0; }
+  .app-dialog-choices legend { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 0; margin-bottom: 0.3rem; }
+  .app-dialog-choice { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0; }
+  .app-dialog-choice small { color: var(--muted); }
+  .app-dialog-new { margin: 0.2rem 0 0 1.5rem; width: calc(100% - 1.5rem) !important; }
+  .app-dialog-plateaus { margin-top: 0.6rem; }
+  .app-dialog-plateaus-note { margin: 0 0 0 1.5rem; }
+  .app-dialog-error { min-height: 1.2rem; margin-top: 0.4rem; color: var(--danger); font-size: 0.85rem; }
+  .app-dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
+  .story-legacy { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.5rem 0.75rem; border: 1px solid var(--modified); border-radius: 6px; }
+  .story-count { color: var(--muted); font-size: 0.8rem; flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; }
+  /* a row of the Library list: the name keeps at least 6rem (then it is cut with an ellipsis); the badges and the count that do not fit
+     with it go on a second line instead of taking its room */
+  .story-row { flex-wrap: wrap; row-gap: 0.15rem; }
+  .story-row .file-relpath { flex: 1 1 6rem; min-width: 0; }
+  .story-field { display: grid; grid-template-columns: 5rem 1fr; gap: 0.5rem; align-items: start; margin: 0.6rem 0; }
+  .story-field > span { color: var(--muted); padding-top: 0.35rem; }
+  .story-field input, .story-field textarea, .story-step textarea { width: 100%; box-sizing: border-box; }
+  .story-steps { list-style: decimal; padding-left: 1.5rem; margin: 1rem 0; }
+  .story-step { margin: 0 0 0.9rem; }
+  .story-step::marker { color: var(--muted); font-weight: 600; }
+  .story-step-head, .story-view-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
+  .story-step-view, .story-view-name { font-weight: 600; }
+  .link-button { background: none !important; border: 0 !important; padding: 0 !important; color: var(--accent); cursor: pointer; text-decoration: underline; font-family: inherit; font-size: inherit; }
+  .view-facts { display: grid; grid-template-columns: 7rem 1fr; gap: 0.35rem 0.75rem; margin: 1rem 0; }
+  .view-facts dt { color: var(--muted); }
+  .view-facts dd { margin: 0; overflow-wrap: anywhere; }
+  .view-uses { list-style: none; padding: 0; margin: 0; }
+  .view-uses li { padding: 0.2rem 0; }
+  .story-step-tools { display: inline-flex; gap: 0.3rem; margin-left: auto; }
+  .story-step-tools button { padding: 0.15rem 0.6rem !important; font-size: 0.8rem; }
+  .story-step.broken .story-step-view, .story-view-row.broken .story-view-name { color: var(--danger); }
+  .story-step-plateaus { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0 0 0.3rem; font-size: 0.85rem; }
+  .story-step-plateau select { margin-left: 0.3rem; }
+  .story-bar-plateaus { color: var(--muted); font-size: 0.85rem; }
+  .story-step-problem { flex-basis: 100%; color: var(--danger); font-size: 0.85rem; margin: 0 0 0.3rem; }
+  .story-add { display: flex; gap: 0.5rem; margin: 0.5rem 0 1rem; }
+  .story-view-list { list-style: none; padding: 0; margin: 0; }
+  .story-view-row { padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+  .story-bar { flex: none; padding: 0.5rem 0 0.4rem; border-bottom: 1px solid var(--border); }
+  .story-bar-line { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .story-bar-title { font-weight: 700; }
+  .story-bar-step { color: var(--muted); }
+  .story-bar-actions { display: inline-flex; gap: 0.4rem; margin-left: auto; flex-wrap: wrap; }
+  .story-bar-actions button { padding: 0.2rem 0.7rem !important; }
+  .story-announcer { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* The story player (wave 021, run 0153, #153): a modal that covers the window, outside #app (which render() replaces and which is inert while the player is open). One column that
+     never grows past the window: the bar wraps, the diagram takes what is left, the words scroll inside their own box, so that at 360 px nothing scrolls sideways. */
+  .story-player[hidden] { display: none; }
+  .story-player { position: fixed; inset: 0; z-index: 100; background: var(--bg); color: var(--fg); }
+  .player-shell { height: 100vh; height: 100dvh; display: flex; flex-direction: column; min-width: 0; max-width: 100vw; overflow: hidden; box-sizing: border-box; background: var(--bg); color: var(--fg); }
+  .player-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); min-width: 0; }
+  .player-title { margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; min-width: 0; }
+  .player-position { color: var(--muted); overflow-wrap: anywhere; min-width: 0; }
+  .player-step-menu { flex: 0 1 22rem; min-width: 0; max-width: 100%; box-sizing: border-box; text-overflow: ellipsis; }
+  .player-actions { display: inline-flex; flex-wrap: wrap; gap: 0.4rem; margin-left: auto; }
+  .player-bar button { padding: 0.2rem 0.7rem !important; }
+  .player-plateaus { flex: none; margin: 0; padding: 0.3rem 0.75rem 0; color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; min-width: 0; }
+  .player-plateaus b { color: var(--fg); font-weight: 600; }
+  .player-notice { flex: none; margin: 0; padding: 0.3rem 0.75rem 0; font-size: 0.85rem; color: var(--danger); overflow-wrap: anywhere; }
+  .player-stage { position: relative; flex: 1 1 0; min-height: 0; min-width: 0; margin-top: 0.3rem; background: var(--panel-bg); }
+  .player-problem { position: absolute; left: 0.75rem; right: 0.75rem; top: 0.75rem; color: var(--danger); overflow-wrap: anywhere; }
+  .player-status { --dg-key-max: 24vh; flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; padding: 0.35rem 0.75rem; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--muted); min-width: 0; }
+  .player-hint { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+  .player-status-text { flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .player-words { flex: none; max-height: 30vh; overflow-y: auto; margin: 0; padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); font-size: 1.05rem; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line; min-width: 0; }
+  .player-words.muted { color: var(--muted); }
+  .story-bar-text { width: 100%; box-sizing: border-box; margin-top: 0.4rem; resize: vertical; }
+  .button-group { display: inline-flex; }
+  .button-group button { border-radius: 0 !important; }
+  .button-group button + button { margin-left: -1px; }
+  .button-group button:first-child { border-top-left-radius: 4px !important; border-bottom-left-radius: 4px !important; }
+  .button-group button:last-child { border-top-right-radius: 4px !important; border-bottom-right-radius: 4px !important; }
+  .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
+  /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
+  .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
+  .perspective-tabs button[aria-pressed="true"], .page-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
+  /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
+  .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  /* the drawing paints itself with the theme's tokens */
+  .dg-box { fill: var(--bg); stroke: var(--border); stroke-width: 1.25; }
+  .dg-stack { fill: var(--panel-bg); }
+  .dg-group { fill: none; stroke: var(--muted); stroke-opacity: 0.55; stroke-width: 1.5; }
+  /* What the workspace styled (`styles`): the look of a box arrives as --st-* custom properties on its group, the usual look being the
+     fallback. These rules come before the focal and selected ones, which tie with them in specificity and must win. The colour of the text
+     is computed from the fill, so it reads the same in both themes. */
+  .dg-styled > .dg-box { fill: var(--st-fill, var(--bg)); stroke: var(--st-stroke, var(--border)); stroke-width: var(--st-width, 1.25px); stroke-dasharray: var(--st-dash, none); }
+  .dg-styled > .dg-stack { fill: var(--st-fill, var(--panel-bg)); }
+  .dg-styled > .dg-group { fill: var(--st-fill, none); stroke: var(--st-stroke, var(--muted)); stroke-opacity: var(--st-stroke-opacity, 0.55); stroke-width: var(--st-width, 1.5px); stroke-dasharray: var(--st-dash, none); pointer-events: visibleStroke; }
+  .dg-styled .dg-title { fill: var(--st-text, var(--fg)); font-weight: var(--st-weight, 600); font-style: var(--st-fstyle, normal); }
+  .dg-styled .dg-sub, .dg-styled .dg-desc { fill: var(--st-text, var(--muted)); font-weight: var(--st-weight, 400); font-style: var(--st-fstyle, normal); }
+  .dg-shadow > .dg-box, .dg-shadow > .dg-group { filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.4)); }
+  .dg-badge rect { fill: var(--st-fill, var(--panel-bg)); stroke: var(--st-stroke, var(--border)); stroke-width: 1; }
+  .dg-badge text { fill: var(--st-text, var(--fg)); font-size: 10.5px; font-weight: 600; pointer-events: none; }
+  .dg-focal .dg-box, .dg-focal .dg-group, .dg-selected .dg-box, .dg-selected .dg-group { stroke: var(--accent); stroke-width: 2.5; }
+  .dg-ghost .dg-box { stroke: var(--danger); stroke-dasharray: 5 4; }
+  .dg-ghost .dg-title { fill: var(--danger); }
+  .dg-title { fill: var(--fg); font-size: 14px; font-weight: 600; }
+  .dg-sub { fill: var(--muted); font-size: 12px; font-weight: 400; }
+  .dg-desc { fill: var(--muted); font-size: 11px; font-weight: 400; }
+  /* a compound box with no fill of its own, drawn on the fill of the one around it: its text is computed from that fill (--ov-text), not themed */
+  .dg-over-fill .dg-title, .dg-over-fill .dg-sub { fill: var(--ov-text); }
+  .download-button { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .dg-edge { fill: none; stroke: var(--muted); stroke-width: 1.4; }
+  .dg-edge.dg-aggregated { stroke-dasharray: 7 4; }
+  .dg-edge.dg-ghost-edge { stroke: var(--danger); stroke-dasharray: 3 4; }
+  .dg-arrowhead { fill: var(--muted); }
+  /* The comparison of two plateaus (run 0039). A box says its state with a glyph in its title, a line (the --st-* variables the default
+     look of the state sets, which an entry of the same name in `styles` overrides property by property), a pill with the word and a
+     translucent tint laid over its fill; a link says it with a line style and a glyph in its caption. Red dashed stays for dangling references. */
+  .dg-tint { fill: var(--st-tint, none); fill-opacity: 0.16; stroke: none; pointer-events: none; }
+  .dg-compound .dg-tint { fill-opacity: 0.08; }
+  .dg-struck { text-decoration: line-through; }
+  .dg-glyph { font-weight: 700; }
+  .dg-label .dg-glyph { font-size: 14px; }
+  .dg-edge.dg-chg-new { stroke: var(--chg-new); stroke-width: 3; stroke-dasharray: none; }
+  .dg-edge.dg-chg-changed { stroke: var(--chg-changed); stroke-width: 2; stroke-dasharray: 2 3; }
+  .dg-edge.dg-chg-removed { stroke: var(--chg-removed); stroke-width: 1.6; stroke-dasharray: 7 4; }
+  .dg-arrowhead.dg-chg-new { fill: var(--chg-new); }
+  .dg-arrowhead.dg-chg-changed { fill: var(--chg-changed); }
+  .dg-arrowhead.dg-chg-removed { fill: var(--chg-removed); }
+  /* Changes only (run 0040): a box kept only to place the changes around it did not change itself: it is faded, has no state, and the key says so */
+  .dg-node.dg-context { opacity: 0.55; }
+  .dg-label { fill: var(--fg); font-size: 11px; paint-order: stroke; stroke: var(--panel-bg); stroke-width: 4px; stroke-linejoin: round; }
+  /* a link is clicked to be selected (and so is its caption); the selected pair, and the one the keyboard is on, take the accent */
+  .dg-link, .dg-label[data-action] { cursor: pointer; }
+  .dg-link:focus { outline: none; }
+  .dg-link:focus-visible .dg-edge { stroke: var(--accent); stroke-width: 3; }
+  .dg-link-selected .dg-edge { stroke: var(--accent); stroke-width: 2.8; }
+  .dg-label.dg-link-selected { fill: var(--accent); font-weight: 600; }
+  .dg-header, .dg-hit { fill: transparent; pointer-events: all; }
+  .dg-hit-edge { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; }
+  .dg-fold-bg { fill: transparent; stroke: transparent; stroke-width: 1; }
+  .dg-fold-glyph { fill: none; stroke: var(--st-text, var(--fg)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  .dg-fold:hover .dg-fold-bg { fill: var(--accent); stroke: var(--accent); }
+  .dg-fold:hover .dg-fold-glyph { stroke: var(--on-accent); }
+  .dg-node, .dg-fold { cursor: pointer; }
+  .dg-node:hover > .dg-box, .dg-node:hover > .dg-group, .dg-node:focus > .dg-box, .dg-node:focus > .dg-group { stroke: var(--accent); }
+  .dg-node:focus, .dg-fold:focus { outline: none; }
+  .dg-node:focus-visible > .dg-box, .dg-node:focus-visible > .dg-group { stroke: var(--accent); stroke-width: 3; }
+  .dg-fold:focus-visible .dg-fold-bg { stroke: var(--accent); stroke-width: 2; }
+  .dg-dim .dg-leaf:not(.dg-on), .dg-dim .dg-link:not(.dg-on), .dg-dim .dg-label:not(.dg-on), .dg-dim .dg-fold:not(.dg-on) { opacity: 0.22; }
+  @media (prefers-reduced-motion: no-preference) { .dg-leaf, .dg-link, .dg-label, .dg-fold { transition: opacity 0.12s; } }
+  /* Pinned to the top of .center-panel's own scroll, not the page's — the
+     negative margin cancels .center-panel's padding so the header sits
+     flush with the panel's real top edge once stuck, and the background +
+     border + shadow read as a distinct, detached strip above whatever
+     scrolls underneath it. */
+  /* Sits flush at the top of .center-panel (which has no top padding of
+     its own — see above) — only the left/right padding needs canceling
+     here, for a full-bleed background. A negative top margin would do the
+     same for the vertical side in principle, but collapses with
+     .element-view/.element-edition-form's own margin (its parent, which
+     has none of its own) and ends up shifting that whole parent instead
+     of just this header — exactly the bug this comment is here to warn
+     against reintroducing. */
+  .element-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    position: sticky; top: 0; z-index: 1;
+    margin: 0 -1.75rem 1rem; padding: 0 1.75rem; height: var(--header-h);
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  }
+  .element-header-label { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+  .element-header-label h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the styled stereotypes of the element, after its kind. They are the first thing to give way (flex-shrink 100 against 1 for
+     the name): the group is one line high and clips the badges that do not fit as a whole, so the name keeps its room at every state */
+  .element-header-badges { display: flex; flex-wrap: wrap; gap: 0.25rem; align-content: flex-start; min-width: 0; max-height: 1.1rem; overflow: hidden; flex: 0 100 auto; margin-left: -0.5rem; }
+  .element-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+  /* The four buttons of the form of an element (Delete, Move, Add child, Back to view) are 345 px wide: in a centre narrower than that they go to a second line instead of past
+     the edge (wave 017, run 0124, #82: x 373 at 360 px). Only that header: the other headers have their own states (below), and in a wide centre the row fits, so nothing moves. */
+  .element-edition-form .element-header-actions { flex-wrap: wrap; flex-shrink: 1; min-width: 0; max-width: 100%; }
+
+  /* ---- The header of the centre panel holds together at any width of the panel ----
+     The width the header gets is not the window's: the user resizes the left panel. So the panel itself is the container
+     (.center-panel) and the states below are container queries on its content width (rem, to follow the font size):
+       full     more than 85rem   everything, with its words
+       compact  up to 85rem       the controls of a diagram header that carry an icon show only the icon (title and aria-label say the rest)
+       minimal  up to 60rem       Show on map / Open in Elements, Story and Download move into the "⋯" menu; Facet and Maximize stay
+       tight    up to 46rem       the header takes two rows, and its label wraps
+     Each limit is where the longest header (Elements on a diagram: name, kind, four tabs, all the controls) would leave its
+     name less than 8rem: measured in a browser with a 40-character name, so a longer name is cut with an ellipsis, a
+     shorter one has room to spare. The controls are in the page once, in every state: only their look changes, so the
+     actions, the ids and the focus do not. */
+  .center-panel { container: center / inline-size; }
+  .with-icon { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .with-icon svg { flex: none; }
+  .header-more, .header-overflow { display: contents; }
+  .header-more-button { display: none; }
+  @container center (max-width: 85rem) {
+    .diagram-view .element-header-actions { gap: 0.25rem; }
+    .diagram-view .with-icon { width: 2rem; justify-content: center; padding: 0 !important; }
+    .diagram-view .with-icon .control-label { display: none; }
+    .diagram-view .element-header select { min-width: 5.5rem; max-width: 8rem; }
+  }
+  @container center (max-width: 60rem) {
+    .header-more { display: block; position: relative; }
+    /* "padding: 0" must beat the page's ".element-header button { padding: 0 0.8rem !important }" (the same !important, a higher
+       specificity): without the .element-header here, the 2rem button kept 0.8rem on each side and its icon was squeezed to a 4px sliver */
+    .element-header .header-more-button { display: inline-flex; align-items: center; justify-content: center; width: 2rem; padding: 0 !important; }
+    .header-more-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+    /* the menu hangs from the "⋯" button like the help from the "?" (same box); it is open when the button says so, closed otherwise */
+    .header-overflow { display: none; position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; flex-direction: column; align-items: stretch; min-width: 13rem; max-width: calc(100vw - 2rem); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+    .header-overflow[data-open="true"] { display: flex; }
+    .header-overflow > * + * { border-top: 1px solid var(--border); margin-top: 0.3rem; padding-top: 0.3rem; }
+    .header-overflow .button-group { display: flex; flex-direction: column; }
+    .header-overflow .button-group[aria-label^="Download"]::before { content: "Download"; padding: 0.1rem 1rem 0.2rem; font-size: 0.75rem; color: var(--muted); }
+    .header-overflow button, .header-overflow .button-group button { width: 100%; height: 2rem; justify-content: flex-start; gap: 0.6rem; margin: 0; padding: 0 1rem !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; text-align: left; }
+    .header-overflow button:hover:not(:disabled), .header-overflow button:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent) !important; }
+    .header-overflow .control-label { display: inline !important; }
+    .header-overflow .with-icon { width: 100%; justify-content: flex-start; padding: 0 1rem !important; }
+    /* above the chips of the map, which sit just under the header */
+    .element-header:has(.header-overflow[data-open="true"]) { z-index: 5; }
+  }
+  @container center (max-width: 46rem) {
+    .element-header { height: auto; min-height: var(--header-h); flex-wrap: wrap; gap: 0.4rem 0.75rem; padding-top: 0.4rem; padding-bottom: 0.4rem; }
+    .element-header-label { flex-wrap: wrap; row-gap: 0.25rem; }
+    .element-header-badges { max-height: none; max-width: 100%; flex: none; margin-left: 0; }
+    .viewpoint-switch { flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; row-gap: 0.25rem; }
+    .viewpoint-switch .button-group { flex-wrap: wrap; row-gap: 0.25rem; }
+    .element-header-actions { margin-left: auto; }
+  }
+
+  .element-kind-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0.1rem 0.4rem; }
+  .element-qualitative { margin-top: 0.5rem; }
+  .field-row { display: flex; gap: 0.75rem; padding: 0.35rem 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); align-items: flex-start; }
+  .field-row:last-child { border-bottom: none; }
+  .field-label { width: 140px; color: var(--muted); flex-shrink: 0; }
+  .field-value { flex: 1; min-width: 0; word-break: break-word; }
+  .muted { color: var(--muted); }
+  .pill { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 0.05rem 0.55rem; margin: 0 0.3rem 0.3rem 0; font-size: 0.8rem; background: var(--panel-bg); }
+  .tag-list { margin: 0; padding-left: 1.1rem; }
+  .tag-key { color: var(--muted); }
+  .relationship-list { margin: 0; padding-left: 1.1rem; list-style: none; }
+  .relationship-list li { margin-bottom: 0.3rem; }
+  .relationship-link { display: inline; background: none !important; border: none !important; padding: 0 !important; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+  .relationship-link:hover { border-color: transparent; }
+  .relationship-dangling { color: var(--muted); }
+  button.relationship-dangling { color: var(--danger); text-decoration-style: dashed; }
+  .dangling-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-accent); background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; margin-left: 0.3rem; }
+  .field-count { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 0.4rem; margin-left: 0.25rem; }
+
+  /* ---- Element edition form (run-0009, task-003) ---- */
+  .edition-section { margin-bottom: 1.25rem; }
+  .edition-section h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 0.4rem; }
+  .theme-choice { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; border: 0; }
+  .theme-choice legend { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.3rem; }
+  .theme-choice-option { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+  .edition-add-row { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.5rem; }
+  .pill-remove { border: none !important; background: none !important; cursor: pointer; color: var(--muted); padding: 0 0.2rem !important; font-size: 0.9rem; }
+  .pill-remove:hover { color: var(--danger); }
+  .inline-error { color: var(--danger); font-size: 0.8rem; margin-left: 0.5rem; }
+  /* an empty one still opens a line box after a block-level sibling (textarea) and shows as a gap */
+  .inline-error:empty { display: none; }
+  .relationship-edit-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; }
+  .relationship-edit-row-new { border-style: dashed; }
+
+  /* ---- Settings structured editors (form UX review follow-up) ---- */
+  .settings-help { color: var(--muted); font-size: 0.8rem; line-height: 1.4; margin-top: 0.25rem; }
+  .settings-help code { font-size: 0.95em; }
+  .settings-group-help { margin: -0.1rem 0 0.6rem; }
+  .facet-dir-preview { color: var(--muted); font-size: 0.8rem; margin-right: auto; }
+  .settings-subgroup { display: flex; flex-direction: column; gap: 0.3rem; }
+  .settings-subrow { display: flex; align-items: center; gap: 0.5rem; }
+  .settings-subrow label { min-width: 90px; color: var(--muted); flex-shrink: 0; }
+  .settings-subrow input { flex: 1; }
+  .property-group { margin-bottom: 0.75rem; }
+  .property-group:last-child { margin-bottom: 0; }
+  .property-group h4 { font-size: 0.8rem; margin: 0 0 0.3rem; color: var(--muted); }
+  /* Capped like the auto-grow textareas: grows with content, then scrolls inside. */
+  .json-editor-host { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: var(--bg); }
+  .json-editor-host .cm-editor { max-height: 18rem; }
+  .json-editor-host .cm-scroller { overflow: auto; }
+  .facet-edit-card { border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem; margin-bottom: 0.6rem; }
+  .facet-edit-card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .facet-edit-card-header .facet-name { font-weight: 600; }
+  .facet-option { display: flex; align-items: center; gap: 0.4rem; margin: 0.4rem 0; font-size: 0.875rem; }
+  .facet-actions-list { padding-left: 0.5rem; }
+
+  /* ---- Delete confirmation overlay (run-0010, task-003) ---- */
+  .delete-confirmation { border: 1px solid var(--danger); border-radius: 4px; padding: 0.75rem; }
+  .delete-confirmation h3 { color: var(--danger); margin-top: 0; }
+
+  /* ---- Save status (run-0010, task-004) ---- */
+  .save-status { font-size: 0.85rem; }
+  .save-status-error { color: var(--danger); }
+  .save-status-success { color: var(--muted); }
+  /* Last on purpose: the reset sits after the rules of the page, at the same specificity, so it settles headings and form controls as it always did here. */
+  /* ---- Reset and layout helpers ----
+     The editor used to load Tailwind from a CDN for these, and so needed the network to be laid out at all. They are
+     written here instead: the reset is the part of Tailwind's "preflight" that the rest of this file relies on, and the
+     helpers are the few layout rules the shell uses (named as they were in the markup, with the arbitrary values
+     spelled out). */
+  *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: var(--border); }
+  html { line-height: 1.5; -webkit-text-size-adjust: 100%; tab-size: 4; }
+  body { margin: 0; line-height: inherit; }
+  h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
+  blockquote, dl, dd, h1, h2, h3, h4, h5, h6, hr, figure, p, pre { margin: 0; }
+  ol, ul, menu { list-style: none; margin: 0; padding: 0; }
+  a { color: inherit; text-decoration: inherit; }
+  b, strong { font-weight: bolder; }
+  small { font-size: 80%; }
+  table { text-indent: 0; border-color: inherit; border-collapse: collapse; }
+  button, input, optgroup, select, textarea { font-family: inherit; font-size: 100%; font-weight: inherit; line-height: inherit; color: inherit; margin: 0; padding: 0; }
+  button, select { text-transform: none; }
+  button, [type="button"], [type="reset"], [type="submit"] { -webkit-appearance: button; background-color: transparent; background-image: none; }
+  fieldset { margin: 0; padding: 0; }
+  legend { padding: 0; }
+  textarea { resize: vertical; }
+  input::placeholder, textarea::placeholder { opacity: 1; color: var(--muted); }
+  button, [role="button"] { cursor: pointer; }
+  :disabled { cursor: default; }
+  img, svg, video, canvas, audio, iframe, embed, object { display: block; vertical-align: middle; }
+  img, video { max-width: 100%; height: auto; }
+  [hidden] { display: none; }
+  .grid { display: grid; }
+  .flex { display: flex; }
+  .flex-1 { flex: 1 1 0%; }
+  .items-center { align-items: center; }
+  .gap-4 { gap: 1rem; }
+  .px-4 { padding-left: 1rem; padding-right: 1rem; }
+  .overflow-hidden { overflow: hidden; }
+  .touch-none { touch-action: none; }
+  .select-none { user-select: none; -webkit-user-select: none; }
+  .col-span-3 { grid-column: span 3 / span 3; }
+  .col-start-3 { grid-column-start: 3; }
+  .min-h-0 { min-height: 0; }
+  .min-w-0 { min-width: 0; }
+  .min-h-10 { min-height: 2.5rem; }
+  .min-h-32 { min-height: 8rem; }
+  .min-w-48 { min-width: 12rem; }
+  .min-w-56 { min-width: 14rem; }
+  .h-12 { height: 3rem; }
+  .h-48 { height: 12rem; }
+  .w-1 { width: 0.25rem; }
+  .h-1 { height: 0.25rem; }
+  .w-64 { width: 16rem; }
+  .w-72 { width: 18rem; }
+  .max-w-\[40vw\] { max-width: 40vw; }
+  .max-h-\[60vh\] { max-height: 60vh; }
+  .grid-cols-\[auto_auto_minmax\(0\,1fr\)\] { grid-template-columns: auto auto minmax(0, 1fr); }
+  .grid-cols-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .grid-rows-\[auto_minmax\(0\,1fr\)\] { grid-template-rows: auto minmax(0, 1fr); }
+  .grid-rows-\[auto_auto_minmax\(0\,1fr\)\] { grid-template-rows: auto auto minmax(0, 1fr); }
+  .grid-rows-\[auto_auto_auto_minmax\(0\,1fr\)\] { grid-template-rows: auto auto auto minmax(0, 1fr); }
+  .grid-rows-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-rows: minmax(0, 1fr) auto auto; }
+  .cursor-col-resize { cursor: col-resize; }
+  .cursor-row-resize { cursor: row-resize; }
+
+  /* A window of 40rem or less has no room for three columns (wave 014, run 0073): the tree (12rem at least) and the inspection (14rem at least) left the centre panel
+     56 px at 360 px, the header actions of the centre (188 px, they do not shrink) went past the window and the document was 424 px wide. The regions are stacked
+     instead, each as wide as the window: the tree, then the centre, then the inspection, the page scrolling from one to the next. The sizes the user gave the panels
+     (inline widths, by dragging) are for the wide layout: they do not apply here, and neither do the handles that set them. Wider windows are untouched. */
+  @media (max-width: 40rem) {
+    #app { height: auto; min-height: 100vh; }
+    .app-shell { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+    .app-shell [data-resize] { display: none; }
+    .app-shell > .left-panel { width: auto !important; min-width: 0; max-width: none; max-height: 30vh; border-right: 0; border-bottom: 1px solid var(--border); flex: none; }
+    .app-shell > div.col-start-3, .app-shell > div.col-start-3 > div.grid { display: flex; flex-direction: column; min-width: 0; }
+    .app-shell .center-panel { height: 80vh; min-height: 24rem; flex: none; min-width: 0; }
+    .app-shell .right-panel { width: auto !important; min-width: 0; max-width: none; max-height: 50vh; border-left: 0; border-top: 1px solid var(--border); flex: none; }
+    .app-shell .bottom-panel { flex: none; }
+    /* The pages below Timeline (wave 014, run 0081): four buttons in 328 px, so that the bar is one row and the document no wider than the window. */
+    .page-tabs button { padding: 0 0.45rem !important; font-size: 0.8rem; min-width: 0; }
+    /* Settings (wave 014, run 0081, #82): a label beside its field leaves the field 150 px, and a text field is 196 px wide whatever the room: the fields went past the window,
+       inside the scroll of the centre. The label goes over its field, and a field is never wider than what holds it. */
+    .settings-view .field-row { flex-wrap: wrap; gap: 0.15rem 0.75rem; }
+    .settings-view .field-label { width: 100%; }
+    .settings-view .field-value { flex-basis: 100%; }
+    .settings-view input[type="text"], .settings-view select, .settings-view textarea { max-width: 100%; min-width: 0; box-sizing: border-box; }
+    /* The forms of the centre (wave 017, run 0124, #82, measured at 360 px on the layered Brightcart and on a workspace with no plateau): the row that adds a tag (two text
+       fields and a button, 262 px of fields alone) ended at x 492 and the list of saved views under *Story* (as wide as its longest name) at x 412, inside the scroll of
+       the centre (the four buttons of the header of an element, x 373, wrap by the rule of `.element-edition-form`, above). The row wraps, and a field is never wider than its row. */
+    .edition-add-row { flex-wrap: wrap; }
+    .edition-add-row input[type="text"], .edition-add-row select, .story-add select { max-width: 100%; min-width: 0; box-sizing: border-box; }
+    /* The references and the paths that *Confirm delete* lists are one word each: the longest went to x 541 (a reference of four segments, the path of its manifest). They break
+       where they must. */
+    .delete-confirmation li { overflow-wrap: anywhere; }
+  }
