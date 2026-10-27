@@ -3478,27 +3478,12 @@ function renderFilesPerspectiveHtml() {
  * in-memory model to its input (so a diagram always reflects unsaved edits) and draws its output.
  */
 
-/** 'overview' | 'detailed' | 'deep' — a preference shared by every element, kept in the URL (`vp=`). */
-/** What the center of the Elements perspective shows for the selected element: its page, or one of its diagrams. */
-let elementTab = 'details';
-/** Name of the facet the diagram is drawn through (null: the workspace itself), kept in the URL (`facet=`). */
-let diagramFacet = null;
-/** The Diagram perspective gives the whole window to the diagram: no tree on the left, no properties or relations. */
-let diagramMaximized = false;
-/** Leaves out of the diagram the boxes that no link reaches (the focal one and what encloses a kept box stay). */
-let diagramHideUnlinked = false;
 /**
  * Which texts the diagram draws. Null follows the default of the diagram (DIAGRAM_SHOW_DEFAULTS), a boolean is what the
  * user chose. Kept in the URL (`labels=`, `qualifiers=`, `descriptions=`, `wrap=`, only when they differ from the
  * default) and in the saved views, so that a link or a step of a story draws the same texts.
  */
 let diagramShow = { labels: null, qualifiers: null, descriptions: null, wrap: null };
-const DIAGRAM_SHOW_NAMES = ['labels', 'qualifiers', 'descriptions', 'wrap'];
-/** The Map is dense: it starts without any of them. An element's diagram starts as the command line draws it (the descriptions apart). */
-const DIAGRAM_SHOW_DEFAULTS = {
-  elements: { labels: true, qualifiers: true, descriptions: false, wrap: false },
-  map: { labels: false, qualifiers: false, descriptions: false, wrap: false }
-};
 
 /** What the diagram draws now: the choice of the user, else the default of that kind of diagram. */
 function diagramShows(isMap) {
@@ -3522,44 +3507,11 @@ function setDiagramShow(values) {
   diagramShow = {};
   for (const name of DIAGRAM_SHOW_NAMES) diagramShow[name] = typeof source[name] === 'boolean' ? source[name] : null;
 }
-/**
- * How the diagram is framed. 'auto' (how a diagram opens): the element, at a readable size, never more than 100%, with
- * no empty margin the drawing does not need. 'fit': the whole drawing, however small. A number: what the user chose
- * (1 is the natural size), with `diagramCenter`; navigating to another diagram goes back to 'auto'.
- */
-let diagramScale = 'auto';
-/** Invalidates a slower, older layout when a newer one has been requested. */
-let diagramSeq = 0;
-/** The last computed diagram: { key, scene }, so an unrelated re-render does not recompute or flash it away. */
-let diagramCache = null;
-/** The diagram on screen (see `buildDiagramScene`), and the identity of what it shows (element | viewpoint | facet). */
-let diagramScene = null;
-let diagramShownView = null;
-/** The canvas' scroll position just before a re-render replaced it. */
-/**
- * The point of the drawing that is in the middle of the canvas (the drawing's own pixels at 100%), with `diagramScale`
- * the whole "camera": the canvas is a free surface, and every canvas — the Diagram perspective's, the Elements
- * perspective's, a maximized one — shows the same part of the same diagram, whatever its size.
- */
-let diagramCenter = { x: 0, y: 0 };
 let diagramResizeObserver = null;
 /** True from the end of a mouse drag until the click that follows it has been swallowed. */
 let diagramPanned = false;
 /** The box (or its fold button) that had the focus when render() rebuilt the diagram: { fold, id }, given back once it is drawn again. */
 let pendingDiagramFocus = null;
-let viewpointKernelPromise = null;
-let elkPromise = null;
-
-/**
- * The diagram on screen is not the model: the camera, the scene, the cache, the tab stop of the links and whether it is maximized
- * belong to the host that draws them. The Map and the diagrams of Elements ('main') have always shared one set of them (the same diagram keeps
- * the view the user chose, whichever of the two shows it); the page of a view in the Library ('library') has its own. The live
- * globals (`diagramScale`, `diagramCenter`, `diagramShownView`, `diagramScene`, `diagramCache`, `diagramLinkStop`, `diagramMaximized`) are those of
- * `diagramHost`; the other host's are parked here, and `useDiagramHost` swaps them. Nothing a host does to its own diagram can
- * then show on the other.
- */
-let diagramHost = 'main';
-let parkedDiagramHost = newDiagramHostState();
 
 function newDiagramHostState() {
   return { scale: 'auto', center: { x: 0, y: 0 }, shownView: null, scene: null, cache: null, linkStop: null, maximized: false };
@@ -3587,8 +3539,6 @@ function useDiagramHost(host) {
   pendingDiagramFocus = null; // a box that had the focus on the other host is not a box of this one
 }
 
-/** The version of the kernel's input/output contract this editor was written for. */
-const KERNEL_CONTRACT_VERSION = 5;
 const DIAGRAM_SCALES = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 3];
 /** More unknown destinations than this are counted, not drawn. */
 const DIAGRAM_MAX_GHOSTS = 12;
@@ -3605,9 +3555,6 @@ const DIAGRAM_VIEWPOINTS = {
   detailed: { label: 'Detailed', title: 'The overview of each element inside this one, combined.' },
   deep: { label: 'Deep', title: 'Every relationship of this element and of everything inside it, ungrouped.' }
 };
-
-/** Element kinds that can never contain other elements — the kernel's `parent` flag is the opposite. */
-const LEAF_KINDS = ['person', 'component'];
 
 // ---- The map viewpoint: no focal element, every element of the layer is in play ----
 // Wave 015 (run 0099, W-11, #92): there are two Maps, the page Applications (the application layer) and the page Environments (the technology layer). They are one code with the layer

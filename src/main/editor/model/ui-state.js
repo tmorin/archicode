@@ -103,3 +103,86 @@ let libraryPick = { view: null, selection: null };
 
 /** What the last refused edit says, under its field: { view, field, text }. Gone with the next edit, another view, or leaving the Library. */
 let viewEditNotice = null;
+
+/** 'overview' | 'detailed' | 'deep' — a preference shared by every element, kept in the URL (`vp=`). */
+/** What the center of the Elements perspective shows for the selected element: its page, or one of its diagrams. */
+let elementTab = 'details';
+
+/** Name of the facet the diagram is drawn through (null: the workspace itself), kept in the URL (`facet=`). */
+let diagramFacet = null;
+
+/** The Diagram perspective gives the whole window to the diagram: no tree on the left, no properties or relations. */
+let diagramMaximized = false;
+
+/** Leaves out of the diagram the boxes that no link reaches (the focal one and what encloses a kept box stay). */
+let diagramHideUnlinked = false;
+
+const DIAGRAM_SHOW_NAMES = ['labels', 'qualifiers', 'descriptions', 'wrap'];
+
+/** The Map is dense: it starts without any of them. An element's diagram starts as the command line draws it (the descriptions apart). */
+const DIAGRAM_SHOW_DEFAULTS = {
+  elements: { labels: true, qualifiers: true, descriptions: false, wrap: false },
+  map: { labels: false, qualifiers: false, descriptions: false, wrap: false }
+};
+
+/**
+ * How the diagram is framed. 'auto' (how a diagram opens): the element, at a readable size, never more than 100%, with
+ * no empty margin the drawing does not need. 'fit': the whole drawing, however small. A number: what the user chose
+ * (1 is the natural size), with `diagramCenter`; navigating to another diagram goes back to 'auto'.
+ */
+let diagramScale = 'auto';
+
+/** Invalidates a slower, older layout when a newer one has been requested. */
+let diagramSeq = 0;
+
+/** The last computed diagram: { key, scene }, so an unrelated re-render does not recompute or flash it away. */
+let diagramCache = null;
+
+/** The diagram on screen (see `buildDiagramScene`), and the identity of what it shows (element | viewpoint | facet). */
+let diagramScene = null;
+
+let diagramShownView = null;
+
+/** The canvas' scroll position just before a re-render replaced it. */
+/**
+ * The point of the drawing that is in the middle of the canvas (the drawing's own pixels at 100%), with `diagramScale`
+ * the whole "camera": the canvas is a free surface, and every canvas — the Diagram perspective's, the Elements
+ * perspective's, a maximized one — shows the same part of the same diagram, whatever its size.
+ */
+let diagramCenter = { x: 0, y: 0 };
+
+let viewpointKernelPromise = null;
+
+let elkPromise = null;
+
+/**
+ * The diagram on screen is not the model: the camera, the scene, the cache, the tab stop of the links and whether it is maximized
+ * belong to the host that draws them. The Map and the diagrams of Elements ('main') have always shared one set of them (the same diagram keeps
+ * the view the user chose, whichever of the two shows it); the page of a view in the Library ('library') has its own. The live
+ * globals (`diagramScale`, `diagramCenter`, `diagramShownView`, `diagramScene`, `diagramCache`, `diagramLinkStop`, `diagramMaximized`) are those of
+ * `diagramHost`; the other host's are parked here, and `useDiagramHost` swaps them. Nothing a host does to its own diagram can
+ * then show on the other.
+ */
+let diagramHost = 'main';
+
+let parkedDiagramHost = newDiagramHostState();
+
+/** The version of the kernel's input/output contract this editor was written for. */
+const KERNEL_CONTRACT_VERSION = 5;
+
+/** Element kinds that can never contain other elements — the kernel's `parent` flag is the opposite. */
+const LEAF_KINDS = ['person', 'component'];
+
+/**
+ * Whether the key to a comparison, under the diagram, is open (wave 018, run 0130, #132). Folded, it is one row with the sample, the glyph, the word and the count of each state; open, it also says
+ * how each line is drawn, capped at about 30 % of the diagram area, with its own scroll. View state only: kept while the editor stays open on the folder, not an input of any diagram or
+ * cache, not in the address, not in the workspace; no `modelsChanged()`.
+ */
+let diagramKeyOpen = false;
+
+/**
+ * The links of a diagram are one tab stop (roving tabindex): `tabindex="0"` on one of them, `-1` on the others, and the arrow
+ * keys move among them (`handleDiagramKeydown`). The stop is where the focus last rested in the group; this is that link's
+ * key, or null (nothing remembered yet, or the selection came from elsewhere, an address).
+ */
+let diagramLinkStop = null;
