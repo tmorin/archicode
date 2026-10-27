@@ -113,8 +113,8 @@
       "layer": "persistence"
     },
     {
-      "file": "unsorted/from-32.js",
-      "layer": "unsorted"
+      "file": "application/move.js",
+      "layer": "application"
     },
     {
       "file": "model/form-validation.js",
