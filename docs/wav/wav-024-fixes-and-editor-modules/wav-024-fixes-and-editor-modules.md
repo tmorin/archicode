@@ -179,7 +179,7 @@ wave_manifest:
       slug: editor-state-notifies
       phase: P3
       depends_on: [W-8]
-      run: null
+      run: 0187
       delegation: hard_judgment
       delegation_reason: 'changes when the editor redraws after a write, a behaviour change in the save and the views (live capability of the published editor)'
       likely_paths:
