@@ -37,6 +37,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "model/layer-loader.js",
+      "layer": "model"
+    },
+    {
       "file": "model/origin-and-cascade.js",
       "layer": "model"
     },
