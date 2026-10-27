@@ -37,6 +37,14 @@
       "layer": "unsorted"
     },
     {
+      "file": "model/origin-and-cascade.js",
+      "layer": "model"
+    },
+    {
+      "file": "unsorted/from-15.js",
+      "layer": "unsorted"
+    },
+    {
       "file": "model/index-builder.js",
       "layer": "model"
     },
