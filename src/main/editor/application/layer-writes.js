@@ -23,7 +23,9 @@ function writingPlateau() {
 function readOnlyPlateauMessage() {
   const plateau = writingPlateau();
   if (plateau === null || !AppState.layerUndrawable) return null;
-  return 'The plateau `' + plateau + '` cannot be drawn, so nothing is written in it: repair its patches in Files first.';
+  return (
+    'The plateau `' + plateau + '` cannot be drawn, so nothing is written in it: repair its patches in Files first.'
+  );
 }
 
 /** Why a click that writes an element is not done, or null: the plateau cannot be drawn. A view and a story belong to no plateau, so nothing here concerns them. */
@@ -46,19 +48,30 @@ function writeScopeHas(mf) {
   const plateau = writingPlateau();
   if (plateau === null || plateau === BASELINE_PLATEAU) return true;
   if (!mf || !mf.header) return false;
-  const owner = manifestKindName(mf.header.kind) === 'plateau' && mf.content ? String(mf.content.id) : plateauOfManifest(mf);
+  const owner =
+    manifestKindName(mf.header.kind) === 'plateau' && mf.content ? String(mf.content.id) : plateauOfManifest(mf);
   return owner === plateau || layerIsBelow(owner, plateau);
 }
 
 /** A sentence on one line (the kernel's and the tree's sentences may be told with a line break). */
 function oneLine(text) {
-  return String(text).replace(/\s*\n\s*/g, ' ').trim();
+  return String(text)
+    .replace(/\s*\n\s*/g, ' ')
+    .trim();
 }
 
 /** The same JSON whatever the order of the keys of an object: what two values must share to be called equal. */
 function canonicalJson(value) {
   if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
-  if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonicalJson(value[key])).join(',') + '}';
+  if (value && typeof value === 'object')
+    return (
+      '{' +
+      Object.keys(value)
+        .sort()
+        .map((key) => JSON.stringify(key) + ':' + canonicalJson(value[key]))
+        .join(',') +
+      '}'
+    );
   return JSON.stringify(value === undefined ? null : value);
 }
 
@@ -74,7 +87,10 @@ function copyJson(value) {
 function snapshotWriteState() {
   const workspace = AppState.workspace;
   return {
-    files: AppState.manifestFiles.map((mf) => ({ mf, props: Object.assign({}, mf, { header: copyJson(mf.header), content: copyJson(mf.content) }) })),
+    files: AppState.manifestFiles.map((mf) => ({
+      mf,
+      props: Object.assign({}, mf, { header: copyJson(mf.header), content: copyJson(mf.content) })
+    })),
     pendingFileRemovals: AppState.pendingFileRemovals.slice(),
     removedFileBaselines: new Map(AppState.removedFileBaselines),
     dirtyReferences: new Set(AppState.dirtyReferences),
@@ -91,7 +107,11 @@ function snapshotWriteState() {
     mapPinned: mapPinned.slice(),
     mapHidden: mapHidden.slice(),
     mapOpened: mapOpened ? new Set(mapOpened) : mapOpened,
-    technologyMapState: { pinned: technologyMapState.pinned.slice(), hidden: technologyMapState.hidden.slice(), opened: technologyMapState.opened ? new Set(technologyMapState.opened) : technologyMapState.opened },
+    technologyMapState: {
+      pinned: technologyMapState.pinned.slice(),
+      hidden: technologyMapState.hidden.slice(),
+      opened: technologyMapState.opened ? new Set(technologyMapState.opened) : technologyMapState.opened
+    },
     navActiveKey
   };
 }
@@ -139,14 +159,30 @@ function layerDigest() {
   const settings = AppState.workspace.settings;
   const digest = {
     // what a view or a story names is looked at too (run 0100): a delete that leaves a view naming an element that no plateau has now is refused, as it was when the view belonged to a plateau
-    sentences: tree.problems.map(String).concat((tree.redeclared || []).map(String), elementDuplicates().map((d) => 'the reference `' + d.reference + '` is declared twice (' + d.sources.join(', ') + ')'), entryProblemsOf(settings)),
+    sentences: tree.problems.map(String).concat(
+      (tree.redeclared || []).map(String),
+      elementDuplicates().map(
+        (d) => 'the reference `' + d.reference + '` is declared twice (' + d.sources.join(', ') + ')'
+      ),
+      entryProblemsOf(settings)
+    ),
     byPlateau: new Map()
   };
   if (tree.problems.length || layersBlockedReason()) return digest;
   for (const id of tree.ids) {
     const result = layerStateOf(id, settings);
-    if (result.fatal) digest.byPlateau.set(id, { fatal: oneLine(result.fatal[0]), graph: null, sentences: result.earlier ? result.earlier.sentences : [] });
-    else digest.byPlateau.set(id, { fatal: null, graph: JSON.stringify(result.state.graph), sentences: result.state.problems ? result.state.problems.sentences : [] });
+    if (result.fatal)
+      digest.byPlateau.set(id, {
+        fatal: oneLine(result.fatal[0]),
+        graph: null,
+        sentences: result.earlier ? result.earlier.sentences : []
+      });
+    else
+      digest.byPlateau.set(id, {
+        fatal: null,
+        graph: JSON.stringify(result.state.graph),
+        sentences: result.state.problems ? result.state.problems.sentences : []
+      });
   }
   return digest;
 }
@@ -157,20 +193,26 @@ function layerDigest() {
  */
 function comparableSentence(sentence) {
   const text = String(sentence);
-  const step = text.match(/^(the story .* step \d+ says `(?:at|against): [^`]*`)(?:, which is not a plateau of this workspace| but the workspace declares no plateau)/);
+  const step = text.match(
+    /^(the story .* step \d+ says `(?:at|against): [^`]*`)(?:, which is not a plateau of this workspace| but the workspace declares no plateau)/
+  );
   if (step) return step[1] + ': not a plateau';
   return text.replace(/ \(the plateaus are [^)]*\)$/, '');
 }
 
 /** `{ broken, changed }`: the first sentence of what a write broke (a plateau that resolved no longer does, or the command line refuses it for a new reason), and the plateaus other than `written` whose graph it changed. */
 function judgeLayerWrite(before, after, written) {
-  const fresh = (now, then) => { const known = then.map(comparableSentence); return now.find((sentence) => !known.includes(comparableSentence(sentence))) || null; };
+  const fresh = (now, then) => {
+    const known = then.map(comparableSentence);
+    return now.find((sentence) => !known.includes(comparableSentence(sentence))) || null;
+  };
   const mistake = fresh(after.sentences, before.sentences);
   if (mistake) return { broken: oneLine(mistake), changed: [] };
   const changed = [];
   for (const [id, now] of after.byPlateau) {
     const then = before.byPlateau.get(id);
-    if (now.fatal && (!then || !then.fatal)) return { broken: 'the plateau `' + id + '` could no longer be resolved (' + now.fatal + ')', changed: [] };
+    if (now.fatal && (!then || !then.fatal))
+      return { broken: 'the plateau `' + id + '` could no longer be resolved (' + now.fatal + ')', changed: [] };
     const sentence = fresh(now.sentences, then ? then.sentences : []);
     if (sentence) return { broken: oneLine(sentence), changed: [] };
     if (then && id !== written && now.graph !== then.graph) changed.push(id);
@@ -190,7 +232,9 @@ function judgeLayerWrite(before, after, written) {
 function guardedLayerWrite(spec) {
   if (!AppState.layers || !AppState.workspace || !AppState.plateauTree) return spec.write();
   if (AppState.plateauTree.layered && !loadedKernel) {
-    throw new Error('The viewpoint kernel is not loaded yet, so the plateaus cannot be resolved and checked: nothing was written. Try again in a moment.');
+    throw new Error(
+      'The viewpoint kernel is not loaded yet, so the plateaus cannot be resolved and checked: nothing was written. Try again in a moment.'
+    );
   }
   const before = layerDigest();
   const snapshot = snapshotWriteState();
@@ -207,12 +251,22 @@ function guardedLayerWrite(spec) {
     throw e;
   }
   // `spec.confirmedFor`: the plateaus whose change the author has already been shown and said yes to (the dialog of the delete of a plateau lists what each plateau above loses)
-  const confirmed = spec.confirmed || (Array.isArray(spec.confirmedFor) && verdict.changed.every((changed) => spec.confirmedFor.includes(changed)));
+  const confirmed =
+    spec.confirmed ||
+    (Array.isArray(spec.confirmedFor) && verdict.changed.every((changed) => spec.confirmedFor.includes(changed)));
   if (verdict.broken || (verdict.changed.length && !confirmed)) {
     restoreWriteState(snapshot);
     rebuildIndexAndRender();
     if (verdict.broken) throw new Error('Not written: ' + verdict.broken.replace(/\.$/, '') + '. Nothing was changed.');
-    openAppDialog({ kind: 'layer-confirm', plateau: spec.plateau, summary: spec.summary, changed: verdict.changed.slice(), onConfirm: spec.again, afterConfirm: spec.afterConfirm, typedForm });
+    openAppDialog({
+      kind: 'layer-confirm',
+      plateau: spec.plateau,
+      summary: spec.summary,
+      changed: verdict.changed.slice(),
+      onConfirm: spec.again,
+      afterConfirm: spec.afterConfirm,
+      typedForm
+    });
     return { pending: true, changed: verdict.changed.slice() };
   }
   return result;
@@ -231,4 +285,3 @@ function confirmLayerWrite(dialog) {
     requestRedraw();
   }
 }
-

@@ -8,7 +8,10 @@ function drawnPlateau(layers = AppState.layers) {
 /** The cascade of the REMOVE patches of the target of the comparison on screen, among what the base has (see `cascadeOf`): what the command line lists after the table of changes. */
 function layeredCascadeNow(future, drawing = editorDrawing()) {
   const targetId = future ? drawing.layers.compare.other : drawing.layers.current;
-  return cascadeOf(layerModelOf(targetId, AppState.workspace.settings).removals, future ? drawing.index : drawing.baseline.index);
+  return cascadeOf(
+    layerModelOf(targetId, AppState.workspace.settings).removals,
+    future ? drawing.index : drawing.baseline.index
+  );
 }
 
 /**
@@ -20,7 +23,12 @@ function comparisonInput(drawing = editorDrawing()) {
   const future = layerCompareIsFuture(layers);
   const onOneChain = plateausOnOneChain(layers.current, layers.compare.other);
   const [baseId, targetId] = future ? [layers.current, layers.compare.other] : [layers.compare.other, layers.current];
-  return comparisonInputBetween(future ? drawing.index : drawing.baseline.index, future ? drawing.baseline.index : drawing.index, onOneChain, replacesChainBetween(baseId, targetId));
+  return comparisonInputBetween(
+    future ? drawing.index : drawing.baseline.index,
+    future ? drawing.baseline.index : drawing.index,
+    onOneChain,
+    replacesChainBetween(baseId, targetId)
+  );
 }
 
 /**
@@ -36,17 +44,22 @@ function replacesChainBetween(baseId, targetId) {
   const chain = plateauChain(tree, targetId);
   const shared = new Set(plateauChain(tree, baseId).map((node) => node.id));
   let common = -1;
-  chain.forEach((node, at) => { if (shared.has(node.id)) common = at; });
+  chain.forEach((node, at) => {
+    if (shared.has(node.id)) common = at;
+  });
   const nodes = common < 0 ? [] : chain.slice(common, chain.length - 1);
   if (nodes.length < 2) return null;
   const steps = [];
   for (const node of nodes) {
     const model = layerModelOf(node.id, AppState.workspace.settings);
     if (model.undrawable) return null;
-    const layer = (records) => Array.from(records.values(), (record) => {
-      const replaces = kernelStringsOf(record.replaces);
-      return replaces.length ? { reference: String(record.reference), replaces } : { reference: String(record.reference) };
-    });
+    const layer = (records) =>
+      Array.from(records.values(), (record) => {
+        const replaces = kernelStringsOf(record.replaces);
+        return replaces.length
+          ? { reference: String(record.reference), replaces }
+          : { reference: String(record.reference) };
+      });
     steps.push({ application: layer(model.index.application), technology: layer(model.index.technology) });
   }
   return steps;
@@ -59,8 +72,13 @@ function replacesChainBetween(baseId, targetId) {
  */
 function plateausOnOneChain(first, second) {
   const tree = AppState.plateauTree;
-  for (const id of [first, second]) if (!tree.nodes.has(id)) throw new Error('There is no plateau “' + id + '”: it cannot be told whether it is on one chain with another.'); // as `PlateauTree.onOneChain`
-  return plateauChain(tree, first).some((node) => node.id === second) || plateauChain(tree, second).some((node) => node.id === first);
+  for (const id of [first, second])
+    if (!tree.nodes.has(id))
+      throw new Error('There is no plateau “' + id + '”: it cannot be told whether it is on one chain with another.'); // as `PlateauTree.onOneChain`
+  return (
+    plateauChain(tree, first).some((node) => node.id === second) ||
+    plateauChain(tree, second).some((node) => node.id === first)
+  );
 }
 
 /**
@@ -79,9 +97,11 @@ function comparisonInputBetween(baseIndex, targetIndex, onOneChain, chain) {
   if (chain) input.chain = chain; // the plateaus between the base and the target, to compose the `replaces` (`replacesChainBetween`); absent: nothing to compose
   for (const layer of LAYER_NAMES) {
     const known = new Map();
-    for (const element of input.base[layer]) if (element.replaces) known.set(element.reference, JSON.stringify(element.replaces));
+    for (const element of input.base[layer])
+      if (element.replaces) known.set(element.reference, JSON.stringify(element.replaces));
     for (const element of input.target[layer]) {
-      if (element.replaces && JSON.stringify(element.replaces) === known.get(element.reference)) delete element.replaces;
+      if (element.replaces && JSON.stringify(element.replaces) === known.get(element.reference))
+        delete element.replaces;
     }
   }
   return input;
@@ -102,7 +122,9 @@ function unionLayersOf(union) {
   const records = new Map(); // layer|reference -> the union element: what a removed box is told from
   for (const element of union.elements) {
     if (!layers[element.layer]) continue;
-    layers[element.layer].push(Object.assign({}, element, { relationships: declared.get(element.layer + '|' + element.reference) || [] }));
+    layers[element.layer].push(
+      Object.assign({}, element, { relationships: declared.get(element.layer + '|' + element.reference) || [] })
+    );
     records.set(element.layer + '|' + element.reference, element);
   }
   return { layers, records };
@@ -122,8 +144,13 @@ function setWordingAside(value) {
   // kernel says of the changes that are not only a rewording (`contains_more_than_wording`, which says it for every element), for the box that is unchanged now
   const quieter = (element) => {
     const copy = Object.assign({}, element);
-    if (wording(element)) { copy.change = 'none'; delete copy.natures; delete copy.wording_only; }
-    if (copy.change === 'none' && element.contains_more_than_wording === true) copy.contains_changes = true; else delete copy.contains_changes;
+    if (wording(element)) {
+      copy.change = 'none';
+      delete copy.natures;
+      delete copy.wording_only;
+    }
+    if (copy.change === 'none' && element.contains_more_than_wording === true) copy.contains_changes = true;
+    else delete copy.contains_changes;
     return copy;
   };
   const layers = {};
@@ -132,8 +159,17 @@ function setWordingAside(value) {
   for (const [key, element] of value.records) records.set(key, quieter(element));
   const { counts: kernelCounts, changes: kernelChanges } = value.answer;
   const n = kernelCounts.elements.wording_only;
-  const counts = { elements: Object.assign({}, kernelCounts.elements, { changed: kernelCounts.elements.changed - n, wording_only: 0 }), relationships: kernelCounts.relationships };
-  return { layers, records, counts, changes: kernelChanges.filter((row) => !(row.thing === 'element' && row.wording_only === true)), wordingHidden: n };
+  const counts = {
+    elements: Object.assign({}, kernelCounts.elements, { changed: kernelCounts.elements.changed - n, wording_only: 0 }),
+    relationships: kernelCounts.relationships
+  };
+  return {
+    layers,
+    records,
+    counts,
+    changes: kernelChanges.filter((row) => !(row.thing === 'element' && row.wording_only === true)),
+    wordingHidden: n
+  };
 }
 
 /**
@@ -156,17 +192,37 @@ function comparisonState() {
  * the plateau compared with (`AppState.baseline`), whether the plateau drawn can be drawn at all, the sentences of its mistakes, and the two toggles of the diagram.
  */
 function editorDrawing() {
-  return { layers: AppState.layers, index: AppState.index, baseline: AppState.baseline, undrawable: AppState.layerUndrawable, problems: AppState.layerProblems, hideWording: AppState.hideWording, changesOnly: AppState.changesOnly };
+  return {
+    layers: AppState.layers,
+    index: AppState.index,
+    baseline: AppState.baseline,
+    undrawable: AppState.layerUndrawable,
+    problems: AppState.layerProblems,
+    hideWording: AppState.hideWording,
+    changesOnly: AppState.changesOnly
+  };
 }
 
 /** Where the editor keeps the answer of the kernel's `compare` for the two models on screen (`comparisonCache`, valid while `modelVersion` and the two indexes are what they were). */
 const editorComparisonMemo = {
   find(drawing, future) {
     const kept = comparisonCache;
-    return kept && kept.version === modelVersion && kept.index === drawing.index && kept.baselineIndex === drawing.baseline.index && kept.future === future ? kept.value : null;
+    return kept &&
+      kept.version === modelVersion &&
+      kept.index === drawing.index &&
+      kept.baselineIndex === drawing.baseline.index &&
+      kept.future === future
+      ? kept.value
+      : null;
   },
   keep(drawing, future, value) {
-    comparisonCache = { version: modelVersion, index: drawing.index, baselineIndex: drawing.baseline.index, future, value };
+    comparisonCache = {
+      version: modelVersion,
+      index: drawing.index,
+      baselineIndex: drawing.baseline.index,
+      future,
+      value
+    };
   }
 };
 
@@ -176,9 +232,22 @@ const editorComparisonMemo = {
  */
 function comparisonStateOf(drawing, memo) {
   const target = compareTargetPlateau(drawing.layers);
-  if (!target || !drawing.baseline || !drawing.baseline.plateau || drawing.baseline.plateau.id !== target.id) return null;
-  if (drawing.undrawable) return { problems: ['The plateau “' + plateauTitle(drawnPlateau(drawing.layers)) + '” cannot be drawn, so there is nothing to compare:'].concat(drawing.problems || []) };
-  if (drawing.baseline.undrawable) return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, cannot be drawn:'].concat(drawing.baseline.problem.split('\n')) };
+  if (!target || !drawing.baseline || !drawing.baseline.plateau || drawing.baseline.plateau.id !== target.id)
+    return null;
+  if (drawing.undrawable)
+    return {
+      problems: [
+        'The plateau “' +
+          plateauTitle(drawnPlateau(drawing.layers)) +
+          '” cannot be drawn, so there is nothing to compare:'
+      ].concat(drawing.problems || [])
+    };
+  if (drawing.baseline.undrawable)
+    return {
+      problems: [
+        'The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, cannot be drawn:'
+      ].concat(drawing.baseline.problem.split('\n'))
+    };
   if (!loadedKernel) return { pending: true };
   // run 0045: the answer is kept while the version of the models is the one it was computed at (the two models themselves are compared too, a net
   // under a replacement that forgot `modelsChanged()`): a plain render serialises nothing and builds no input
@@ -186,12 +255,21 @@ function comparisonStateOf(drawing, memo) {
   let value = memo.find(drawing, future);
   if (!value) {
     const answer = loadedKernel.compare(comparisonInput(drawing));
-    value = answer.error ? { error: answer.error } : Object.assign({ answer, cascade: layeredCascadeNow(future, drawing) }, unionLayersOf(answer));
+    value = answer.error
+      ? { error: answer.error }
+      : Object.assign({ answer, cascade: layeredCascadeNow(future, drawing) }, unionLayersOf(answer));
     memo.keep(drawing, future, value);
   }
-  if (value.error) return { problems: ['The comparison with “' + plateauTitle(target) + '” could not be made: ' + value.error] };
+  if (value.error)
+    return { problems: ['The comparison with “' + plateauTitle(target) + '” could not be made: ' + value.error] };
   if (!value.shown) {
-    const full = { layers: value.layers, records: value.records, counts: value.answer.counts, changes: value.answer.changes, wordingHidden: 0 };
+    const full = {
+      layers: value.layers,
+      records: value.records,
+      counts: value.answer.counts,
+      changes: value.answer.changes,
+      wordingHidden: 0
+    };
     value.shown = { full: Object.assign(full, { wordingOnly: value.answer.counts.elements.wording_only }) };
   }
   if (drawing.hideWording && !value.shown.quiet) {
@@ -201,7 +279,18 @@ function comparisonStateOf(drawing, memo) {
   // wave 009: the pairs the kernel proposes as one thing said twice (never applied) and what it ignored in the `replaces` it was given; neither depends on the wording toggle
   // `full`: the answer with every change in it, whatever the wording toggle says (what the hand-written state words are compared with, see `stateWordHintsOf`)
   const drawn = drawnPlateau(drawing.layers);
-  return Object.assign({ base: future ? drawn : drawing.baseline.plateau, target: future ? drawing.baseline.plateau : drawn, future, cascade: value.cascade, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [], full: value.shown.full }, value.shown[drawing.hideWording ? 'quiet' : 'full']);
+  return Object.assign(
+    {
+      base: future ? drawn : drawing.baseline.plateau,
+      target: future ? drawing.baseline.plateau : drawn,
+      future,
+      cascade: value.cascade,
+      candidates: value.answer.candidates || [],
+      warnings: value.answer.warnings || [],
+      full: value.shown.full
+    },
+    value.shown[drawing.hideWording ? 'quiet' : 'full']
+  );
 }
 
 /** Whether the references of the union (the elements of both plateaus) include this one in a layer: the map can open a removed box. */
@@ -235,11 +324,16 @@ function buildKernelInput(viewpoint, reference, options) {
   const source = opts.source || null;
   const index = source ? source.index : AppState.index;
   const isMap = viewpoint === 'map';
-  const layer = isMap ? (opts.layer === 'technology' ? 'technology' : 'application') : (opts.layer || (source ? layerOfReferenceIn(index, reference) : layerOfReference(reference)) || 'technology'); // no layer asked: the selected element's own, else the application one
+  const layer = isMap
+    ? opts.layer === 'technology'
+      ? 'technology'
+      : 'application'
+    : opts.layer || (source ? layerOfReferenceIn(index, reference) : layerOfReference(reference)) || 'technology'; // no layer asked: the selected element's own, else the application one
   const main = toKernelElements(index[layer], !!opts.facet);
   // the applications deployed on the nodes are what the viewpoints of an element draw inside a node (and derive links from), and the Map of the technology layer draws them too
   // (issue #107): the Map of the application layer needs no other layer
-  const apps = layer === 'technology' ? toKernelElements(index.application, !!opts.facet) : { elements: [], dangling: 0 };
+  const apps =
+    layer === 'technology' ? toKernelElements(index.application, !!opts.facet) : { elements: [], dangling: 0 };
   // run 0039: with a comparison on, the kernel draws the union of the two plateaus (each element and relationship says what changed); `dangling` is still the plateau drawn's own
   const comparison = source ? source.comparison : comparisonState();
   if (comparison && comparison.layers) {
@@ -263,11 +357,11 @@ function buildKernelInput(viewpoint, reference, options) {
   }
   if (opts.facet) input.facet = toKernelFacet(opts.facet);
   // run 0040: Changes only, for every host (the Map, the diagrams of Elements, the page of a view): the kernel keeps what changed and, as context, what places it
-  if (comparison && comparison.layers && (source ? source.changesOnly : AppState.changesOnly)) input.only_changes = true;
+  if (comparison && comparison.layers && (source ? source.changesOnly : AppState.changesOnly))
+    input.only_changes = true;
   const collapsed = Array.from(opts.collapsed || []); // a Set in the UI, an array in tests
   if (collapsed.length) input.collapsed = collapsed;
   const expanded = Array.from(opts.expanded || []);
   if (expanded.length) input.expanded = expanded;
   return { dangling: main.dangling, input };
 }
-

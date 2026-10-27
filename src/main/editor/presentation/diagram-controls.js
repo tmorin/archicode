@@ -17,7 +17,13 @@ function effectiveDiagramViewpoint(record) {
 /** A diagram of the selected element is what the Elements perspective shows now (not its page, not a form). */
 function diagramTabShown() {
   const sel = elementSelection();
-  return currentPerspective === 'elements' && sel.kind === 'element' && sel.mode !== 'edit' && elementTab !== 'details' && !!findElementRecord(sel.key);
+  return (
+    currentPerspective === 'elements' &&
+    sel.kind === 'element' &&
+    sel.mode !== 'edit' &&
+    elementTab !== 'details' &&
+    !!findElementRecord(sel.key)
+  );
 }
 
 /** Whether a diagram (of an element, or the map) is on screen. */
@@ -27,7 +33,12 @@ function anyDiagramShown() {
 
 /** Whether the page of a view in the Library is drawing its view: the other place a diagram can be, with its own selection and its own Maximize. */
 function libraryDiagramShown() {
-  return currentPerspective === 'library' && libraryTab === 'views' && !!selectedViewId && !!libraryDiagramRecipe(findSavedView(selectedViewId));
+  return (
+    currentPerspective === 'library' &&
+    libraryTab === 'views' &&
+    !!selectedViewId &&
+    !!libraryDiagramRecipe(findSavedView(selectedViewId))
+  );
 }
 
 /** Hides (or brings back) the panels around the diagram; `panels`: what it hides (the element tree of the Map and Elements). */
@@ -35,14 +46,28 @@ function renderMaximizeButtonHtml(panels) {
   // the label says the state, so the button is not also "pressed"; in a narrow header the icon stays and the word goes (the title has it)
   const label = diagramMaximized ? 'Restore' : 'Maximize';
   const what = panels || 'the element tree';
-  return '<button type="button" class="maximize-button with-icon" data-action="toggle-maximize" aria-label="' + label + '" title="' +
-    (diagramMaximized ? 'Bring back ' + what + ' (Esc)' : 'Hide ' + what + ' to give the diagram all the room (M)') + '">' +
-    controlIconHtml(diagramMaximized ? 'M6 3v3H3M10 3v3h3M6 13v-3H3M10 13v-3h3' : 'M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3') + '<span class="control-label">' + label + '</span></button>';
+  return (
+    '<button type="button" class="maximize-button with-icon" data-action="toggle-maximize" aria-label="' +
+    label +
+    '" title="' +
+    (diagramMaximized ? 'Bring back ' + what + ' (Esc)' : 'Hide ' + what + ' to give the diagram all the room (M)') +
+    '">' +
+    controlIconHtml(
+      diagramMaximized ? 'M6 3v3H3M10 3v3h3M6 13v-3H3M10 13v-3h3' : 'M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3'
+    ) +
+    '<span class="control-label">' +
+    label +
+    '</span></button>'
+  );
 }
 
 /** A 16px outline icon of a header control (decorative: the control has its own label). */
 function controlIconHtml(path) {
-  return '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="' + path + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return (
+    '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="' +
+    path +
+    '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  );
 }
 
 /** The icons of the header controls that lose their words in a narrow header. */
@@ -61,15 +86,25 @@ const CONTROL_ICON_PATHS = {
  * Facet and Maximize stay in the row at every width.
  */
 function renderDiagramHeaderActionsHtml(openerHtml) {
-  return renderFacetSelectHtml() +
+  return (
+    renderFacetSelectHtml() +
     '<span class="header-more">' +
-      '<button type="button" class="header-more-button" data-action="toggle-header-menu" aria-haspopup="true" aria-expanded="' + headerMenuOpen + '" aria-controls="header-overflow" aria-label="More actions" title="More actions: ' + (openerHtml ? 'the other perspective, ' : '') + 'story, download">' +
-        '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="3" cy="8" r="1.6" fill="currentColor"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="13" cy="8" r="1.6" fill="currentColor"/></svg></button>' +
-      '<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="' + headerMenuOpen + '">' +
-        openerHtml + renderStoryButtonsHtml() + renderDiagramDownloadHtml() +
-      '</div>' +
+    '<button type="button" class="header-more-button" data-action="toggle-header-menu" aria-haspopup="true" aria-expanded="' +
+    headerMenuOpen +
+    '" aria-controls="header-overflow" aria-label="More actions" title="More actions: ' +
+    (openerHtml ? 'the other perspective, ' : '') +
+    'story, download">' +
+    '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="3" cy="8" r="1.6" fill="currentColor"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="13" cy="8" r="1.6" fill="currentColor"/></svg></button>' +
+    '<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="' +
+    headerMenuOpen +
+    '">' +
+    openerHtml +
+    renderStoryButtonsHtml() +
+    renderDiagramDownloadHtml() +
+    '</div>' +
     '</span>' +
-    renderMaximizeButtonHtml();
+    renderMaximizeButtonHtml()
+  );
 }
 
 /**
@@ -101,7 +136,10 @@ function setHeaderMenuOpen(open, options = {}) {
 function handleHeaderMenuKeydown(e) {
   if (!headerMenuOpen || e.key !== 'Escape') return;
   const button = document.querySelector('.header-more-button');
-  if (button && button.getClientRects && button.getClientRects().length === 0) { headerMenuOpen = false; return; }
+  if (button && button.getClientRects && button.getClientRects().length === 0) {
+    headerMenuOpen = false;
+    return;
+  }
   if (e.stopImmediatePropagation) e.stopImmediatePropagation();
   else if (e.stopPropagation) e.stopPropagation();
   if (e.preventDefault) e.preventDefault();
@@ -135,8 +173,15 @@ function toggleDiagramMaximized() {
  * to the other (Edit, the facet, Maximize...) is on the right, so the tabs do not move when switching.
  */
 function renderElementTitleHtml(record) {
-  return '<h2>' + escapeHtml(record.name || record.id) + '</h2><span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>' +
-         renderHeaderBadgesHtml(record) + renderElementTabsHtml(record);
+  return (
+    '<h2>' +
+    escapeHtml(record.name || record.id) +
+    '</h2><span class="element-kind-badge">' +
+    escapeHtml(record.kind) +
+    '</span>' +
+    renderHeaderBadgesHtml(record) +
+    renderElementTabsHtml(record)
+  );
 }
 
 /**
@@ -145,7 +190,9 @@ function renderElementTitleHtml(record) {
  */
 function renderHeaderBadgesHtml(record) {
   const badges = stereotypeBadgesHtml(stereotypesOfRecord(record));
-  return badges ? '<span class="element-header-badges" role="group" aria-label="Stereotypes">' + badges + '</span>' : '';
+  return badges
+    ? '<span class="element-header-badges" role="group" aria-label="Stereotypes">' + badges + '</span>'
+    : '';
 }
 
 /**
@@ -156,23 +203,46 @@ function renderElementTabsHtml(record) {
   const current = elementTab === 'details' ? 'details' : effectiveDiagramViewpoint(record);
   const tab = (id) => {
     const disabled = id === 'detailed' && LEAF_KINDS.includes(record.kind);
-    return '<button type="button" data-action="set-element-tab" data-tab="' + id + '" aria-pressed="' + (id === current) + '"' +
-           (disabled ? ' disabled' : '') + ' title="' + escapeHtml(disabled ? 'Only available for an element that can contain others.' : ELEMENT_TABS[id].title) + '">' +
-           escapeHtml(ELEMENT_TABS[id].label) + '</button>';
+    return (
+      '<button type="button" data-action="set-element-tab" data-tab="' +
+      id +
+      '" aria-pressed="' +
+      (id === current) +
+      '"' +
+      (disabled ? ' disabled' : '') +
+      ' title="' +
+      escapeHtml(disabled ? 'Only available for an element that can contain others.' : ELEMENT_TABS[id].title) +
+      '">' +
+      escapeHtml(ELEMENT_TABS[id].label) +
+      '</button>'
+    );
   };
-  return '<span class="viewpoint-switch" role="group" aria-label="View of this element">' + tab('details') +
-         '<span class="button-group" role="group" aria-label="Diagram of this element">' + ['overview', 'detailed', 'deep'].map(tab).join('') + '</span>' +
-         '</span>';
+  return (
+    '<span class="viewpoint-switch" role="group" aria-label="View of this element">' +
+    tab('details') +
+    '<span class="button-group" role="group" aria-label="Diagram of this element">' +
+    ['overview', 'detailed', 'deep'].map(tab).join('') +
+    '</span>' +
+    '</span>'
+  );
 }
 
 /** The facet picker of the header; absent when the workspace defines no facet. */
 function renderFacetSelectHtml() {
   const facets = AppState.workspace.settings.facets.customs;
   if (!facets.length) return '';
-  let html = '<select id="diagram-facet-select" aria-label="Facet" title="Draw the diagram as the CLI generates it for a facet: the relationships the facet removes are left out.">' +
-             '<option value="">Facet: none</option>';
+  let html =
+    '<select id="diagram-facet-select" aria-label="Facet" title="Draw the diagram as the CLI generates it for a facet: the relationships the facet removes are left out.">' +
+    '<option value="">Facet: none</option>';
   for (const facet of facets) {
-    html += '<option value="' + escapeHtml(facet.name) + '"' + (facet.name === diagramFacet ? ' selected' : '') + '>' + escapeHtml(facet.name) + '</option>';
+    html +=
+      '<option value="' +
+      escapeHtml(facet.name) +
+      '"' +
+      (facet.name === diagramFacet ? ' selected' : '') +
+      '>' +
+      escapeHtml(facet.name) +
+      '</option>';
   }
   return html + '</select>';
 }
@@ -195,4 +265,3 @@ function diagramLinkText(link) {
   if (qualifiers.length) parts.push('[' + qualifiers.join(', ') + ']');
   return parts.join(' ');
 }
-

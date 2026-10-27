@@ -17,7 +17,8 @@ function render() {
 
   useDiagramHost(diagramHostOf(currentPerspective)); // before anything is drawn: the tree of the Map reads the scene of the Map
   settleLinkSelection(); // a link is selected only while the diagram it was made on is on screen
-  if (currentPerspective !== 'library' || (viewEditNotice && viewEditNotice.view !== selectedViewId)) viewEditNotice = null;
+  if (currentPerspective !== 'library' || (viewEditNotice && viewEditNotice.view !== selectedViewId))
+    viewEditNotice = null;
   const landing = landingScreenConfig();
   if (landing) {
     document.title = 'ArchiCode Editor'; // no workspace is loaded yet, whatever folder is remembered
@@ -50,13 +51,27 @@ function render() {
     const el = document.getElementById(id);
     if (el) scrollBefore[id] = { top: el.scrollTop, left: el.scrollLeft };
   }
-  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '') + '|' + (AppState.selection.focal || '') +
+  const viewKey =
+    currentPerspective +
+    '|' +
+    AppState.selection.kind +
+    '|' +
+    AppState.selection.key +
+    '|' +
+    AppState.selection.mode +
+    '|' +
+    (AppState.selection.layer || '') +
+    '|' +
+    (AppState.selection.focal || '') +
     (currentPerspective === 'library' && libraryTab === 'views' ? '|' + selectedViewId : ''); // another view opens at the top of its panel
   const sameView = viewKey === lastRenderedViewKey;
   lastRenderedViewKey = viewKey;
 
   // the tree of the map keeps the focus of the row the user was on, whatever redraws it
-  const focusedScopeRow = document.activeElement && document.activeElement.closest ? document.activeElement.closest('.tree-node-row[role="treeitem"]') : null;
+  const focusedScopeRow =
+    document.activeElement && document.activeElement.closest
+      ? document.activeElement.closest('.tree-node-row[role="treeitem"]')
+      : null;
   const focusedScopeRef = focusedScopeRow ? focusedScopeRow.getAttribute('data-node') : null;
   if (focusedScopeRef) navActiveKey = focusedScopeRef;
 
@@ -66,7 +81,8 @@ function render() {
   // a box of the diagram (or its fold button) keeps the focus too: Enter on one redraws the whole drawing
   const focusedBox = diagramFocusTargetOf(document.activeElement);
   if (focusedBox) pendingDiagramFocus = focusedBox;
-  const focusedPlain = focusedScopeRef || focusedControl || focusedBox ? null : plainControlFocusOf(document.activeElement);
+  const focusedPlain =
+    focusedScopeRef || focusedControl || focusedBox ? null : plainControlFocusOf(document.activeElement);
 
   app.innerHTML = renderShellHtml();
   if (focusedControl) {
@@ -118,7 +134,10 @@ function render() {
   for (const id of Object.keys(scrollBefore)) {
     if ((id === 'panel-center' || id === 'panel-right') && !sameView) continue; // another element or view opens at the top
     const el = document.getElementById(id);
-    if (el) { el.scrollTop = scrollBefore[id].top; el.scrollLeft = scrollBefore[id].left; }
+    if (el) {
+      el.scrollTop = scrollBefore[id].top;
+      el.scrollLeft = scrollBefore[id].left;
+    }
   }
   if (scrollChangesToSelection) {
     scrollChangesToSelection = false;

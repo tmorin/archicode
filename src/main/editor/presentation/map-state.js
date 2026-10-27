@@ -1,6 +1,8 @@
 /** The parts of the Map of the technology layer on screen that are drawn (both for any other Map, where they mean nothing). */
 function mapPartsShown() {
-  return mapLayer() === 'technology' ? Object.assign({}, technologyMapParts) : { applications: true, relationships: true };
+  return mapLayer() === 'technology'
+    ? Object.assign({}, technologyMapParts)
+    : { applications: true, relationships: true };
 }
 
 /** The layer the Map on screen draws: the page Environments draws the technology layer, the page Applications the application layer. */
@@ -15,9 +17,24 @@ function mapLayer() {
 function mapStateOf(layer) {
   if ((layer || mapLayer()) === 'technology') return technologyMapState;
   return {
-    get pinned() { return mapPinned; }, set pinned(value) { mapPinned = value; },
-    get hidden() { return mapHidden; }, set hidden(value) { mapHidden = value; },
-    get opened() { return mapOpened; }, set opened(value) { mapOpened = value; }
+    get pinned() {
+      return mapPinned;
+    },
+    set pinned(value) {
+      mapPinned = value;
+    },
+    get hidden() {
+      return mapHidden;
+    },
+    set hidden(value) {
+      mapHidden = value;
+    },
+    get opened() {
+      return mapOpened;
+    },
+    set opened(value) {
+      mapOpened = value;
+    }
   };
 }
 
@@ -26,13 +43,26 @@ function mapStateOf(layer) {
  * the twins apart (the tab, the zoom direction, the perspective). Null for anything else, which keeps no focus.
  */
 function headerControlSelector(el) {
-  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button') : null;
+  const control =
+    el && el.closest
+      ? el.closest(
+          '.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button'
+        )
+      : null;
   if (!control) return null;
   if (control.id) return '#' + control.id;
   const action = control.getAttribute('data-action');
   if (!action) return null;
   let selector = '[data-action="' + action + '"]';
-  for (const attribute of ['data-tab', 'data-dir', 'data-perspective', 'data-show', 'data-format', 'data-plateau', 'data-value']) {
+  for (const attribute of [
+    'data-tab',
+    'data-dir',
+    'data-perspective',
+    'data-show',
+    'data-format',
+    'data-plateau',
+    'data-value'
+  ]) {
     const value = control.getAttribute(attribute);
     if (value) selector += '[' + attribute + '="' + value + '"]';
   }
@@ -42,7 +72,7 @@ function headerControlSelector(el) {
 /** Give the one tab stop of the navigation to a row that is on screen: the one the user was on, else `preferred` (the selection), else the first. */
 function resolveNavActive(visible, preferred) {
   if (visible.includes(navActiveKey)) return;
-  navActiveKey = visible.includes(preferred) ? preferred : (visible[0] || null);
+  navActiveKey = visible.includes(preferred) ? preferred : visible[0] || null;
 }
 
 /** Unfold the branches above an element, so that its row in the tree of the map can be seen (the element itself stays as it is). */
@@ -68,14 +98,16 @@ function mapIsShown() {
   return currentPerspective === 'map' || currentPerspective === 'environments';
 }
 
-
 /** What the kernel is given: only references that still exist (an element can be deleted while the map is on). */
 function currentMapState() {
   const layer = mapLayer();
   const state = mapStateOf(layer);
   const known = (list) => Array.from(list).filter((reference) => AppState.index[layer].has(reference));
   // a comparison also draws the elements only the baseline has (removed): a box of the map that is one can be opened
-  const knownToOpen = (list) => Array.from(list).filter((reference) => AppState.index[layer].has(reference) || comparisonHasElement(layer, reference));
+  const knownToOpen = (list) =>
+    Array.from(list).filter(
+      (reference) => AppState.index[layer].has(reference) || comparisonHasElement(layer, reference)
+    );
   return { opened: knownToOpen(currentMapOpened()), pinned: known(state.pinned), hidden: known(state.hidden) };
 }
 
@@ -93,7 +125,8 @@ function mapBoxesIfOpened(extra) {
     if (shown) {
       count++;
       // issue #107: the applications deployed on a node that is open are boxes too (once each, however many nodes host them)
-      if (mapLayer() === 'technology' && technologyMapParts.applications && opened.has(record.reference)) count += new Set(kernelStringsOf(record.applications)).size;
+      if (mapLayer() === 'technology' && technologyMapParts.applications && opened.has(record.reference))
+        count += new Set(kernelStringsOf(record.applications)).size;
     }
   }
   return count;
@@ -102,6 +135,6 @@ function mapBoxesIfOpened(extra) {
 /** Closing an element also closes what was opened inside it. */
 function closeOnMap(reference) {
   const opened = currentMapOpened();
-  for (const open of Array.from(opened)) if (open === reference || open.startsWith(reference + '.')) opened.delete(open);
+  for (const open of Array.from(opened))
+    if (open === reference || open.startsWith(reference + '.')) opened.delete(open);
 }
-

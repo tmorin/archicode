@@ -11,7 +11,13 @@ function storyStepTitle(step) {
   const view = stepView(step);
   if (view && step.view) return viewLabel(view);
   const words = typeof step.text === 'string' ? step.text.split(/\s+/).filter(Boolean) : [];
-  if (words.length) return words.length > STORY_MENU_WORDS ? words.slice(0, STORY_MENU_WORDS).join(' ').replace(/[\s,:;.\-–—]+$/, '') + '…' : words.join(' ');
+  if (words.length)
+    return words.length > STORY_MENU_WORDS
+      ? words
+          .slice(0, STORY_MENU_WORDS)
+          .join(' ')
+          .replace(/[\s,:;.\-–—]+$/, '') + '…'
+      : words.join(' ');
   if (view) return viewLabel(view);
   return step.view ? 'Missing view “' + step.view + '”' : 'No view';
 }
@@ -30,10 +36,31 @@ function renderStoryStepMenuHtml(story, current, className, options) {
   const id = escapeHtml(story.id);
   const entries = steps.map((step, i) => {
     const problem = stepProblem(step, stepPlateauAt(step, opts.home), i + 1);
-    return '<option value="' + i + '"' + (i === current ? ' selected' : '') + (problem ? ' title="' + escapeHtml(problem) + '"' : '') + '>' +
-      (i + 1) + '. ' + escapeHtml(storyStepTitle(step)) + (problem ? ' — cannot be shown: ' + escapeHtml(problem) : '') + '</option>';
+    return (
+      '<option value="' +
+      i +
+      '"' +
+      (i === current ? ' selected' : '') +
+      (problem ? ' title="' + escapeHtml(problem) + '"' : '') +
+      '>' +
+      (i + 1) +
+      '. ' +
+      escapeHtml(storyStepTitle(step)) +
+      (problem ? ' — cannot be shown: ' + escapeHtml(problem) : '') +
+      '</option>'
+    );
   });
-  return '<select class="' + (className || 'player-step-menu') + '" data-player-step-menu data-story="' + id + '" aria-label="' + escapeHtml(opts.label || 'Go to a step of the story') + '" title="' +
-    escapeHtml(opts.title || 'Go to any step') + '">' + entries.join('') + '</select>';
+  return (
+    '<select class="' +
+    (className || 'player-step-menu') +
+    '" data-player-step-menu data-story="' +
+    id +
+    '" aria-label="' +
+    escapeHtml(opts.label || 'Go to a step of the story') +
+    '" title="' +
+    escapeHtml(opts.title || 'Go to any step') +
+    '">' +
+    entries.join('') +
+    '</select>'
+  );
 }
-

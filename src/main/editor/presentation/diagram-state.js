@@ -20,7 +20,8 @@ let diagramShow = { labels: null, qualifiers: null, descriptions: null, wrap: nu
 function diagramShows(isMap) {
   const defaults = DIAGRAM_SHOW_DEFAULTS[isMap ? 'map' : 'elements'];
   const out = {};
-  for (const name of DIAGRAM_SHOW_NAMES) out[name] = typeof diagramShow[name] === 'boolean' ? diagramShow[name] : defaults[name];
+  for (const name of DIAGRAM_SHOW_NAMES)
+    out[name] = typeof diagramShow[name] === 'boolean' ? diagramShow[name] : defaults[name];
   return out;
 }
 
@@ -45,7 +46,15 @@ let diagramPanned = false;
 let pendingDiagramFocus = null;
 
 function newDiagramHostState() {
-  return { scale: 'auto', center: { x: 0, y: 0 }, shownView: null, scene: null, cache: null, linkStop: null, maximized: false };
+  return {
+    scale: 'auto',
+    center: { x: 0, y: 0 },
+    shownView: null,
+    scene: null,
+    cache: null,
+    linkStop: null,
+    maximized: false
+  };
 }
 
 /** The host a perspective draws its diagram for: the page of a view in the Library, else the Map and Elements. */
@@ -56,7 +65,15 @@ function diagramHostOf(perspective) {
 /** Makes `host` the one whose diagram state the live globals hold. Idempotent. */
 function useDiagramHost(host) {
   if (host === diagramHost) return;
-  const live = { scale: diagramScale, center: diagramCenter, shownView: diagramShownView, scene: diagramScene, cache: diagramCache, linkStop: diagramLinkStop, maximized: diagramMaximized };
+  const live = {
+    scale: diagramScale,
+    center: diagramCenter,
+    shownView: diagramShownView,
+    scene: diagramScene,
+    cache: diagramCache,
+    linkStop: diagramLinkStop,
+    maximized: diagramMaximized
+  };
   const parked = parkedDiagramHost;
   diagramScale = parked.scale;
   diagramCenter = parked.center;
@@ -75,14 +92,23 @@ const DIAGRAM_SCALES = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 3];
 const DIAGRAM_MAX_GHOSTS = 12;
 
 const ELEMENT_TABS = {
-  details: { label: 'Details', title: 'The element itself: its properties, its relationships, and the way to edit it.' },
-  overview: { label: 'Overview', title: 'The direct relationships of this element, grouped under the nearest element they can be shown on.' },
+  details: {
+    label: 'Details',
+    title: 'The element itself: its properties, its relationships, and the way to edit it.'
+  },
+  overview: {
+    label: 'Overview',
+    title: 'The direct relationships of this element, grouped under the nearest element they can be shown on.'
+  },
   detailed: { label: 'Detailed', title: 'The overview of each element inside this one, combined.' },
   deep: { label: 'Deep', title: 'Every relationship of this element and of everything inside it, ungrouped.' }
 };
 
 const DIAGRAM_VIEWPOINTS = {
-  overview: { label: 'Overview', title: 'The direct relationships of this element, grouped under the nearest element they can be shown on.' },
+  overview: {
+    label: 'Overview',
+    title: 'The direct relationships of this element, grouped under the nearest element they can be shown on.'
+  },
   detailed: { label: 'Detailed', title: 'The overview of each element inside this one, combined.' },
   deep: { label: 'Deep', title: 'Every relationship of this element and of everything inside it, ungrouped.' }
 };
@@ -90,4 +116,3 @@ const DIAGRAM_VIEWPOINTS = {
 // ---- The map viewpoint: no focal element, every element of the layer is in play ----
 // Wave 015 (run 0099, W-11, #92): there are two Maps, the page Applications (the application layer) and the page Environments (the technology layer). They are one code with the layer
 // as a parameter (`mapLayer()`), and each keeps its own pins, hidden elements and open boxes: a reference can exist in both layers, and a pin of one layer means nothing in the other.
-

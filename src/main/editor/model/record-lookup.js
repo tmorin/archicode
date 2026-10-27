@@ -45,7 +45,8 @@ function toggleExpandedKey(key) {
  * delete and create buttons all act on the selection); else the application layer, as before.
  */
 function layerOfReference(reference, layer) {
-  const has = (candidate) => !!AppState.index && !!AppState.index[candidate] && AppState.index[candidate].has(reference);
+  const has = (candidate) =>
+    !!AppState.index && !!AppState.index[candidate] && AppState.index[candidate].has(reference);
   if (layer && has(layer)) return layer;
   const sel = elementSelection();
   if (!layer && sel && sel.kind === 'element' && sel.key === reference && sel.layer && has(sel.layer)) return sel.layer;
@@ -97,7 +98,7 @@ function locateContentNode(reference, layer, given) {
   const mf = AppState.manifestFiles.find((f) => f.relPath === record.sourceFile);
   if (!mf || !mf.header || !mf.content) return null;
 
-  const rootRef = mf.header.parent ? (mf.header.parent + '.' + mf.content.id) : String(mf.content.id);
+  const rootRef = mf.header.parent ? mf.header.parent + '.' + mf.content.id : String(mf.content.id);
   if (reference === rootRef) {
     return { mf, node: mf.content, parentArray: null, indexInParent: null };
   }
@@ -131,4 +132,3 @@ function locateContentNode(reference, layer, given) {
   }
   return { mf, node: matchedNode, parentArray, indexInParent };
 }
-

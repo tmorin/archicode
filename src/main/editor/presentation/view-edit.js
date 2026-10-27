@@ -25,9 +25,12 @@ function editSavedView(change, later) {
   const changed = change(view, view.properties) !== false;
   if (changed) markEntryChanged(view);
   if (!changed && !viewEditNotice) return false;
-  if (later) { // see handleViewFieldChange: the button that is being pressed is still there, and "Save all changes" is already lit
+  if (later) {
+    // see handleViewFieldChange: the button that is being pressed is still there, and "Save all changes" is already lit
     if (changed) syncSaveAllButtonsInPlace();
-    setTimeout(() => { if (libraryPageView() === view) requestRedraw(); }, 250);
+    setTimeout(() => {
+      if (libraryPageView() === view) requestRedraw();
+    }, 250);
   } else {
     requestRedraw();
   }
@@ -53,12 +56,16 @@ function shownTextsOf(view) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const defaults = DIAGRAM_SHOW_DEFAULTS[viewKindOf(view)];
   const shows = {};
-  for (const name of DIAGRAM_SHOW_NAMES) shows[name] = typeof properties[name] === 'boolean' ? properties[name] : defaults[name];
+  for (const name of DIAGRAM_SHOW_NAMES)
+    shows[name] = typeof properties[name] === 'boolean' ? properties[name] : defaults[name];
   return shows;
 }
 
 /** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
-const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'facet', 'hide-unlinked'].concat(MAP_PARTS, DIAGRAM_SHOW_NAMES);
+const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'facet', 'hide-unlinked'].concat(
+  MAP_PARTS,
+  DIAGRAM_SHOW_NAMES
+);
 
 /**
  * Writes a property of a view. One the view already has keeps its place; one it has not (a default that an earlier edit took out, written again)
@@ -66,11 +73,17 @@ const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'facet', '
  * of the file. A key the editor does not know goes last.
  */
 function putViewProperty(properties, key, value) {
-  if (Object.prototype.hasOwnProperty.call(properties, key)) { properties[key] = value; return; }
+  if (Object.prototype.hasOwnProperty.call(properties, key)) {
+    properties[key] = value;
+    return;
+  }
   const rank = VIEW_PROPERTY_ORDER.indexOf(key);
   const keys = Object.keys(properties);
   const before = rank < 0 ? undefined : keys.find((other) => VIEW_PROPERTY_ORDER.indexOf(other) > rank);
-  if (before === undefined) { properties[key] = value; return; }
+  if (before === undefined) {
+    properties[key] = value;
+    return;
+  }
   const kept = keys.map((other) => [other, properties[other]]);
   for (const other of keys) delete properties[other];
   for (const [other, current] of kept) {
@@ -135,7 +148,8 @@ function setViewElement(view, reference) {
   const layer = viewLayerOf(view);
   const wanted = String(reference).trim();
   if (!wanted) return refuseViewEdit(view, 'element', 'Type the reference of an element.', reference);
-  if (!AppState.index[layer].has(wanted)) return refuseViewEdit(view, 'element', '“' + wanted + '” is not an element of the ' + layer + ' layer.', wanted);
+  if (!AppState.index[layer].has(wanted))
+    return refuseViewEdit(view, 'element', '“' + wanted + '” is not an element of the ' + layer + ' layer.', wanted);
   if (view.properties.element === wanted) return false;
   putViewProperty(view.properties, 'element', wanted);
   return true;
@@ -152,10 +166,12 @@ function setViewLayer(view, layer) {
     for (const list of VIEW_LISTS) {
       if (!Array.isArray(view.properties[list])) continue;
       const kept = view.properties[list].filter((reference) => AppState.index[layer].has(reference));
-      if (kept.length) view.properties[list] = kept; else delete view.properties[list];
+      if (kept.length) view.properties[list] = kept;
+      else delete view.properties[list];
     }
     if (layer !== 'technology') for (const part of MAP_PARTS) delete view.properties[part]; // only the Map of the technology layer draws the applications and the relationships of the model (issue #107)
-  } else if (typeof view.properties.element !== 'string' || !AppState.index[layer].has(view.properties.element)) delete view.properties.element;
+  } else if (typeof view.properties.element !== 'string' || !AppState.index[layer].has(view.properties.element))
+    delete view.properties.element;
   return true;
 }
 
@@ -177,7 +193,8 @@ function setViewViewpoint(view, viewpoint) {
   } else if (viewpoint !== 'map' && view.viewpoint === 'map') {
     const first = stringList(properties.pinned).find((reference) => AppState.index[viewLayerOf(view)].has(reference)); // the first pin that is still an element, in the order of the file
     for (const key of ['pinned', 'hidden', 'opened'].concat(MAP_PARTS)) delete properties[key]; // the Map's own keys go with it
-    if (first) putViewProperty(properties, 'element', first); else delete properties.element;
+    if (first) putViewProperty(properties, 'element', first);
+    else delete properties.element;
   }
   view.viewpoint = viewpoint;
   for (const name of DIAGRAM_SHOW_NAMES) setViewShow(view, name, shows[name]);
@@ -193,14 +210,21 @@ function setViewListItem(view, list, reference, add) {
   const wanted = String(reference).trim();
   if (add) {
     if (!wanted) return false;
-    if (!AppState.index[viewLayerOf(view)].has(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is not an element of the ' + viewLayerOf(view) + ' layer.', wanted);
+    if (!AppState.index[viewLayerOf(view)].has(wanted))
+      return refuseViewEdit(
+        view,
+        list,
+        '“' + wanted + '” is not an element of the ' + viewLayerOf(view) + ' layer.',
+        wanted
+      );
     if (items.includes(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is already there.', wanted);
     putViewProperty(view.properties, list, items.concat(wanted));
     return true;
   }
   if (!items.includes(wanted)) return false;
   const rest = items.filter((item) => item !== wanted);
-  if (rest.length) view.properties[list] = rest; else delete view.properties[list];
+  if (rest.length) view.properties[list] = rest;
+  else delete view.properties[list];
   return true;
 }
 
@@ -215,25 +239,29 @@ function handleViewFieldChange(control, immediate) {
   const active = typeof document !== 'undefined' ? document.activeElement : null;
   // the focus is on another control already, or a pointer button is down on something else: the text is being left by a click that is not over
   // yet (Firefox says the focus is on the body while the field loses it, and a redraw then replaces the button before its click)
-  const pressed = !!pointerPressedOn && pointerPressedOn !== control && !(control.contains && control.contains(pointerPressedOn));
+  const pressed =
+    !!pointerPressedOn && pointerPressedOn !== control && !(control.contains && control.contains(pointerPressedOn));
   const left = pressed || (!!active && active !== control && active !== document.body);
   if (control.id && !left) pendingFocusSelector = '#' + control.id;
   const isText = control.tagName === 'INPUT' && control.type === 'text';
   const later = isText && left && !immediate;
   let changed;
-  const apply = (change) => { changed = editSavedView(change, later); };
+  const apply = (change) => {
+    changed = editSavedView(change, later);
+  };
   if (list) {
     const reference = control.value;
     control.value = '';
     apply((view) => setViewListItem(view, list, reference, true));
-  }
-  else if (field === 'viewpoint') apply((view) => setViewViewpoint(view, control.value));
+  } else if (field === 'viewpoint') apply((view) => setViewViewpoint(view, control.value));
   else if (field === 'layer') apply((view) => setViewLayer(view, control.value));
   else if (field === 'element') apply((view) => setViewElement(view, control.value));
   else if (field === 'facet') apply((view) => setViewFacet(view, control.value));
   else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
-  else if (field && field.startsWith('part:') && MAP_PARTS.includes(field.slice(5))) apply((view) => setViewMapPart(view, field.slice(5), !!control.checked));
-  else if (field && field.startsWith('show:') && DIAGRAM_SHOW_NAMES.includes(field.slice(5))) apply((view) => setViewShow(view, field.slice(5), !!control.checked));
+  else if (field && field.startsWith('part:') && MAP_PARTS.includes(field.slice(5)))
+    apply((view) => setViewMapPart(view, field.slice(5), !!control.checked));
+  else if (field && field.startsWith('show:') && DIAGRAM_SHOW_NAMES.includes(field.slice(5)))
+    apply((view) => setViewShow(view, field.slice(5), !!control.checked));
   return changed;
 }
 
@@ -251,14 +279,19 @@ function lightSaveForTypedViewText() {
 
 /** What a pointer button is down on, from its press to its release (null otherwise): a field that loses its focus to a click says so by it. */
 let pointerPressedOn = null;
-function notePointer(e) { pointerPressedOn = e.type === 'pointerdown' ? e.target : null; }
+function notePointer(e) {
+  pointerPressedOn = e.type === 'pointerdown' ? e.target : null;
+}
 document.addEventListener('pointerdown', notePointer, true);
 document.addEventListener('pointerup', notePointer, true);
 document.addEventListener('pointercancel', notePointer, true);
 
 /** Delegated `change` listener: the form of a view on its page, the list of Settings. (The menu of the steps of a story is the player's, `handleStoryPlayerChange`.) */
 function handleAppChange(e) {
-  if (e.target && e.target.matches && e.target.matches('[data-settings-current]')) { chooseCurrentPlateau(e.target); return; }
+  if (e.target && e.target.matches && e.target.matches('[data-settings-current]')) {
+    chooseCurrentPlateau(e.target);
+    return;
+  }
   const control = e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list]') : null;
   if (control) handleViewFieldChange(control);
 }
@@ -278,8 +311,8 @@ function updateStoryField(field) {
     return;
   }
   if (!isPlainObject(target)) return;
-  if (value === '') delete target[key]; else target[key] = value;
+  if (value === '') delete target[key];
+  else target[key] = value;
   markEntryChanged(story);
   refreshSaveAllButton();
 }
-

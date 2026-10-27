@@ -14,14 +14,17 @@ function setPlateauContentKey(content, key, value) {
     return;
   }
   const later = PLATEAU_CONTENT_ORDER.slice(PLATEAU_CONTENT_ORDER.indexOf(key) + 1).find((other) => other in content);
-  if (later) insertKeyBefore(content, later, key, value); else content[key] = value;
+  if (later) insertKeyBefore(content, later, key, value);
+  else content[key] = value;
 }
 
 /** The sentence that refuses an id for a new plateau, or null. */
 function plateauIdProblem(id) {
   if (id === '') return 'A plateau needs an id.';
-  if (!LAYER_PLATEAU_ID_PATTERN.test(id)) return 'The id of a plateau uses lowercase letters, digits, `_` and `-` (no dot, no space).';
-  if (AppState.plateauTree.nodes.has(id) || AppState.plateauTree.ids.includes(id)) return 'The plateau `' + id + '` exists already.';
+  if (!LAYER_PLATEAU_ID_PATTERN.test(id))
+    return 'The id of a plateau uses lowercase letters, digits, `_` and `-` (no dot, no space).';
+  if (AppState.plateauTree.nodes.has(id) || AppState.plateauTree.ids.includes(id))
+    return 'The plateau `' + id + '` exists already.';
   return null;
 }
 
@@ -34,7 +37,8 @@ function commitPlateauCreate(spec, options) {
   const parent = readIsMissing(spec.parent) || spec.parent === '' ? BASELINE_PLATEAU : String(spec.parent);
   const problem = plateauIdProblem(id);
   if (problem) throw new Error(problem);
-  if (!AppState.plateauTree.nodes.has(parent)) throw new Error('The plateau `' + parent + '` does not exist, so `' + id + '` cannot override it.');
+  if (!AppState.plateauTree.nodes.has(parent))
+    throw new Error('The plateau `' + parent + '` does not exist, so `' + id + '` cannot override it.');
   const name = readIsMissing(spec.name) ? '' : String(spec.name).trim();
   const horizon = readIsMissing(spec.horizon) ? '' : String(spec.horizon).trim();
   return guardedLayerWrite({
@@ -50,7 +54,16 @@ function commitPlateauCreate(spec, options) {
       if (parent !== BASELINE_PLATEAU) setPlateauContentKey(content, 'override', parent);
       const dir = firstManifestsDir();
       const relPath = allocateManifestRelPath(dir === undefined ? 'manifests' : dir, 'plateau.', id);
-      const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
+      const mf = {
+        relPath,
+        header,
+        content,
+        error: null,
+        rawText: serializeManifestFile(header, content),
+        dirty: true,
+        existedOnDisk: false,
+        lastKnownDiskModified: null
+      };
       adoptRemovedFile(mf);
       AppState.manifestFiles.push(mf);
       AppState.manifestFiles.sort((a, b) => compareCodePoints(a.relPath, b.relPath));
@@ -60,7 +73,14 @@ function commitPlateauCreate(spec, options) {
     },
     verify: () => {
       const node = AppState.plateauTree.nodes.get(id);
-      if (!node || node.parent !== parent) throw new Error('Not written: the new plateau `' + id + '` does not read back as a plateau over `' + parent + '`. Nothing was changed.');
+      if (!node || node.parent !== parent)
+        throw new Error(
+          'Not written: the new plateau `' +
+            id +
+            '` does not read back as a plateau over `' +
+            parent +
+            '`. Nothing was changed.'
+        );
     }
   });
 }
@@ -76,10 +96,17 @@ function commitPlateauEdit(spec, options) {
   if (!node) throw new Error('The plateau `' + id + '` does not exist.');
   const name = readIsMissing(spec.name) ? '' : String(spec.name).trim();
   const horizon = readIsMissing(spec.horizon) ? '' : String(spec.horizon).trim();
-  const parent = id === BASELINE_PLATEAU ? null : (readIsMissing(spec.parent) || spec.parent === '' ? BASELINE_PLATEAU : String(spec.parent));
+  const parent =
+    id === BASELINE_PLATEAU
+      ? null
+      : readIsMissing(spec.parent) || spec.parent === ''
+        ? BASELINE_PLATEAU
+        : String(spec.parent);
   if (parent !== null) {
-    if (!AppState.plateauTree.nodes.has(parent)) throw new Error('The plateau `' + parent + '` does not exist, so `' + id + '` cannot override it.');
-    if (parent === id || layerIsBelow(parent, id)) throw new Error('The plateau `' + id + '` cannot override `' + parent + '`: it would override itself.');
+    if (!AppState.plateauTree.nodes.has(parent))
+      throw new Error('The plateau `' + parent + '` does not exist, so `' + id + '` cannot override it.');
+    if (parent === id || layerIsBelow(parent, id))
+      throw new Error('The plateau `' + id + '` cannot override `' + parent + '`: it would override itself.');
   }
   const unchanged = (node.name || '') === name && (node.horizon || '') === horizon && node.parent === parent;
   if (unchanged) return { unchanged: true };
@@ -92,7 +119,8 @@ function commitPlateauEdit(spec, options) {
       const mf = ensurePlateauManifest(id);
       setPlateauContentKey(mf.content, 'name', name);
       setPlateauContentKey(mf.content, 'horizon', horizon);
-      if (parent !== null && node.parent !== parent) setPlateauContentKey(mf.content, 'override', parent === BASELINE_PLATEAU ? '' : parent);
+      if (parent !== null && node.parent !== parent)
+        setPlateauContentKey(mf.content, 'override', parent === BASELINE_PLATEAU ? '' : parent);
       touchManifest(mf);
       saveStatus = { state: 'idle' };
       rebuildIndexAndRender();
@@ -101,7 +129,9 @@ function commitPlateauEdit(spec, options) {
     verify: () => {
       const now = AppState.plateauTree.nodes.get(id);
       if (!now || (now.name || '') !== name || (now.horizon || '') !== horizon || now.parent !== parent) {
-        throw new Error('Not written: the plateau `' + id + '` does not read back as it was edited. Nothing was changed.');
+        throw new Error(
+          'Not written: the plateau `' + id + '` does not read back as it was edited. Nothing was changed.'
+        );
       }
     }
   });
@@ -140,25 +170,70 @@ function plateauDeletion(id) {
   const tree = AppState.plateauTree;
   const layers = AppState.layers;
   const node = tree ? tree.nodes.get(id) : null;
-  const plan = { id, refusal: null, parent: null, overriding: [], files: [], rewritten: [], above: [], patches: 0, breaks: [], current: null, blocking: [], kept: [], unread: [] };
-  if (!layers || !tree || !tree.layered) { plan.refusal = 'This workspace has no plateau but baseline, which cannot be deleted.'; return plan; }
-  if (layers.blocked) { plan.refusal = 'No plateau is deleted while the plateaus cannot be drawn: ' + oneLine(layers.blocked); return plan; }
-  if (!node) { plan.refusal = 'The plateau `' + id + '` does not exist.'; return plan; }
-  if (node.parent === null) { plan.refusal = 'The plateau `' + id + '` is the root of the plateaus: every other plateau stands on it, so it cannot be deleted.'; return plan; }
+  const plan = {
+    id,
+    refusal: null,
+    parent: null,
+    overriding: [],
+    files: [],
+    rewritten: [],
+    above: [],
+    patches: 0,
+    breaks: [],
+    current: null,
+    blocking: [],
+    kept: [],
+    unread: []
+  };
+  if (!layers || !tree || !tree.layered) {
+    plan.refusal = 'This workspace has no plateau but baseline, which cannot be deleted.';
+    return plan;
+  }
+  if (layers.blocked) {
+    plan.refusal = 'No plateau is deleted while the plateaus cannot be drawn: ' + oneLine(layers.blocked);
+    return plan;
+  }
+  if (!node) {
+    plan.refusal = 'The plateau `' + id + '` does not exist.';
+    return plan;
+  }
+  if (node.parent === null) {
+    plan.refusal =
+      'The plateau `' +
+      id +
+      '` is the root of the plateaus: every other plateau stands on it, so it cannot be deleted.';
+    return plan;
+  }
   plan.parent = node.parent;
   plan.overriding = layerChildrenOf(id);
   plan.patches = node.patches.length;
   if (plan.overriding.length && !loadedKernel) {
-    plan.refusal = 'The viewpoint kernel is not loaded yet, so what the plateaus that override `' + id + '` would lose cannot be worked out: nothing is deleted. Try again in a moment.';
+    plan.refusal =
+      'The viewpoint kernel is not loaded yet, so what the plateaus that override `' +
+      id +
+      '` would lose cannot be worked out: nothing is deleted. Try again in a moment.';
     return plan;
   }
   const goes = new Set([node.manifest].concat(node.headers).filter((relPath) => relPath));
-  plan.files = AppState.manifestFiles.filter((mf) => goes.has(mf.relPath)).map((mf) => ({ relPath: mf.relPath, plateau: mf.relPath === node.manifest, unsaved: !mf.existedOnDisk, modified: !!(mf.existedOnDisk && mf.dirty) }));
+  plan.files = AppState.manifestFiles
+    .filter((mf) => goes.has(mf.relPath))
+    .map((mf) => ({
+      relPath: mf.relPath,
+      plateau: mf.relPath === node.manifest,
+      unsaved: !mf.existedOnDisk,
+      modified: !!(mf.existedOnDisk && mf.dirty)
+    }));
   // a plateau that overrides another than the root says so in its manifest of kind plateau: that is the file its new parent is written in (none is ever made for it)
   plan.rewritten = plan.overriding.map((child) => ({ id: child, relPath: tree.nodes.get(child).manifest }));
-  plan.kept = AppState.manifestFiles.filter((mf) => !mf.error && isPlateauFreeManifest(mf) && headerPlateau(mf.header) === id).map((mf) => mf.relPath);
+  plan.kept = AppState.manifestFiles
+    .filter((mf) => !mf.error && isPlateauFreeManifest(mf) && headerPlateau(mf.header) === id)
+    .map((mf) => mf.relPath);
   const named = new RegExp('(^|[^a-z0-9_-])' + id.replace(/[-]/g, '\\-') + '($|[^a-z0-9_-])', 'm');
-  plan.unread = (AppState.unreadManifestFiles || []).concat(AppState.manifestFiles.filter((mf) => mf.error && named.test(String(mf.rawText || ''))).map((mf) => mf.relPath)).sort(compareCodePoints);
+  plan.unread = (AppState.unreadManifestFiles || [])
+    .concat(
+      AppState.manifestFiles.filter((mf) => mf.error && named.test(String(mf.rawText || ''))).map((mf) => mf.relPath)
+    )
+    .sort(compareCodePoints);
   const settings = AppState.workspace.settings;
   // the files as they would be: those of the plateau gone, the `override` of the plateaus that override it rewritten (for a leaf: the files that stay, as they are)
   const effects = plateauDeletionAbove(id, goes);
@@ -166,10 +241,12 @@ function plateauDeletion(id) {
   plan.above = effects.above;
   plan.breaks = effects.breaks;
   const now = entryProblemsOf(settings).map(comparableSentence);
-  plan.blocking = entryProblemsIn(effects.files, after, null).filter((sentence) => !now.includes(comparableSentence(sentence))) // a step that was wrong already is not the delete's
+  plan.blocking = entryProblemsIn(effects.files, after, null)
+    .filter((sentence) => !now.includes(comparableSentence(sentence))) // a step that was wrong already is not the delete's
     .concat(stepsLosingTheirView(effects));
   // `current` naming the plateau, or `baseline` in a workspace that has no plateau left: both tools would refuse the workspace (a `current` that was wrong already is not the delete's)
-  if (settings.current === id || (settings.current === BASELINE_PLATEAU && !after.layered)) plan.current = settings.current;
+  if (settings.current === id || (settings.current === BASELINE_PLATEAU && !after.layered))
+    plan.current = settings.current;
   return plan;
 }
 
@@ -191,12 +268,14 @@ function plateauDeletionAbove(id, goes) {
   if (cache.deletions.has(id)) return cache.deletions.get(id);
   const parent = tree.nodes.get(id).parent;
   const children = new Map(layerChildrenOf(id).map((child) => [tree.nodes.get(child).manifest, child]));
-  const files = AppState.manifestFiles.filter((mf) => !goes.has(mf.relPath)).map((mf) => {
-    if (!children.has(mf.relPath)) return mf;
-    const content = copyJson(mf.content);
-    setPlateauContentKey(content, 'override', parent === BASELINE_PLATEAU ? '' : parent);
-    return Object.assign({}, mf, { content });
-  });
+  const files = AppState.manifestFiles
+    .filter((mf) => !goes.has(mf.relPath))
+    .map((mf) => {
+      if (!children.has(mf.relPath)) return mf;
+      const content = copyJson(mf.content);
+      setPlateauContentKey(content, 'override', parent === BASELINE_PLATEAU ? '' : parent);
+      return Object.assign({}, mf, { content });
+    });
   const after = buildPlateauTree(files);
   const effects = { files, tree: after, above: [], breaks: [], before: new Map(), after: new Map() };
   const standing = tree.ids.filter((other) => layerIsBelow(other, id));
@@ -213,26 +292,58 @@ function plateauDeletionAbove(id, goes) {
         effects.after.set(plateau, result);
         return result;
       };
-      const sentencesOf = (result) => (result.fatal ? (result.earlier ? result.earlier.sentences : []) : result.state.problems ? result.state.problems.sentences : []);
+      const sentencesOf = (result) =>
+        result.fatal
+          ? result.earlier
+            ? result.earlier.sentences
+            : []
+          : result.state.problems
+            ? result.state.problems.sentences
+            : [];
       const breaks = [];
       for (const plateau of standing) {
         const then = layerStateOf(plateau, settings);
         const now = resolve(plateau);
         effects.before.set(plateau, then);
         // what `judgeLayerWrite` refuses: a plateau that resolved and no longer does (told once, by the plateau whose own patches fail), a sentence it did not have
-        if (now.fatal && !then.fatal && now.plateau === plateau) breaks.push('the plateau `' + plateau + '` could no longer be resolved (' + oneLine(now.fatal[0]) + ')');
+        if (now.fatal && !then.fatal && now.plateau === plateau)
+          breaks.push('the plateau `' + plateau + '` could no longer be resolved (' + oneLine(now.fatal[0]) + ')');
         const known = sentencesOf(then).map(comparableSentence);
-        for (const sentence of sentencesOf(now)) if (!known.includes(comparableSentence(sentence))) breaks.push(oneLine(sentence));
-        const entry = { id: plateau, parent: tree.nodes.get(plateau).parent, newParent: after.nodes.get(plateau).parent, lost: null, back: null, changed: null, unknown: !!then.fatal };
+        for (const sentence of sentencesOf(now))
+          if (!known.includes(comparableSentence(sentence))) breaks.push(oneLine(sentence));
+        const entry = {
+          id: plateau,
+          parent: tree.nodes.get(plateau).parent,
+          newParent: after.nodes.get(plateau).parent,
+          lost: null,
+          back: null,
+          changed: null,
+          unknown: !!then.fatal
+        };
         if (!then.fatal && !now.fatal) {
           const was = graphReferencesOf(then.state.graph);
           const is = graphReferencesOf(now.state.graph);
-          const own = (element) => { const copy = Object.assign({}, element); delete copy.elements; return copy; };
-          entry.lost = {}; entry.back = {}; entry.changed = {};
+          const own = (element) => {
+            const copy = Object.assign({}, element);
+            delete copy.elements;
+            return copy;
+          };
+          entry.lost = {};
+          entry.back = {};
+          entry.changed = {};
           for (const layer of LAYER_NAMES) {
-            entry.lost[layer] = Array.from(was[layer].keys()).filter((reference) => !is[layer].has(reference)).sort(compareUnits);
-            entry.back[layer] = Array.from(is[layer].keys()).filter((reference) => !was[layer].has(reference)).sort(compareUnits);
-            entry.changed[layer] = Array.from(was[layer].keys()).filter((reference) => is[layer].has(reference) && !sameJson(own(was[layer].get(reference)), own(is[layer].get(reference)))).sort(compareUnits);
+            entry.lost[layer] = Array.from(was[layer].keys())
+              .filter((reference) => !is[layer].has(reference))
+              .sort(compareUnits);
+            entry.back[layer] = Array.from(is[layer].keys())
+              .filter((reference) => !was[layer].has(reference))
+              .sort(compareUnits);
+            entry.changed[layer] = Array.from(was[layer].keys())
+              .filter(
+                (reference) =>
+                  is[layer].has(reference) && !sameJson(own(was[layer].get(reference)), own(is[layer].get(reference)))
+              )
+              .sort(compareUnits);
           }
         }
         effects.above.push(entry);
@@ -256,7 +367,9 @@ function viewLosesInPlateauAbove(view, plateau, entry, effects) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
-    const was = effects.before.get(plateau).state ? graphReferencesOf(effects.before.get(plateau).state.graph)[layer] : new Map();
+    const was = effects.before.get(plateau).state
+      ? graphReferencesOf(effects.before.get(plateau).state.graph)[layer]
+      : new Map();
     const kept = pinned.filter((reference) => was.has(reference) && !lost.has(reference));
     return pinned.length && !kept.length ? pinned.filter((reference) => lost.has(reference)) : [];
   }
@@ -277,7 +390,8 @@ function survivesWhereTold(layer, reference, at, byId, effects) {
   const id = at !== null ? at : AppState.layers ? AppState.layers.current : null;
   const entry = id === null ? undefined : byId.get(id);
   const then = entry && entry.lost ? effects.before.get(id) : undefined;
-  if (then && then.state) return graphReferencesOf(then.state.graph)[layer].has(reference) && !entry.lost[layer].includes(reference);
+  if (then && then.state)
+    return graphReferencesOf(then.state.graph)[layer].has(reference) && !entry.lost[layer].includes(reference);
   return indexOfPlateau(at)[layer].has(reference);
 }
 
@@ -294,29 +408,56 @@ function stepsLosingTheirView(effects) {
   const out = [];
   if (!effects.above.length) return out;
   const byId = new Map(effects.above.map((entry) => [entry.id, entry]));
-  const sourceOf = (entry) => { const owner = entryOwners.get(entry); return owner ? owner.relPath : '.archicode.yaml'; };
+  const sourceOf = (entry) => {
+    const owner = entryOwners.get(entry);
+    return owner ? owner.relPath : '.archicode.yaml';
+  };
   for (const story of storiesList()) {
     const source = sourceOf(story);
-    (Array.isArray(story.steps) ? story.steps : []).filter((step) => step !== null && step !== undefined).forEach((step, i) => {
-      if (!isPlainObject(step)) return;
-      const keys = stepPlateauKeys(step);
-      const where = 'the story `' + story.id + '` (`' + source + '`) step ' + (i + 1);
-      for (const [key, words] of [['at', 'is told at'], ['against', 'is compared with']]) {
-        const plateau = keys[key];
-        const view = stepView(step);
-        let gone = plateau === null ? [] : viewLosesInPlateauAbove(view, plateau, byId.get(plateau), effects);
-        // a plateau only compared with does not have to hold what the step draws: the comparison is drawn from the plateau the step is told at, so the step loses its view only
-        // when that side does not keep what it names either
-        if (key === 'against' && gone.length && namedByView(view).some((one) => survivesWhereTold(one.layer, one.reference, keys.at, byId, effects))) gone = [];
-        if (gone.length) out.push(where + ' ' + words + ' `' + plateau + '`, which would no longer have ' + plateauNames(gone, true));
-      }
-    });
+    (Array.isArray(story.steps) ? story.steps : [])
+      .filter((step) => step !== null && step !== undefined)
+      .forEach((step, i) => {
+        if (!isPlainObject(step)) return;
+        const keys = stepPlateauKeys(step);
+        const where = 'the story `' + story.id + '` (`' + source + '`) step ' + (i + 1);
+        for (const [key, words] of [
+          ['at', 'is told at'],
+          ['against', 'is compared with']
+        ]) {
+          const plateau = keys[key];
+          const view = stepView(step);
+          let gone = plateau === null ? [] : viewLosesInPlateauAbove(view, plateau, byId.get(plateau), effects);
+          // a plateau only compared with does not have to hold what the step draws: the comparison is drawn from the plateau the step is told at, so the step loses its view only
+          // when that side does not keep what it names either
+          if (
+            key === 'against' &&
+            gone.length &&
+            namedByView(view).some((one) => survivesWhereTold(one.layer, one.reference, keys.at, byId, effects))
+          )
+            gone = [];
+          if (gone.length)
+            out.push(
+              where + ' ' + words + ' `' + plateau + '`, which would no longer have ' + plateauNames(gone, true)
+            );
+        }
+      });
   }
   for (const view of savedViews()) {
-    const lost = effects.above.map((entry) => ({ plateau: entry.id, gone: viewLosesInPlateauAbove(view, entry.id, entry, effects) })).filter((one) => one.gone.length);
+    const lost = effects.above
+      .map((entry) => ({ plateau: entry.id, gone: viewLosesInPlateauAbove(view, entry.id, entry, effects) }))
+      .filter((one) => one.gone.length);
     if (!lost.length) continue;
     const gone = Array.from(new Set(lost.flatMap((one) => one.gone))).sort(compareUnits);
-    out.push('the view `' + view.id + '` (`' + sourceOf(view) + '`) is drawn in ' + lost.map((one) => '`' + one.plateau + '`').join(', ') + ', which would no longer have ' + plateauNames(gone, true));
+    out.push(
+      'the view `' +
+        view.id +
+        '` (`' +
+        sourceOf(view) +
+        '`) is drawn in ' +
+        lost.map((one) => '`' + one.plateau + '`').join(', ') +
+        ', which would no longer have ' +
+        plateauNames(gone, true)
+    );
   }
   return out;
 }
@@ -324,11 +465,35 @@ function stepsLosingTheirView(effects) {
 /** The sentence that refuses a delete for what the plateaus above would say (`plan.breaks`) or for what the files that stay would say (`plan.blocking`), naming the first of them. */
 function plateauDeletionBlockedMessage(plan) {
   if (plan.breaks.length) {
-    return 'The plateau `' + plan.id + '` cannot be deleted: ' + (plan.breaks.length === 1 ? 'a plateau that stands on it would no longer be valid' : plan.breaks.length + ' mistakes would appear in the plateaus that stand on it') +
-      ' (' + oneLine(plan.breaks[0]).replace(/\.$/, '') + '). Repair ' + (plan.breaks.length === 1 ? 'it' : 'them') + ' first, or give the plateaus that override `' + plan.id + '` another parent with Edit.';
+    return (
+      'The plateau `' +
+      plan.id +
+      '` cannot be deleted: ' +
+      (plan.breaks.length === 1
+        ? 'a plateau that stands on it would no longer be valid'
+        : plan.breaks.length + ' mistakes would appear in the plateaus that stand on it') +
+      ' (' +
+      oneLine(plan.breaks[0]).replace(/\.$/, '') +
+      '). Repair ' +
+      (plan.breaks.length === 1 ? 'it' : 'them') +
+      ' first, or give the plateaus that override `' +
+      plan.id +
+      '` another parent with Edit.'
+    );
   }
-  return 'The plateau `' + plan.id + '` cannot be deleted: ' + (plan.blocking.length === 1 ? 'a view or a story would no longer be valid' : plan.blocking.length + ' views or story steps would no longer be valid') +
-    ' (' + oneLine(plan.blocking[0]).replace(/\.$/, '') + '). Change ' + (plan.blocking.length === 1 ? 'it' : 'them') + ' in Stories first.';
+  return (
+    'The plateau `' +
+    plan.id +
+    '` cannot be deleted: ' +
+    (plan.blocking.length === 1
+      ? 'a view or a story would no longer be valid'
+      : plan.blocking.length + ' views or story steps would no longer be valid') +
+    ' (' +
+    oneLine(plan.blocking[0]).replace(/\.$/, '') +
+    '). Change ' +
+    (plan.blocking.length === 1 ? 'it' : 'them') +
+    ' in Stories first.'
+  );
 }
 
 /**
@@ -358,24 +523,32 @@ function commitPlateauDelete(id, options) {
       // the plateaus that override it go under its parent: the key `override` of their manifest of kind plateau, written line by line as Edit writes it (none for the root)
       for (const { id: child, relPath } of plan.rewritten) {
         const mf = AppState.manifestFiles.find((file) => file.relPath === relPath);
-        if (!mf || !mf.content || String(mf.content.id) !== child) throw new Error('Not written: the manifest of the plateau `' + child + '` was not found. Nothing was changed.');
+        if (!mf || !mf.content || String(mf.content.id) !== child)
+          throw new Error(
+            'Not written: the manifest of the plateau `' + child + '` was not found. Nothing was changed.'
+          );
         setPlateauContentKey(mf.content, 'override', parent === BASELINE_PLATEAU ? '' : parent);
         touchManifest(mf);
       }
       for (const mf of AppState.manifestFiles) {
         if (!goes.has(mf.relPath)) continue;
-        if (mf.existedOnDisk && !AppState.pendingFileRemovals.includes(mf.relPath)) { // a file that is not on disk yet just leaves the model
+        if (mf.existedOnDisk && !AppState.pendingFileRemovals.includes(mf.relPath)) {
+          // a file that is not on disk yet just leaves the model
           AppState.pendingFileRemovals.push(mf.relPath);
           AppState.removedFileBaselines.set(mf.relPath, mf.lastKnownDiskModified); // the save checks the disk did not change since
         }
         if (rawYamlEditDraft && rawYamlEditDraft.relPath === mf.relPath) rawYamlEditDraft = null;
-        if (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) AppState.selection = { kind: 'none', key: null, mode: 'view' };
+        if (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath)
+          AppState.selection = { kind: 'none', key: null, mode: 'view' };
       }
       // the marks of what is modified, for a reference no file that stays declares (a plateau beside it may declare the same one: its mark stays)
       const declaredAfter = declaredReferencesOf(AppState.manifestFiles.filter((mf) => !goes.has(mf.relPath)));
       for (const mf of AppState.manifestFiles) {
         const layer = goes.has(mf.relPath) ? manifestLayer(mf) : null;
-        if (layer) walkContentNodes(mf, (node, reference) => { if (!declaredAfter[layer].has(reference)) AppState.dirtyReferences.delete(nodeKey(reference, layer)); });
+        if (layer)
+          walkContentNodes(mf, (node, reference) => {
+            if (!declaredAfter[layer].has(reference)) AppState.dirtyReferences.delete(nodeKey(reference, layer));
+          });
       }
       AppState.manifestFiles = AppState.manifestFiles.filter((mf) => !goes.has(mf.relPath));
       if (plan.current !== null) {
@@ -394,13 +567,28 @@ function commitPlateauDelete(id, options) {
       pendingDeleteConfirmation = null;
       saveStatus = { state: 'idle' };
       rebuildIndexAndRender();
-      return { removed: Array.from(goes).sort(compareCodePoints), rewritten: plan.rewritten.map((r) => r.relPath), current: plan.current, drawn: layers.current };
+      return {
+        removed: Array.from(goes).sort(compareCodePoints),
+        rewritten: plan.rewritten.map((r) => r.relPath),
+        current: plan.current,
+        drawn: layers.current
+      };
     },
     verify: () => {
-      if (AppState.plateauTree.nodes.has(id) || AppState.manifestFiles.some((mf) => goes.has(mf.relPath))) throw new Error('Not written: the plateau `' + id + '` is still read after the delete. Nothing was changed.');
+      if (AppState.plateauTree.nodes.has(id) || AppState.manifestFiles.some((mf) => goes.has(mf.relPath)))
+        throw new Error('Not written: the plateau `' + id + '` is still read after the delete. Nothing was changed.');
       // the tree reads as the dialog said: each plateau that overrode it now overrides its parent
-      const strayed = plan.overriding.find((child) => !AppState.plateauTree.nodes.has(child) || AppState.plateauTree.nodes.get(child).parent !== parent);
-      if (strayed) throw new Error('Not written: the plateau `' + strayed + '` does not read back as a plateau over `' + parent + '`. Nothing was changed.');
+      const strayed = plan.overriding.find(
+        (child) => !AppState.plateauTree.nodes.has(child) || AppState.plateauTree.nodes.get(child).parent !== parent
+      );
+      if (strayed)
+        throw new Error(
+          'Not written: the plateau `' +
+            strayed +
+            '` does not read back as a plateau over `' +
+            parent +
+            '`. Nothing was changed.'
+        );
     }
   });
   // another plateau drawn, or no comparison: remembered as it is now, and what the page held of the plateau drawn before is let go. The address is rewritten, not added to
@@ -423,54 +611,224 @@ function openPlateauDeleteDialog(id) {
 function renderPlateauDeleteDialogHtml(dialog) {
   const plan = plateauDeletion(dialog.plateau);
   const title = 'Delete the plateau ' + plateauTitle(layerPlateauModel(dialog.plateau));
-  const cancel = (focus) => '<button type="button" data-action="dialog-cancel"' + (focus ? ' class="btn-primary" data-dialog-autofocus' : '') + '>' + (focus ? 'Close' : 'Cancel') + '</button>';
+  const cancel = (focus) =>
+    '<button type="button" data-action="dialog-cancel"' +
+    (focus ? ' class="btn-primary" data-dialog-autofocus' : '') +
+    '>' +
+    (focus ? 'Close' : 'Cancel') +
+    '</button>';
   const code = (text) => '<code>' + escapeHtml(text) + '</code>';
   const list = (items) => '<ul class="layer-confirm-list">' + items.join('') + '</ul>';
-  if (plan.refusal) return { title, body: '<p class="app-dialog-subject">' + duplicateMessageHtml(plan.refusal) + '</p>', actions: cancel(true) };
-  const fileItem = (f) => '<li>' + code(f.relPath) + (f.plateau ? ' <span class="muted">the manifest of the plateau</span>' : '') +
-    (f.unsaved ? ' <span class="muted">(new, not saved yet)</span>' : f.modified ? ' <strong>(modified, not saved: the changes go with it)</strong>' : '') + '</li>';
+  if (plan.refusal)
+    return {
+      title,
+      body: '<p class="app-dialog-subject">' + duplicateMessageHtml(plan.refusal) + '</p>',
+      actions: cancel(true)
+    };
+  const fileItem = (f) =>
+    '<li>' +
+    code(f.relPath) +
+    (f.plateau ? ' <span class="muted">the manifest of the plateau</span>' : '') +
+    (f.unsaved
+      ? ' <span class="muted">(new, not saved yet)</span>'
+      : f.modified
+        ? ' <strong>(modified, not saved: the changes go with it)</strong>'
+        : '') +
+    '</li>';
   const middle = plan.overriding.length > 0; // a plateau that others override (run 0132, #112): their `override` changes too, and the dialog says what each plateau above loses
-  let body = '<p class="app-dialog-subject">' + code(dialog.plateau) + (plan.files.length ? '' : ' has no file.') + '</p>';
-  if (plan.files.length) body += '<p>' + (plan.files.length === 1 ? 'This file goes' : 'These ' + plan.files.length + ' files go') + (middle ? ':' : ', and nothing else:') + '</p>' + list(plan.files.map(fileItem));
+  let body =
+    '<p class="app-dialog-subject">' + code(dialog.plateau) + (plan.files.length ? '' : ' has no file.') + '</p>';
+  if (plan.files.length)
+    body +=
+      '<p>' +
+      (plan.files.length === 1 ? 'This file goes' : 'These ' + plan.files.length + ' files go') +
+      (middle ? ':' : ', and nothing else:') +
+      '</p>' +
+      list(plan.files.map(fileItem));
   if (middle) {
-    const titled = (other) => code(other) + (layerPlateauModel(other).name ? ' ' + escapeHtml(layerPlateauModel(other).name) : '');
-    body += '<p>' + (plan.rewritten.length === 1 ? 'This file changes' : 'These ' + plan.rewritten.length + ' files change') + (plan.files.length ? ', and nothing else' : '') + ': the ' + (plan.rewritten.length === 1 ? 'plateau that overrides' : 'plateaus that override') + ' ' + code(dialog.plateau) + ' ' + (plan.rewritten.length === 1 ? 'goes' : 'go') + ' under ' + code(plan.parent) + '.</p>' +
-      list(plan.rewritten.map((r) => '<li data-plateau="' + escapeHtml(r.id) + '">' + code(r.relPath) + ' ' + (plan.parent === BASELINE_PLATEAU ? 'loses the line <code>override: ' + escapeHtml(dialog.plateau) + '</code> (a plateau that says none overrides the root)' : 'says <code>override: ' + escapeHtml(plan.parent) + '</code> instead of <code>override: ' + escapeHtml(dialog.plateau) + '</code>') + '</li>'));
+    const titled = (other) =>
+      code(other) + (layerPlateauModel(other).name ? ' ' + escapeHtml(layerPlateauModel(other).name) : '');
+    body +=
+      '<p>' +
+      (plan.rewritten.length === 1 ? 'This file changes' : 'These ' + plan.rewritten.length + ' files change') +
+      (plan.files.length ? ', and nothing else' : '') +
+      ': the ' +
+      (plan.rewritten.length === 1 ? 'plateau that overrides' : 'plateaus that override') +
+      ' ' +
+      code(dialog.plateau) +
+      ' ' +
+      (plan.rewritten.length === 1 ? 'goes' : 'go') +
+      ' under ' +
+      code(plan.parent) +
+      '.</p>' +
+      list(
+        plan.rewritten.map(
+          (r) =>
+            '<li data-plateau="' +
+            escapeHtml(r.id) +
+            '">' +
+            code(r.relPath) +
+            ' ' +
+            (plan.parent === BASELINE_PLATEAU
+              ? 'loses the line <code>override: ' +
+                escapeHtml(dialog.plateau) +
+                '</code> (a plateau that says none overrides the root)'
+              : 'says <code>override: ' +
+                escapeHtml(plan.parent) +
+                '</code> instead of <code>override: ' +
+                escapeHtml(dialog.plateau) +
+                '</code>') +
+            '</li>'
+        )
+      );
     const refs = (references) => references.map(code).join(', ');
     const count = (n, what) => n + ' ' + what + (n === 1 ? '' : 's');
     const lines = (entry) => {
-      if (entry.unknown) return ['<li data-what="unknown">could not be resolved before the delete: what it loses is not known</li>'];
+      if (entry.unknown)
+        return ['<li data-what="unknown">could not be resolved before the delete: what it loses is not known</li>'];
       if (!entry.lost) return ['<li data-what="broken">would no longer resolve (see below)</li>'];
       const out = [];
       for (const layer of LAYER_NAMES) {
         const where = layer === 'technology' ? ' of the technology layer' : '';
-        if (entry.lost[layer].length) out.push('<li data-what="lost" data-layer="' + layer + '">loses ' + count(entry.lost[layer].length, 'element') + where + ': ' + refs(entry.lost[layer]) + '</li>');
-        if (entry.back[layer].length) out.push('<li data-what="back" data-layer="' + layer + '">gets back ' + count(entry.back[layer].length, 'element') + where + ' that ' + code(dialog.plateau) + ' removed: ' + refs(entry.back[layer]) + '</li>');
-        if (entry.changed[layer].length) out.push('<li data-what="changed" data-layer="' + layer + '">reads ' + count(entry.changed[layer].length, 'element') + where + ' differently, without what the patches of ' + code(dialog.plateau) + ' did to ' + (entry.changed[layer].length === 1 ? 'it' : 'them') + ': ' + refs(entry.changed[layer]) + '</li>');
+        if (entry.lost[layer].length)
+          out.push(
+            '<li data-what="lost" data-layer="' +
+              layer +
+              '">loses ' +
+              count(entry.lost[layer].length, 'element') +
+              where +
+              ': ' +
+              refs(entry.lost[layer]) +
+              '</li>'
+          );
+        if (entry.back[layer].length)
+          out.push(
+            '<li data-what="back" data-layer="' +
+              layer +
+              '">gets back ' +
+              count(entry.back[layer].length, 'element') +
+              where +
+              ' that ' +
+              code(dialog.plateau) +
+              ' removed: ' +
+              refs(entry.back[layer]) +
+              '</li>'
+          );
+        if (entry.changed[layer].length)
+          out.push(
+            '<li data-what="changed" data-layer="' +
+              layer +
+              '">reads ' +
+              count(entry.changed[layer].length, 'element') +
+              where +
+              ' differently, without what the patches of ' +
+              code(dialog.plateau) +
+              ' did to ' +
+              (entry.changed[layer].length === 1 ? 'it' : 'them') +
+              ': ' +
+              refs(entry.changed[layer]) +
+              '</li>'
+          );
       }
       return out.length ? out : ['<li data-what="nothing">loses nothing</li>'];
     };
-    body += '<p>Nothing that ' + code(dialog.plateau) + ' declares' + (plan.patches ? ', nor its ' + (plan.patches === 1 ? 'patch' : plan.patches + ' patches') + ',' : '') + ' reaches the plateaus that stand on it any more. Each of them, resolved again without it:</p>' +
-      '<ul class="layer-confirm-list plateau-delete-above">' + plan.above.map((entry) => '<li data-plateau="' + escapeHtml(entry.id) + '">' + titled(entry.id) + ', over ' + code(entry.newParent) +
-        (entry.newParent !== entry.parent ? ' instead of ' + code(entry.parent) : '') + ':<ul>' + lines(entry).join('') + '</ul></li>').join('') + '</ul>';
+    body +=
+      '<p>Nothing that ' +
+      code(dialog.plateau) +
+      ' declares' +
+      (plan.patches ? ', nor its ' + (plan.patches === 1 ? 'patch' : plan.patches + ' patches') + ',' : '') +
+      ' reaches the plateaus that stand on it any more. Each of them, resolved again without it:</p>' +
+      '<ul class="layer-confirm-list plateau-delete-above">' +
+      plan.above
+        .map(
+          (entry) =>
+            '<li data-plateau="' +
+            escapeHtml(entry.id) +
+            '">' +
+            titled(entry.id) +
+            ', over ' +
+            code(entry.newParent) +
+            (entry.newParent !== entry.parent ? ' instead of ' + code(entry.parent) : '') +
+            ':<ul>' +
+            lines(entry).join('') +
+            '</ul></li>'
+        )
+        .join('') +
+      '</ul>';
   }
   if (plan.breaks.length || plan.blocking.length) {
     if (plan.breaks.length) {
-      body += '<p><strong>It cannot be deleted yet:</strong> once it is gone, ' + (plan.breaks.length === 1 ? 'this sentence would be a mistake' : 'these sentences would be mistakes') + ' of the plateaus that stand on it, which the command line refuses. Repair ' + (plan.breaks.length === 1 ? 'it' : 'them') + ' first, or give the plateaus that override ' + code(dialog.plateau) + ' another parent with Edit.</p>' +
+      body +=
+        '<p><strong>It cannot be deleted yet:</strong> once it is gone, ' +
+        (plan.breaks.length === 1 ? 'this sentence would be a mistake' : 'these sentences would be mistakes') +
+        ' of the plateaus that stand on it, which the command line refuses. Repair ' +
+        (plan.breaks.length === 1 ? 'it' : 'them') +
+        ' first, or give the plateaus that override ' +
+        code(dialog.plateau) +
+        ' another parent with Edit.</p>' +
         list(plan.breaks.map((sentence) => '<li>' + duplicateMessageHtml(sentence) + '</li>'));
     }
     if (plan.blocking.length) {
-      body += '<p><strong>It cannot be deleted yet:</strong> once these files are gone, ' + (plan.blocking.length === 1 ? 'this sentence would be' : 'these sentences would be') + ' a mistake for the command line and the editor. Change ' + (plan.blocking.length === 1 ? 'it' : 'them') + ' in Stories first.</p>' +
+      body +=
+        '<p><strong>It cannot be deleted yet:</strong> once these files are gone, ' +
+        (plan.blocking.length === 1 ? 'this sentence would be' : 'these sentences would be') +
+        ' a mistake for the command line and the editor. Change ' +
+        (plan.blocking.length === 1 ? 'it' : 'them') +
+        ' in Stories first.</p>' +
         list(plan.blocking.map((sentence) => '<li>' + duplicateMessageHtml(sentence) + '</li>'));
     }
     return { title, body, actions: cancel(true) };
   }
-  if (plan.current !== null) body += '<p><code>settings.current</code> names ' + code(plan.current) + ': the key is taken out of <code>.archicode.yaml</code> (the command line then draws the last plateau when the plateaus are one line, and asks for <code>--plateau</code> otherwise).</p>';
-  if (plan.unread.length) body += '<p>The editor does not read ' + (plan.unread.length === 1 ? 'this file' : 'these files') + ' (TOML, JSON, or YAML it could not read), so ' + (plan.unread.length === 1 ? 'it is' : 'they are') + ' not deleted' + (middle ? ' nor rewritten' : '') + ': if one says <code>plateau: ' + escapeHtml(dialog.plateau) + '</code>' + (middle ? ' or <code>override: ' + escapeHtml(dialog.plateau) + '</code>' : '') + ', the command line still reads the plateau. Look at ' + (plan.unread.length === 1 ? 'it' : 'them') + ' in a text editor.</p>' + list(plan.unread.map((relPath) => '<li>' + code(relPath) + '</li>'));
-  if (plan.kept.length) body += '<p>' + (plan.kept.length === 1 ? 'This view or story says' : 'These views and stories say') + ' <code>plateau: ' + escapeHtml(dialog.plateau) + '</code> in the header, which names no plateau: ' + (plan.kept.length === 1 ? 'it stays' : 'they stay') + '.</p>' + list(plan.kept.map((relPath) => '<li>' + code(relPath) + '</li>'));
+  if (plan.current !== null)
+    body +=
+      '<p><code>settings.current</code> names ' +
+      code(plan.current) +
+      ': the key is taken out of <code>.archicode.yaml</code> (the command line then draws the last plateau when the plateaus are one line, and asks for <code>--plateau</code> otherwise).</p>';
+  if (plan.unread.length)
+    body +=
+      '<p>The editor does not read ' +
+      (plan.unread.length === 1 ? 'this file' : 'these files') +
+      ' (TOML, JSON, or YAML it could not read), so ' +
+      (plan.unread.length === 1 ? 'it is' : 'they are') +
+      ' not deleted' +
+      (middle ? ' nor rewritten' : '') +
+      ': if one says <code>plateau: ' +
+      escapeHtml(dialog.plateau) +
+      '</code>' +
+      (middle ? ' or <code>override: ' + escapeHtml(dialog.plateau) + '</code>' : '') +
+      ', the command line still reads the plateau. Look at ' +
+      (plan.unread.length === 1 ? 'it' : 'them') +
+      ' in a text editor.</p>' +
+      list(plan.unread.map((relPath) => '<li>' + code(relPath) + '</li>'));
+  if (plan.kept.length)
+    body +=
+      '<p>' +
+      (plan.kept.length === 1 ? 'This view or story says' : 'These views and stories say') +
+      ' <code>plateau: ' +
+      escapeHtml(dialog.plateau) +
+      '</code> in the header, which names no plateau: ' +
+      (plan.kept.length === 1 ? 'it stays' : 'they stay') +
+      '.</p>' +
+      list(plan.kept.map((relPath) => '<li>' + code(relPath) + '</li>'));
   const views = viewsFolderName();
-  if (views) body += '<p class="muted">The views the command line generated for it (' + code(views + '-' + dialog.plateau) + ' and the folders of its comparisons) are not manifests: they stay where they are.</p>';
-  body += '<p>The files leave the disk at the next “Save all changes”.' + (AppState.layers.current === dialog.plateau ? ' The plateau it overrides, ' + code(AppState.plateauTree.nodes.get(dialog.plateau).parent) + ', is drawn instead.' : '') + '</p>';
-  return { title, body, actions: cancel(false) + '<button type="button" class="btn-danger-solid" data-action="dialog-submit">Delete plateau</button>' };
+  if (views)
+    body +=
+      '<p class="muted">The views the command line generated for it (' +
+      code(views + '-' + dialog.plateau) +
+      ' and the folders of its comparisons) are not manifests: they stay where they are.</p>';
+  body +=
+    '<p>The files leave the disk at the next “Save all changes”.' +
+    (AppState.layers.current === dialog.plateau
+      ? ' The plateau it overrides, ' +
+        code(AppState.plateauTree.nodes.get(dialog.plateau).parent) +
+        ', is drawn instead.'
+      : '') +
+    '</p>';
+  return {
+    title,
+    body,
+    actions:
+      cancel(false) +
+      '<button type="button" class="btn-danger-solid" data-action="dialog-submit">Delete plateau</button>'
+  };
 }
-

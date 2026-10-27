@@ -7,8 +7,21 @@
 function createManifestEntry(kind, content) {
   const header = { kind: ARCHICODE_KIND_PREFIX + kind, version: '1' };
   const manifestsDir = firstManifestsDir();
-  const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, kind + '.', content.id);
-  const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
+  const relPath = allocateManifestRelPath(
+    manifestsDir === undefined ? 'manifests' : manifestsDir,
+    kind + '.',
+    content.id
+  );
+  const mf = {
+    relPath,
+    header,
+    content,
+    error: null,
+    rawText: serializeManifestFile(header, content),
+    dirty: true,
+    existedOnDisk: false,
+    lastKnownDiskModified: null
+  };
   adoptRemovedFile(mf);
   AppState.manifestFiles.push(mf);
   AppState.manifestFiles.sort((a, b) => compareCodePoints(a.relPath, b.relPath));
@@ -26,7 +39,8 @@ function removeEntry(entry, key) {
       AppState.removedFileBaselines.set(owner.relPath, owner.lastKnownDiskModified);
     }
     if (rawYamlEditDraft && rawYamlEditDraft.relPath === owner.relPath) rawYamlEditDraft = null;
-    if (AppState.selection.kind === 'file' && AppState.selection.key === owner.relPath) AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    if (AppState.selection.kind === 'file' && AppState.selection.key === owner.relPath)
+      AppState.selection = { kind: 'none', key: null, mode: 'view' };
     AppState.manifestFiles = AppState.manifestFiles.filter((f) => f !== owner);
     saveStatus = { state: 'idle' };
     return;
@@ -42,7 +56,9 @@ function removeEntry(entry, key) {
 
 /** The saved view of that diagram: the one already saved when there is one, else a new one named `name`. */
 function viewForDefinition(definition, name) {
-  const existing = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
+  const existing = savedViews().find(
+    (view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition)
+  );
   if (existing) return existing;
   const label = name || describeViewDefinition(definition);
   return createManifestEntry('view', {
@@ -55,7 +71,11 @@ function viewForDefinition(definition, name) {
 }
 
 function createStory(name) {
-  return createManifestEntry('story', { id: uniqueIdFor(name, takenEntryIds('story', 'stories'), 'story'), name, steps: [] });
+  return createManifestEntry('story', {
+    id: uniqueIdFor(name, takenEntryIds('story', 'stories'), 'story'),
+    name,
+    steps: []
+  });
 }
 
 function writableSteps(story) {
@@ -65,7 +85,10 @@ function writableSteps(story) {
 
 /** How many steps of the stories show that view. */
 function storiesUsingView(viewId) {
-  return storiesList().reduce((count, story) => count + storySteps(story).filter((step) => step.view === viewId).length, 0);
+  return storiesList().reduce(
+    (count, story) => count + storySteps(story).filter((step) => step.view === viewId).length,
+    0
+  );
 }
 
 /** A recipe (a view, or a step that carries one) follows a renamed element. True when it changed. */
@@ -76,13 +99,19 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
   const viewLayer = viewLayerOf(recipe);
   if (recipe.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
     const element = rewriteReferenceValue(properties.element, oldRef, newRef);
-    if (element !== properties.element) { properties.element = element; changed = true; }
+    if (element !== properties.element) {
+      properties.element = element;
+      changed = true;
+    }
   }
   if (recipe.viewpoint === 'map' && viewLayer === layer) {
     for (const key of ['pinned', 'hidden', 'opened']) {
       if (!Array.isArray(properties[key])) continue;
       const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
-      if (next.some((reference, i) => reference !== properties[key][i])) { properties[key] = next; changed = true; }
+      if (next.some((reference, i) => reference !== properties[key][i])) {
+        properties[key] = next;
+        changed = true;
+      }
     }
   }
   return changed;
@@ -95,14 +124,21 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
 function rewriteSavedViewReferences(oldRef, newRef, layer) {
   let changed = false;
   for (const view of savedViews()) {
-    if (rewriteRecipeReferences(view, oldRef, newRef, layer)) { markEntryChanged(view); changed = true; }
+    if (rewriteRecipeReferences(view, oldRef, newRef, layer)) {
+      markEntryChanged(view);
+      changed = true;
+    }
   }
   for (const story of storiesList()) {
     let storyChanged = false;
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
-      if (isPlainObject(step) && !step.view && rewriteRecipeReferences(step, oldRef, newRef, layer)) storyChanged = true;
+      if (isPlainObject(step) && !step.view && rewriteRecipeReferences(step, oldRef, newRef, layer))
+        storyChanged = true;
     }
-    if (storyChanged) { markEntryChanged(story); changed = true; }
+    if (storyChanged) {
+      markEntryChanged(story);
+      changed = true;
+    }
   }
   return changed;
 }
@@ -111,7 +147,10 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
 function recipeNamedReferences(recipe, layer) {
   const properties = recipe.properties;
   if (!isPlainObject(properties) || viewLayerOf(recipe) !== layer) return [];
-  if (recipe.viewpoint === 'map') return ['pinned', 'hidden', 'opened'].reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), []).filter((reference) => typeof reference === 'string');
+  if (recipe.viewpoint === 'map')
+    return ['pinned', 'hidden', 'opened']
+      .reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), [])
+      .filter((reference) => typeof reference === 'string');
   return typeof properties.element === 'string' ? [properties.element] : [];
 }
 
@@ -142,9 +181,14 @@ function renameSiblingImpact(oldRef, newRef, layer) {
     plateaus.push({ id, name: layerPlateauModel(id).name, declaredIn: record ? record.declaredIn : null, references });
   }
   if (!plateaus.length) return null;
-  const lost = (recipe) => { // the plateaus where the recipe names an element that the rename takes the name of
-    const named = recipeNamedReferences(recipe, layer).filter((reference) => rewriteReferenceValue(reference, oldRef, newRef) !== reference);
-    return plateaus.filter((plateau) => named.some((reference) => plateau.references.includes(reference))).map((plateau) => plateau.id);
+  const lost = (recipe) => {
+    // the plateaus where the recipe names an element that the rename takes the name of
+    const named = recipeNamedReferences(recipe, layer).filter(
+      (reference) => rewriteReferenceValue(reference, oldRef, newRef) !== reference
+    );
+    return plateaus
+      .filter((plateau) => named.some((reference) => plateau.references.includes(reference)))
+      .map((plateau) => plateau.id);
   };
   const views = [];
   for (const view of savedViews()) {
@@ -176,24 +220,90 @@ function renderRenameSiblingsDialogHtml(dialog) {
   const list = (items) => '<ul class="layer-confirm-list">' + items.join('') + '</ul>';
   const where = (ids) => ' <span class="muted">in ' + ids.map(code).join(', ') + '</span>';
   const record = findElementRecord(dialog.reference, layerOfReference(dialog.reference) || 'application');
-  const label = record ? (record.name || record.id) : dialog.reference;
+  const label = record ? record.name || record.id : dialog.reference;
   const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-  const keepers = impact.plateaus.map((plateau) => '<li>' + code(plateau.id) + (plateau.name ? ' ' + escapeHtml(plateau.name) : '') +
-    (plateau.declaredIn && plateau.declaredIn !== plateau.id ? ' <span class="muted">(inherits it from ' + code(plateau.declaredIn) + ')</span>' : '') + '</li>');
-  let body = '<p class="app-dialog-subject">' + code(impact.from) + ' becomes ' + code(impact.to) + ' in the plateau ' + code(impact.plateau) + ', and in the plateaus that stand on it.</p>' +
-    '<p>' + (impact.plateaus.length === 1 ? 'This plateau does' : 'These ' + impact.plateaus.length + ' plateaus do') + ' not stand on ' + code(impact.plateau) + ' and still ' + (impact.plateaus.length === 1 ? 'has' : 'have') + ' ' + code(impact.from) + ' (the ' + noun + ' does not reach ' + (impact.plateaus.length === 1 ? 'it' : 'them') + '):</p>' + list(keepers) +
-    '<p>Views and stories belong to no plateau: they follow the ' + noun + ' everywhere, so ' + (impact.views.length + impact.steps.length === 1 ? 'this one cannot' : 'these ' + (impact.views.length + impact.steps.length) + ' cannot') + ' be drawn any more in the plateaus that keep the old reference:</p>' +
-    list(impact.views.map((view) => '<li>the view ' + escapeHtml(view.label) + ' ' + code(view.id) + where(view.plateaus) + '</li>')
-      .concat(impact.steps.map((step) => '<li>the story ' + escapeHtml(step.label) + ' ' + code(step.story) + ', step ' + step.number + where(step.plateaus) + '</li>'))) +
+  const keepers = impact.plateaus.map(
+    (plateau) =>
+      '<li>' +
+      code(plateau.id) +
+      (plateau.name ? ' ' + escapeHtml(plateau.name) : '') +
+      (plateau.declaredIn && plateau.declaredIn !== plateau.id
+        ? ' <span class="muted">(inherits it from ' + code(plateau.declaredIn) + ')</span>'
+        : '') +
+      '</li>'
+  );
+  let body =
+    '<p class="app-dialog-subject">' +
+    code(impact.from) +
+    ' becomes ' +
+    code(impact.to) +
+    ' in the plateau ' +
+    code(impact.plateau) +
+    ', and in the plateaus that stand on it.</p>' +
+    '<p>' +
+    (impact.plateaus.length === 1 ? 'This plateau does' : 'These ' + impact.plateaus.length + ' plateaus do') +
+    ' not stand on ' +
+    code(impact.plateau) +
+    ' and still ' +
+    (impact.plateaus.length === 1 ? 'has' : 'have') +
+    ' ' +
+    code(impact.from) +
+    ' (the ' +
+    noun +
+    ' does not reach ' +
+    (impact.plateaus.length === 1 ? 'it' : 'them') +
+    '):</p>' +
+    list(keepers) +
+    '<p>Views and stories belong to no plateau: they follow the ' +
+    noun +
+    ' everywhere, so ' +
+    (impact.views.length + impact.steps.length === 1
+      ? 'this one cannot'
+      : 'these ' + (impact.views.length + impact.steps.length) + ' cannot') +
+    ' be drawn any more in the plateaus that keep the old reference:</p>' +
+    list(
+      impact.views
+        .map((view) => '<li>the view ' + escapeHtml(view.label) + ' ' + code(view.id) + where(view.plateaus) + '</li>')
+        .concat(
+          impact.steps.map(
+            (step) =>
+              '<li>the story ' +
+              escapeHtml(step.label) +
+              ' ' +
+              code(step.story) +
+              ', step ' +
+              step.number +
+              where(step.plateaus) +
+              '</li>'
+          )
+        )
+    ) +
     (moving
-      ? '<p class="muted">To keep them whole, go back, draw ' + (impact.plateaus.length === 1 ? 'that plateau' : 'each of these plateaus') + ' and move the element to the same place there: once every plateau that has it uses ' + code(impact.to) + ', the views are drawn in all of them. Or move here and repair the views in ' + (impact.plateaus.length === 1 ? 'that plateau' : 'those plateaus') + ' afterwards.</p>'
-      : '<p class="muted">To keep them whole, cancel, draw ' + (impact.plateaus.length === 1 ? 'that plateau' : 'each of these plateaus') + ' and give the element the same new id there: once every plateau that has it uses ' + code(impact.to) + ', the views are drawn in all of them. Or rename here and repair the views in ' + (impact.plateaus.length === 1 ? 'that plateau' : 'those plateaus') + ' afterwards.</p>');
+      ? '<p class="muted">To keep them whole, go back, draw ' +
+        (impact.plateaus.length === 1 ? 'that plateau' : 'each of these plateaus') +
+        ' and move the element to the same place there: once every plateau that has it uses ' +
+        code(impact.to) +
+        ', the views are drawn in all of them. Or move here and repair the views in ' +
+        (impact.plateaus.length === 1 ? 'that plateau' : 'those plateaus') +
+        ' afterwards.</p>'
+      : '<p class="muted">To keep them whole, cancel, draw ' +
+        (impact.plateaus.length === 1 ? 'that plateau' : 'each of these plateaus') +
+        ' and give the element the same new id there: once every plateau that has it uses ' +
+        code(impact.to) +
+        ', the views are drawn in all of them. Or rename here and repair the views in ' +
+        (impact.plateaus.length === 1 ? 'that plateau' : 'those plateaus') +
+        ' afterwards.</p>');
   return {
-    title: (moving ? 'Move' : 'Rename') + ' “' + label + '”: ' + plural(impact.plateaus.length, 'plateau keeps', 'plateaus keep') + ' the old reference',
+    title:
+      (moving ? 'Move' : 'Rename') +
+      ' “' +
+      label +
+      '”: ' +
+      plural(impact.plateaus.length, 'plateau keeps', 'plateaus keep') +
+      ' the old reference',
     body,
     actions: moving
       ? '<button type="button" data-action="dialog-cancel" data-dialog-autofocus>Back to Move</button><button type="button" class="btn-primary" data-action="dialog-submit">Move anyway</button>'
       : '<button type="button" data-action="dialog-cancel" data-dialog-autofocus>Cancel</button><button type="button" class="btn-primary" data-action="dialog-submit">Rename anyway</button>'
   };
 }
-

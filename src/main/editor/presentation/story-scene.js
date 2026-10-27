@@ -42,16 +42,33 @@ function storyHomeNow() {
  */
 function drawingOfPlateaus(plateau, against, toggles) {
   const tree = AppState.plateauTree;
-  if (!AppState.layers || !tree || !tree.layered || AppState.layers.blocked) return Object.assign({}, editorDrawing(), togglesOf(toggles));
+  if (!AppState.layers || !tree || !tree.layered || AppState.layers.blocked)
+    return Object.assign({}, editorDrawing(), togglesOf(toggles));
   const settings = AppState.workspace.settings;
-  const layers = { current: plateau, compare: against ? { mode: 'other', other: against, chosen: true } : null, blocked: null };
+  const layers = {
+    current: plateau,
+    compare: against ? { mode: 'other', other: against, chosen: true } : null,
+    blocked: null
+  };
   layers.compare = normalizedLayerCompare(layers);
   const model = layerModelOf(plateau, settings);
   const other = layerCompareOther(layers);
   const otherModel = other ? layerModelOf(other.id, settings) : null;
   return {
-    layers, index: model.index, undrawable: model.undrawable, problems: model.problems, hideWording: togglesOf(toggles).hideWording, changesOnly: togglesOf(toggles).changesOnly,
-    baseline: other ? { plateau: other, index: otherModel.index, problem: otherModel.problems ? otherModel.problems.join('\n') : null, undrawable: otherModel.undrawable } : null
+    layers,
+    index: model.index,
+    undrawable: model.undrawable,
+    problems: model.problems,
+    hideWording: togglesOf(toggles).hideWording,
+    changesOnly: togglesOf(toggles).changesOnly,
+    baseline: other
+      ? {
+          plateau: other,
+          index: otherModel.index,
+          problem: otherModel.problems ? otherModel.problems.join('\n') : null,
+          undrawable: otherModel.undrawable
+        }
+      : null
   };
 }
 
@@ -70,7 +87,10 @@ function togglesOf(toggles) {
 function stepDrawnAt(step, home) {
   const tree = AppState.plateauTree;
   const layered = !!(AppState.layers && tree && tree.layered && !AppState.layers.blocked);
-  const wanted = layered && home ? stepDrawing(step, home) : { plateau: AppState.layers ? AppState.layers.current : BASELINE_PLATEAU, against: null };
+  const wanted =
+    layered && home
+      ? stepDrawing(step, home)
+      : { plateau: AppState.layers ? AppState.layers.current : BASELINE_PLATEAU, against: null };
   return { layered, wanted };
 }
 
@@ -84,14 +104,19 @@ function stepPlateauAt(step, home) {
 function sceneComparisonMemo() {
   const cache = ensureLayerCache(AppState.workspace.settings);
   if (!cache.comparisons) cache.comparisons = new Map();
-  const keyOf = (drawing, future) => drawing.layers.current + '>' + drawing.layers.compare.other + (future ? ':future' : '');
+  const keyOf = (drawing, future) =>
+    drawing.layers.current + '>' + drawing.layers.compare.other + (future ? ':future' : '');
   return {
     find(drawing, future) {
       const kept = cache.comparisons.get(keyOf(drawing, future));
       return kept && kept.index === drawing.index && kept.baselineIndex === drawing.baseline.index ? kept.value : null;
     },
     keep(drawing, future, value) {
-      cache.comparisons.set(keyOf(drawing, future), { index: drawing.index, baselineIndex: drawing.baseline.index, value });
+      cache.comparisons.set(keyOf(drawing, future), {
+        index: drawing.index,
+        baselineIndex: drawing.baseline.index,
+        value
+      });
     }
   };
 }
@@ -119,28 +144,64 @@ async function storyStepScene(storyId, index, options) {
   const readonly = !!(options && options.readonly);
   const { layered, wanted } = stepDrawnAt(step, home);
   const scene = {
-    storyId, index, count: steps.length, title: storyStepTitle(step), text: typeof step.text === 'string' ? step.text : '', announcement: storyStepAnnouncement(story, index),
-    plateau: wanted.plateau, against: wanted.against, told: stepPlateauKeys(step), problem: stepProblem(step, layered ? wanted.plateau : null, index + 1), comparison: null, diagram: null
+    storyId,
+    index,
+    count: steps.length,
+    title: storyStepTitle(step),
+    text: typeof step.text === 'string' ? step.text : '',
+    announcement: storyStepAnnouncement(story, index),
+    plateau: wanted.plateau,
+    against: wanted.against,
+    told: stepPlateauKeys(step),
+    problem: stepProblem(step, layered ? wanted.plateau : null, index + 1),
+    comparison: null,
+    diagram: null
   };
   if (scene.problem) return scene;
   const viewKey = 'story|' + storyId + '|' + index + '|' + wanted.plateau + '|' + (wanted.against || '');
   try {
     const [kernel, elk] = await Promise.all([loadViewpointKernel(), loadElk()]);
-    const drawing = layered ? drawingOfPlateaus(wanted.plateau, wanted.against, options) : Object.assign({}, editorDrawing(), togglesOf(options));
+    const drawing = layered
+      ? drawingOfPlateaus(wanted.plateau, wanted.against, options)
+      : Object.assign({}, editorDrawing(), togglesOf(options));
     const comparison = drawing.layers && drawing.baseline ? comparisonStateOf(drawing, sceneComparisonMemo()) : null;
-    if (comparison && comparison.layers) scene.comparison = { base: comparison.base.id, target: comparison.target.id, future: comparison.future };
+    if (comparison && comparison.layers)
+      scene.comparison = { base: comparison.base.id, target: comparison.target.id, future: comparison.future };
     const nothing = nothingDrawnScene(viewKey, comparison);
-    if (nothing) { scene.diagram = nothing; return scene; }
-    const source = { index: drawing.index, baselineIndex: drawing.baseline ? drawing.baseline.index : null, comparison, changesOnly: drawing.changesOnly };
+    if (nothing) {
+      scene.diagram = nothing;
+      return scene;
+    }
+    const source = {
+      index: drawing.index,
+      baselineIndex: drawing.baseline ? drawing.baseline.index : null,
+      comparison,
+      changesOnly: drawing.changesOnly
+    };
     const recipe = viewDiagramRecipe(stepView(step), drawing.index, 'story');
     const { isMap, reference, viewpoint, facet, mapState } = recipe;
-    const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, layer: recipe.layer, opened: mapState.opened, pinned: mapState.pinned, applications: recipePartsOf(recipe).applications, relationships: recipePartsOf(recipe).relationships, source } : { facet, layer: recipe.layer, source });
+    const { input } = buildKernelInput(
+      viewpoint,
+      reference,
+      isMap
+        ? {
+            facet,
+            layer: recipe.layer,
+            opened: mapState.opened,
+            pinned: mapState.pinned,
+            applications: recipePartsOf(recipe).applications,
+            relationships: recipePartsOf(recipe).relationships,
+            source
+          }
+        : { facet, layer: recipe.layer, source }
+    );
     if (isMap) input.hidden = mapState.hidden;
-    scene.diagram = (await computeDiagramScene(recipe, input, comparison, source, kernel, elk, viewKey, readonly)).scene;
+    scene.diagram = (
+      await computeDiagramScene(recipe, input, comparison, source, kernel, elk, viewKey, readonly)
+    ).scene;
   } catch (e) {
     scene.problem = 'The diagram could not be computed: ' + (e && e.message ? e.message : String(e));
     scene.diagram = null;
   }
   return scene;
 }
-

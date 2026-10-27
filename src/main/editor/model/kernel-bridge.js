@@ -24,7 +24,13 @@ function loadViewpointKernel() {
         x.dealloc(ptr, data.length);
         const result = JSON.parse(output);
         if (!result.error && result.version !== KERNEL_CONTRACT_VERSION) {
-          throw new Error('The embedded viewpoint kernel speaks version ' + result.version + ', this editor expects ' + KERNEL_CONTRACT_VERSION + '.');
+          throw new Error(
+            'The embedded viewpoint kernel speaks version ' +
+              result.version +
+              ', this editor expects ' +
+              KERNEL_CONTRACT_VERSION +
+              '.'
+          );
         }
         return result;
       };
@@ -34,7 +40,10 @@ function loadViewpointKernel() {
         compute(input) {
           const result = call('compute', input);
           for (const warning of result.warnings || []) {
-            if (!kernelWarningsShown.has(warning)) { kernelWarningsShown.add(warning); console.warn('ArchiCode: ' + warning); }
+            if (!kernelWarningsShown.has(warning)) {
+              kernelWarningsShown.add(warning);
+              console.warn('ArchiCode: ' + warning);
+            }
           }
           return result;
         },
@@ -54,7 +63,9 @@ function loadViewpointKernel() {
       loadedKernel = kernel; // the synchronous builders of a comparison need it; the drawing waits for the promise before it asks
       return kernel;
     })();
-    viewpointKernelPromise.catch(() => { viewpointKernelPromise = null; });
+    viewpointKernelPromise.catch(() => {
+      viewpointKernelPromise = null;
+    });
   }
   return viewpointKernelPromise;
 }
@@ -107,7 +118,10 @@ function toKernelElements(map, withProperties) {
   for (const record of map.values()) {
     const relationships = [];
     for (const rel of record.relationships) {
-      if (!rel.resolved) { dangling++; continue; }
+      if (!rel.resolved) {
+        dangling++;
+        continue;
+      }
       relationships.push({
         destination: kernelStringOf(rel.destination),
         label: kernelStringOf(rel.rawLabel),
@@ -137,4 +151,3 @@ function toKernelElements(map, withProperties) {
   }
   return { elements, dangling };
 }
-

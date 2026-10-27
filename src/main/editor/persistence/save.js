@@ -68,7 +68,9 @@ async function statManifestFile(relPath) {
 async function writeManifestFile(mf, text) {
   const segments = String(mf.relPath).split('/').filter(Boolean);
   const name = segments.pop();
-  const dir = await getDirectoryHandleByRelativePath(AppState.folder.handle, segments.join('/'), { create: !mf.existedOnDisk });
+  const dir = await getDirectoryHandleByRelativePath(AppState.folder.handle, segments.join('/'), {
+    create: !mf.existedOnDisk
+  });
   const fileHandle = await dir.getFileHandle(name, { create: !mf.existedOnDisk });
   const writable = await fileHandle.createWritable();
   await writable.write(withByteOrderMark(mf.bom, text === undefined ? mf.rawText : text));
@@ -130,7 +132,8 @@ function serializeSettingsToRaw(settings, rawSettings) {
   const out = {};
   // a name the file did not have yet comes first; one it had keeps its place
   for (const key of SETTINGS_MANAGED_SCALARS) {
-    if (Object.prototype.hasOwnProperty.call(managed, key) && !Object.prototype.hasOwnProperty.call(rawSettings, key)) out[key] = managed[key];
+    if (Object.prototype.hasOwnProperty.call(managed, key) && !Object.prototype.hasOwnProperty.call(rawSettings, key))
+      out[key] = managed[key];
   }
   for (const key of Object.keys(rawSettings)) {
     if (SETTINGS_MANAGED_SCALARS.indexOf(key) !== -1) {
@@ -189,7 +192,10 @@ function serializeManagedSettings(settings) {
  */
 function managedSettingsAsRead(settings, rawSettings) {
   if (!isPlainObject(rawSettings)) return false;
-  return canonicalJson(serializeManagedSettings(settings)) === canonicalJson(serializeManagedSettings(parseSettings(rawSettings)));
+  return (
+    canonicalJson(serializeManagedSettings(settings)) ===
+    canonicalJson(serializeManagedSettings(parseSettings(rawSettings)))
+  );
 }
 
 /**
@@ -205,17 +211,23 @@ async function writeWorkspaceYaml() {
   const managed = {
     styles: ws.styles,
     formatters: ws.formatters,
-    settings: managedSettingsAsRead(ws.settings, top.settings) ? top.settings : serializeSettingsToRaw(ws.settings, top.settings)
+    settings: managedSettingsAsRead(ws.settings, top.settings)
+      ? top.settings
+      : serializeSettingsToRaw(ws.settings, top.settings)
   };
   // The top-level keys of the file as they were (and in their order); only the three managed ones are replaced.
   // `styles` and `formatters` are added when the file had none only if they are no longer empty.
   const raw = {};
-  for (const key of Object.keys(top)) setYamlKey(raw, key, Object.prototype.hasOwnProperty.call(managed, key) ? managed[key] : top[key]);
+  for (const key of Object.keys(top))
+    setYamlKey(raw, key, Object.prototype.hasOwnProperty.call(managed, key) ? managed[key] : top[key]);
   for (const key of Object.keys(managed)) {
     if (Object.prototype.hasOwnProperty.call(raw, key)) continue;
     if (key === 'settings' || isYamlComplexValue(managed[key])) raw[key] = managed[key];
   }
-  const text = typeof ws.rawText === 'string' && ws.rawText !== '' ? patchYamlText(ws.rawText, raw, true) : serializeYamlValue(raw, 0);
+  const text =
+    typeof ws.rawText === 'string' && ws.rawText !== ''
+      ? patchYamlText(ws.rawText, raw, true)
+      : serializeYamlValue(raw, 0);
   const fileHandle = await AppState.folder.handle.getFileHandle('.archicode.yaml');
   const writable = await fileHandle.createWritable();
   await writable.write(withByteOrderMark(ws.bom, text));
@@ -241,9 +253,11 @@ function hasUnsavedChanges() {
 
 /** How many things "Save all changes" would write: modified files, pending file removals, and .archicode.yaml if its settings changed. */
 function countUnsavedChanges() {
-  return AppState.manifestFiles.filter((f) => f.dirty).length +
+  return (
+    AppState.manifestFiles.filter((f) => f.dirty).length +
     AppState.pendingFileRemovals.length +
-    (AppState.workspace && AppState.workspace.settingsDirty ? 1 : 0);
+    (AppState.workspace && AppState.workspace.settingsDirty ? 1 : 0)
+  );
 }
 
 /**
@@ -336,14 +350,25 @@ async function performSave() {
       if (current !== workspace.settingsLastKnownDiskModified) conflicts.push('.archicode.yaml');
     }
   } catch (e) {
-    saveStatus = { state: 'error', failedFile: checking, message: 'could not check it on disk before saving (' + (e && e.message ? e.message : String(e)) + '). Nothing was saved.' };
+    saveStatus = {
+      state: 'error',
+      failedFile: checking,
+      message:
+        'could not check it on disk before saving (' +
+        (e && e.message ? e.message : String(e)) +
+        '). Nothing was saved.'
+    };
     requestRedraw();
     return;
   }
   if (unknownOnDisk.length > 0) {
     saveStatus = {
-      state: 'error', failedFile: unknownOnDisk.join(', '),
-      message: 'a file already exists at ' + (unknownOnDisk.length === 1 ? 'this path' : 'these paths') + ' on disk, but this editor did not know it (it was added since the folder was opened). ' +
+      state: 'error',
+      failedFile: unknownOnDisk.join(', '),
+      message:
+        'a file already exists at ' +
+        (unknownOnDisk.length === 1 ? 'this path' : 'these paths') +
+        ' on disk, but this editor did not know it (it was added since the folder was opened). ' +
         'Saving would overwrite it, so nothing was saved. Reopen the folder to load it, then create the element again.'
     };
     requestRedraw();
@@ -368,7 +393,8 @@ async function performSave() {
         live.existedOnDisk = true;
         live.lastKnownDiskModified = modified;
         live.savedRawText = writtenText;
-        if (live.rawText === writtenText) { // only what was written is clean: a later edit stays to be saved
+        if (live.rawText === writtenText) {
+          // only what was written is clean: a later edit stays to be saved
           live.dirty = false;
           clearDirtyReferencesForFile(f.relPath); // UX review follow-up
         }
@@ -408,7 +434,10 @@ async function performSave() {
     }
   }
 
-  saveStatus = { state: 'success', message: hasUnsavedChanges() ? 'Saved. Changes made while saving are not saved yet.' : 'Saved.' };
+  saveStatus = {
+    state: 'success',
+    message: hasUnsavedChanges() ? 'Saved. Changes made while saving are not saved yet.' : 'Saved.'
+  };
   requestRedraw();
 }
 
@@ -471,7 +500,18 @@ async function reloadManifestFile(relPath) {
   clearDirtyReferencesForFile(relPath); // before the index is rebuilt: it still knows this file's current elements
   AppState.manifestFiles = AppState.manifestFiles.map((f) =>
     f.relPath === relPath
-      ? { relPath, rawText, header, content, error, dirty: false, existedOnDisk: true, lastKnownDiskModified: lastModified, bom, savedRawText: rawText }
+      ? {
+          relPath,
+          rawText,
+          header,
+          content,
+          error,
+          dirty: false,
+          existedOnDisk: true,
+          lastKnownDiskModified: lastModified,
+          bom,
+          savedRawText: rawText
+        }
       : f
   );
   if (rawYamlEditDraft && rawYamlEditDraft.relPath === relPath) rawYamlEditDraft = null;
@@ -510,8 +550,8 @@ function commitFileEdit(relPath, newText) {
   // ARCHICODE_KIND_MAP checks to complete the validation for free.
   let scratchFiles = null;
   if (!error) {
-    scratchFiles = AppState.manifestFiles.map((f) =>
-      f.relPath === relPath ? { ...f, rawText: newText, header, content, error: null, dirty: true } : f // TDD-0010 DEC-8
+    scratchFiles = AppState.manifestFiles.map(
+      (f) => (f.relPath === relPath ? { ...f, rawText: newText, header, content, error: null, dirty: true } : f) // TDD-0010 DEC-8
     );
     buildIndex(scratchFiles, AppState.workspace.settings);
     const scratchMf = scratchFiles.find((f) => f.relPath === relPath);
@@ -560,7 +600,8 @@ function rewriteUiReferences(oldPrefix, newPrefix, layer) {
     sel.parentReference = rewrite(sel.parentReference);
   }
   // the keys of the rows (`layer:reference`) follow a rename in the layer it happened in only: the other layer's element with the same reference stays
-  const rewriteKey = (key) => (layer && nodeKeyLayer(key) !== layer) ? key : nodeKeyLayer(key) + ':' + rewrite(nodeKeyReference(key));
+  const rewriteKey = (key) =>
+    layer && nodeKeyLayer(key) !== layer ? key : nodeKeyLayer(key) + ':' + rewrite(nodeKeyReference(key));
   const rewriteKeys = (set) => new Set(Array.from(set).map(rewriteKey));
   AppState.expanded = rewriteKeys(AppState.expanded);
   // UX review follow-up: dirtyReferences holds the *old* reference (added by commitElementEdit before a
@@ -614,7 +655,8 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
   const layered = writingPlateau() !== null;
   for (const mf of AppState.manifestFiles) {
     if (!writeScopeHas(mf)) continue;
-    if (layered && !mf.error && mf.header && manifestKindName(mf.header.kind) === 'plateau') { // wave 014 (run 0082): the patches of a plateau name elements too
+    if (layered && !mf.error && mf.header && manifestKindName(mf.header.kind) === 'plateau') {
+      // wave 014 (run 0082): the patches of a plateau name elements too
       if (rewritePatchReferences(mf, oldRef, newRef, layer)) {
         mf.rawText = reserializeManifestFile(mf);
         mf.dirty = true;
@@ -627,30 +669,53 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
     let changed = false;
     if (mfLayer === layer && typeof mf.header.parent === 'string') {
       const parent = rewriteReferenceValue(mf.header.parent, oldRef, newRef);
-      if (parent !== mf.header.parent) { mf.header.parent = parent; changed = true; AppState.dirtyReferences.add(nodeKey(manifestRootReference(mf), mfLayer)); }
+      if (parent !== mf.header.parent) {
+        mf.header.parent = parent;
+        changed = true;
+        AppState.dirtyReferences.add(nodeKey(manifestRootReference(mf), mfLayer));
+      }
     }
     walkContentNodes(mf, (node, ownerRef) => {
       if (mfLayer === layer && Array.isArray(node.relationships)) {
         for (const rel of node.relationships) {
           if (!rel || typeof rel !== 'object') continue;
           const destination = rewriteReferenceValue(rel.destination, oldRef, newRef);
-          if (destination !== rel.destination) { rel.destination = destination; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
+          if (destination !== rel.destination) {
+            rel.destination = destination;
+            changed = true;
+            AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer));
+          }
         }
       }
       // `replaces` names elements of the plateau below: they follow the rename, in a layered workspace. The element that was renamed or moved, and what it holds, in the plateau that
       // is written, is the exception: what it replaces is a reference of the plateau below, and that reference is not the one that moved
-      const movedItself = layered && plateauOfManifest(mf) === writingPlateau() && (ownerRef === newRef || String(ownerRef).startsWith(newRef + '.'));
+      const movedItself =
+        layered &&
+        plateauOfManifest(mf) === writingPlateau() &&
+        (ownerRef === newRef || String(ownerRef).startsWith(newRef + '.'));
       if (layered && mfLayer === layer && Array.isArray(node.replaces) && !movedItself) {
         const replaces = node.replaces.map((entry) => rewriteReferenceValue(entry, oldRef, newRef));
-        if (replaces.some((entry, i) => entry !== node.replaces[i])) { node.replaces = replaces; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
+        if (replaces.some((entry, i) => entry !== node.replaces[i])) {
+          node.replaces = replaces;
+          changed = true;
+          AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer));
+        }
       }
       if (layer === 'technology' && mfLayer === 'technology' && Array.isArray(node.uses)) {
         const uses = node.uses.map((u) => rewriteReferenceValue(u, oldRef, newRef));
-        if (uses.some((u, i) => u !== node.uses[i])) { node.uses = uses; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
+        if (uses.some((u, i) => u !== node.uses[i])) {
+          node.uses = uses;
+          changed = true;
+          AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer));
+        }
       }
       if (layer === 'application' && mfLayer === 'technology' && Array.isArray(node.applications)) {
         const applications = node.applications.map((a) => rewriteReferenceValue(a, oldRef, newRef));
-        if (applications.some((a, i) => a !== node.applications[i])) { node.applications = applications; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
+        if (applications.some((a, i) => a !== node.applications[i])) {
+          node.applications = applications;
+          changed = true;
+          AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer));
+        }
       }
     });
     if (changed) {
@@ -672,7 +737,10 @@ function rewritePatchReferences(mf, oldRef, newRef, layer) {
   const follow = (holder, key) => {
     if (typeof holder[key] !== 'string') return;
     const next = rewriteReferenceValue(holder[key], oldRef, newRef);
-    if (next !== holder[key]) { holder[key] = next; changed = true; }
+    if (next !== holder[key]) {
+      holder[key] = next;
+      changed = true;
+    }
   };
   for (const patch of mf.content.patches) {
     if (!patch || typeof patch !== 'object') continue;
@@ -682,14 +750,21 @@ function rewritePatchReferences(mf, oldRef, newRef, layer) {
       if (readIsMissing(patch['json-path']) && readIsMissing(patch.json_path)) follow(patch, 'target');
       if (patch.where && typeof patch.where === 'object') follow(patch.where, 'destination');
       if (field === 'relationships') {
-        for (const item of Array.isArray(patch.value) ? patch.value : [patch.value]) if (item && typeof item === 'object') follow(item, 'destination');
+        for (const item of Array.isArray(patch.value) ? patch.value : [patch.value])
+          if (item && typeof item === 'object') follow(item, 'destination');
       }
     }
     // a node lists the application elements it deploys, an environment the environments and nodes it uses
-    if ((field === 'applications' && layer === 'application' && patchLayer === 'technology') || (field === 'uses' && layer === 'technology' && patchLayer === 'technology')) {
+    if (
+      (field === 'applications' && layer === 'application' && patchLayer === 'technology') ||
+      (field === 'uses' && layer === 'technology' && patchLayer === 'technology')
+    ) {
       if (Array.isArray(patch.value)) {
         const next = patch.value.map((entry) => rewriteReferenceValue(entry, oldRef, newRef));
-        if (next.some((entry, i) => entry !== patch.value[i])) { patch.value = next; changed = true; }
+        if (next.some((entry, i) => entry !== patch.value[i])) {
+          patch.value = next;
+          changed = true;
+        }
       } else {
         follow(patch, 'value');
       }
@@ -697,4 +772,3 @@ function rewritePatchReferences(mf, oldRef, newRef, layer) {
   }
   return changed;
 }
-

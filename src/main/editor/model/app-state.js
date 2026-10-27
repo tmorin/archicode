@@ -116,4 +116,3 @@ function workspaceName() {
 function workspaceLabel() {
   return workspaceName() || (AppState.folder && AppState.folder.name) || '';
 }
-

@@ -11,7 +11,11 @@ function rightPanelStamp() {
 /** A comparison is on and can be listed (or is being read): the Map and Elements keep a right-hand panel for it. */
 function comparisonPanelOn() {
   const state = comparisonState();
-  return !!state && !state.problems && (mapIsShown() || currentPerspective === 'elements' || currentPerspective === 'plateaus');
+  return (
+    !!state &&
+    !state.problems &&
+    (mapIsShown() || currentPerspective === 'elements' || currentPerspective === 'plateaus')
+  );
 }
 
 /**
@@ -26,9 +30,25 @@ function withChangesPanel(selectedHtml) {
   const changes = state.pending ? renderChangesPendingHtml() : renderChangesPanelHtml(state);
   if (selectedHtml === null) return changes;
   const showChanges = changesTabPick !== null && changesTabPick.stamp === rightPanelStamp();
-  const tab = (id, label, on) => '<button type="button" data-action="set-right-tab" data-tab="' + id + '" aria-pressed="' + on + '">' + label + '</button>';
-  return '<div class="right-tabs button-group" role="group" aria-label="Right panel">' + tab('selected', 'Selected', !showChanges) +
-    tab('changes', 'Changes' + (state.pending ? '' : ' <span class="field-count">' + state.changes.length + '</span>'), showChanges) + '</div>' + (showChanges ? changes : selectedHtml);
+  const tab = (id, label, on) =>
+    '<button type="button" data-action="set-right-tab" data-tab="' +
+    id +
+    '" aria-pressed="' +
+    on +
+    '">' +
+    label +
+    '</button>';
+  return (
+    '<div class="right-tabs button-group" role="group" aria-label="Right panel">' +
+    tab('selected', 'Selected', !showChanges) +
+    tab(
+      'changes',
+      'Changes' + (state.pending ? '' : ' <span class="field-count">' + state.changes.length + '</span>'),
+      showChanges
+    ) +
+    '</div>' +
+    (showChanges ? changes : selectedHtml)
+  );
 }
 
 /** After a drawing (the kernel is loaded now), or when the selection dropped by itself: the panel is written again from the state. */
@@ -42,7 +62,8 @@ function refreshRightPanel() {
 
 /** The Selected | Changes tabs: the Changes tab shows the list while the selection is what it is now. */
 function setRightTab(tab) {
-  if (currentPerspective === 'library') { // the page Stories has its own pair of tabs: View | Changes
+  if (currentPerspective === 'library') {
+    // the page Stories has its own pair of tabs: View | Changes
     libraryRightTab = tab === 'changes' ? 'changes' : 'view';
     scrollChangesToSelection = tab === 'changes';
     requestRedraw();
@@ -73,7 +94,8 @@ function openOnMap(reference) {
 function selectChange(row, options) {
   const keepList = !!(options && options.keepList);
   const layer = row.layer || 'application';
-  const done = () => { // the selection is made: where the reader is in the list, the tab, the row in view, and the page drawn
+  const done = () => {
+    // the selection is made: where the reader is in the list, the tab, the row in view, and the page drawn
     changesWalk = { key: changeKey(row.thing, layer, row.ref, row.to, row.label), selection: null };
     changesTabPick = keepList ? { stamp: rightPanelStamp() } : null; // the new selection is what the panel shows; the Changes tab is one click away
     if (currentPerspective === 'library') libraryRightTab = keepList ? 'changes' : 'view';
@@ -81,20 +103,24 @@ function selectChange(row, options) {
     requestRedraw();
     changesWalk.selection = changesSelectionStamp();
   };
-  if (currentPerspective === 'library' && changeSelectionIsShown()) { // the page of a view: the thing is selected on the page, its address and the Map's selection stay
+  if (currentPerspective === 'library' && changeSelectionIsShown()) {
+    // the page of a view: the thing is selected on the page, its address and the Map's selection stay
     candidateMessage = null;
     removedPick = null;
     const removed = row.thing === 'element' && elementIsOnlyInTheOtherPlateau(layer, row.ref, row.change);
-    libraryPickFor(selectedViewId).selection = removed ? { kind: 'baseline-element', key: row.ref, layer, mode: 'view' }
-      : row.thing === 'relationship' ? linkSelectionFor(row.ref, row.to, layer, null, null)
-      : { kind: 'element', key: row.ref, layer, mode: 'view' };
+    libraryPickFor(selectedViewId).selection = removed
+      ? { kind: 'baseline-element', key: row.ref, layer, mode: 'view' }
+      : row.thing === 'relationship'
+        ? linkSelectionFor(row.ref, row.to, layer, null, null)
+        : { kind: 'element', key: row.ref, layer, mode: 'view' };
     const canvas = document.getElementById('diagram-canvas');
     if (canvas && diagramScale === 'auto') takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
     done();
     if (!keepList) bringLibrarySelectionIntoSight();
     return;
   }
-  if (currentPerspective === 'plateaus' || currentPerspective === 'library') { // these pages list the changes and show no element: the row opens it in Elements
+  if (currentPerspective === 'plateaus' || currentPerspective === 'library') {
+    // these pages list the changes and show no element: the row opens it in Elements
     history.pushState(null, '', location.href); // the page that was left is an entry of the history: the next address rewrites this one
     currentPerspective = 'elements';
     useDiagramHost('main');
@@ -102,7 +128,8 @@ function selectChange(row, options) {
   if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4: a selection is never the draft's file
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   candidateMessage = null;
-  if (mapIsShown() && layer !== mapLayer()) { // a row of the other layer: the Map of that layer is the page that draws it
+  if (mapIsShown() && layer !== mapLayer()) {
+    // a row of the other layer: the Map of that layer is the page that draws it
     history.pushState(null, '', location.href);
     currentPerspective = layer === 'technology' ? 'environments' : 'map';
   }
@@ -130,13 +157,15 @@ function selectChange(row, options) {
   expandAncestorsOf(row.ref, layer); // the trees show it
   scrollNavToSelection = true;
   // in Elements a relationship is selected by the element that declares it, and its link when that element is drawn as a diagram
-  if (row.thing === 'relationship' && diagramTabShown()) AppState.selection = linkSelectionFor(row.ref, row.to, layer, null, row.ref);
+  if (row.thing === 'relationship' && diagramTabShown())
+    AppState.selection = linkSelectionFor(row.ref, row.to, layer, null, row.ref);
   done();
 }
 
 /** Some node of the technology layer hosts the application: the Map of that layer can draw it. */
 function applicationIsDeployed(reference) {
-  for (const record of AppState.index.technology.values()) if (kernelStringsOf(record.applications).includes(reference)) return true;
+  for (const record of AppState.index.technology.values())
+    if (kernelStringsOf(record.applications).includes(reference)) return true;
   return false;
 }
 
@@ -145,7 +174,9 @@ function markInspection() {
   const note = document.getElementById('inspection-offmap');
   const holder = document.querySelector('[data-inspection-ref]');
   if (!note || !holder) return;
-  note.hidden = mapElementIsOnMap(holder.getAttribute('data-inspection-ref'), holder.getAttribute('data-inspection-layer')) !== false;
+  note.hidden =
+    mapElementIsOnMap(holder.getAttribute('data-inspection-ref'), holder.getAttribute('data-inspection-layer')) !==
+    false;
 }
 
 /** The Map dropped its selection by itself: the panel goes with it, with its handle (the page is not redrawn). */
@@ -164,7 +195,9 @@ function elementSelection() {
   const sel = AppState.selection;
   if (!sel || sel.kind !== 'link' || !sel.focal) return sel;
   // the layer of the drawing is the layer of the element it is about
-  return sel.layer ? { kind: 'element', key: sel.focal, layer: sel.layer, mode: 'view' } : { kind: 'element', key: sel.focal, mode: 'view' };
+  return sel.layer
+    ? { kind: 'element', key: sel.focal, layer: sel.layer, mode: 'view' }
+    : { kind: 'element', key: sel.focal, mode: 'view' };
 }
 
 /** The link is no longer selected: the element it was made on (Elements), or nothing (the Map). */
@@ -182,8 +215,14 @@ function dropLinkSelection() {
  */
 function settleLinkSelection() {
   const sel = AppState.selection;
-  if (!sel || sel.kind !== 'link') { revealLinkAfterDrawing = false; return; }
-  if (!(sel.focal ? diagramTabShown() : mapIsShown())) { dropLinkSelection(); revealLinkAfterDrawing = false; }
+  if (!sel || sel.kind !== 'link') {
+    revealLinkAfterDrawing = false;
+    return;
+  }
+  if (!(sel.focal ? diagramTabShown() : mapIsShown())) {
+    dropLinkSelection();
+    revealLinkAfterDrawing = false;
+  }
 }
 
 /**
@@ -206,8 +245,13 @@ function revealSelectedLink(canvas) {
   revealLinkAfterDrawing = false;
   const sel = AppState.selection;
   if (!request || sel.kind !== 'link' || !canvas || !canvas.querySelectorAll) return;
-  const links = Array.from(canvas.querySelectorAll('.dg-link')).filter((el) => el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to);
-  const clicked = request.nth === null || request.nth === undefined ? undefined : links.find((el) => el.getAttribute('data-nth') === String(request.nth));
+  const links = Array.from(canvas.querySelectorAll('.dg-link')).filter(
+    (el) => el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to
+  );
+  const clicked =
+    request.nth === null || request.nth === undefined
+      ? undefined
+      : links.find((el) => el.getAttribute('data-nth') === String(request.nth));
   const target = clicked || links[0];
   if (target) revealDiagramNode(target);
 }
@@ -222,7 +266,18 @@ function inspectionLinkFor(sel) {
 /** The declared relationships of one link of a pair, in the order the kernel lists them (a link the kernel gives none for, a ghost, speaks for itself). */
 function relationshipsOfLink(link, pair) {
   const own = Array.isArray(link.relationships) ? link.relationships : [];
-  return own.length ? own : [{ from: pair.fromEnd.reference, destination: pair.toEnd.reference, label: link.label, qualifiers: link.qualifiers, tags: link.tags, unresolved: !!link.ghost }];
+  return own.length
+    ? own
+    : [
+        {
+          from: pair.fromEnd.reference,
+          destination: pair.toEnd.reference,
+          label: link.label,
+          qualifiers: link.qualifiers,
+          tags: link.tags,
+          unresolved: !!link.ghost
+        }
+      ];
 }
 
 /** What makes two relationships the same one: who declares it, to whom, and what it says. */
@@ -247,7 +302,11 @@ function relationshipsOfPair(pair) {
 
 /** One end of a link, for the panel: its name and kind, its reference when that differs, and what a folded box hides. */
 function renderLinkEndHtml(end) {
-  let html = '<span class="inspection-end-name">' + escapeHtml(end.title) + '</span>' + (end.sub ? ' <span class="muted">' + escapeHtml(end.sub) + '</span>' : '');
+  let html =
+    '<span class="inspection-end-name">' +
+    escapeHtml(end.title) +
+    '</span>' +
+    (end.sub ? ' <span class="muted">' + escapeHtml(end.sub) + '</span>' : '');
   if (end.reference !== end.title) html += '<br><span class="muted">' + escapeHtml(end.reference) + '</span>';
   return html;
 }
@@ -263,42 +322,87 @@ function renderDeclaringElementHtml(reference, layer) {
 
 /** One declared relationship: its label, who declares it (a button) and to whom, its qualifiers and its tags; `marked`: it belongs to the link that was clicked. */
 function renderRelationshipInspectionHtml(rel, layer, marked) {
-  const label = rel.label !== undefined && rel.label !== null && String(rel.label).trim() ? escapeHtml(rel.label) : '<span class="muted">no label</span>';
-  return '<div class="inspection-rel' + (marked ? ' inspection-rel-marked' : '') + '"><div class="inspection-rel-label">' + label +
-    (marked ? '<span class="inspection-rel-mark">Clicked link</span>' : '') + '</div>' +
-    '<div class="inspection-rel-path">' + renderDeclaringElementHtml(rel.from, layer) + ' &rarr; ' + escapeHtml(rel.destination) + '</div>' +
+  const label =
+    rel.label !== undefined && rel.label !== null && String(rel.label).trim()
+      ? escapeHtml(rel.label)
+      : '<span class="muted">no label</span>';
+  return (
+    '<div class="inspection-rel' +
+    (marked ? ' inspection-rel-marked' : '') +
+    '"><div class="inspection-rel-label">' +
+    label +
+    (marked ? '<span class="inspection-rel-mark">Clicked link</span>' : '') +
+    '</div>' +
+    '<div class="inspection-rel-path">' +
+    renderDeclaringElementHtml(rel.from, layer) +
+    ' &rarr; ' +
+    escapeHtml(rel.destination) +
+    '</div>' +
     renderRelationshipChangeHtml(rel, layer) +
     renderFieldRowHtml('Qualifiers', renderQualifierPillsHtml(rel.qualifiers)) +
     renderFieldRowHtml('Tags', renderTagListHtml(rel.tags)) +
-    (rel.unresolved ? '<p class="inspection-note">There is no element &ldquo;' + escapeHtml(rel.destination) + '&rdquo;: the relationship points at nothing.</p>' : '') +
-    '</div>';
+    (rel.unresolved
+      ? '<p class="inspection-note">There is no element &ldquo;' +
+        escapeHtml(rel.destination) +
+        '&rdquo;: the relationship points at nothing.</p>'
+      : '') +
+    '</div>'
+  );
 }
 
 /** The panel of a selected link: its two ends, then each relationship it stands for. */
 function renderLinkInspectionHtml(sel) {
   const layer = sel.layer || 'application';
-  let html = '<div class="inspection inspection-link" data-inspection-from="' + escapeHtml(sel.from) + '" data-inspection-to="' + escapeHtml(sel.to) + '" data-inspection-layer="' + escapeHtml(layer) + '">' +
+  let html =
+    '<div class="inspection inspection-link" data-inspection-from="' +
+    escapeHtml(sel.from) +
+    '" data-inspection-to="' +
+    escapeHtml(sel.to) +
+    '" data-inspection-layer="' +
+    escapeHtml(layer) +
+    '">' +
     '<div class="inspection-head"><h3>Selected link</h3>' +
     '<button type="button" class="inspection-close" data-action="close-inspection" aria-label="Close the panel" title="Deselect the link">&times;</button></div>';
   const pair = inspectionLinkFor(sel);
   if (!pair) return html + '<p class="inspection-note">Reading the link&hellip;</p></div>';
-  html += renderFieldRowHtml('From', renderLinkEndHtml(pair.fromEnd)) + renderFieldRowHtml('To', renderLinkEndHtml(pair.toEnd));
+  html +=
+    renderFieldRowHtml('From', renderLinkEndHtml(pair.fromEnd)) +
+    renderFieldRowHtml('To', renderLinkEndHtml(pair.toEnd));
   for (const end of [pair.fromEnd, pair.toEnd]) {
-    if (end.collapsed) html += '<p class="inspection-note">&ldquo;' + escapeHtml(end.title) + '&rdquo; is folded: it stands for ' + end.hidden + ' hidden element' + (end.hidden === 1 ? '' : 's') + '. Open it to see their relationships one by one.</p>';
+    if (end.collapsed)
+      html +=
+        '<p class="inspection-note">&ldquo;' +
+        escapeHtml(end.title) +
+        '&rdquo; is folded: it stands for ' +
+        end.hidden +
+        ' hidden element' +
+        (end.hidden === 1 ? '' : 's') +
+        '. Open it to see their relationships one by one.</p>';
   }
   const rels = relationshipsOfPair(pair);
   html += renderLinkChangeHtml(rels); // a comparison: the state of the link, from the relationships it groups
   // several links between the same two boxes: the relationships of the one that was clicked are marked (when they can be told from the others)
   const clickedKeys = new Set(Array.isArray(sel.via) ? sel.via : []);
-  const marked = pair.links.length > 1 ? rels.map((rel) => clickedKeys.has(relationshipKeyOf(rel))) : rels.map(() => false);
+  const marked =
+    pair.links.length > 1 ? rels.map((rel) => clickedKeys.has(relationshipKeyOf(rel))) : rels.map(() => false);
   const told = marked.some(Boolean) && !marked.every(Boolean);
   if (pair.links.length > 1) {
-    html += '<p class="inspection-note">' + pair.links.length + ' links join these two boxes, with ' + rels.length + (rels.length === 1 ? ' relationship' : ' relationships') + ' in all.' +
-      (told ? ' The relationships of the link you clicked are marked.' : '') + '</p>';
+    html +=
+      '<p class="inspection-note">' +
+      pair.links.length +
+      ' links join these two boxes, with ' +
+      rels.length +
+      (rels.length === 1 ? ' relationship' : ' relationships') +
+      ' in all.' +
+      (told ? ' The relationships of the link you clicked are marked.' : '') +
+      '</p>';
   } else if (rels.length > 1) {
     html += '<p class="inspection-note">' + rels.length + ' relationships are grouped in this link.</p>';
   }
-  html += '<h4 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h4>' +
+  html +=
+    '<h4 class="inspection-subhead">Relationships <span class="field-count">' +
+    rels.length +
+    '</span></h4>' +
     rels.map((rel, i) => renderRelationshipInspectionHtml(rel, layer, told && marked[i])).join('');
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   return html + '</div>';
@@ -307,12 +411,20 @@ function renderLinkInspectionHtml(sel) {
 /** After a drawing, with a link selected: the panel says what this drawing drew (a facet may have removed some relationships). */
 function refreshInspection() {
   const onPage = currentPerspective === 'library';
-  if (!onPage && comparisonPanelOn()) { refreshRightPanel(); return; } // run 0040: the panel also holds the Changes tab: it is written again whole
+  if (!onPage && comparisonPanelOn()) {
+    refreshRightPanel();
+    return;
+  } // run 0040: the panel also holds the Changes tab: it is written again whole
   const holder = document.querySelector('.inspection');
   if (!holder) return; // nothing on screen to refresh (maximized)
-  const html = diagramMaximized ? null : inspectionPanelHtml(diagramSelection(), onPage ? 'library' : mapIsShown() ? 'map' : 'elements');
+  const html = diagramMaximized
+    ? null
+    : inspectionPanelHtml(diagramSelection(), onPage ? 'library' : mapIsShown() ? 'map' : 'elements');
   if (html !== null) holder.outerHTML = html;
-  else if (onPage) { const section = document.querySelector('.library-selection'); if (section) section.remove(); } // the panel of the page stays: only its selection goes
+  else if (onPage) {
+    const section = document.querySelector('.library-selection');
+    if (section) section.remove();
+  } // the panel of the page stays: only its selection goes
   else removeInspectionPanel();
 }
 
@@ -342,7 +454,8 @@ function markLinkSelection() {
   if (!canvas) return;
   const sel = diagramSelection();
   canvas.querySelectorAll('.dg-link, .dg-label').forEach((el) => {
-    const selected = sel.kind === 'link' && el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to;
+    const selected =
+      sel.kind === 'link' && el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to;
     el.classList.toggle('dg-link-selected', selected);
     if (el.classList.contains('dg-link')) el.setAttribute('aria-pressed', String(selected));
   });
@@ -362,4 +475,3 @@ function renderElementsPerspectiveHtml() {
     bottom: null
   };
 }
-

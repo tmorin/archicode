@@ -12,7 +12,14 @@ function plateauManifestFile(id) {
  * is where the author keeps the plateau's files and in a folder the command line reads; else the first folder of `manifests.paths`.
  */
 function plateauFolderFor(id, category) {
-  const own = AppState.manifestFiles.filter((mf) => !mf.error && mf.header && mf.content && manifestKindName(mf.header.kind) !== 'plateau' && plateauOfManifest(mf) === id);
+  const own = AppState.manifestFiles.filter(
+    (mf) =>
+      !mf.error &&
+      mf.header &&
+      mf.content &&
+      manifestKindName(mf.header.kind) !== 'plateau' &&
+      plateauOfManifest(mf) === id
+  );
   const pick = (category && own.find((mf) => manifestLayer(mf) === category)) || own[0];
   if (pick) return pick.relPath.split('/').slice(0, -1).join('/');
   const dir = firstManifestsDir();
@@ -26,7 +33,16 @@ function ensurePlateauManifest(id) {
   const header = { kind: ARCHICODE_KIND_PREFIX + 'plateau', version: '1' };
   const content = { id };
   const relPath = allocateManifestRelPath(plateauFolderFor(id), 'plateau.', id);
-  const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
+  const mf = {
+    relPath,
+    header,
+    content,
+    error: null,
+    rawText: serializeManifestFile(header, content),
+    dirty: true,
+    existedOnDisk: false,
+    lastKnownDiskModified: null
+  };
   adoptRemovedFile(mf);
   AppState.manifestFiles.push(mf);
   AppState.manifestFiles.sort((a, b) => compareCodePoints(a.relPath, b.relPath));
@@ -56,7 +72,13 @@ function plateauPatchesOn(plateau, category, reference, field) {
     if (!patch || typeof patch !== 'object') return;
     if (readIsMissing(patch.target) || !readIsMissing(patch['json-path']) || !readIsMissing(patch.json_path)) return;
     const layer = readIsMissing(patch.layer) ? 'application' : String(patch.layer).toLowerCase();
-    if (String(patch.target) === reference && layer === category && !readIsMissing(patch.field) && String(patch.field) === field) out.push({ patch, rank: i + 1 });
+    if (
+      String(patch.target) === reference &&
+      layer === category &&
+      !readIsMissing(patch.field) &&
+      String(patch.field) === field
+    )
+      out.push({ patch, rank: i + 1 });
   });
   return out;
 }
@@ -68,7 +90,11 @@ function fieldBaseWithout(plateau, patch, category, reference, field) {
   const above = node.parent === null ? null : layerStateOf(node.parent, settings);
   if (above && above.fatal) return { known: false };
   const cache = ensureLayerCache(settings);
-  const result = resolveLayerStep(above ? above.state : null, Object.assign({}, node, { patches: node.patches.filter((p) => p !== patch) }), { byPlateau: cache.byPlateau, kernel: loadedKernel, layered: !!cache.tree.layered });
+  const result = resolveLayerStep(
+    above ? above.state : null,
+    Object.assign({}, node, { patches: node.patches.filter((p) => p !== patch) }),
+    { byPlateau: cache.byPlateau, kernel: loadedKernel, layered: !!cache.tree.layered }
+  );
   if (result.fatal) return { known: false };
   const found = graphReferencesOf(result.state.graph)[category].get(reference);
   return found ? { known: true, value: copyJson(found[field]) } : { known: false };
@@ -108,9 +134,19 @@ function patchFor(field, base, after) {
           const i = differing[0];
           const old = was[i];
           const next = now[i];
-          if (isPlainJsonObject(old) && isPlainJsonObject(next) && typeof old.destination === 'string' && Object.keys(old).every((key) => key in next)) {
+          if (
+            isPlainJsonObject(old) &&
+            isPlainJsonObject(next) &&
+            typeof old.destination === 'string' &&
+            Object.keys(old).every((key) => key in next)
+          ) {
             const label = readIsMissing(old.label) ? '' : String(old.label);
-            const same = was.filter((item) => isPlainJsonObject(item) && item.destination === old.destination && (readIsMissing(item.label) ? '' : String(item.label)) === label);
+            const same = was.filter(
+              (item) =>
+                isPlainJsonObject(item) &&
+                item.destination === old.destination &&
+                (readIsMissing(item.label) ? '' : String(item.label)) === label
+            );
             if (same.length === 1) {
               const value = {};
               for (const key of Object.keys(next)) if (!sameJson(old[key], next[key])) value[key] = next[key];
@@ -124,7 +160,12 @@ function patchFor(field, base, after) {
     }
     return { operator: 'SET', value: now };
   }
-  if (isPlainJsonObject(now) && base.known && (was === undefined || isPlainJsonObject(was)) && Object.keys(was || {}).every((key) => key in now)) {
+  if (
+    isPlainJsonObject(now) &&
+    base.known &&
+    (was === undefined || isPlainJsonObject(was)) &&
+    Object.keys(was || {}).every((key) => key in now)
+  ) {
     const value = {};
     for (const key of Object.keys(now)) if (!was || !sameJson(was[key], now[key])) value[key] = now[key];
     return { operator: 'MERGE', value };
@@ -148,7 +189,10 @@ function insertKeyBefore(object, beforeKey, key, value) {
   for (const [k] of entries) delete object[k];
   let placed = false;
   for (const [k, v] of entries) {
-    if (k === beforeKey) { object[key] = value; placed = true; }
+    if (k === beforeKey) {
+      object[key] = value;
+      placed = true;
+    }
     object[k] = v;
   }
   if (!placed) object[key] = value;
@@ -163,7 +207,8 @@ function updatePatchInPlace(patch, wanted) {
   } else if ('where' in patch) {
     delete patch.where;
   }
-  if (wanted.operator === 'REMOVE') delete patch.value; // a `REMOVE` of a field takes no value
+  if (wanted.operator === 'REMOVE')
+    delete patch.value; // a `REMOVE` of a field takes no value
   else if (!sameJson(patch.value, wanted.value)) patch.value = wanted.value;
 }
 
@@ -179,7 +224,8 @@ function patchItems(patch) {
  */
 function absorbIntoPatch(last, delta, after) {
   const operator = String(last.operator).toUpperCase();
-  if (delta.operator === 'REMOVE') { // the field is cleared: a whole-value `SET` becomes the `REMOVE`, one that already took it out says so; any other patch stays and the `REMOVE` follows it
+  if (delta.operator === 'REMOVE') {
+    // the field is cleared: a whole-value `SET` becomes the `REMOVE`, one that already took it out says so; any other patch stays and the `REMOVE` follows it
     if (operator === 'SET' && !last.where) updatePatchInPlace(last, delta);
     return (operator === 'SET' && !last.where) || operator === 'REMOVE';
   }
@@ -196,10 +242,25 @@ function absorbIntoPatch(last, delta, after) {
     last.value = Object.assign({}, last.value, delta.value);
     return true;
   }
-  if (operator === 'SET' && last.where && delta.operator === 'SET' && delta.where && isPlainJsonObject(last.value) && isPlainJsonObject(delta.value)) {
+  if (
+    operator === 'SET' &&
+    last.where &&
+    delta.operator === 'SET' &&
+    delta.where &&
+    isPlainJsonObject(last.value) &&
+    isPlainJsonObject(delta.value)
+  ) {
     const destination = 'destination' in last.value ? String(last.value.destination) : String(last.where.destination);
-    const label = 'label' in last.value ? String(last.value.label) : (readIsMissing(last.where.label) ? '' : String(last.where.label));
-    if (destination === delta.where.destination && label === (readIsMissing(delta.where.label) ? '' : String(delta.where.label))) {
+    const label =
+      'label' in last.value
+        ? String(last.value.label)
+        : readIsMissing(last.where.label)
+          ? ''
+          : String(last.where.label);
+    if (
+      destination === delta.where.destination &&
+      label === (readIsMissing(delta.where.label) ? '' : String(delta.where.label))
+    ) {
       last.value = Object.assign({}, last.value, delta.value);
       return true;
     }
@@ -212,7 +273,12 @@ function patchSaysNothingNew(plateau, patch, category, reference, field) {
   const base = fieldBaseWithout(plateau, patch, category, reference, field);
   if (!base.known || !Array.isArray(base.value) || !isPlainJsonObject(patch.value)) return false;
   const label = readIsMissing(patch.where.label) ? '' : String(patch.where.label);
-  const found = base.value.filter((item) => isPlainJsonObject(item) && item.destination === patch.where.destination && (readIsMissing(item.label) ? '' : String(item.label)) === label);
+  const found = base.value.filter(
+    (item) =>
+      isPlainJsonObject(item) &&
+      item.destination === patch.where.destination &&
+      (readIsMissing(item.label) ? '' : String(item.label)) === label
+  );
   return found.length === 1 && Object.keys(patch.value).every((key) => sameJson(found[0][key], patch.value[key]));
 }
 
@@ -236,8 +302,10 @@ function writePatchChange(plateau, category, reference, change) {
     // several patches on the field (a relationship added, another relabeled): none is rewritten; the last absorbs an edit of its kind, else the edit is a patch at the end
     const last = mine[mine.length - 1].patch;
     const delta = patchFor(change.field, now, change.after);
-    if (delta && !absorbIntoPatch(last, delta, change.after)) patches.push(newPatchObject(category, reference, change.field, delta));
-    else if (delta && last.where && patchSaysNothingNew(plateau, last, category, reference, change.field)) patches.splice(patches.indexOf(last), 1); // relabeled and relabeled back
+    if (delta && !absorbIntoPatch(last, delta, change.after))
+      patches.push(newPatchObject(category, reference, change.field, delta));
+    else if (delta && last.where && patchSaysNothingNew(plateau, last, category, reference, change.field))
+      patches.splice(patches.indexOf(last), 1); // relabeled and relabeled back
   } else {
     const patch = mine[0].patch;
     const operator = String(patch.operator).toUpperCase();
@@ -250,7 +318,10 @@ function writePatchChange(plateau, category, reference, change) {
     } else if (operator === 'REMOVE' && inPlace) {
       updatePatchInPlace(patch, inPlace); // the plateau gives the field a value again: the patch that took it out says that value instead
     } else if (operator === 'SET' && !patch.where) {
-      updatePatchInPlace(patch, { operator: 'SET', value: readIsMissing(change.after) ? (Array.isArray(change.before) ? [] : {}) : change.after });
+      updatePatchInPlace(patch, {
+        operator: 'SET',
+        value: readIsMissing(change.after) ? (Array.isArray(change.before) ? [] : {}) : change.after
+      });
     } else if (inPlace && inPlace.operator === operator && sameJson(inPlace.where, patch.where)) {
       updatePatchInPlace(patch, inPlace);
     } else {
@@ -265,8 +336,23 @@ function writePatchChange(plateau, category, reference, change) {
 /** The sentence for a field that cannot be written because of a patch the author wrote by hand (a free `json-path`, which the editor shows and does not edit field by field). */
 function handWrittenPatchSentence(record, field, plateau) {
   const last = record.patched ? record.patched.get(field) : null;
-  if (!last || last.plateau !== plateau || last.operator === 'REMOVE' || !/^json-path /.test(String(last.selector))) return null;
-  return 'Not written: `' + field + '` of `' + record.reference + '` is set by patch ' + last.rank + ' of the plateau `' + plateau + '` (' + last.operator + ' ' + last.selector + '), which was written by hand with a free `json-path`: the editor shows it and does not edit it field by field. Edit the patch in Files. Nothing was changed.';
+  if (!last || last.plateau !== plateau || last.operator === 'REMOVE' || !/^json-path /.test(String(last.selector)))
+    return null;
+  return (
+    'Not written: `' +
+    field +
+    '` of `' +
+    record.reference +
+    '` is set by patch ' +
+    last.rank +
+    ' of the plateau `' +
+    plateau +
+    '` (' +
+    last.operator +
+    ' ' +
+    last.selector +
+    '), which was written by hand with a free `json-path`: the editor shows it and does not edit it field by field. Edit the patch in Files. Nothing was changed.'
+  );
 }
 
 /**
@@ -276,15 +362,29 @@ function handWrittenPatchSentence(record, field, plateau) {
  */
 function planLayerElementEdit(plateau, record, category, reference, mutatorFn) {
   const resolved = resolvedNodeOf(plateau, category, reference);
-  if (!resolved) throw new Error('"' + reference + '" cannot be found in the plateau `' + plateau + '`; nothing was changed.');
+  if (!resolved)
+    throw new Error('"' + reference + '" cannot be found in the plateau `' + plateau + '`; nothing was changed.');
   const trial = clonePlain(resolved);
   const outcome = mutatorFn(trial, null, null);
-  const renamed = (outcome && outcome.renamedTo) || (String(trial.id) !== String(resolved.id) ? { from: reference, to: null } : null);
+  const renamed =
+    (outcome && outcome.renamedTo) || (String(trial.id) !== String(resolved.id) ? { from: reference, to: null } : null);
   if (renamed && plateau !== BASELINE_PLATEAU && record.declaredIn !== plateau) {
-    throw new Error('Not written: `' + reference + '` is declared in the plateau `' + record.declaredIn + '`, and a patch never changes an id: it is renamed where it is declared. Draw `' + record.declaredIn + '` to rename it. Nothing was changed.');
+    throw new Error(
+      'Not written: `' +
+        reference +
+        '` is declared in the plateau `' +
+        record.declaredIn +
+        '`, and a patch never changes an id: it is renamed where it is declared. Draw `' +
+        record.declaredIn +
+        '` to rename it. Nothing was changed.'
+    );
   }
-  if (String(trial.kind) !== String(resolved.kind)) throw new Error('Not written: the kind of an element is not edited here. Nothing was changed.');
-  const located = plateau !== BASELINE_PLATEAU && record.declaredIn === plateau ? locateContentNode(reference, category, record) : null;
+  if (String(trial.kind) !== String(resolved.kind))
+    throw new Error('Not written: the kind of an element is not edited here. Nothing was changed.');
+  const located =
+    plateau !== BASELINE_PLATEAU && record.declaredIn === plateau
+      ? locateContentNode(reference, category, record)
+      : null;
   const changes = [];
   for (const field of Array.from(new Set(Object.keys(resolved).concat(Object.keys(trial)))).sort(compareUnits)) {
     if (field === 'id' || field === 'elements' || field === 'kind') continue;
@@ -299,7 +399,18 @@ function planLayerElementEdit(plateau, record, category, reference, mutatorFn) {
     changes.push(change);
   }
   if (renamed && changes.some((change) => change.route === 'patch')) {
-    throw new Error('Not written: `' + reference + '` is renamed and a patch of the plateau `' + plateau + '` sets a field in the same edit (' + changes.filter((change) => change.route === 'patch').map((change) => change.field).join(', ') + '): save the rename, then the change. Nothing was changed.');
+    throw new Error(
+      'Not written: `' +
+        reference +
+        '` is renamed and a patch of the plateau `' +
+        plateau +
+        '` sets a field in the same edit (' +
+        changes
+          .filter((change) => change.route === 'patch')
+          .map((change) => change.field)
+          .join(', ') +
+        '): save the rename, then the change. Nothing was changed.'
+    );
   }
   return { changes, renamed };
 }
@@ -309,14 +420,39 @@ function verifyLayerElementEdit(plateau, category, reference, plan) {
   const target = plan.renamed && plan.renamed.to ? plan.renamed.to : reference;
   const node = resolvedNodeOf(plateau, category, target);
   const refused = node ? null : layerStateOf(plateau, AppState.workspace.settings);
-  if (refused && refused.fatal) throw new Error('Not written: the plateau `' + plateau + '` could no longer be resolved (' + oneLine(refused.fatal[0]) + '). Nothing was changed.');
-  if (!node) throw new Error('Not written: after the edit the plateau `' + plateau + '` has no element `' + target + '`. Nothing was changed.');
+  if (refused && refused.fatal)
+    throw new Error(
+      'Not written: the plateau `' +
+        plateau +
+        '` could no longer be resolved (' +
+        oneLine(refused.fatal[0]) +
+        '). Nothing was changed.'
+    );
+  if (!node)
+    throw new Error(
+      'Not written: after the edit the plateau `' + plateau + '` has no element `' + target + '`. Nothing was changed.'
+    );
   for (const change of plan.changes) {
-    const empty = Array.isArray(change.before) || Array.isArray(change.after) ? [] : isPlainJsonObject(change.before) || isPlainJsonObject(change.after) ? {} : undefined;
+    const empty =
+      Array.isArray(change.before) || Array.isArray(change.after)
+        ? []
+        : isPlainJsonObject(change.before) || isPlainJsonObject(change.after)
+          ? {}
+          : undefined;
     const wanted = readIsMissing(change.after) ? empty : change.after;
     const got = readIsMissing(node[change.field]) ? empty : node[change.field];
     if (!sameJson(got, wanted)) {
-      throw new Error('Not written: the resolution of the plateau `' + plateau + '` does not give back the new `' + change.field + '` of `' + target + '` (it reads ' + oneLine(JSON.stringify(got === undefined ? null : got)).slice(0, 80) + '). Nothing was changed.');
+      throw new Error(
+        'Not written: the resolution of the plateau `' +
+          plateau +
+          '` does not give back the new `' +
+          change.field +
+          '` of `' +
+          target +
+          '` (it reads ' +
+          oneLine(JSON.stringify(got === undefined ? null : got)).slice(0, 80) +
+          '). Nothing was changed.'
+      );
     }
   }
 }
@@ -328,22 +464,42 @@ function commitLayeredElementEdit(plateau, reference, mutatorFn, layer, options)
   if (!record) return commitElementEditNow(reference, mutatorFn, layer, options); // says it cannot be found
   const label = record.name || reference;
   const base = {
-    plateau, confirmed: !!options.confirmed, afterConfirm: options.afterConfirm, summary: 'Edit “' + label + '” in the plateau `' + plateau + '`',
+    plateau,
+    confirmed: !!options.confirmed,
+    afterConfirm: options.afterConfirm,
+    summary: 'Edit “' + label + '” in the plateau `' + plateau + '`',
     again: () => commitElementEdit(reference, mutatorFn, layer, Object.assign({}, options, { confirmed: true }))
   };
   if (options.live) {
     // the mutator edits the file that declares the element itself (a move, a child written in the file of its parent): it must be a file of the plateau written
     if (plateau !== BASELINE_PLATEAU && record.declaredIn !== plateau) {
-      throw new Error('Not written: `' + reference + '` is declared in the plateau `' + record.declaredIn + '`, not in `' + plateau + '`, and a patch never changes where an element is. Draw `' + record.declaredIn + '` to do it. Nothing was changed.');
+      throw new Error(
+        'Not written: `' +
+          reference +
+          '` is declared in the plateau `' +
+          record.declaredIn +
+          '`, not in `' +
+          plateau +
+          '`, and a patch never changes where an element is. Draw `' +
+          record.declaredIn +
+          '` to do it. Nothing was changed.'
+      );
     }
-    return guardedLayerWrite(Object.assign(base, {
-      write: () => commitElementEditNow(reference, mutatorFn, layer, options),
-      verify: (result) => verifyLayerElementEdit(plateau, category, reference, { changes: [], renamed: result && result.renamedTo ? result.renamedTo : null })
-    }));
+    return guardedLayerWrite(
+      Object.assign(base, {
+        write: () => commitElementEditNow(reference, mutatorFn, layer, options),
+        verify: (result) =>
+          verifyLayerElementEdit(plateau, category, reference, {
+            changes: [],
+            renamed: result && result.renamedTo ? result.renamedTo : null
+          })
+      })
+    );
   }
   const plan = planLayerElementEdit(plateau, record, category, reference, mutatorFn);
   const inherited = plateau !== BASELINE_PLATEAU && record.declaredIn !== plateau;
-  if (!plan.changes.length && !plan.renamed && inherited) { // nothing to say: nothing is written, and the file of another plateau is not marked
+  if (!plan.changes.length && !plan.renamed && inherited) {
+    // nothing to say: nothing is written, and the file of another plateau is not marked
     saveStatus = { state: 'idle' };
     rebuildIndexAndRender();
     return undefined;
@@ -351,7 +507,9 @@ function commitLayeredElementEdit(plateau, reference, mutatorFn, layer, options)
   const write = plan.changes.every((change) => change.route === 'manifest')
     ? () => commitElementEditNow(reference, mutatorFn, layer, options)
     : () => writeMixedElementEdit(plateau, record, category, reference, plan);
-  return guardedLayerWrite(Object.assign(base, { write, verify: () => verifyLayerElementEdit(plateau, category, reference, plan) }));
+  return guardedLayerWrite(
+    Object.assign(base, { write, verify: () => verifyLayerElementEdit(plateau, category, reference, plan) })
+  );
 }
 
 /** An edit whose fields do not all belong in the same file: the ones of the manifest that declares the element are set on it, the others are patches of the plateau. */
@@ -362,7 +520,8 @@ function writeMixedElementEdit(plateau, record, category, reference, plan) {
       touched.add(writePatchChange(plateau, category, reference, change));
     } else {
       const located = locateContentNode(reference, category, record);
-      if (readIsMissing(change.after)) delete located.node[change.field]; else located.node[change.field] = clonePlain(change.after);
+      if (readIsMissing(change.after)) delete located.node[change.field];
+      else located.node[change.field] = clonePlain(change.after);
       touched.add(located.mf);
     }
   }
@@ -401,16 +560,32 @@ function prunePatchesNaming(plateau, deletedRefs, category) {
   // what a patch adds or sets as a list of references: the destinations of relationships, the applications a node hosts, the elements an environment uses
   const listOf = (patch) => {
     const field = String(patch.field);
-    if (field === 'relationships' && patchLayer(patch) === category) return { items: Array.isArray(patch.value) ? patch.value : [patch.value], named: (item) => isPlainJsonObject(item) && gone(item.destination) };
-    if (field === 'applications' && category === 'application' && patchLayer(patch) === 'technology') return { items: Array.isArray(patch.value) ? patch.value : [patch.value], named: gone };
-    if (field === 'uses' && category === 'technology' && patchLayer(patch) === 'technology') return { items: Array.isArray(patch.value) ? patch.value : [patch.value], named: gone };
+    if (field === 'relationships' && patchLayer(patch) === category)
+      return {
+        items: Array.isArray(patch.value) ? patch.value : [patch.value],
+        named: (item) => isPlainJsonObject(item) && gone(item.destination)
+      };
+    if (field === 'applications' && category === 'application' && patchLayer(patch) === 'technology')
+      return { items: Array.isArray(patch.value) ? patch.value : [patch.value], named: gone };
+    if (field === 'uses' && category === 'technology' && patchLayer(patch) === 'technology')
+      return { items: Array.isArray(patch.value) ? patch.value : [patch.value], named: gone };
     return null;
   };
   for (const patch of mf.content.patches) {
     if (patch && typeof patch === 'object') {
-      if (patchLayer(patch) === category && (gone(readIsMissing(patch.target) ? null : String(patch.target)) || (isPlainJsonObject(patch.where) && gone(patch.where.destination)))) { modified = true; continue; }
+      if (
+        patchLayer(patch) === category &&
+        (gone(readIsMissing(patch.target) ? null : String(patch.target)) ||
+          (isPlainJsonObject(patch.where) && gone(patch.where.destination)))
+      ) {
+        modified = true;
+        continue;
+      }
       const operator = String(patch.operator).toUpperCase();
-      const list = !readIsMissing(patch.value) && (operator === 'ADD' || operator === 'SET') && !patch.where ? listOf(patch) : null;
+      const list =
+        !readIsMissing(patch.value) && (operator === 'ADD' || operator === 'SET') && !patch.where
+          ? listOf(patch)
+          : null;
       if (list) {
         const left = list.items.filter((item) => !list.named(item));
         if (left.length !== list.items.length) {
@@ -423,7 +598,7 @@ function prunePatchesNaming(plateau, deletedRefs, category) {
     kept.push(patch);
   }
   if (!modified) return null;
-  if (kept.length) mf.content.patches = kept; else delete mf.content.patches;
+  if (kept.length) mf.content.patches = kept;
+  else delete mf.content.patches;
   return mf;
 }
-

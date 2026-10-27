@@ -46,12 +46,18 @@ function yamlStringNeedsQuoting(str) {
 function escapeYamlDoubleQuoted(str) {
   return String(str).replace(/[\\"\u0000-\u001f\u007f\u0085\u2028\u2029\ufeff]/g, (ch) => {
     switch (ch) {
-      case '\\': return '\\\\';
-      case '"': return '\\"';
-      case '\n': return '\\n';
-      case '\t': return '\\t';
-      case '\r': return '\\r';
-      default: return '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0');
+      case '\\':
+        return '\\\\';
+      case '"':
+        return '\\"';
+      case '\n':
+        return '\\n';
+      case '\t':
+        return '\\t';
+      case '\r':
+        return '\\r';
+      default:
+        return '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0');
     }
   });
 }
@@ -107,7 +113,7 @@ function serializeYamlValue(value, indent) {
         for (let k = 0; k < keys.length; k++) {
           const key = keys[k];
           const val = item[key];
-          const prefix = (k === 0) ? (ind + '- ') : ' '.repeat(restCol);
+          const prefix = k === 0 ? ind + '- ' : ' '.repeat(restCol);
           if (isYamlComplexValue(val)) {
             lines.push(prefix + serializeYamlKey(key) + ':');
             lines.push(serializeYamlValue(val, restCol + 2));
@@ -151,4 +157,3 @@ function serializeYamlValue(value, indent) {
 function serializeManifestFile(header, content) {
   return serializeYamlValue({ header: header, content: content }, 0);
 }
-

@@ -90,7 +90,8 @@ function lastLineOfBlockWithComments(original, last, itemIndent) {
  * and the comment is indented deeper than the item (`itemLine`, the `- ` line of the block in the file), as the keys of that sibling are. `before` is `emittedBlockOf` of the block.
  */
 function deeperThanItemAfterSibling(commentLine, before, itemLine) {
-  const siblingBefore = before.start > 0 && yamlIndentOf(before.lines[before.start - 1]) > yamlIndentOf(before.lines[before.start]);
+  const siblingBefore =
+    before.start > 0 && yamlIndentOf(before.lines[before.start - 1]) > yamlIndentOf(before.lines[before.start]);
   return siblingBefore && yamlIndentOf(commentLine) > yamlIndentOf(itemLine);
 }
 
@@ -102,7 +103,8 @@ function deeperThanItemAfterSibling(commentLine, before, itemLine) {
  * ordinary patch, which writes the moved lines as the emitter does.
  */
 function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
-  if (oldText.charCodeAt(0) === 0xfeff) { // a byte-order mark stays where it is (#119)
+  if (oldText.charCodeAt(0) === 0xfeff) {
+    // a byte-order mark stays where it is (#119)
     const moved = moveBlockInText(oldText.slice(1), oldValue, oldPath, newValue, newPath);
     return moved === null ? null : '\ufeff' + moved;
   }
@@ -130,7 +132,8 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
     let cutFrom = before.start;
     if (!same(before.lines.slice(0, cutFrom).concat(before.lines.slice(before.end)), middle)) {
       cutFrom = before.start - 1;
-      if (cutFrom < 0 || !same(before.lines.slice(0, cutFrom).concat(before.lines.slice(before.end)), middle)) return null;
+      if (cutFrom < 0 || !same(before.lines.slice(0, cutFrom).concat(before.lines.slice(before.end)), middle))
+        return null;
     }
     let putAt = after.start;
     if (!same(after.lines.slice(0, putAt).concat(after.lines.slice(after.end)), middle)) {
@@ -141,11 +144,20 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
     if (located === null) return null;
     const { place, spans } = located;
     const first = place[before.start];
-    const last = lastLineOfBlockWithComments(original, place[before.end - 1] + spans[before.end - 1], yamlIndentOf(original[first])); // and the comments that follow it (#119)
+    const last = lastLineOfBlockWithComments(
+      original,
+      place[before.end - 1] + spans[before.end - 1],
+      yamlIndentOf(original[first])
+    ); // and the comments that follow it (#119)
     // the comments just above the element are its own; the lines before them are not
     const floor = place[before.start - 1] + spans[before.start - 1];
     let carryFrom = first;
-    while (carryFrom - 1 > floor && original[carryFrom - 1].trim().startsWith('#') && !deeperThanItemAfterSibling(original[carryFrom - 1], before, original[first])) carryFrom--;
+    while (
+      carryFrom - 1 > floor &&
+      original[carryFrom - 1].trim().startsWith('#') &&
+      !deeperThanItemAfterSibling(original[carryFrom - 1], before, original[first])
+    )
+      carryFrom--;
     const delta = yamlIndentOf(after.lines[after.start]) - yamlIndentOf(before.lines[before.start]);
     const carried = original.slice(carryFrom, last + 1).map((line) => shiftYamlLine(line, delta));
     const removeFrom = cutFrom < before.start ? place[cutFrom] : carryFrom;
@@ -173,7 +185,8 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
  * the caller then keeps the ordinary patch, which writes the file as the emitter does (the block is gone, with its comments).
  */
 function cutBlockFromText(oldText, oldValue, oldPath) {
-  if (oldText.charCodeAt(0) === 0xfeff) { // a byte-order mark stays where it is (#119)
+  if (oldText.charCodeAt(0) === 0xfeff) {
+    // a byte-order mark stays where it is (#119)
     const out = cutBlockFromText(oldText.slice(1), oldValue, oldPath);
     return out === null ? null : Object.assign({}, out, { text: '\ufeff' + out.text });
   }
@@ -198,16 +211,26 @@ function cutBlockFromText(oldText, oldValue, oldPath) {
     let cutFrom = before.start; // the last child leaving takes the `elements:` line with it
     if (!same(before.lines.slice(0, cutFrom).concat(before.lines.slice(before.end)), middle)) {
       cutFrom = before.start - 1;
-      if (cutFrom < 0 || !same(before.lines.slice(0, cutFrom).concat(before.lines.slice(before.end)), middle)) return null;
+      if (cutFrom < 0 || !same(before.lines.slice(0, cutFrom).concat(before.lines.slice(before.end)), middle))
+        return null;
     }
     const located = locateEmittedLines(original, before.lines);
     if (located === null) return null;
     const { place, spans } = located;
     const first = place[before.start];
-    const last = lastLineOfBlockWithComments(original, place[before.end - 1] + spans[before.end - 1], yamlIndentOf(original[first])); // and the comments that follow it (#119)
+    const last = lastLineOfBlockWithComments(
+      original,
+      place[before.end - 1] + spans[before.end - 1],
+      yamlIndentOf(original[first])
+    ); // and the comments that follow it (#119)
     const floor = place[before.start - 1] + spans[before.start - 1]; // the comments just above the element are its own; the lines before them are not
     let carryFrom = first;
-    while (carryFrom - 1 > floor && original[carryFrom - 1].trim().startsWith('#') && !deeperThanItemAfterSibling(original[carryFrom - 1], before, original[first])) carryFrom--;
+    while (
+      carryFrom - 1 > floor &&
+      original[carryFrom - 1].trim().startsWith('#') &&
+      !deeperThanItemAfterSibling(original[carryFrom - 1], before, original[first])
+    )
+      carryFrom--;
     const removeFrom = cutFrom < before.start ? place[cutFrom] : carryFrom;
     let carried = original.slice(carryFrom, last + 1);
     const out = original.filter((line, i) => i < removeFrom || i > last);
@@ -227,7 +250,8 @@ function cutBlockFromText(oldText, oldValue, oldPath) {
  * of the file is not one this can follow or the result does not read as `newValue`: the caller then keeps the ordinary patch, which writes the block as the emitter does.
  */
 function pasteBlockInText(oldText, oldValue, newValue, newPath, carried, indent) {
-  if (oldText.charCodeAt(0) === 0xfeff) { // a byte-order mark stays where it is (#119)
+  if (oldText.charCodeAt(0) === 0xfeff) {
+    // a byte-order mark stays where it is (#119)
     const pasted = pasteBlockInText(oldText.slice(1), oldValue, newValue, newPath, carried, indent);
     return pasted === null ? null : '\ufeff' + pasted;
   }
@@ -282,14 +306,22 @@ function manifestTextFromBlock(carried, header, content) {
     const column = yamlIndentOf(carried[dash]) + 2;
     const lines = carried.slice();
     lines[dash] = lines[dash].replace('-', ' ');
-    const kindLines = lines.map((line, i) => (i >= dash && yamlIndentOf(line) === column && /^kind\s*:/.test(line.trim()) ? i : -1)).filter((i) => i !== -1);
+    const kindLines = lines
+      .map((line, i) => (i >= dash && yamlIndentOf(line) === column && /^kind\s*:/.test(line.trim()) ? i : -1))
+      .filter((i) => i !== -1);
     if (kindLines.length !== 1) return null;
     // the comments above the item sit where its keys now are; the lines of the item go to the column of a `content`
-    const body = lines.map((line, i) => (i < dash ? (line.trim() === '' ? line : '  ' + line.trim()) : shiftYamlLine(line, 2 - column))).filter((line, i) => i !== kindLines[0]);
+    const body = lines
+      .map((line, i) => (i < dash ? (line.trim() === '' ? line : '  ' + line.trim()) : shiftYamlLine(line, 2 - column)))
+      .filter((line, i) => i !== kindLines[0]);
     const head = serializeManifestFile(header, content).split('\n');
     const at = head.indexOf('content:');
     if (at === -1) return null;
-    const text = head.slice(0, at + 1).concat(body).join('\n') + '\n';
+    const text =
+      head
+        .slice(0, at + 1)
+        .concat(body)
+        .join('\n') + '\n';
     return serializeYamlValue(parseYamlAsModel(text), 0) === serializeManifestFile(header, content) ? text : null;
   } catch (e) {
     return null;
@@ -300,4 +332,3 @@ function manifestTextFromBlock(carried, header, content) {
 function reserializeManifestFile(mf) {
   return patchYamlText(mf.rawText, { header: mf.header, content: mf.content });
 }
-

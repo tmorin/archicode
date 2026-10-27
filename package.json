@@ -1,8 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "format": "prettier --write \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/e2e/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" eslint.config.mjs playwright.config.js",
-    "format:check": "prettier --check \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/e2e/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" eslint.config.mjs playwright.config.js",
+    "format": "prettier --write \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/e2e/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" \"src/main/editor/**/*.{js,mjs}\" eslint.config.mjs playwright.config.js",
+    "format:check": "prettier --check \"src/**/*.java\" \"src/test/javascript/**/*.js\" \"src/test/e2e/**/*.js\" \"src/test/resources/**/*.mjs\" \"scripts/**/*.mjs\" \"src/main/editor/**/*.{js,mjs}\" eslint.config.mjs playwright.config.js",
     "prelint": "node scripts/build-editor.mjs",
     "lint": "node scripts/extract-editor-script.mjs && eslint --max-warnings 0 eslint.config.mjs playwright.config.js scripts src/test target/eslint-editor",
     "editor:build": "node scripts/build-editor.mjs",

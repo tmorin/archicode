@@ -8,7 +8,9 @@ function formatCommaList(arr) {
 /** Join a {k: v} map for a relationship's comma-separated `k=v` tags text input. */
 function formatCommaKvList(obj) {
   if (!obj || typeof obj !== 'object') return '';
-  return yamlKeysOf(obj).map((k) => k + '=' + obj[k]).join(', ');
+  return yamlKeysOf(obj)
+    .map((k) => k + '=' + obj[k])
+    .join(', ');
 }
 
 /** Parse a comma-separated text input into a trimmed, non-empty-entries string[]. */
@@ -73,8 +75,11 @@ const AUTO_GROW_MAX_LINES = 10;
 function autosizeTextarea(el) {
   const style = window.getComputedStyle(el);
   const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
-  const verticalExtra = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0) +
-                         (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+  const verticalExtra =
+    (parseFloat(style.paddingTop) || 0) +
+    (parseFloat(style.paddingBottom) || 0) +
+    (parseFloat(style.borderTopWidth) || 0) +
+    (parseFloat(style.borderBottomWidth) || 0);
   const maxHeight = lineHeight * AUTO_GROW_MAX_LINES + verticalExtra;
   el.style.height = 'auto';
   const contentHeight = el.scrollHeight;
@@ -117,30 +122,46 @@ function autosizeAllTextareas() {
 /** Delegated `input` listener (DEC — mirrors the existing click/pointerdown/dblclick delegation on #app): resizes as the user types. */
 function handleAppInput(e) {
   if (e.target.matches && e.target.matches('[data-settings-current]')) return; // the list of Settings writes on `change`; choosing in it is no typed draft (run 0111, #111)
-  if (e.target.matches && e.target.matches('input[name="theme-choice"]')) { // a preference of the browser, not a change of the workspace
+  if (e.target.matches && e.target.matches('input[name="theme-choice"]')) {
+    // a preference of the browser, not a change of the workspace
     setThemeChoice(e.target.value);
     return;
   }
-  if (e.target.matches && e.target.matches('[data-dialog-filter]')) { // the search of the Move dialog
+  if (e.target.matches && e.target.matches('[data-dialog-filter]')) {
+    // the search of the Move dialog
     applyMoveFilter(e.target.value);
     return;
   }
-  if (e.target.tagName === 'INPUT' && e.target.type === 'text' && e.target.closest && e.target.closest('[data-view-field], [data-view-list]')) lightSaveForTypedViewText();
+  if (
+    e.target.tagName === 'INPUT' &&
+    e.target.type === 'text' &&
+    e.target.closest &&
+    e.target.closest('[data-view-field], [data-view-list]')
+  )
+    lightSaveForTypedViewText();
   if (!draftTyped && e.target.closest && e.target.closest('.element-edition-form, .settings-view, .file-view')) {
     draftTyped = true;
     refreshSaveAllButton();
   }
-  if (e.target.matches && e.target.matches('[data-dialog-new]')) { // typing a name picks "New story"
+  if (e.target.matches && e.target.matches('[data-dialog-new]')) {
+    // typing a name picks "New story"
     const choice = document.querySelector('input[name="story-choice"][value="' + NEW_STORY_CHOICE + '"]');
     if (choice) choice.checked = true;
     return;
   }
   if (e.target.matches && e.target.matches('[data-story-repair]')) {
-    if (e.target.value) repairStoryStep(e.target.getAttribute('data-story'), Number(e.target.getAttribute('data-step')), e.target.value);
+    if (e.target.value)
+      repairStoryStep(e.target.getAttribute('data-story'), Number(e.target.getAttribute('data-step')), e.target.value);
     return;
   }
-  if (e.target.matches && e.target.matches('[data-story-step-plateau]')) { // wave 015 (run 0101): where a step is told, and what it is compared with
-    setStepPlateau(e.target.getAttribute('data-story'), Number(e.target.getAttribute('data-step')), e.target.getAttribute('data-story-step-plateau'), e.target.value);
+  if (e.target.matches && e.target.matches('[data-story-step-plateau]')) {
+    // wave 015 (run 0101): where a step is told, and what it is compared with
+    setStepPlateau(
+      e.target.getAttribute('data-story'),
+      Number(e.target.getAttribute('data-step')),
+      e.target.getAttribute('data-story-step-plateau'),
+      e.target.value
+    );
     return;
   }
   const storyField = e.target.closest && e.target.closest('[data-story-field]');
@@ -148,11 +169,13 @@ function handleAppInput(e) {
     updateStoryField(storyField);
     return;
   }
-  if (e.target.getAttribute && e.target.getAttribute('data-changes-filter')) { // wave 015 (run 0103): the two filters of the list of changes
+  if (e.target.getAttribute && e.target.getAttribute('data-changes-filter')) {
+    // wave 015 (run 0103): the two filters of the list of changes
     setChangesFilter(e.target.getAttribute('data-changes-filter'), e.target.value);
     return;
   }
-  if (e.target.getAttribute && e.target.getAttribute('data-band-select')) { // wave 015 (run 0097): the two lists of the band
+  if (e.target.getAttribute && e.target.getAttribute('data-band-select')) {
+    // wave 015 (run 0097): the two lists of the band
     chooseOnBand(e.target);
     return;
   }
@@ -190,7 +213,11 @@ function readRelationshipDraftFromRow(row) {
   // A field the user did not touch keeps the model's own value: re-splitting its text on commas would corrupt a
   // qualifier like `A, B` or a tag like `ports=80,443`. Only a field whose text differs from the one rendered
   // (`data-initial`) is parsed; `undefined` means "leave as it is".
-  const edited = (input) => !!input && (!input.getAttribute || input.getAttribute('data-initial') === null || input.getAttribute('data-initial') !== input.value);
+  const edited = (input) =>
+    !!input &&
+    (!input.getAttribute ||
+      input.getAttribute('data-initial') === null ||
+      input.getAttribute('data-initial') !== input.value);
   return {
     valid: true,
     destination: draft.destination,
@@ -211,13 +238,16 @@ function applyRelationshipDraft(rel, d) {
   if (String(out.destination) !== d.destination) out.destination = d.destination;
   const originalLabel = out.label === undefined || out.label === null ? '' : String(out.label).trim();
   if ((d.label === undefined ? '' : d.label) !== originalLabel) {
-    if (d.label === undefined) delete out.label; else out.label = d.label;
+    if (d.label === undefined) delete out.label;
+    else out.label = d.label;
   }
   if (d.qualifiers !== undefined) {
-    if (d.qualifiers.length === 0) delete out.qualifiers; else out.qualifiers = d.qualifiers;
+    if (d.qualifiers.length === 0) delete out.qualifiers;
+    else out.qualifiers = d.qualifiers;
   }
   if (d.tags !== undefined) {
-    if (Object.keys(d.tags).length === 0) delete out.tags; else out.tags = d.tags;
+    if (Object.keys(d.tags).length === 0) delete out.tags;
+    else out.tags = d.tags;
   }
   return out;
 }
@@ -240,12 +270,19 @@ function readElementDraft(reference, layer) {
 
   let hasError = false;
   const idResult = validateElementIdRename(idInput ? idInput.value : '', reference, category);
-  if (!idResult.valid) { setInlineErrorText('edit-id-error', idResult.error); hasError = true; }
+  if (!idResult.valid) {
+    setInlineErrorText('edit-id-error', idResult.error);
+    hasError = true;
+  }
 
   const relationshipDrafts = new Map();
   for (const row of rows) {
     const draft = readRelationshipDraftFromRow(row);
-    if (!draft.valid) { setRowInlineErrorText(row, draft.error); hasError = true; continue; }
+    if (!draft.valid) {
+      setRowInlineErrorText(row, draft.error);
+      hasError = true;
+      continue;
+    }
     relationshipDrafts.set(parseInt(row.getAttribute('data-index'), 10), draft);
   }
   if (hasError) return { valid: false };
@@ -260,15 +297,20 @@ function readElementDraft(reference, layer) {
       const oldId = node.id;
       if (String(oldId) !== idResult.newId) node.id = idResult.newId;
       // name and description: absent when empty, and untouched (type included) when the text is the one rendered
-      if (name === null) delete node.name; else if (node.name === undefined || node.name === null || String(node.name) !== name) node.name = name;
-      if (description === null) delete node.description; else if (node.description === undefined || node.description === null || String(node.description) !== description) node.description = description;
+      if (name === null) delete node.name;
+      else if (node.name === undefined || node.name === null || String(node.name) !== name) node.name = name;
+      if (description === null) delete node.description;
+      else if (node.description === undefined || node.description === null || String(node.description) !== description)
+        node.description = description;
       if (relationshipDrafts.size > 0 && Array.isArray(node.relationships)) {
         node.relationships = node.relationships.map((rel, i) => {
           const d = relationshipDrafts.get(i);
           return d ? applyRelationshipDraft(rel, d) : rel;
         });
       }
-      return String(oldId) !== idResult.newId ? { renamedTo: { from: reference, to: idResult.newReference } } : undefined;
+      return String(oldId) !== idResult.newId
+        ? { renamedTo: { from: reference, to: idResult.newReference } }
+        : undefined;
     }
   };
 }
@@ -285,9 +327,19 @@ function commitElementWithDraft(reference, structuralFn) {
   if (!draft.valid) return false;
   // wave 016 (run 0113, #116): a rename rewrites the views and the stories everywhere, and a plateau beside the one drawn may still declare the old reference. The author is told
   // first, in a dialog, which plateaus and which views and steps; the write waits for the answer, and is the same write as without the dialog.
-  const impact = draft.renamed ? renameSiblingImpact(draft.renamed.from, draft.renamed.to, layerOfReference(reference) || 'application') : null;
+  const impact = draft.renamed
+    ? renameSiblingImpact(draft.renamed.from, draft.renamed.to, layerOfReference(reference) || 'application')
+    : null;
   if (impact) {
-    openAppDialog({ kind: 'rename-siblings', reference, impact, plateau: impact.plateau, onConfirm: () => { writeElementDraft(reference, layer, draft, structuralFn); } });
+    openAppDialog({
+      kind: 'rename-siblings',
+      reference,
+      impact,
+      plateau: impact.plateau,
+      onConfirm: () => {
+        writeElementDraft(reference, layer, draft, structuralFn);
+      }
+    });
     return false; // "Save all changes" waits, as for the dialog of the plateaus a write changes
   }
   return writeElementDraft(reference, layer, draft, structuralFn);
@@ -299,11 +351,15 @@ function writeElementDraft(reference, layer, draft, structuralFn) {
   const typedForm = keepElementForm();
   try {
     // a rename rewrites the references to the element, in the model and in the UI state, inside the commit (DEC-8)
-    const written = commitElementEdit(reference, (node) => {
-      const renamed = draft.apply(node);
-      if (structuralFn) structuralFn(node);
-      return renamed;
-    }, layer);
+    const written = commitElementEdit(
+      reference,
+      (node) => {
+        const renamed = draft.apply(node);
+        if (structuralFn) structuralFn(node);
+        return renamed;
+      },
+      layer
+    );
     if (written && written.pending) return false; // wave 014 (run 0082): the author is asked first (the plateaus it changes); nothing is applied yet, and "Save all changes" waits
   } catch (e) {
     saveStatus = { state: 'error', failedFile: reference, message: e && e.message ? e.message : String(e) };
@@ -321,20 +377,49 @@ function renderRelationshipEditRowHtml(reference, rel, index) {
   const destination = rel ? rel.destination : '';
   // the label as written in the manifest, not the display fallback: an unlabeled relationship stays unlabeled when saved
   const label = rel && rel.rawLabel !== undefined && rel.rawLabel !== null ? String(rel.rawLabel) : '';
-  const labelPlaceholder = 'label' + (AppState.workspace ? ' (default: ' + AppState.workspace.settings.relationships.defaultSyntheticLabel + ')' : '');
+  const labelPlaceholder =
+    'label' +
+    (AppState.workspace ? ' (default: ' + AppState.workspace.settings.relationships.defaultSyntheticLabel + ')' : '');
   const qualifiersText = rel ? formatCommaList(rel.qualifiers) : '';
   const tagsText = rel ? formatCommaKvList(rel.tags) : '';
   // data-initial: the text as rendered, so that a field the user did not touch is not parsed (and corrupted) on save
-  let html = '<div class="relationship-edit-row' + (isNew ? ' relationship-edit-row-new' : '') + '"' +
-               (isNew ? '' : ' data-index="' + index + '"') + '>';
-  html += '<input type="text" class="rel-destination-input" placeholder="destination" aria-label="Relationship destination" list="archicode-all-references" value="' + escapeHtml(destination) + '">';
-  html += '<input type="text" class="rel-label-input" placeholder="' + escapeHtml(labelPlaceholder) + '" aria-label="Relationship label" value="' + escapeHtml(label) + '">';
-  html += '<input type="text" class="rel-qualifiers-input" placeholder="qualifiers (comma-separated)" aria-label="Relationship qualifiers, comma-separated"' + (isNew ? '' : ' data-initial="' + escapeHtml(qualifiersText) + '"') + ' value="' + escapeHtml(qualifiersText) + '">';
-  html += '<input type="text" class="rel-tags-input" placeholder="tags (k=v, comma-separated)" aria-label="Relationship tags, comma-separated key=value pairs"' + (isNew ? '' : ' data-initial="' + escapeHtml(tagsText) + '"') + ' value="' + escapeHtml(tagsText) + '">';
+  let html =
+    '<div class="relationship-edit-row' +
+    (isNew ? ' relationship-edit-row-new' : '') +
+    '"' +
+    (isNew ? '' : ' data-index="' + index + '"') +
+    '>';
+  html +=
+    '<input type="text" class="rel-destination-input" placeholder="destination" aria-label="Relationship destination" list="archicode-all-references" value="' +
+    escapeHtml(destination) +
+    '">';
+  html +=
+    '<input type="text" class="rel-label-input" placeholder="' +
+    escapeHtml(labelPlaceholder) +
+    '" aria-label="Relationship label" value="' +
+    escapeHtml(label) +
+    '">';
+  html +=
+    '<input type="text" class="rel-qualifiers-input" placeholder="qualifiers (comma-separated)" aria-label="Relationship qualifiers, comma-separated"' +
+    (isNew ? '' : ' data-initial="' + escapeHtml(qualifiersText) + '"') +
+    ' value="' +
+    escapeHtml(qualifiersText) +
+    '">';
+  html +=
+    '<input type="text" class="rel-tags-input" placeholder="tags (k=v, comma-separated)" aria-label="Relationship tags, comma-separated key=value pairs"' +
+    (isNew ? '' : ' data-initial="' + escapeHtml(tagsText) + '"') +
+    ' value="' +
+    escapeHtml(tagsText) +
+    '">';
   if (isNew) {
     html += '<button type="button" data-action="add-relationship" data-ref="' + refAttr + '">Add</button>';
   } else {
-    html += '<button type="button" data-action="remove-relationship" data-ref="' + refAttr + '" data-index="' + index + '">Remove</button>';
+    html +=
+      '<button type="button" data-action="remove-relationship" data-ref="' +
+      refAttr +
+      '" data-index="' +
+      index +
+      '">Remove</button>';
   }
   html += '<span class="inline-error"></span>';
   html += '</div>';
@@ -358,18 +443,26 @@ function renderElementEditionFormHtml(reference) {
   let html = '<div class="element-edition-form">';
 
   html += renderElementHeaderHtml(
-    '<h2>' + escapeHtml(record.name || record.id) + '</h2><span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>',
+    '<h2>' +
+      escapeHtml(record.name || record.id) +
+      '</h2><span class="element-kind-badge">' +
+      escapeHtml(record.kind) +
+      '</span>',
     // Same order as every header: destructive first, primary last.
     // TDD-0010 DEC-4: Delete is always present — even a leaf can be the
     // destination of a relationship elsewhere.
-    '<button type="button" class="btn-danger" data-action="request-delete-element" data-ref="' + refAttr + '">Delete</button>' +
-    (moveIsPossible(reference, record.layer)
-      ? '<button type="button" data-action="open-move-dialog" data-ref="' + refAttr + '" title="Put this element, and everything inside it, under another parent. The references to it follow.">Move</button>'
-      : '') +
-    (childKindOptionsFor(record).length > 0
-      ? '<button type="button" data-action="open-create-child-form" data-ref="' + refAttr + '">Add child</button>'
-      : '') +
-    '<button type="button" data-action="toggle-element-edit">Back to view</button>'
+    '<button type="button" class="btn-danger" data-action="request-delete-element" data-ref="' +
+      refAttr +
+      '">Delete</button>' +
+      (moveIsPossible(reference, record.layer)
+        ? '<button type="button" data-action="open-move-dialog" data-ref="' +
+          refAttr +
+          '" title="Put this element, and everything inside it, under another parent. The references to it follow.">Move</button>'
+        : '') +
+      (childKindOptionsFor(record).length > 0
+        ? '<button type="button" data-action="open-create-child-form" data-ref="' + refAttr + '">Add child</button>'
+        : '') +
+      '<button type="button" data-action="toggle-element-edit">Back to view</button>'
   );
 
   // TDD-0010 DEC-4: a pending delete confirmation for this exact element
@@ -383,76 +476,146 @@ function renderElementEditionFormHtml(reference) {
     html += '<h3>Confirm delete</h3>';
     if (pendingDeleteConfirmation.removal) {
       const removal = pendingDeleteConfirmation.removal;
-      html += '<p class="delete-removal">This adds a <code>REMOVE</code> patch to the plateau <code>' + escapeHtml(removal.plateau) + '</code>. The element stays in <code>' + escapeHtml(removal.declaredIn) + '</code> and in the plateaus that do not remove it; here the kernel takes it out, with what is inside it and the links towards it.</p>';
+      html +=
+        '<p class="delete-removal">This adds a <code>REMOVE</code> patch to the plateau <code>' +
+        escapeHtml(removal.plateau) +
+        '</code>. The element stays in <code>' +
+        escapeHtml(removal.declaredIn) +
+        '</code> and in the plateaus that do not remove it; here the kernel takes it out, with what is inside it and the links towards it.</p>';
     }
     // the whole subtree goes: what is nested in the element, and the manifests attached below it
     if (deletedReferences.length > 1) {
-      html += '<p>This also deletes ' + (deletedReferences.length - 1) + ' element' + (deletedReferences.length === 2 ? '' : 's') + ' inside it:</p>' +
-              '<ul class="relationship-list">' + deletedReferences.filter((ref) => ref !== reference).map((ref) => '<li>' + escapeHtml(ref) + '</li>').join('') + '</ul>';
+      html +=
+        '<p>This also deletes ' +
+        (deletedReferences.length - 1) +
+        ' element' +
+        (deletedReferences.length === 2 ? '' : 's') +
+        ' inside it:</p>' +
+        '<ul class="relationship-list">' +
+        deletedReferences
+          .filter((ref) => ref !== reference)
+          .map((ref) => '<li>' + escapeHtml(ref) + '</li>')
+          .join('') +
+        '</ul>';
     }
     if (deletedFiles.length > 0) {
-      html += '<p>' + (deletedFiles.length === 1 ? 'This manifest file is removed' : 'These ' + deletedFiles.length + ' manifest files are removed') + ' when you save:</p>' +
-              '<ul class="relationship-list">' + deletedFiles.map((p) => '<li>' + escapeHtml(p) + '</li>').join('') + '</ul>';
+      html +=
+        '<p>' +
+        (deletedFiles.length === 1
+          ? 'This manifest file is removed'
+          : 'These ' + deletedFiles.length + ' manifest files are removed') +
+        ' when you save:</p>' +
+        '<ul class="relationship-list">' +
+        deletedFiles.map((p) => '<li>' + escapeHtml(p) + '</li>').join('') +
+        '</ul>';
     }
     if (affected.length === 0) {
       html += '<p class="muted">No other relationship is affected.</p>';
     } else {
-      html += '<p>These links elsewhere point at what is deleted, and are removed with it:</p><ul class="relationship-list">';
+      html +=
+        '<p>These links elsewhere point at what is deleted, and are removed with it:</p><ul class="relationship-list">';
       for (const a of affected) {
-        html += '<li>' + escapeHtml(a.ownerSourceFile) + ' (' + escapeHtml(a.ownerReference) + '): ' + escapeHtml(a.label) + ' &rarr; ' + escapeHtml(a.destination) + '</li>';
+        html +=
+          '<li>' +
+          escapeHtml(a.ownerSourceFile) +
+          ' (' +
+          escapeHtml(a.ownerReference) +
+          '): ' +
+          escapeHtml(a.label) +
+          ' &rarr; ' +
+          escapeHtml(a.destination) +
+          '</li>';
       }
       html += '</ul>';
     }
-    html += '<button type="button" data-action="cancel-delete-element">Cancel</button> ' +
-            '<button type="button" class="btn-danger-solid" data-action="confirm-delete-element">Confirm delete</button>';
+    html +=
+      '<button type="button" data-action="cancel-delete-element">Cancel</button> ' +
+      '<button type="button" class="btn-danger-solid" data-action="confirm-delete-element">Confirm delete</button>';
     html += '</div>';
   }
 
   // id / name / description — committed together with the rest of the form by "Save all changes" (see readElementDraft).
   html += '<div class="edition-section">';
-  html += '<div class="field-row"><label class="field-label" for="edit-id-input">Id</label><span class="field-value">' +
-            '<input type="text" id="edit-id-input" value="' + escapeHtml(record.id) + '">' +
-            '<span class="inline-error" id="edit-id-error"></span>' +
-          '</span></div>';
-  html += '<div class="field-row"><label class="field-label" for="edit-name-input">Name</label><span class="field-value">' +
-            '<input type="text" id="edit-name-input" value="' + escapeHtml(record.name !== null && record.name !== undefined ? record.name : '') + '">' +
-          '</span></div>';
-  html += '<div class="field-row"><label class="field-label" for="edit-description-input">Description</label><span class="field-value">' +
-            '<textarea id="edit-description-input" class="auto-grow-textarea">' + escapeHtml(record.description !== null && record.description !== undefined ? record.description : '') + '</textarea>' +
-          '</span></div>';
+  html +=
+    '<div class="field-row"><label class="field-label" for="edit-id-input">Id</label><span class="field-value">' +
+    '<input type="text" id="edit-id-input" value="' +
+    escapeHtml(record.id) +
+    '">' +
+    '<span class="inline-error" id="edit-id-error"></span>' +
+    '</span></div>';
+  html +=
+    '<div class="field-row"><label class="field-label" for="edit-name-input">Name</label><span class="field-value">' +
+    '<input type="text" id="edit-name-input" value="' +
+    escapeHtml(record.name !== null && record.name !== undefined ? record.name : '') +
+    '">' +
+    '</span></div>';
+  html +=
+    '<div class="field-row"><label class="field-label" for="edit-description-input">Description</label><span class="field-value">' +
+    '<textarea id="edit-description-input" class="auto-grow-textarea">' +
+    escapeHtml(record.description !== null && record.description !== undefined ? record.description : '') +
+    '</textarea>' +
+    '</span></div>';
   html += '</div>';
 
   // qualifiers
   html += '<div class="edition-section"><h3>Qualifiers</h3>';
   if (record.qualifiers && record.qualifiers.length) {
-    html += record.qualifiers.map((q, i) =>
-      '<span class="pill">' + escapeHtml(q) +
-        ' <button type="button" class="pill-remove" data-action="remove-qualifier" data-ref="' + refAttr + '" data-index="' + i + '">&times;</button>' +
-      '</span>'
-    ).join('');
+    html += record.qualifiers
+      .map(
+        (q, i) =>
+          '<span class="pill">' +
+          escapeHtml(q) +
+          ' <button type="button" class="pill-remove" data-action="remove-qualifier" data-ref="' +
+          refAttr +
+          '" data-index="' +
+          i +
+          '">&times;</button>' +
+          '</span>'
+      )
+      .join('');
   }
-  html += '<div class="edition-add-row">' +
-            '<input type="text" id="add-qualifier-input" placeholder="new qualifier" aria-label="New qualifier">' +
-            '<button type="button" data-action="add-qualifier" data-ref="' + refAttr + '">Add</button>' +
-            '<span class="inline-error" id="add-qualifier-error"></span>' +
-          '</div>';
+  html +=
+    '<div class="edition-add-row">' +
+    '<input type="text" id="add-qualifier-input" placeholder="new qualifier" aria-label="New qualifier">' +
+    '<button type="button" data-action="add-qualifier" data-ref="' +
+    refAttr +
+    '">Add</button>' +
+    '<span class="inline-error" id="add-qualifier-error"></span>' +
+    '</div>';
   html += '</div>';
 
   // tags
   html += '<div class="edition-section"><h3>Tags</h3>';
   const tagKeys = record.tags ? yamlKeysOf(record.tags) : [];
   if (tagKeys.length) {
-    html += '<ul class="tag-list">' + tagKeys.map((k) =>
-      '<li><span class="tag-key">' + escapeHtml(k) + '</span>: <span class="tag-value">' + escapeHtml(String(record.tags[k])) + '</span> ' +
-        '<button type="button" class="pill-remove" data-action="remove-tag" data-ref="' + refAttr + '" data-key="' + escapeHtml(k) + '">&times;</button></li>'
-    ).join('') + '</ul>';
+    html +=
+      '<ul class="tag-list">' +
+      tagKeys
+        .map(
+          (k) =>
+            '<li><span class="tag-key">' +
+            escapeHtml(k) +
+            '</span>: <span class="tag-value">' +
+            escapeHtml(String(record.tags[k])) +
+            '</span> ' +
+            '<button type="button" class="pill-remove" data-action="remove-tag" data-ref="' +
+            refAttr +
+            '" data-key="' +
+            escapeHtml(k) +
+            '">&times;</button></li>'
+        )
+        .join('') +
+      '</ul>';
   }
-  html += '<div class="edition-add-row">' +
-            '<input type="text" id="add-tag-key-input" placeholder="key" aria-label="New tag key">' +
-            '<input type="text" id="add-tag-value-input" placeholder="value" aria-label="New tag value">' +
-            '<button type="button" data-action="add-tag" data-ref="' + refAttr + '">Add</button>' +
-            '<span class="inline-error" id="add-tag-error"></span>' +
-          '</div>';
+  html +=
+    '<div class="edition-add-row">' +
+    '<input type="text" id="add-tag-key-input" placeholder="key" aria-label="New tag key">' +
+    '<input type="text" id="add-tag-value-input" placeholder="value" aria-label="New tag value">' +
+    '<button type="button" data-action="add-tag" data-ref="' +
+    refAttr +
+    '">Add</button>' +
+    '<span class="inline-error" id="add-tag-error"></span>' +
+    '</div>';
   html += '</div>';
 
   // relationships
@@ -472,17 +635,28 @@ function renderElementEditionFormHtml(reference) {
   if (record.kind === 'node') {
     html += '<div class="edition-section"><h3>Applications</h3>';
     if (record.applications && record.applications.length) {
-      html += record.applications.map((a, i) =>
-        '<span class="pill">' + escapeHtml(a) +
-          ' <button type="button" class="pill-remove" data-action="remove-application" data-ref="' + refAttr + '" data-index="' + i + '">&times;</button>' +
-        '</span>'
-      ).join('');
+      html += record.applications
+        .map(
+          (a, i) =>
+            '<span class="pill">' +
+            escapeHtml(a) +
+            ' <button type="button" class="pill-remove" data-action="remove-application" data-ref="' +
+            refAttr +
+            '" data-index="' +
+            i +
+            '">&times;</button>' +
+            '</span>'
+        )
+        .join('');
     }
-    html += '<div class="edition-add-row">' +
-              '<input type="text" id="add-application-input" placeholder="new application" aria-label="New application reference" list="archicode-application-references">' +
-              '<button type="button" data-action="add-application" data-ref="' + refAttr + '">Add</button>' +
-              '<span class="inline-error" id="add-application-error"></span>' +
-            '</div>';
+    html +=
+      '<div class="edition-add-row">' +
+      '<input type="text" id="add-application-input" placeholder="new application" aria-label="New application reference" list="archicode-application-references">' +
+      '<button type="button" data-action="add-application" data-ref="' +
+      refAttr +
+      '">Add</button>' +
+      '<span class="inline-error" id="add-application-error"></span>' +
+      '</div>';
     html += '</div>';
   }
 
@@ -490,17 +664,28 @@ function renderElementEditionFormHtml(reference) {
   if (record.kind === 'environment') {
     html += '<div class="edition-section"><h3>Uses</h3>';
     if (record.uses && record.uses.length) {
-      html += record.uses.map((u, i) =>
-        '<span class="pill">' + escapeHtml(u) +
-          ' <button type="button" class="pill-remove" data-action="remove-use" data-ref="' + refAttr + '" data-index="' + i + '">&times;</button>' +
-        '</span>'
-      ).join('');
+      html += record.uses
+        .map(
+          (u, i) =>
+            '<span class="pill">' +
+            escapeHtml(u) +
+            ' <button type="button" class="pill-remove" data-action="remove-use" data-ref="' +
+            refAttr +
+            '" data-index="' +
+            i +
+            '">&times;</button>' +
+            '</span>'
+        )
+        .join('');
     }
-    html += '<div class="edition-add-row">' +
-              '<input type="text" id="add-use-input" placeholder="environment or node used" aria-label="Environment or node used" list="archicode-technology-references">' +
-              '<button type="button" data-action="add-use" data-ref="' + refAttr + '">Add</button>' +
-              '<span class="inline-error" id="add-use-error"></span>' +
-            '</div>';
+    html +=
+      '<div class="edition-add-row">' +
+      '<input type="text" id="add-use-input" placeholder="environment or node used" aria-label="Environment or node used" list="archicode-technology-references">' +
+      '<button type="button" data-action="add-use" data-ref="' +
+      refAttr +
+      '">Add</button>' +
+      '<span class="inline-error" id="add-use-error"></span>' +
+      '</div>';
     html += '</div>';
   }
 
@@ -512,7 +697,10 @@ function renderElementEditionFormHtml(reference) {
 
 /** The Replaces section is offered when there is a plateau to replace elements of (the workspace writes plateaus), or the element already says something: a workspace without plateaus has a form as it always had. */
 function replacesSectionShown(record) {
-  return !!(AppState.plateauTree && AppState.plateauTree.layered) || (Array.isArray(record.replaces) && record.replaces.length > 0);
+  return (
+    !!(AppState.plateauTree && AppState.plateauTree.layered) ||
+    (Array.isArray(record.replaces) && record.replaces.length > 0)
+  );
 }
 
 /**
@@ -523,22 +711,40 @@ function replacesFlagOf(record, reference) {
   const layer = record.layer || 'application';
   if (AppState.index[layer].has(String(reference))) return 'still in this plateau: ignored';
   if (!AppState.baseline || layerCompareIsFuture()) return ''; // with the future the plateau compared with is the one that comes after: it names no element this one replaces
-  return AppState.baseline.index[layer].has(String(reference)) ? '' : 'not in “' + plateauTitle(AppState.baseline.plateau) + '”';
+  return AppState.baseline.index[layer].has(String(reference))
+    ? ''
+    : 'not in “' + plateauTitle(AppState.baseline.plateau) + '”';
 }
 
 /** The Replaces section of the edit form: the list, each with its flag and a remove button, and a field to add one. */
 function renderReplacesEditionHtml(record, refAttr) {
   const replaces = Array.isArray(record.replaces) ? record.replaces : [];
-  let html = '<div class="edition-section" data-section="replaces"><h3>Replaces</h3>' +
+  let html =
+    '<div class="edition-section" data-section="replaces"><h3>Replaces</h3>' +
     '<p class="muted">The elements of the plateau this one is compared with that this element is the new place of (moved, renamed, split or merged). Written by you, never guessed.</p>';
-  html += replaces.map((entry, i) => {
-    const flag = replacesFlagOf(record, entry);
-    return '<span class="pill">' + escapeHtml(entry) + (flag ? '<span class="replaces-flag">' + escapeHtml(flag) + '</span>' : '') +
-      ' <button type="button" class="pill-remove" data-action="remove-replaces" data-ref="' + refAttr + '" data-index="' + i + '">&times;</button></span>';
-  }).join('');
-  html += '<div class="edition-add-row">' +
-    '<input type="text" id="add-replaces-input" placeholder="reference of the element it replaces" aria-label="Reference of the element this one replaces"' + (AppState.baseline ? ' list="archicode-baseline-references"' : '') + '>' +
-    '<button type="button" data-action="add-replaces" data-ref="' + refAttr + '">Add</button>' +
+  html += replaces
+    .map((entry, i) => {
+      const flag = replacesFlagOf(record, entry);
+      return (
+        '<span class="pill">' +
+        escapeHtml(entry) +
+        (flag ? '<span class="replaces-flag">' + escapeHtml(flag) + '</span>' : '') +
+        ' <button type="button" class="pill-remove" data-action="remove-replaces" data-ref="' +
+        refAttr +
+        '" data-index="' +
+        i +
+        '">&times;</button></span>'
+      );
+    })
+    .join('');
+  html +=
+    '<div class="edition-add-row">' +
+    '<input type="text" id="add-replaces-input" placeholder="reference of the element it replaces" aria-label="Reference of the element this one replaces"' +
+    (AppState.baseline ? ' list="archicode-baseline-references"' : '') +
+    '>' +
+    '<button type="button" data-action="add-replaces" data-ref="' +
+    refAttr +
+    '">Add</button>' +
     '<span class="inline-error" id="add-replaces-error"></span></div></div>';
   return html;
 }
@@ -549,7 +755,8 @@ function validateNewReplaces(record, value) {
   if (trimmed === '') return { valid: false, error: 'Value is required.' };
   if (/\s/.test(trimmed)) return { valid: false, error: 'A reference has no spaces.' };
   if (trimmed === record.reference) return { valid: false, error: 'An element cannot replace itself.' };
-  if ((record.replaces || []).some((entry) => String(entry) === trimmed)) return { valid: false, error: '“' + trimmed + '” is already listed.' };
+  if ((record.replaces || []).some((entry) => String(entry) === trimmed))
+    return { valid: false, error: '“' + trimmed + '” is already listed.' };
   return { valid: true, value: trimmed };
 }
 
@@ -573,34 +780,45 @@ function renderCreateElementFormHtml(sel) {
   let html = '<div class="create-element-form">';
   html += '<h2>' + (sel.createMode === 'child' ? 'Add child element' : 'Add top-level element') + '</h2>';
   if (sel.createMode === 'child') {
-    html += '<div class="field-row"><span class="field-label">Parent</span><span class="field-value">' + escapeHtml(sel.parentReference) + '</span></div>';
+    html +=
+      '<div class="field-row"><span class="field-label">Parent</span><span class="field-value">' +
+      escapeHtml(sel.parentReference) +
+      '</span></div>';
   }
-  html += '<div class="field-row"><label class="field-label" for="create-kind-select">Kind</label><span class="field-value">' +
-            '<select id="create-kind-select">' +
-              kindOptions.map((k) => '<option value="' + escapeHtml(k) + '">' + escapeHtml(k) + '</option>').join('') +
-            '</select>' +
-          '</span></div>';
-  html += '<div class="field-row"><label class="field-label" for="create-id-input">Id</label><span class="field-value">' +
-            '<input type="text" id="create-id-input">' +
-            '<span class="inline-error" id="create-id-error"></span>' +
-          '</span></div>';
-  html += '<div class="field-row"><label class="field-label" for="create-name-input">Name</label><span class="field-value">' +
-            '<input type="text" id="create-name-input">' +
-          '</span></div>';
-  html += '<div class="field-row"><label class="field-label" for="create-description-input">Description</label><span class="field-value">' +
-            '<textarea id="create-description-input" class="auto-grow-textarea"></textarea>' +
-          '</span></div>';
+  html +=
+    '<div class="field-row"><label class="field-label" for="create-kind-select">Kind</label><span class="field-value">' +
+    '<select id="create-kind-select">' +
+    kindOptions.map((k) => '<option value="' + escapeHtml(k) + '">' + escapeHtml(k) + '</option>').join('') +
+    '</select>' +
+    '</span></div>';
+  html +=
+    '<div class="field-row"><label class="field-label" for="create-id-input">Id</label><span class="field-value">' +
+    '<input type="text" id="create-id-input">' +
+    '<span class="inline-error" id="create-id-error"></span>' +
+    '</span></div>';
+  html +=
+    '<div class="field-row"><label class="field-label" for="create-name-input">Name</label><span class="field-value">' +
+    '<input type="text" id="create-name-input">' +
+    '</span></div>';
+  html +=
+    '<div class="field-row"><label class="field-label" for="create-description-input">Description</label><span class="field-value">' +
+    '<textarea id="create-description-input" class="auto-grow-textarea"></textarea>' +
+    '</span></div>';
   if (sel.createMode === 'top-level') {
-    html += '<div class="field-row"><label class="field-label" for="create-attach-under-input">Attach under</label><span class="field-value">' +
-              '<input type="text" id="create-attach-under-input" placeholder="(optional) existing element reference" list="archicode-all-references">' +
-              '<span class="inline-error" id="create-attach-under-error"></span>' +
-            '</span></div>';
+    html +=
+      '<div class="field-row"><label class="field-label" for="create-attach-under-input">Attach under</label><span class="field-value">' +
+      '<input type="text" id="create-attach-under-input" placeholder="(optional) existing element reference" list="archicode-all-references">' +
+      '<span class="inline-error" id="create-attach-under-error"></span>' +
+      '</span></div>';
   }
-  html += '<div class="field-row"><span class="field-label"></span><span class="field-value">' +
-            '<button type="button" data-action="' + (sel.createMode === 'child' ? 'submit-create-child' : 'submit-create-top-level') + '">Create</button> ' +
-            '<button type="button" data-action="cancel-create">Cancel</button>' +
-            '<span class="inline-error" id="create-form-error"></span>' +
-          '</span></div>';
+  html +=
+    '<div class="field-row"><span class="field-label"></span><span class="field-value">' +
+    '<button type="button" data-action="' +
+    (sel.createMode === 'child' ? 'submit-create-child' : 'submit-create-top-level') +
+    '">Create</button> ' +
+    '<button type="button" data-action="cancel-create">Cancel</button>' +
+    '<span class="inline-error" id="create-form-error"></span>' +
+    '</span></div>';
   html += '</div>';
   return html;
 }
@@ -617,11 +835,21 @@ function renderReferenceDatalistsHtml() {
   const techRefs = Array.from(AppState.index.technology.keys());
   const optionsHtml = (refs) => refs.map((r) => '<option value="' + escapeHtml(r) + '">').join('');
   // wave 009: what `replaces` can name is in the plateau compared with (only offered while one is read; an unknown reference can be typed all the same)
-  const baseline = AppState.baseline ? Array.from(AppState.baseline.index.application.keys()).concat(Array.from(AppState.baseline.index.technology.keys())) : null;
+  const baseline = AppState.baseline
+    ? Array.from(AppState.baseline.index.application.keys()).concat(
+        Array.from(AppState.baseline.index.technology.keys())
+      )
+    : null;
   return (
-    '<datalist id="archicode-all-references">' + optionsHtml(appRefs.concat(techRefs)) + '</datalist>' +
-    '<datalist id="archicode-application-references">' + optionsHtml(appRefs) + '</datalist>' +
-    '<datalist id="archicode-technology-references">' + optionsHtml(techRefs) + '</datalist>' +
+    '<datalist id="archicode-all-references">' +
+    optionsHtml(appRefs.concat(techRefs)) +
+    '</datalist>' +
+    '<datalist id="archicode-application-references">' +
+    optionsHtml(appRefs) +
+    '</datalist>' +
+    '<datalist id="archicode-technology-references">' +
+    optionsHtml(techRefs) +
+    '</datalist>' +
     (baseline ? '<datalist id="archicode-baseline-references">' + optionsHtml(baseline) + '</datalist>' : '')
   );
 }
@@ -632,9 +860,11 @@ function renderCenterPanelHtml() {
   if (sel.kind === 'create') return renderCreateElementFormHtml(sel);
   if (sel.kind === 'element') {
     // an element is edited on its Details: Back to view must not land on a diagram the user left long ago
-    if (sel.mode === 'edit') { elementTab = 'details'; return renderElementEditionFormHtml(sel.key); }
+    if (sel.mode === 'edit') {
+      elementTab = 'details';
+      return renderElementEditionFormHtml(sel.key);
+    }
     return diagramTabShown() ? renderElementDiagramHtml(findElementRecord(sel.key)) : renderElementViewHtml(sel.key);
   }
   return '<div class="center-placeholder">Select an item on the left, or use "+ Add" above the Applications/Environments tree to create your first element.</div>';
 }
-

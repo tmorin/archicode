@@ -56,7 +56,11 @@ async function withArchicodeStore(mode, work) {
       try {
         result = work(tx.objectStore(ARCHICODE_STORE_NAME));
       } catch (e) {
-        try { tx.abort(); } catch (ignored) { /* already finished */ }
+        try {
+          tx.abort();
+        } catch (ignored) {
+          /* already finished */
+        }
         reject(e);
       }
     });
@@ -75,7 +79,12 @@ function isFolderRecord(value) {
 
 /** A remembered folder as the page holds it: `{ id, handle, name, openedAt }`, plus `legacy` and `problem` (DEC-9). */
 function folderEntryOf(record) {
-  return { id: record.id, handle: record.handle, name: typeof record.name === 'string' ? record.name : '', openedAt: Number(record.openedAt) || 0 };
+  return {
+    id: record.id,
+    handle: record.handle,
+    name: typeof record.name === 'string' ? record.name : '',
+    openedAt: Number(record.openedAt) || 0
+  };
 }
 
 function folderRecordOf(entry) {
@@ -99,15 +108,21 @@ async function readArchicodeRecords() {
   try {
     return await withArchicodeStore('readonly', (store) => {
       const out = { folders: [], last: null, complete: true };
-      store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => { out.last = e.target.result || null; };
-      store.getAll().onsuccess = (e) => { out.folders = (e.target.result || []).filter(isFolderRecord); };
+      store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => {
+        out.last = e.target.result || null;
+      };
+      store.getAll().onsuccess = (e) => {
+        out.folders = (e.target.result || []).filter(isFolderRecord);
+      };
       return out;
     });
   } catch (e) {
     console.error('ArchiCode: the remembered folders could not be read; trying the last folder alone', e);
     return withArchicodeStore('readonly', (store) => {
       const out = { folders: [], last: null, complete: false };
-      store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (ev) => { out.last = ev.target.result || null; };
+      store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (ev) => {
+        out.last = ev.target.result || null;
+      };
       return out;
     });
   }
@@ -143,7 +158,10 @@ async function groupSameFolders(folders) {
     const name = folder.handle && typeof folder.handle.name === 'string' ? folder.handle.name : null;
     let group = null;
     for (const candidate of name === null ? [] : byName.get(name) || []) {
-      if (await isSameFolder(candidate[0].handle, folder.handle)) { group = candidate; break; }
+      if (await isSameFolder(candidate[0].handle, folder.handle)) {
+        group = candidate;
+        break;
+      }
     }
     if (group) {
       group.push(folder);
@@ -199,7 +217,10 @@ async function mergeSameFolder(group, merged) {
         // the last read of the group: everything is as it was read, so the merge is written, all of it or nothing
         const kept = folderEntryOf(state.survivor);
         if (kept.name !== merged.name || kept.openedAt !== merged.openedAt) {
-          store.put(Object.assign({}, state.survivor, { name: merged.name, openedAt: merged.openedAt }), folderKey(merged.id));
+          store.put(
+            Object.assign({}, state.survivor, { name: merged.name, openedAt: merged.openedAt }),
+            folderKey(merged.id)
+          );
         }
         for (const other of others) store.delete(folderKey(other.id));
         state.merged = true;
@@ -228,7 +249,10 @@ async function mergeDuplicateFolders(folders, lastRecord) {
     try {
       await mergeSameFolder(group, entry);
     } catch (e) {
-      console.error('ArchiCode: the records of one remembered folder could not be merged; it is listed once all the same', e);
+      console.error(
+        'ArchiCode: the records of one remembered folder could not be merged; it is listed once all the same',
+        e
+      );
       entry.others = group.filter((f) => f.id !== entry.id).map((f) => f.id);
     }
     for (const f of group) if (f.id !== entry.id) merged.set(f.id, entry.id);
@@ -260,7 +284,12 @@ async function liveFolderId(handle, id) {
  */
 async function migrateLastFolder(lastRecord, folders) {
   const same = await findSameFolder(lastRecord.handle, folders);
-  const entry = same || { id: lastRecord.id || newFolderId(), handle: lastRecord.handle, name: '', openedAt: Date.now() };
+  const entry = same || {
+    id: lastRecord.id || newFolderId(),
+    handle: lastRecord.handle,
+    name: '',
+    openedAt: Date.now()
+  };
   const out = await withArchicodeStore('readwrite', (store) => {
     const written = { migrated: false };
     store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => {
@@ -293,11 +322,18 @@ async function readRememberedFolders() {
   if (!lastRecord) return { folders: sortRememberedFolders(folders), last: null, merged };
   if (!records.complete) {
     // the folders could not be read: the last one is all there is, and nothing is written from so partial a view
-    const last = { id: lastRecord.id || null, handle: lastRecord.handle, name: '', openedAt: Date.now(), legacy: !lastRecord.id };
+    const last = {
+      id: lastRecord.id || null,
+      handle: lastRecord.handle,
+      name: '',
+      openedAt: Date.now(),
+      legacy: !lastRecord.id
+    };
     return { folders: [last], last, merged };
   }
   // the pointer may name a record a failed merge left beside its folder's entry (`others`): it is that folder
-  let last = folders.find((f) => f.id === lastRecord.id || (lastRecord.id && (f.others || []).includes(lastRecord.id))) || null;
+  let last =
+    folders.find((f) => f.id === lastRecord.id || (lastRecord.id && (f.others || []).includes(lastRecord.id))) || null;
   if (!last) {
     try {
       last = await migrateLastFolder(lastRecord, folders);
@@ -325,7 +361,8 @@ async function rememberFolder(handle, known) {
   if (records.complete) {
     const folders = records.folders.map(folderEntryOf);
     // a known entry only while its record is there: another tab may have merged it away, and it must not come back
-    entry = (known && known.id ? folders.find((f) => f.id === known.id) : null) || await findSameFolder(handle, folders);
+    entry =
+      (known && known.id ? folders.find((f) => f.id === known.id) : null) || (await findSameFolder(handle, folders));
   } else if (known && known.id) {
     entry = known; // the records cannot all be read: the id the page knows
   }
@@ -346,7 +383,8 @@ async function rememberFolder(handle, known) {
   } catch (e) {
     console.error('ArchiCode: the remembered folders could not be checked for a second record of this folder', e);
   }
-  const replaced = (f) => f.id === kept.id || f.id === fresh.id || merged.has(f.id) || f === known || !!(f.legacy && known && known.legacy);
+  const replaced = (f) =>
+    f.id === kept.id || f.id === fresh.id || merged.has(f.id) || f === known || !!(f.legacy && known && known.legacy);
   rememberedFolders = sortRememberedFolders(rememberedFolders.filter((f) => !replaced(f)).concat([kept]));
   return kept;
 }
@@ -427,4 +465,3 @@ async function clearLastFolder(id, others) {
     };
   });
 }
-
