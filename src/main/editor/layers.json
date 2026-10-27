@@ -93,8 +93,8 @@
       "layer": "core"
     },
     {
-      "file": "unsorted/from-26.js",
-      "layer": "unsorted"
+      "file": "presentation/page-registry.js",
+      "layer": "presentation"
     },
     {
       "file": "composition/address-routing.js",
