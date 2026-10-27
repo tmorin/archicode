@@ -903,13 +903,6 @@ function hideUnlinkedItems(items, links, focalReference) {
   };
 }
 
-/**
- * Whether the key to a comparison, under the diagram, is open (wave 018, run 0130, #132). Folded, it is one row with the sample, the glyph, the word and the count of each state; open, it also says
- * how each line is drawn, capped at about 30 % of the diagram area, with its own scroll. View state only: kept while the editor stays open on the folder, not an input of any diagram or
- * cache, not in the address, not in the workspace; no `modelsChanged()`.
- */
-let diagramKeyOpen = false;
-
 /** Puts the state of the key on the one on screen: its class, `aria-expanded` and the cap of its height. */
 function syncDiagramKey() {
   const key = typeof document !== 'undefined' ? document.getElementById('diagram-key') : null;
@@ -1181,13 +1174,6 @@ function findDiagramLink(links, key) {
   const ofPair = links.filter((el) => el.getAttribute('data-from') === key.from && el.getAttribute('data-to') === key.to);
   return ofPair.find((el) => diagramLinkNth(el) === key.nth) || ofPair[0] || null;
 }
-
-/**
- * The links of a diagram are one tab stop (roving tabindex): `tabindex="0"` on one of them, `-1` on the others, and the arrow
- * keys move among them (`handleDiagramKeydown`). The stop is where the focus last rested in the group; this is that link's
- * key, or null (nothing remembered yet, or the selection came from elsewhere, an address).
- */
-let diagramLinkStop = null;
 
 /**
  * After the drawing is on screen: exactly one link is the tab stop. The one the focus last rested on if the drawing still has it,
