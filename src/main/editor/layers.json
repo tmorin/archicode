@@ -145,6 +145,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/diagram-layout.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/diagram-interaction.js",
       "layer": "presentation"
     },
