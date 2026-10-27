@@ -97,6 +97,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "model/ui-state.js",
+      "layer": "model"
+    },
+    {
       "file": "model/record-lookup.js",
       "layer": "model"
     },
