@@ -285,7 +285,7 @@ test('after a redraw the focus goes back to the same box, whatever its tabindex,
 test('the exported SVG has no tab stop of any box, and the fold buttons keep theirs', () => {
   assert.match(
     HTML,
-    /for \(const el of clone\.querySelectorAll\('\[tabindex\],\[data-action\]'\)\) \{ el\.removeAttribute\('tabindex'\)/
+    /for \(const el of clone\.querySelectorAll\('\[tabindex\],\[data-action\]'\)\) \{\s*el\.removeAttribute\('tabindex'\)/
   );
   assert.match(
     HTML,

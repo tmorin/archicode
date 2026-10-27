@@ -588,8 +588,8 @@ test('a click on a link pins the framing of the Map first, like a click on a box
 test('a box click is exactly what it was: goto-element is untouched and select-link is a separate case', () => {
   const goto = HTML.slice(HTML.indexOf("case 'goto-element': {"), HTML.indexOf("case 'select-link':"));
   assert.ok(!goto.includes('link') && !goto.includes('Link'), 'no link code in goto-element');
-  assert.match(goto, /AppState\.selection = destinationLayer \? \{ kind: 'element'/);
-  assert.ok(HTML.includes("'select-link', 'open-create-child-form'"), 'and it is among the clicks that leave a form');
+  assert.match(goto, /AppState\.selection = destinationLayer\s*\? \{ kind: 'element'/);
+  assert.match(HTML, /'select-link',\s*'open-create-child-form'/, 'and it is among the clicks that leave a form');
 });
 
 test('Close: the Map deselects, Elements goes back to the element, and both redraw', async () => {
@@ -748,7 +748,7 @@ test('hover and focus of a link light its pair, and leaving keeps the focus of a
 });
 
 test('the view key of the page tells two links, and a link from its element, apart', () => {
-  assert.match(HTML, /AppState\.selection\.layer \|\| ''\) \+ '\|' \+ \(AppState\.selection\.focal \|\| ''\)/);
+  assert.match(HTML, /AppState\.selection\.layer \|\| ''\) \+\s*'\|' \+\s*\(AppState\.selection\.focal \|\| ''\)/);
 });
 
 // ============================================================ the stylesheet and the export

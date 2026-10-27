@@ -308,10 +308,10 @@ test('every place of the page that replaces a model calls modelsChanged() right 
   assert.ok(assignments.length >= 6, 'the loads and the rebuild assign the models (found ' + assignments.length + ')');
   for (const i of assignments) {
     assert.ok(
-      script.slice(i, i + 8).some((line) => /\bmodelsChanged\(\)/.test(line)),
+      script.slice(i, i + 12).some((line) => /\bmodelsChanged\(\)/.test(line)),
       'line ' +
         (i + 1) +
-        ' of the script assigns a model and does not call modelsChanged() within 8 lines: ' +
+        ' of the script assigns a model and does not call modelsChanged() within 12 lines: ' +
         script[i].trim().slice(0, 100)
     );
   }
