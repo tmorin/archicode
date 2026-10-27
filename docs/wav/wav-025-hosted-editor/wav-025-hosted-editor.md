@@ -65,7 +65,7 @@ wave_manifest:
       slug: plateau-tree-indentation
       phase: P1
       depends_on: []
-      run: null
+      run: 0189
       delegation: standard
       likely_paths:
         - 'src/main/editor/presentation/pages-plateaus-files.js'
@@ -80,7 +80,7 @@ wave_manifest:
       slug: plateau-fold-analysis
       phase: P1
       depends_on: []
-      run: null
+      run: 0190
       delegation: standard
       profile: single-document
       likely_paths:
