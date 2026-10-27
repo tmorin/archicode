@@ -223,3 +223,30 @@ let mapSelectionCheck = false;
 
 /** What the kernel has already warned about (a facet in a syntax that is going away): said once, not at every redraw. */
 const kernelWarningsShown = new Set();
+
+/** What makes a plateau, said wherever a workspace has none and is asked for one (`WorkspaceFactory.NO_PLATEAU`). */
+const NO_PLATEAU = ' (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)';
+
+/** The dialog on screen ({ kind: 'text' | 'story-picker', … }), or null. */
+let appDialog = null;
+
+/** The step text of the story bar is a box to type in (true), or the words to read (false). */
+let storyBarEditing = false;
+
+/** One line over the story bar after something was done ("Added as step 3 of…"); the next action clears it. */
+let storyBarNotice = null;
+
+/** The step just taken out of a story, for Undo: { storyId, index, step }. */
+let removedStep = null;
+
+/** The control to put the focus on once the page is redrawn: render() replaces every control. */
+let pendingFocusSelector = null;
+
+/**
+ * What the author typed in the form of an element while a dialog that waits for an answer stands in front of it (wave 017, run 0121, #123: `layer-confirm`, the plateaus a write
+ * changes, and `rename-siblings`, the views a rename leaves behind). Saving the form opens the dialog and `render()` gives the form afresh from the model, behind the dialog,
+ * so Cancel (and Escape, and a click beside the dialog) used to leave every field as the model has it. It is view state: the fields as typed, nothing of the model, and no
+ * `modelsChanged()`. `render()` puts them back each time it draws the form of the same element while the dialog is open, and once more when the dialog is gone; a yes
+ * clears it before the write, so what is written is never reread from it.
+ */
+let keptElementForm = null;
