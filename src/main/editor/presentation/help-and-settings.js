@@ -94,7 +94,9 @@ function renderHelpMenuHtml() {
     '<li><a href="' + docUrl(key) + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a></li>';
   const where = isServedByArchiCode()
     ? 'The editor reads and writes the folder served by <code>archicode editor serve</code> on this machine.'
-    : 'Files are read and written in your browser, in the folder you picked.';
+    : AppState.folder && AppState.folder.browserWorkspace
+      ? "Files are read and written in this browser, which keeps them on this device; clearing the site's data removes them."
+      : 'Files are read and written in your browser, in the folder you picked.';
   return (
     '<div class="help-menu" role="dialog" aria-label="Help">' +
     '<ul>' +

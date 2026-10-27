@@ -190,9 +190,17 @@ function plateauTitle(plateau) {
 // a choice of whoever looks, not a fact of the architecture), and the page works the same when the storage is refused.
 const PLATEAU_STORAGE_PREFIX = 'archicode-standalone-editor:plateau:';
 
+/**
+ * What the remembered choices of a folder are keyed on (run 0192, TDD IMP-12): `bw:<id>` for a browser workspace, so that a rename of
+ * it keeps them and a folder of the same name does not inherit them, else the id of the remembered folder, else its name (a served folder).
+ */
+function rememberedChoiceKey(folder) {
+  return folder.browserWorkspace ? 'bw:' + folder.browserWorkspace : folder.id || 'name:' + folder.name;
+}
+
 function plateauStorageKey() {
   const folder = AppState.folder;
-  return folder ? PLATEAU_STORAGE_PREFIX + (folder.id || 'name:' + folder.name) : null;
+  return folder ? PLATEAU_STORAGE_PREFIX + rememberedChoiceKey(folder) : null;
 }
 
 // what was chosen in this page, for a browser that refuses its storage: the choice then lasts as long as the page
@@ -224,7 +232,7 @@ const chosenComparisons = new Map();
 
 function compareStorageKey() {
   const folder = AppState.folder;
-  return folder ? COMPARE_STORAGE_PREFIX + (folder.id || 'name:' + folder.name) : null;
+  return folder ? COMPARE_STORAGE_PREFIX + rememberedChoiceKey(folder) : null;
 }
 
 /** The comparison remembered for this folder in this browser (see `layerCompareChoice`): '' (nothing compared), `past`, `future`, `future:<id>` or `other:<id>`; null when none was ever chosen. */
@@ -247,7 +255,7 @@ const chosenFlags = new Map(); // for a browser that refuses its storage: the ch
 
 function flagStorageKey(name) {
   const folder = AppState.folder;
-  return folder ? FLAG_STORAGE_PREFIX + name + ':' + (folder.id || 'name:' + folder.name) : null;
+  return folder ? FLAG_STORAGE_PREFIX + name + ':' + rememberedChoiceKey(folder) : null;
 }
 
 /** A flag remembered for this folder in this browser; false when none was ever set. */

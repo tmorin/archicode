@@ -447,7 +447,7 @@ function createApp(options = {}) {
     },
     localStorage: options.localStorage, // absent: the page runs as if the browser refused its storage
     fetch: options.fetch,
-    File: options.serverToken ? File : undefined, // the host's File, which drops a byte-order mark in text() as a browser does
+    File: options.serverToken || options.withFile ? File : undefined, // the host's File, which drops a byte-order mark in text() as a browser does
     Blob,
     // the remembered folders: an in-memory IndexedDB of its own per page, unless the test gives one (to share it, or seed it)
     indexedDB: options.indexedDB === undefined ? fakeIndexedDB() : options.indexedDB,
@@ -458,6 +458,22 @@ function createApp(options = {}) {
     URLSearchParams
   };
   sandbox.window.indexedDB = sandbox.indexedDB;
+  if (options.withFile) {
+    // `withFile`: what a browser has and the sandbox lacks by default: a `navigator.storage` whose `persist` counts its calls
+    // (`sandbox.__storage.persistCalls`) and, unless the test passes `options.persist`, resolves true. The sandbox has no `navigator` without it.
+    const storage = { persistCalls: 0 };
+    const persist = options.persist || (() => Promise.resolve(true));
+    sandbox.__storage = storage;
+    sandbox.navigator = {
+      storage: {
+        persist: (...args) => {
+          storage.persistCalls += 1;
+          return persist(...args);
+        },
+        persisted: () => Promise.resolve(false)
+      }
+    };
+  }
   sandbox.globalThis = sandbox;
   sandbox.__windowListeners = windowListeners; // what the page registered, to fire by hand
   sandbox.__history = {

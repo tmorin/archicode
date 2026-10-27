@@ -185,8 +185,17 @@ function flushPendingDraft() {
   return true;
 }
 
+/** The notice of a browser workspace (run 0192, DEC-8): where the work lives, and, once the browser said no to persistent storage, what that risks. */
+function browserWorkspaceNoticeHtml() {
+  const title =
+    "This workspace is kept in this browser on this device. Clearing the site's data removes it." +
+    (browserStoragePersisted === false ? ' The browser may remove it when the device is short of space.' : '');
+  return '<span class="browser-notice" title="' + escapeHtml(title) + '">In this browser</span>';
+}
+
 function renderTopPanelHtml() {
   if (!AppState.folder) return '';
+  const inBrowser = !!AppState.folder.browserWorkspace;
   const saveAll = renderSaveAllButtonHtml();
   const name = workspaceName();
   // the name of the workspace in place of the folder, which is then the tooltip; without one, the folder and its root slash
@@ -209,12 +218,15 @@ function renderTopPanelHtml() {
     // one group, pushed to the right: when the bar wraps it moves as a whole, and the status gives way before the buttons do;
     // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick, so no Close folder
     '<span class="top-actions">' +
+    (inBrowser ? browserWorkspaceNoticeHtml() : '') +
     renderSaveStatusHtml() +
     saveAll +
     renderHelpButtonHtml() +
     (isServedByArchiCode()
       ? ''
-      : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and go back to the list of folders: it stays in the list.">Close folder</button>') +
+      : inBrowser
+        ? '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace and go back to the list: it stays in this browser.">Close workspace</button>'
+        : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and go back to the list of folders: it stays in the list.">Close folder</button>') +
     '</span>' +
     '</header>'
   );

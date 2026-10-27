@@ -101,7 +101,15 @@
       "layer": "persistence"
     },
     {
+      "file": "persistence/browser-store.js",
+      "layer": "persistence"
+    },
+    {
       "file": "application/folder-session.js",
+      "layer": "application"
+    },
+    {
+      "file": "application/browser-workspaces.js",
       "layer": "application"
     },
     {

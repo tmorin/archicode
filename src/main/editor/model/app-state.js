@@ -81,6 +81,24 @@ let landingBusy = null;
 // outside AppState, which a closed folder resets. Always empty in served mode.
 let rememberedFolders = [];
 
+// The browser workspace store (run 0192, TDD DEC-4, DEC-8, DEC-12): 'unknown' until probeBrowserStore() ends, then 'ready' or
+// { failed: <message> }; whether the page has asked the browser to keep its data (once per page session) and the answer (true, false,
+// null before one). Written by persistence/browser-store.js.
+/* exported browserStoragePersisted -- read by the top bar's notice (run 0192, task 008) */
+let browserStoreState = 'unknown';
+let browserStorageAsked = false;
+let browserStoragePersisted = null;
+
+// The browser workspaces the landing card lists (the summaries of listBrowserWorkspaces()), most recently changed first; read again by
+// the flows of application/browser-workspaces.js. Kept outside AppState, which a closed folder resets (run 0192, TDD CTR-4).
+let browserWorkspaces = [];
+
+// The row of the browser workspace the card asks to delete (an id), and the open name field of *New workspace* or *Rename*:
+// null, or { for: 'new' | <workspace id>, text, problem } (the typed text and the sentence that refused it). View state only: no
+// modelsChanged(); a redraw keeps both, resetUiState() clears them.
+let landingPendingDelete = null;
+let landingNameDraft = null;
+
 // A line the landing card says once (a folder removed from the list, a permission refused); null otherwise.
 let landingNotice = null;
 

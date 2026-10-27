@@ -277,7 +277,8 @@ async function openRememberedFolder(entry) {
     permission = e && e.name === 'NotFoundError' ? 'unreachable' : 'denied';
   }
   landingNotice = null;
-  const sameFolder = !!AppState.folder && (AppState.folder.id || '') === (entry.id || '');
+  const sameFolder =
+    !!AppState.folder && !AppState.folder.browserWorkspace && (AppState.folder.id || '') === (entry.id || '');
   if (permission !== 'granted') {
     // denied, dismissed or thrown: back to the list, which keeps the folder and says why it did not open
     entry.problem = permission === 'unreachable' ? FOLDER_UNREACHABLE : FOLDER_REFUSED;
@@ -369,7 +370,7 @@ async function checkFolderPermissions() {
 
 /** "Remembered folders" on the error card: leaves the folder that did not open (storage untouched) for the list. */
 async function showRememberedFolders() {
-  const failed = AppState.folder ? rememberedFolderById(AppState.folder.id) : null;
+  const failed = AppState.folder && !AppState.folder.browserWorkspace ? rememberedFolderById(AppState.folder.id) : null; // a browser workspace has no id: it is no remembered folder
   if (failed && AppState.fatalErrorKind) failed.problem = FOLDER_UNREADABLE;
   AppState = createInitialAppState();
   resetUiState();
@@ -398,7 +399,12 @@ async function forgetFolder(entry) {
   const at = rememberedFolders.indexOf(entry);
   rememberedFolders = rememberedFolders.filter((f) => f !== entry);
   // the folder the reopen card was offering is gone: the card of a page that holds no folder, with the others
-  if (AppState.folder && !AppState.workspace && (AppState.folder.id || '') === (entry.id || '')) {
+  if (
+    AppState.folder &&
+    !AppState.folder.browserWorkspace &&
+    !AppState.workspace &&
+    (AppState.folder.id || '') === (entry.id || '')
+  ) {
     AppState = createInitialAppState();
     resetUiState();
   }

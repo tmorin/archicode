@@ -7,6 +7,15 @@ const LANDING_ICON_BRAND =
 const LANDING_ICON_FOLDER =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l2 2.5h8.8A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/></svg>';
 const LANDING_SAVE_NOTE = 'Nothing is written to disk until you click “Save all changes”.';
+const BROWSER_SAVE_NOTE = 'Nothing is stored in this browser until you click “Save all changes”.';
+
+/**
+ * Whether the page can hold a workspace at all (TDD DEC-4): the browser picks folders, the page is served by `archicode editor serve`, or the
+ * browser workspace store opened (`browserStoreState` is 'ready'). `isFolderAccessAvailable()` keeps meaning folders only.
+ */
+function canKeepWorkspace() {
+  return isFolderAccessAvailable() || browserStoreState === 'ready';
+}
 
 /**
  * Which landing card (if any) the current state calls for; null once a
@@ -14,19 +23,23 @@ const LANDING_SAVE_NOTE = 'Nothing is written to disk until you click “Save al
  * be rendered and checked without a browser.
  */
 function landingScreenConfig() {
-  if (!isFolderAccessAvailable()) {
+  if (!canKeepWorkspace()) {
+    if (landingBusy && !AppState.workspace) return { kind: 'busy', busy: landingBusy }; // the page is still asking the browser (startPage)
+    const reason = browserStoreState && browserStoreState.failed ? ' (' + browserStoreState.failed + ')' : '';
     return {
       kind: 'unsupported',
       title: 'This browser isn’t supported',
       text:
-        'The editor reads and writes your workspace files directly, which needs the File System Access API. ' +
-        'Use a recent Chrome, Edge, Brave or Opera — Firefox and Safari don’t support it — or run `archicode editor serve` ' +
-        'in your workspace folder and open the page it serves: that works in any browser.'
+        'This browser does not allow the editor to keep a workspace here' +
+        reason +
+        '; a private window may do that. Run `archicode editor serve` in your workspace folder and open the page it serves: ' +
+        'that works in any browser.'
     };
   }
   if (AppState.workspace) return null;
   if (landingBusy) return { kind: 'busy', busy: landingBusy };
   const folderName = AppState.folder ? AppState.folder.name : null;
+  const inBrowser = !!(AppState.folder && AppState.folder.browserWorkspace);
   if (AppState.fatalError) {
     const unreadable = AppState.fatalErrorKind === 'unreadable'; // the type, not a file name found in the text (#146)
     return {
@@ -36,26 +49,61 @@ function landingScreenConfig() {
         unreadable && folderName ? '.archicode.yaml could not be read in “' + folderName + '”.' : AppState.fatalError,
       error: unreadable ? AppState.fatalError : null,
       hint: unreadable
-        ? 'Choose the workspace root — the folder that contains .archicode.yaml — and make sure the file is valid YAML.'
+        ? inBrowser
+          ? 'Make sure the file is valid YAML, or delete the workspace from the list.'
+          : 'Choose the workspace root — the folder that contains .archicode.yaml — and make sure the file is valid YAML.'
         : null,
-      actions: [{ label: 'Choose another folder', action: 'open-folder', primary: true, icon: LANDING_ICON_FOLDER }]
+      // a browser workspace is no folder: the way out is the list (CTR-3)
+      actions: (inBrowser
+        ? [{ label: 'Back to the list', action: 'show-folders', primary: true }]
+        : [{ label: 'Choose another folder', action: 'open-folder', primary: true, icon: LANDING_ICON_FOLDER }]
+      )
         .concat(folderName ? [{ label: 'Try again', action: 'retry-folder' }] : [])
-        .concat(landingFolderRows().length > 0 ? [{ label: 'Remembered folders', action: 'show-folders' }] : [])
+        .concat(
+          !inBrowser && landingFolderRows().length > 0 ? [{ label: 'Remembered folders', action: 'show-folders' }] : []
+        )
     };
   }
   if (!AppState.folder) {
-    return {
+    const folders = isFileSystemAccessSupported();
+    const browser = browserStoreState === 'ready' && !isServedByArchiCode();
+    const actions = [];
+    if (browser) {
+      actions.push({
+        label: 'New workspace in this browser',
+        action: 'new-browser-workspace',
+        primary: !folders,
+        icon: LANDING_ICON_FOLDER
+      });
+    }
+    if (folders) {
+      actions.push({
+        label: 'Open workspace folder',
+        action: 'open-folder',
+        primary: !browser,
+        icon: LANDING_ICON_FOLDER
+      });
+    }
+    const notes = [];
+    if (folders) notes.push('Choose the folder that contains .archicode.yaml. ' + LANDING_SAVE_NOTE);
+    if (browser) notes.push(BROWSER_SAVE_NOTE);
+    const card = {
       kind: 'first-launch',
       title: 'Open a workspace',
-      text: 'Edit the elements, relationships, views and settings of an ArchiCode workspace, straight from its folder.',
+      text: folders
+        ? 'Edit the elements, relationships, views and settings of an ArchiCode workspace, straight from its folder.' +
+          (browser ? ' Or keep a workspace in this browser, without choosing a folder.' : '')
+        : 'Edit the elements, relationships, views and settings of an ArchiCode workspace. Your workspaces are kept in this browser, on this device.',
       notice: landingNotice,
-      actions: [{ label: 'Open workspace folder', action: 'open-folder', primary: true, icon: LANDING_ICON_FOLDER }],
+      actions,
       folders: landingFolderRows(),
-      note: 'Choose the folder that contains .archicode.yaml. ' + LANDING_SAVE_NOTE
+      note: notes.join(' ')
     };
+    if (browser) card.browserRows = landingBrowserRows();
+    return card;
   }
   if (AppState.permissionState === 'needs-click') {
-    return {
+    const card = {
       kind: 'reopen',
       title: 'Welcome back',
       text: 'Your browser needs your permission to read “' + folderName + '” again.',
@@ -67,8 +115,159 @@ function landingScreenConfig() {
       folders: landingFolderRows(),
       note: LANDING_SAVE_NOTE
     };
+    if (browserStoreState === 'ready' && !isServedByArchiCode()) card.browserRows = landingBrowserRows();
+    return card;
   }
   return null;
+}
+
+/** A time as the card says it: the reader's own, to the minute; '' for a time that is none. */
+function landingTimeText(ms) {
+  if (typeof ms !== 'number' || !(ms > 0)) return '';
+  try {
+    return new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  } catch {
+    return new Date(ms).toISOString();
+  }
+}
+
+function landingFilesText(count) {
+  return count + (count === 1 ? ' file' : ' files');
+}
+
+/**
+ * The browser workspaces as the landing card lists them (CTR-3): `{ id, title, files, changed, exported, problem }`, derived from
+ * `browserWorkspaces`; `exported` is 'never' or a time, `problem` the sentence of a record that cannot be read (only Delete works on its row).
+ */
+function landingBrowserRows() {
+  return browserWorkspaces.map((w) => ({
+    id: w.id,
+    title: browserWorkspaceTitle(w),
+    files: w.fileCount,
+    changed: landingTimeText(w.changedAt),
+    exported: w.lastExportAt ? landingTimeText(w.lastExportAt) : 'never',
+    problem: w.problem || null
+  }));
+}
+
+/** The name field of *New workspace* and *Rename* (IF-2, IF-3): the typed text and, under it, the sentence of a refusal; Enter and Escape are handled by the page. */
+function renderBrowserNameFieldHtml(draft, className) {
+  const isNew = draft.for === 'new';
+  return (
+    '<form class="' +
+    className +
+    '" data-browser-name-form onsubmit="return false">' +
+    '<label class="landing-browser-label">' +
+    '<span>' +
+    (isNew ? 'Name of the new workspace' : 'New name of the workspace') +
+    '</span>' +
+    '<input type="text" class="landing-browser-input" data-browser-name maxlength="200" autocomplete="off" spellcheck="false" value="' +
+    escapeHtml(draft.text) +
+    '"' +
+    (draft.problem ? ' aria-invalid="true" aria-describedby="landing-browser-name-problem"' : '') +
+    '></label>' +
+    '<button type="button" class="btn-primary" data-action="submit-browser-name">' +
+    (isNew ? 'Create' : 'Rename') +
+    '</button>' +
+    '<button type="button" data-action="cancel-browser-name">Cancel</button>' +
+    (draft.problem
+      ? '<p class="landing-folder-problem" id="landing-browser-name-problem" role="alert">' +
+        escapeHtml(draft.problem) +
+        '</p>'
+      : '') +
+    '</form>'
+  );
+}
+
+/** One workspace of the list: its row, its name field when it is being renamed, or the delete question (DEC-7). */
+function renderBrowserRowHtml(row) {
+  const named = '“' + row.title + '”';
+  const id = escapeHtml(row.id);
+  if (landingNameDraft && landingNameDraft.for === row.id)
+    return (
+      '<li class="landing-folder landing-browser-row">' +
+      renderBrowserNameFieldHtml(landingNameDraft, 'landing-browser-edit') +
+      '</li>'
+    );
+  if (landingPendingDelete === row.id) {
+    return (
+      '<li class="landing-folder landing-browser-row landing-browser-question" role="group" aria-label="' +
+      escapeHtml('Delete ' + named + '?') +
+      '">' +
+      '<p class="landing-browser-ask">Delete ' +
+      escapeHtml(named) +
+      '? It holds ' +
+      landingFilesText(row.files) +
+      (row.changed ? ', last changed ' + escapeHtml(row.changed) : '') +
+      '. This cannot be undone. Nothing on your disk is touched.</p>' +
+      '<button type="button" data-action="cancel-browser-workspace-question">Cancel</button>' +
+      '<button type="button" class="landing-browser-delete" data-action="delete-browser-workspace" data-workspace-id="' +
+      id +
+      '" aria-label="' +
+      escapeHtml('Delete ' + named) +
+      '">Delete ' +
+      escapeHtml(named) +
+      '</button>' +
+      '</li>'
+    );
+  }
+  const ghost = (action, verb, text) =>
+    '<button type="button" class="btn-ghost landing-folder-remove" data-action="' +
+    action +
+    '" data-workspace-id="' +
+    id +
+    '" aria-label="' +
+    escapeHtml(verb + ' ' + named) +
+    '">' +
+    text +
+    '</button>';
+  if (row.problem) {
+    return (
+      '<li class="landing-folder landing-browser-row">' +
+      '<span class="landing-folder-open landing-browser-unreadable"><span class="landing-folder-name">' +
+      escapeHtml(row.title) +
+      '</span></span>' +
+      ghost('ask-delete-browser-workspace', 'Delete', 'Delete') +
+      '<p class="landing-folder-problem">This workspace ' +
+      escapeHtml(row.problem) +
+      '. Delete it from the list.</p>' +
+      '</li>'
+    );
+  }
+  return (
+    '<li class="landing-folder landing-browser-row">' +
+    '<button type="button" class="landing-folder-open" data-action="open-browser-workspace" data-workspace-id="' +
+    id +
+    '" aria-label="' +
+    escapeHtml('Open ' + named) +
+    '">' +
+    '<span class="landing-folder-name">' +
+    escapeHtml(row.title) +
+    '</span>' +
+    '<span class="landing-folder-dir"><span>' +
+    escapeHtml(landingFilesText(row.files) + (row.changed ? ' · changed ' + row.changed : '')) +
+    '</span></span>' +
+    '<span class="landing-folder-dir"><span>Kept in this browser · Last exported: ' +
+    escapeHtml(row.exported) +
+    '</span></span>' +
+    '</button>' +
+    ghost('rename-browser-workspace', 'Rename', 'Rename') +
+    ghost('ask-delete-browser-workspace', 'Delete', 'Delete') +
+    '</li>'
+  );
+}
+
+/** The list *In this browser* with the field of *New workspace* above it when it is open (IF-1 to IF-3). */
+function renderLandingBrowserHtml(rows) {
+  const draft = landingNameDraft && landingNameDraft.for === 'new' ? landingNameDraft : null;
+  if (rows.length === 0 && !draft) return '';
+  return (
+    '<section class="landing-folders landing-browser" aria-labelledby="landing-browser-title">' +
+    '<h2 id="landing-browser-title">In this browser</h2>' +
+    (draft ? renderBrowserNameFieldHtml(draft, 'landing-browser-edit') : '') +
+    (rows.length > 0 ? '<ul class="landing-folder-list">' + rows.map(renderBrowserRowHtml).join('') + '</ul>' : '') +
+    '</section>'
+  );
 }
 
 /**
@@ -207,6 +406,7 @@ function renderLandingHtml(cfg) {
           .join('') +
         '</div>';
     }
+    if (cfg.browserRows) body += renderLandingBrowserHtml(cfg.browserRows);
     if (cfg.folders && cfg.folders.length > 0) body += renderLandingFoldersHtml(cfg.folders);
     if (cfg.note) body += '<p class="landing-note">' + escapeHtml(cfg.note) + '</p>';
     body +=
@@ -233,7 +433,14 @@ function landingControlSelector(el) {
   const action = control.getAttribute('data-action');
   if (!action) return null;
   const folder = control.getAttribute('data-folder-id');
-  return '[data-action="' + action + '"]' + (folder === null ? '' : '[data-folder-id="' + folder + '"]');
+  const workspace = control.getAttribute('data-workspace-id');
+  return (
+    '[data-action="' +
+    action +
+    '"]' +
+    (folder === null ? '' : '[data-folder-id="' + folder + '"]') +
+    (workspace === null ? '' : '[data-workspace-id="' + workspace + '"]')
+  );
 }
 
 /** The title of the page: the editor, then the workspace that is loaded (its name, or its folder when it has none). */
