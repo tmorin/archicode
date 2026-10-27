@@ -125,6 +125,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/map-state.js",
+      "layer": "presentation"
+    },
+    {
       "file": "model/kernel-bridge.js",
       "layer": "model"
     },
