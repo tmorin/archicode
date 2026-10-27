@@ -191,7 +191,7 @@ wave_manifest:
       slug: editor-modules-closeout
       phase: P3
       depends_on: [W-8, W-11]
-      run: null
+      run: 0188
       delegation: standard
       likely_paths:
         - '.prettierignore'
