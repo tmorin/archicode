@@ -95,7 +95,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-002
-      status: 'blocked'
+      status: 'pending'
       title: 'Precondition and baseline: the run 0183 sources are committed, the page is the measured one'
       depends_on: [task-001]
       produces:
