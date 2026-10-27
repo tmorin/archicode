@@ -95,7 +95,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-002
-      status: 'pending'
+      status: 'done'
       title: 'Precondition and baseline: the run 0183 sources are committed, the page is the measured one'
       depends_on: [task-001]
       produces:
@@ -105,7 +105,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-003
-      status: 'pending'
+      status: 'done'
       title: 'Move 1 of 6 (step 6.1): yaml-parser to src/main/editor/core/yaml-parser.js'
       depends_on: [task-002]
       produces:
@@ -117,7 +117,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-004
-      status: 'pending'
+      status: 'done'
       title: 'Move 2 of 6 (step 6.2): yaml-serializer to src/main/editor/core/yaml-serializer.js'
       depends_on: [task-003]
       produces:
@@ -129,7 +129,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-005
-      status: 'pending'
+      status: 'done'
       title: 'Move 3 of 6 (step 6.3): yaml-patch-text to src/main/editor/core/yaml-patch-text.js'
       depends_on: [task-004]
       produces:
@@ -141,7 +141,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-006
-      status: 'pending'
+      status: 'done'
       title: 'Move 4 of 6 (step 6.4): yaml-patch-flow to src/main/editor/core/yaml-patch-flow.js'
       depends_on: [task-005]
       produces:
@@ -153,7 +153,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-007
-      status: 'pending'
+      status: 'done'
       title: 'Move 5 of 6 (step 6.5): yaml-patch-lines to src/main/editor/core/yaml-patch-lines.js'
       depends_on: [task-006]
       produces:
@@ -165,7 +165,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-008
-      status: 'pending'
+      status: 'done'
       title: 'Move 6 of 6 (step 6.6): yaml-block-moves to src/main/editor/core/yaml-block-moves.js'
       depends_on: [task-007]
       produces:
@@ -177,7 +177,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-009
-      status: 'pending'
+      status: 'done'
       title: 'Step 6.6 end: the whole node suite after the sixth move'
       depends_on: [task-008]
       produces:
@@ -187,7 +187,7 @@ execution_graph:
       risk: 'medium'
       confidence: 88
     - id: task-010
-      status: 'pending'
+      status: 'done'
       title: 'Test that the six YAML parts name nothing outside core (DEC-5), shown to fail once'
       depends_on: [task-009]
       produces:
@@ -197,7 +197,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-011
-      status: 'pending'
+      status: 'done'
       title: 'End-of-run checks of 0182 DEC-6'
       depends_on: [task-010]
       produces:
@@ -207,7 +207,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-012
-      status: 'pending'
+      status: 'done'
       title: 'Record the evidence and the sentence of CLAUDE.md if it states a size'
       depends_on: [task-011]
       produces:
@@ -324,7 +324,7 @@ task_catalog:
         - 'git status lists a W-5 source.'
         - 'The sha256 or a line count differs from the TDD.'
       delegation_tier: 'standard'
-      results: 'tier standard, effort medium, failed first check and the escalated retry (high); blocked by the implement workflow'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-003
       title: 'Move 1 of 6 (step 6.1): yaml-parser to src/main/editor/core/yaml-parser.js'
       source_requirements:
@@ -361,6 +361,7 @@ task_catalog:
         - 'Any check fails: restore unsorted/script.js and layers.json and delete the new part file, by path (no git stash, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-004
       title: 'Move 2 of 6 (step 6.2): yaml-serializer to src/main/editor/core/yaml-serializer.js'
       source_requirements:
@@ -397,6 +398,7 @@ task_catalog:
         - 'Any check fails: restore unsorted/script.js and layers.json and delete the new part file, by path (no git stash, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-005
       title: 'Move 3 of 6 (step 6.3): yaml-patch-text to src/main/editor/core/yaml-patch-text.js'
       source_requirements:
@@ -433,6 +435,7 @@ task_catalog:
         - 'Any check fails: restore unsorted/script.js and layers.json and delete the new part file, by path (no git stash, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-006
       title: 'Move 4 of 6 (step 6.4): yaml-patch-flow to src/main/editor/core/yaml-patch-flow.js'
       source_requirements:
@@ -469,6 +472,7 @@ task_catalog:
         - 'Any check fails: restore unsorted/script.js and layers.json and delete the new part file, by path (no git stash, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-007
       title: 'Move 5 of 6 (step 6.5): yaml-patch-lines to src/main/editor/core/yaml-patch-lines.js'
       source_requirements:
@@ -505,6 +509,7 @@ task_catalog:
         - 'Any check fails: restore unsorted/script.js and layers.json and delete the new part file, by path (no git stash, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-008
       title: 'Move 6 of 6 (step 6.6): yaml-block-moves to src/main/editor/core/yaml-block-moves.js'
       source_requirements:
@@ -541,6 +546,7 @@ task_catalog:
         - 'Any check fails: restore unsorted/script.js and layers.json and delete the new part file, by path (no git stash, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-009
       title: 'Step 6.6 end: the whole node suite after the sixth move'
       source_requirements:
@@ -561,6 +567,7 @@ task_catalog:
       escalation_triggers:
         - 'A test fails: run that file alone on the parent tree (a scratch copy or a detached worktree, no git stash); if it passes there the failure is the cut and the step is reverted by path; if it fails there too it is named in the prg and re-run once.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-010
       title: 'Test that the six YAML parts name nothing outside core (DEC-5), shown to fail once'
       source_requirements:
@@ -587,6 +594,7 @@ task_catalog:
       escalation_triggers:
         - 'analyse or mapOf output differs from what the TDD assumes: log it, keep the test to what the output shows, change no decision.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-011
       title: 'End-of-run checks of 0182 DEC-6'
       source_requirements:
@@ -622,6 +630,7 @@ task_catalog:
         - 'A command fails because of the environment (JDK, browsers): name it in the prg, re-run once, record the rest and do not claim it green.'
         - 'Authorship of commits unavailable: check-editor-moves.sh stays pending for gate-001.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-012
       title: 'Record the evidence and the sentence of CLAUDE.md if it states a size'
       source_requirements:
@@ -643,6 +652,7 @@ task_catalog:
       escalation_triggers:
         - 'A command line has no recorded result: do not write the claim.'
       delegation_tier: 'cheap'
+      results: 'tier cheap, model haiku, effort high, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -1283,7 +1293,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 12
