@@ -1,6 +1,6 @@
 'use strict';
-// The six YAML parts of the editor (wave 024, run 0184, DEC-5) name nothing outside the six, but parseYamlAsModel.
-// The ratchet cannot say it while `unsorted` is outside the layers; the check runs over a root folder, so it is
+// The six YAML parts of the editor (wave 024, run 0184, DEC-5) name nothing outside the six that is not declared in a
+// part of layer core (run 0185, DEC-7). The ratchet cannot say it while `unsorted` is outside the layers; the check runs over a root folder, so it is
 // shown to fail on a temporary copy of the tree where a YAML part names a function of `unsorted`.
 
 const { test } = require('node:test');
@@ -21,16 +21,20 @@ const YAML_PARTS = [
   'core/yaml-patch-lines.js',
   'core/yaml-block-moves.js'
 ];
-// The one expected exception: it lives in the range of core/read-schema.js (cut in W-7) and is in `unsorted` until then
-// (DEF-3: W-7 drops it from this list).
-const EXCEPTIONS = new Set(['parseYamlAsModel']);
 const MAX_LINES = 3000;
 
 /** The names outside the six that the declarations of the six parts name, as "name (declared in file)" lines. */
 async function namesOutsideTheSix(root) {
   const { assemble, mapOf } = await import(BUILD);
   const { analyse } = await import(CHECK);
-  const ranges = mapOf(root).parts.filter((p) => YAML_PARTS.includes(p.file));
+  const allParts = mapOf(root).parts;
+  const ranges = allParts.filter((p) => YAML_PARTS.includes(p.file));
+  const layerOf = Object.fromEntries(
+    JSON.parse(fs.readFileSync(path.join(root, 'src/main/editor/layers.json'), 'utf8')).parts.map((p) => [
+      p.file,
+      p.layer
+    ])
+  );
   const analysis = analyse(assemble(root).text);
   const rangeOf = (decl) => ranges.find((r) => r.first <= decl.start && decl.start <= r.last) ?? null;
   const problems = [];
@@ -40,7 +44,9 @@ async function namesOutsideTheSix(root) {
     for (const target of analysis.edges[i]) {
       const to = analysis.decls[target];
       if (rangeOf(to)) continue;
-      const names = to.names.filter((n) => !EXCEPTIONS.has(n));
+      const owner = allParts.find((r) => r.first <= to.start && to.start <= r.last);
+      if (owner && layerOf[owner.file] === 'core') continue;
+      const names = to.names;
       if (names.length === 0) continue;
       problems.push(`${from.file}: ${decl.names.join(',') || 'a statement'} names ${names.join(',')}`);
     }
@@ -48,7 +54,7 @@ async function namesOutsideTheSix(root) {
   return { problems, ranges };
 }
 
-test('the six YAML parts name nothing outside the six, but parseYamlAsModel', async () => {
+test('the six YAML parts name nothing outside the six that is not declared in a part of layer core', async () => {
   const { problems, ranges } = await namesOutsideTheSix(REPO);
   assert.deepEqual(
     ranges.map((r) => r.file),
@@ -78,10 +84,12 @@ test('the check fails on a copy where a YAML part names a function of unsorted',
     fs.cpSync(path.join(REPO, 'src/main/wasm'), path.join(root, 'src/main/wasm'), { recursive: true });
     const { mapOf, assemble } = await import(BUILD);
     const { analyse } = await import(CHECK);
-    const unsorted = mapOf(root).parts.find((p) => p.file === 'unsorted/script.js');
+    const layers = JSON.parse(fs.readFileSync(path.join(root, 'src/main/editor/layers.json'), 'utf8'));
+    const unsortedFiles = new Set(layers.parts.filter((p) => p.layer === 'unsorted').map((p) => p.file));
+    const unsorted = mapOf(root).parts.filter((p) => unsortedFiles.has(p.file));
     const analysis = analyse(assemble(root).text);
     const target = analysis.decls.find(
-      (d) => d.kind === 'function' && d.start >= unsorted.first && d.names[0] !== 'parseYamlAsModel'
+      (d) => d.kind === 'function' && unsorted.some((u) => u.first <= d.start && d.start <= u.last)
     );
     assert.ok(target, 'unsorted holds a function');
     const file = path.join(root, 'src/main/editor', YAML_PARTS[1]);
