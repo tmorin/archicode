@@ -141,8 +141,8 @@
       "layer": "model"
     },
     {
-      "file": "unsorted/from-50.js",
-      "layer": "unsorted"
+      "file": "presentation/diagram-states.js",
+      "layer": "presentation"
     },
     {
       "file": "presentation/diagram-layout.js",
