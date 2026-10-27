@@ -153,6 +153,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "composition/render.js",
+      "layer": "composition"
+    },
+    {
       "file": "composition/bootstrap.js",
       "layer": "composition"
     }
