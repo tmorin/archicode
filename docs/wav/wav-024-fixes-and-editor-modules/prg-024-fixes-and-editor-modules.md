@@ -1,6 +1,6 @@
 ---
 type: prg
-status: active
+status: completed
 date: 2026-10-26
 related:
   - docs/wav/wav-024-fixes-and-editor-modules/wav-024-fixes-and-editor-modules.md
@@ -59,5 +59,8 @@ wave: 024
 - 2026-10-27: W-9 (run 0188), gate P3 evidence, each check run by hand on the tree of HEAD `1df1e2d` of branch wave-024-fixes-and-editor-modules (the gate agent has not run; this records what each criterion reads). (1) `./mvnw verify -DskipITs=false` BUILD SUCCESS (1512 unit tests, 2 skipped; 39 integration tests; PMD and JaCoCo floors passed); `npm run test:unit` via `npm run test:coverage` 2683 tests, 2682 pass, 1 skipped by design; `npm run test:e2e` 38 passed; `npm run lint` zero findings; `npm run format:check` clean; `node scripts/editor-coverage.mjs` holds the floor (92.83 % of the lines, 96.32 % of the functions; no floor lowered, `pages` and `other` raised): MET. (2) No file under `src/main/editor` over 3,000 lines (largest `core/yaml-parser.js`, 1,570; 69 parts, 29,834 lines); `.prettierignore` lists the generated page only, and `src/main/editor/**/*.{js,mjs}` is in `format` and `format:check`: MET (`style.css` and `page.html` are not formatted, 25 tests read the CSS as text; recorded in the TDD of 0188). (3) `scripts/check-editor-moves.sh 2784716 HEAD`: exit 0, 59 commits checked, 53 `refactor: move` and 6 `refactor: relocate`; there is no move commit between the start of P3 and 2784716; the criterion names `build-editor.mjs --check-identical`, which the script runs for each move commit: MET. (4) `ratchet.max` 162 at W-5 (a5b8e2d), 99 now, never raised in 56 commits that touched `layers.json`; `npm run editor:check` says the page is the assembly of the parts; `embed.sh --check` passes: MET. (5) `scripts/byte-identity.sh`: 20 workspaces, 332 commands, 330 identical, 1 accepted by the exceptions file, 0 unexpected, self-check ok; the 8 node tests that name a released tag (0.17.0 to 0.19.0) are not touched by any commit since 2784716, and pass in the suite: MET. All five criteria read as met by these runs; the pull request run (CI on GitHub) is not read and nothing was pushed. The wave is not marked completed.
 
 ## Findings
+
+- The wave is closed on 2026-10-27 (author's go). W-1 to W-11 are done, gates P1 and P3 are met (evidence above). W-7 to W-9 and W-11 were finished by hand with sonnet sub-agents after the generated workflows stopped on tasks whose objective or check required a commit that the executors never made.
+- Left out, by decision: ES modules for the pure core (RFC-001), the 99 upward pairs that remain (`ratchet.max` 99), #155 L3 and L4.
 
 ## Lessons Learnt

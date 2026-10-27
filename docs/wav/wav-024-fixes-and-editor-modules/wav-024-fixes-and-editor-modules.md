@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 024
-status: planned
+status: completed
 date: 2026-10-26
 related:
   - docs/wav/wav-024-fixes-and-editor-modules/wbc-024-fixes-and-editor-modules.md
@@ -33,7 +33,7 @@ related:
 wave_manifest:
   wave: 024
   slug: fixes-and-editor-modules
-  status: planned
+  status: completed
   sources:
     - 'gh:tmorin/archicode#166'
     - 'gh:tmorin/archicode#167'

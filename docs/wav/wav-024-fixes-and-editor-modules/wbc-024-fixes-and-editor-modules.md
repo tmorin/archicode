@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 024
-status: proposed
+status: completed
 date: 2026-10-26
 related:
   - docs/wav/wav-023-fixes-and-tooling/wav-023-fixes-and-tooling.md
