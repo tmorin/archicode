@@ -25,7 +25,7 @@ function rebuildIndexAndRender() {
   AppState.relationshipStats = resolveRelationships(index);
   modelsChanged(); // every edit of the plateau drawn ends here (see `modelVersion`)
   syncLayers(); // wave 014 (run 0080): the plateau on the band is resolved again from the manifests as they are now (nothing for a workspace with no layers)
-  render();
+  requestRedraw();
 }
 
 /**
@@ -222,7 +222,7 @@ function commitCreateChildElement({ parentReference, layer, kind, id, name, desc
     return { ok: false, field: 'id', error: 'Another element already uses reference "' + createdReference + '".' };
   }
   const plateau = writingPlateau();
-  const afterConfirm = () => { AppState.selection = { kind: 'element', key: createdReference, layer: category, mode: 'edit' }; render(); }; // after the author said yes, as after the click
+  const afterConfirm = () => { AppState.selection = { kind: 'element', key: createdReference, layer: category, mode: 'edit' }; requestRedraw(); }; // after the author said yes, as after the click
   // wave 014 (run 0082): a child of an element another plateau declares is a manifest of the plateau drawn, with `header.parent`; it cannot be written in the file of its parent
   const inheritedParent = plateau !== null && plateau !== BASELINE_PLATEAU && parentRecord.declaredIn !== plateau;
   try {

@@ -395,7 +395,7 @@ function goToChange(row, focus) {
   }
   changesWalk = { key: changeRowKey(row), selection: changesSelectionStamp() };
   scrollChangesToSelection = true;
-  render();
+  requestRedraw();
 }
 
 /** Next change / Previous change: the walk stops at the ends of the list (the button there is disabled), it does not wrap. Returns whether the reader moved. */
@@ -469,7 +469,7 @@ function setChangesFilter(kind, value) {
   if (near) goToChange(near, focus);
   else {
     pendingFocusSelector = focus;
-    render();
+    requestRedraw();
   }
   return true;
 }
@@ -482,7 +482,7 @@ function clearChangesFilter() {
   filter.state = 'all';
   filter.layer = 'all';
   pendingFocusSelector = '[data-changes-filter="state"]';
-  render();
+  requestRedraw();
 }
 
 /**
@@ -741,7 +741,7 @@ function renderStateWordHintsHtml(layer, reference) {
  * `rebuildIndexAndRender`, which tells the cache of the comparison that the model changed. Returns `{ ok: true }` or `{ ok: false, message }`.
  */
 function acceptCandidate(candidate) {
-  const refuse = (message) => { candidateMessage = message; render(); return { ok: false, message }; };
+  const refuse = (message) => { candidateMessage = message; requestRedraw(); return { ok: false, message }; };
   const state = comparisonState();
   if (!state || !state.records) return refuse('Nothing is compared: choose a plateau in Compare with, on the band, first.');
   return acceptLayeredCandidate(candidate, state, refuse);
@@ -782,7 +782,7 @@ function acceptLayeredCandidate(candidate, state, refuse) {
     commitElementEdit(candidate.to, (node) => { node.replaces = replacesWith(node.replaces, candidate.from); }, layer, { record, allowReadOnly: true });
   } catch (e) {
     candidateMessage = e && e.message ? e.message : String(e);
-    render();
+    requestRedraw();
     return { ok: false, message: candidateMessage };
   }
   return { ok: true };
@@ -869,7 +869,7 @@ function dismissCandidate(candidate) {
   if (!state || !state.records) return;
   candidateMessage = null;
   dismissedCandidates.add(candidateKey(state, candidate));
-  render();
+  requestRedraw();
 }
 
 /** "Show again": the pairs set aside for the plateaus compared come back. */
@@ -878,7 +878,7 @@ function restoreCandidates() {
   if (!state || !state.records) return;
   candidateMessage = null;
   for (const candidate of state.candidates || []) dismissedCandidates.delete(candidateKey(state, candidate));
-  render();
+  requestRedraw();
 }
 
 /** The Changes tab while the comparison is still being read (the kernel loads with the first drawing): the panel is there, the list follows. */

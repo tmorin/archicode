@@ -45,12 +45,12 @@ function setRightTab(tab) {
   if (currentPerspective === 'library') { // the page Stories has its own pair of tabs: View | Changes
     libraryRightTab = tab === 'changes' ? 'changes' : 'view';
     scrollChangesToSelection = tab === 'changes';
-    render();
+    requestRedraw();
     return;
   }
   changesTabPick = tab === 'changes' ? { stamp: rightPanelStamp() } : null;
   scrollChangesToSelection = tab === 'changes';
-  render();
+  requestRedraw();
 }
 
 /** The Changes tab was just opened: the row of the selection is brought into view in the list (a long list opens at its top otherwise). */
@@ -78,7 +78,7 @@ function selectChange(row, options) {
     changesTabPick = keepList ? { stamp: rightPanelStamp() } : null; // the new selection is what the panel shows; the Changes tab is one click away
     if (currentPerspective === 'library') libraryRightTab = keepList ? 'changes' : 'view';
     scrollChangesToSelection = keepList;
-    render();
+    requestRedraw();
     changesWalk.selection = changesSelectionStamp();
   };
   if (currentPerspective === 'library' && changeSelectionIsShown()) { // the page of a view: the thing is selected on the page, its address and the Map's selection stay

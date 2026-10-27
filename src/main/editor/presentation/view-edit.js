@@ -27,9 +27,9 @@ function editSavedView(change, later) {
   if (!changed && !viewEditNotice) return false;
   if (later) { // see handleViewFieldChange: the button that is being pressed is still there, and "Save all changes" is already lit
     if (changed) syncSaveAllButtonsInPlace();
-    setTimeout(() => { if (libraryPageView() === view) render(); }, 250);
+    setTimeout(() => { if (libraryPageView() === view) requestRedraw(); }, 250);
   } else {
-    render();
+    requestRedraw();
   }
   return changed;
 }

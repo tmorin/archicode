@@ -136,7 +136,7 @@ async function loadWorkspace(dirHandle) {
     if (renamed) setFatalError(FORMER_WORKSPACE_FILE_SENTENCE, 'renamed');
     else setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)), 'unreadable');
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
   try {
@@ -146,7 +146,7 @@ async function loadWorkspace(dirHandle) {
   } catch (e) {
     setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -155,7 +155,7 @@ async function loadWorkspace(dirHandle) {
   if (readProblem) {
     setFatalError('Could not read/parse .archicode.yaml: ' + readProblem);
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -166,7 +166,7 @@ async function loadWorkspace(dirHandle) {
   if (pathProblems.length) {
     setFatalError('Could not read the plateaus of .archicode.yaml:\n' + pathProblems.join('\n'));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -175,7 +175,7 @@ async function loadWorkspace(dirHandle) {
   if (facetProblems.length) {
     setFatalError('Could not read the plateaus of .archicode.yaml:\n' + facetProblems.join('\n'));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
   AppState.changesOnly = recalledFlag('changes-only'); // run 0040: how the comparison is read, as the last time in this folder
@@ -217,7 +217,7 @@ async function loadWorkspace(dirHandle) {
     if (sentence !== null) {
       setFatalError('Could not read the plateaus of .archicode.yaml:\n' + sentence);
       AppState.selection = { kind: 'none', key: null, mode: 'view' };
-      render();
+      requestRedraw();
       return;
     }
   }
@@ -245,7 +245,7 @@ async function loadWorkspace(dirHandle) {
   await openLayers(settings, plateauTree);
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   const playing = storyPlayerAddress(); // read before render(), which writes the address back without `play=`
-  render();
+  requestRedraw();
   if (playing) openStoryPlayer(playing.story, playing.step, { address: 'replace' }); // a link to a story opens the player once the folder is open (wave 021, run 0153)
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
 }

@@ -125,7 +125,7 @@ function focusControl(control) {
 
 function toggleDiagramMaximized() {
   diagramMaximized = !diagramMaximized;
-  render();
+  requestRedraw();
   const canvas = document.getElementById('diagram-canvas');
   if (canvas) canvas.focus({ preventScroll: true }); // so that Esc (or M) keeps working
 }

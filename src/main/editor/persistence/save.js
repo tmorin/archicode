@@ -275,7 +275,7 @@ function clearDirtyReferencesForFile(relPath) {
 async function saveAllChanges() {
   if (saveInFlight) return; // a second click (or key) while a save is running: the first one finishes alone
   saveInFlight = true;
-  render(); // the Save button is disabled while saving (still inside the user gesture: ensureWritePermission needs it)
+  requestRedraw(); // the Save button is disabled while saving (still inside the user gesture: ensureWritePermission needs it)
   try {
     await performSave();
   } catch (e) {
@@ -283,7 +283,7 @@ async function saveAllChanges() {
     saveStatus = { state: 'error', failedFile: 'the folder', message: e && e.message ? e.message : String(e) };
   } finally {
     saveInFlight = false;
-    render();
+    requestRedraw();
   }
 }
 
@@ -293,7 +293,7 @@ let saveInFlight = false;
 async function performSave() {
   if (!(await ensureWritePermission())) {
     saveStatus = { state: 'denied', message: 'Write permission was not granted; nothing was saved.' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -303,7 +303,7 @@ async function performSave() {
   const settingsDirty = workspace.settingsDirty;
   if (dirtyFiles.length === 0 && removals.length === 0 && !settingsDirty) {
     saveStatus = { state: 'success', message: 'Nothing to save.' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -337,7 +337,7 @@ async function performSave() {
     }
   } catch (e) {
     saveStatus = { state: 'error', failedFile: checking, message: 'could not check it on disk before saving (' + (e && e.message ? e.message : String(e)) + '). Nothing was saved.' };
-    render();
+    requestRedraw();
     return;
   }
   if (unknownOnDisk.length > 0) {
@@ -346,12 +346,12 @@ async function performSave() {
       message: 'a file already exists at ' + (unknownOnDisk.length === 1 ? 'this path' : 'these paths') + ' on disk, but this editor did not know it (it was added since the folder was opened). ' +
         'Saving would overwrite it, so nothing was saved. Reopen the folder to load it, then create the element again.'
     };
-    render();
+    requestRedraw();
     return;
   }
   if (conflicts.length > 0) {
     saveStatus = { state: 'conflict', conflicts };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -378,7 +378,7 @@ async function performSave() {
       }
     } catch (e) {
       saveStatus = { state: 'error', failedFile: f.relPath, message: e && e.message ? e.message : String(e) };
-      render();
+      requestRedraw();
       return;
     }
   }
@@ -390,7 +390,7 @@ async function performSave() {
       AppState.removedFileBaselines.delete(relPath);
     } catch (e) {
       saveStatus = { state: 'error', failedFile: relPath, message: e && e.message ? e.message : String(e) };
-      render();
+      requestRedraw();
       return;
     }
   }
@@ -403,13 +403,13 @@ async function performSave() {
       workspace.settingsLastKnownDiskModified = await statWorkspaceYaml(); // FR-19
     } catch (e) {
       saveStatus = { state: 'error', failedFile: '.archicode.yaml', message: e && e.message ? e.message : String(e) };
-      render();
+      requestRedraw();
       return;
     }
   }
 
   saveStatus = { state: 'success', message: hasUnsavedChanges() ? 'Saved. Changes made while saving are not saved yet.' : 'Saved.' };
-  render();
+  requestRedraw();
 }
 
 /**
@@ -463,7 +463,7 @@ async function reloadManifestFile(relPath) {
     ({ text: rawText, bom } = await readTextAndMark(file));
   } catch (e) {
     saveStatus = { state: 'reload-error', failedFile: relPath, message: e && e.message ? e.message : String(e) };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -483,7 +483,7 @@ async function reloadManifestFile(relPath) {
   const sel = AppState.selection;
   if (sel.kind === 'element' && !findElementRecord(sel.key)) {
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
   }
 }
 
@@ -522,7 +522,7 @@ function commitFileEdit(relPath, newText) {
   // at all; record the draft (with its error) and re-render.
   if (error) {
     rawYamlEditDraft = { relPath, text: newText, error };
-    render();
+    requestRedraw();
     return;
   }
 

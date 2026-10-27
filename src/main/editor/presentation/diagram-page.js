@@ -632,7 +632,7 @@ function handleNavKeydown(e) {
   const index = rows.indexOf(row);
   const foldable = row.hasAttribute('aria-expanded');
   const expanded = row.getAttribute('aria-expanded') === 'true';
-  const toggle = () => { navActiveKey = row.getAttribute('data-node'); toggleExpandedKey(row.getAttribute('data-node')); render(); };
+  const toggle = () => { navActiveKey = row.getAttribute('data-node'); toggleExpandedKey(row.getAttribute('data-node')); requestRedraw(); };
   switch (e.key) {
     case 'ArrowDown': focusNavRow(rows[index + 1]); break;
     case 'ArrowUp': focusNavRow(rows[index - 1]); break;

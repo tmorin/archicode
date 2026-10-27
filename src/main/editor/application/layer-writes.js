@@ -228,7 +228,7 @@ function confirmLayerWrite(dialog) {
   } catch (e) {
     saveStatus = { state: 'error', failedFile: dialog.plateau, message: e && e.message ? e.message : String(e) };
     keptElementForm = typedForm; // `render()` puts it back and drops it (no dialog is open): view state, no `modelsChanged()`
-    render();
+    requestRedraw();
   }
 }
 

@@ -166,14 +166,14 @@ test('--layers: a pathOnly file that is gone or no longer names the page fails',
 test('--layers passes on the repository', () => {
   const { code, out, err } = run(REPO);
   assert.equal(code, 0, err);
-  const pairs = out.match(/upward pairs: (\d+) \(max 162\)/);
+  const pairs = out.match(/upward pairs: (\d+) \(max 99\)/);
   assert.ok(pairs, out);
-  assert.ok(Number(pairs[1]) <= 162, `${pairs[1]} upward pairs, above the ratchet`);
+  assert.ok(Number(pairs[1]) <= 99, `${pairs[1]} upward pairs, above the ratchet`);
 });
 
-test('the layers.json of the repository has ratchet.max 162 and java-names.json lists the two path-only files', () => {
+test('the layers.json of the repository has ratchet.max 99 and java-names.json lists the two path-only files', () => {
   const layers = JSON.parse(fs.readFileSync(path.join(REPO, 'src/main/editor/layers.json'), 'utf8'));
-  assert.equal(layers.ratchet.max, 162);
+  assert.equal(layers.ratchet.max, 99);
   const java = JSON.parse(fs.readFileSync(path.join(REPO, 'src/main/editor/java-names.json'), 'utf8'));
   assert.equal(Object.keys(java.names).length, 21);
   assert.deepEqual(java.pathOnly.map((f) => path.basename(f)).sort(), [

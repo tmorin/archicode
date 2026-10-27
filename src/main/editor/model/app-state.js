@@ -20,6 +20,22 @@ function modelsChanged() {
   modelVersion++;
 }
 
+/**
+ * Redraw is requested, never called (RFC-002 rule 2; wave 024, run 0187). A part below the composition asks for the page to be drawn again with
+ * `requestRedraw()`; the composition says what draws it with `onRedraw(handler)` once, when it loads. The request is carried out at once, in the
+ * caller's turn (what a direct call did), so the order of what is drawn and written does not move. `modelsChanged()` is not a request: it bumps the
+ * version the caches read and draws nothing.
+ */
+let redrawHandler = null;
+
+function onRedraw(handler) {
+  redrawHandler = handler;
+}
+
+function requestRedraw() {
+  if (redrawHandler) redrawHandler();
+}
+
 function createInitialAppState() {
   modelsChanged(); // a new state holds new models (a folder closed, another one opened)
   return {

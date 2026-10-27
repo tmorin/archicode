@@ -49,7 +49,7 @@ function handleHashChange() {
   if (storyPlayer && (!wanted || wanted.story !== storyPlayer.story)) closeStoryPlayer({ address: false });
   if (hashWithoutPlayer(location.hash) !== hashWithoutPlayer('#' + currentRouteHash())) {
     syncPerspectiveFromHash();
-    render();
+    requestRedraw();
   }
   if (wanted) {
     if (!storyPlayer) openStoryPlayer(wanted.story, wanted.step, { address: 'none' });

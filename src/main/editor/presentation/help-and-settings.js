@@ -338,7 +338,7 @@ function chooseCurrentPlateau(select) {
     if (draft) commitSettingsEdit(draft.apply); // what was typed in the form is kept: the redraw gives the form afresh from the model
     saveStatus = { state: 'error', failedFile: '.archicode.yaml', message: e && e.message ? e.message : String(e) };
     restore();
-    render();
+    requestRedraw();
   }
 }
 

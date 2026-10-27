@@ -163,13 +163,13 @@ async function openServedFolder() {
     landingBusy = openingMessage(info.folder);
     AppState.folder = { handle, name: info.folder };
     AppState.permissionState = 'granted';
-    render();
+    requestRedraw();
     await loadWorkspace(handle);
   } catch (e) {
     landingBusy = null;
     console.error('ArchiCode: opening the served folder failed', e);
     setFatalError('The editor server could not be reached: ' + (e && e.message ? e.message : String(e)) + '. Reload the page, or restart `archicode editor serve`.');
-    render();
+    requestRedraw();
   }
 }
 
@@ -197,14 +197,14 @@ async function openFolder() {
     landingBusy = openingMessage(handle.name, entry ? entry.name : '');
     AppState.folder = { handle, name: handle.name, id: entry ? entry.id : null };
     AppState.permissionState = 'granted';
-    render();
+    requestRedraw();
     await loadWorkspace(handle);
   } catch (e) {
     landingBusy = null;
-    if (e && e.name === 'AbortError') { render(); return; } // user dismissed the picker
+    if (e && e.name === 'AbortError') { requestRedraw(); return; } // user dismissed the picker
     console.error('ArchiCode: openFolder failed', e);
     setFatalError('Failed to open folder: ' + (e && e.message ? e.message : String(e)));
-    render();
+    requestRedraw();
   }
 }
 
@@ -246,7 +246,7 @@ async function openRememberedFolder(entry) {
     }
     if (!rememberedFolders.includes(entry)) rememberedFolders = sortRememberedFolders(rememberedFolders.concat([entry]));
     landingFocusSelector = folderOpenSelector(entry);
-    render();
+    requestRedraw();
     return;
   }
   entry.problem = null;
@@ -258,7 +258,7 @@ async function openRememberedFolder(entry) {
   AppState.folder = { handle: entry.handle, name: entry.handle.name, id: entry.id || null };
   AppState.permissionState = 'granted';
   landingBusy = openingMessage(entry.handle.name, entry.name);
-  render();
+  requestRedraw();
   try {
     const kept = await rememberFolder(entry.handle, entry);
     if (kept) AppState.folder.id = kept.id;
@@ -317,7 +317,7 @@ async function checkFolderPermissions() {
   const landing = landingScreenConfig();
   if (!landing || !landing.folders || !pending.some((f) => rememberedFolders.includes(f))) return; // the list is gone
   if (landingFocusSelector === null) landingFocusSelector = landingControlSelector(document.activeElement) || '';
-  render();
+  requestRedraw();
 }
 
 /** "Remembered folders" on the error card: leaves the folder that did not open (storage untouched) for the list. */
@@ -327,9 +327,9 @@ async function showRememberedFolders() {
   AppState = createInitialAppState();
   resetUiState();
   landingNotice = null;
-  render();
+  requestRedraw();
   await refreshRememberedFolders();
-  render();
+  requestRedraw();
   await checkFolderPermissions();
 }
 
@@ -345,7 +345,7 @@ async function forgetFolder(entry) {
     console.error('ArchiCode: a remembered folder could not be removed from the list', e);
     landingNotice = '“' + title + '” could not be removed from the list: ' + (e && e.message ? e.message : String(e));
     landingFocusSelector = '[data-action="forget-folder"][data-folder-id="' + (entry.id || '') + '"]';
-    render();
+    requestRedraw();
     return;
   }
   const at = rememberedFolders.indexOf(entry);
@@ -358,6 +358,6 @@ async function forgetFolder(entry) {
   landingNotice = '“' + title + '” is no longer in the list. Nothing was deleted on disk.';
   const next = rememberedFolders[at] || rememberedFolders[at - 1];
   landingFocusSelector = next ? folderOpenSelector(next) : null;
-  render();
+  requestRedraw();
 }
 
