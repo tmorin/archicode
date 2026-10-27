@@ -9,6 +9,30 @@
   ],
   "parts": [
     {
+      "file": "core/yaml-parser.js",
+      "layer": "core"
+    },
+    {
+      "file": "core/yaml-serializer.js",
+      "layer": "core"
+    },
+    {
+      "file": "core/yaml-patch-text.js",
+      "layer": "core"
+    },
+    {
+      "file": "core/yaml-patch-flow.js",
+      "layer": "core"
+    },
+    {
+      "file": "core/yaml-patch-lines.js",
+      "layer": "core"
+    },
+    {
+      "file": "core/yaml-block-moves.js",
+      "layer": "core"
+    },
+    {
       "file": "unsorted/script.js",
       "layer": "unsorted"
     }
