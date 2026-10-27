@@ -137,6 +137,10 @@
       "layer": "persistence"
     },
     {
+      "file": "persistence/bundle.js",
+      "layer": "persistence"
+    },
+    {
       "file": "application/move.js",
       "layer": "application"
     },
