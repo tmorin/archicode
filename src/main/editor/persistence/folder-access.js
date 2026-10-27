@@ -15,7 +15,10 @@ function isFileSystemAccessSupported() {
 // a file, or from GitHub Pages, there is no such tag, and the editor asks for a folder as it always did.
 
 function serverToken() {
-  const meta = typeof document !== 'undefined' && document.querySelector ? document.querySelector('meta[name="archicode-server"]') : null;
+  const meta =
+    typeof document !== 'undefined' && document.querySelector
+      ? document.querySelector('meta[name="archicode-server"]')
+      : null;
   return meta ? meta.getAttribute('content') : null;
 }
 
@@ -34,7 +37,11 @@ function stripServerTokenFromUrl() {
   if (!params.has('token')) return;
   params.delete('token');
   const rest = params.toString();
-  try { history.replaceState(null, '', (location.pathname || '/') + (rest ? '?' + rest : '') + (location.hash || '')); } catch (e) { /* no history to edit */ }
+  try {
+    history.replaceState(null, '', (location.pathname || '/') + (rest ? '?' + rest : '') + (location.hash || ''));
+  } catch (e) {
+    /* no history to edit */
+  }
 }
 
 /** Whether the editor can get hold of a folder here: from the server that serves it, or by picking one. */
@@ -80,7 +87,7 @@ async function serverFailure(response, what) {
     e.name = 'NotFoundError';
     return e;
   }
-  return new Error((await response.text()) || ('the server answered ' + response.status + ' for ' + what));
+  return new Error((await response.text()) || 'the server answered ' + response.status + ' for ' + what);
 }
 
 /** A directory of the served folder, as a File System Access directory handle (what the editor uses of it). */
@@ -101,11 +108,18 @@ function serverDirectoryHandle(path, name) {
   return {
     kind: 'directory',
     name,
-    async queryPermission() { return 'granted'; },
-    async requestPermission() { return 'granted'; },
+    async queryPermission() {
+      return 'granted';
+    },
+    async requestPermission() {
+      return 'granted';
+    },
     async *entries() {
       for (const e of await list()) {
-        const handle = e.kind === 'directory' ? serverDirectoryHandle(child(e.name), e.name) : serverFileHandle(child(e.name), e.name);
+        const handle =
+          e.kind === 'directory'
+            ? serverDirectoryHandle(child(e.name), e.name)
+            : serverFileHandle(child(e.name), e.name);
         if (e.link) handle.symbolicLink = true; // the server says which folders are links: a recursive read of the manifests does not follow them (run 0076)
         yield [e.name, handle];
       }
@@ -130,20 +144,32 @@ function serverFileHandle(path, name) {
   return {
     kind: 'file',
     name,
-    async queryPermission() { return 'granted'; },
-    async requestPermission() { return 'granted'; },
+    async queryPermission() {
+      return 'granted';
+    },
+    async requestPermission() {
+      return 'granted';
+    },
     async getFile() {
       const response = await serverFetch('GET', 'file', { path });
       if (!response.ok) throw await serverFailure(response, path);
       // the editor tells that a file changed on disk since it read it by this time
-      const modified = Number(response.headers && response.headers.get ? response.headers.get('X-ArchiCode-Modified') : NaN);
+      const modified = Number(
+        response.headers && response.headers.get ? response.headers.get('X-ArchiCode-Modified') : NaN
+      );
       // the bytes, not `response.text()`: that decoder drops a byte-order mark, and the page then could not put it back when it saves (#119); `File.text()` drops it the same way
-      return new File([await response.arrayBuffer()], name, Number.isFinite(modified) ? { type: 'text/plain', lastModified: modified } : { type: 'text/plain' });
+      return new File(
+        [await response.arrayBuffer()],
+        name,
+        Number.isFinite(modified) ? { type: 'text/plain', lastModified: modified } : { type: 'text/plain' }
+      );
     },
     async createWritable() {
       const parts = [];
       return {
-        async write(data) { parts.push(data && typeof data === 'object' && 'data' in data && !(data instanceof Blob) ? data.data : data); },
+        async write(data) {
+          parts.push(data && typeof data === 'object' && 'data' in data && !(data instanceof Blob) ? data.data : data);
+        },
         async close() {
           const response = await serverFetch('PUT', 'file', { path }, new Blob(parts));
           if (!response.ok) throw await serverFailure(response, path);
@@ -168,7 +194,11 @@ async function openServedFolder() {
   } catch (e) {
     landingBusy = null;
     console.error('ArchiCode: opening the served folder failed', e);
-    setFatalError('The editor server could not be reached: ' + (e && e.message ? e.message : String(e)) + '. Reload the page, or restart `archicode editor serve`.');
+    setFatalError(
+      'The editor server could not be reached: ' +
+        (e && e.message ? e.message : String(e)) +
+        '. Reload the page, or restart `archicode editor serve`.'
+    );
     requestRedraw();
   }
 }
@@ -180,7 +210,11 @@ async function openFolder() {
     // another folder than the one the page was holding: nothing of the old one (pins, facet, hash…) must reach it
     let sameFolder = !AppState.folder;
     if (AppState.folder && AppState.folder.handle && AppState.folder.handle.isSameEntry) {
-      try { sameFolder = await AppState.folder.handle.isSameEntry(handle); } catch (e) { sameFolder = false; }
+      try {
+        sameFolder = await AppState.folder.handle.isSameEntry(handle);
+      } catch (e) {
+        sameFolder = false;
+      }
     }
     if (!sameFolder) {
       AppState = createInitialAppState();
@@ -201,7 +235,10 @@ async function openFolder() {
     await loadWorkspace(handle);
   } catch (e) {
     landingBusy = null;
-    if (e && e.name === 'AbortError') { requestRedraw(); return; } // user dismissed the picker
+    if (e && e.name === 'AbortError') {
+      requestRedraw();
+      return;
+    } // user dismissed the picker
     console.error('ArchiCode: openFolder failed', e);
     setFatalError('Failed to open folder: ' + (e && e.message ? e.message : String(e)));
     requestRedraw();
@@ -215,8 +252,13 @@ const FOLDER_UNREADABLE = 'Its .archicode.yaml could not be read the last time i
 /** Click handler for the "Reopen <name>" button of the reopen card: the folder the page holds, as remembered (FR-2/DEC-4). */
 async function reopenFolder() {
   if (!AppState.folder || !AppState.folder.handle) return;
-  const entry = rememberedFolderById(AppState.folder.id) ||
-    { id: AppState.folder.id || null, handle: AppState.folder.handle, name: '', openedAt: 0, legacy: !AppState.folder.id };
+  const entry = rememberedFolderById(AppState.folder.id) || {
+    id: AppState.folder.id || null,
+    handle: AppState.folder.handle,
+    name: '',
+    openedAt: 0,
+    legacy: !AppState.folder.id
+  };
   await openRememberedFolder(entry);
 }
 
@@ -244,7 +286,8 @@ async function openRememberedFolder(entry) {
       AppState = createInitialAppState();
       resetUiState();
     }
-    if (!rememberedFolders.includes(entry)) rememberedFolders = sortRememberedFolders(rememberedFolders.concat([entry]));
+    if (!rememberedFolders.includes(entry))
+      rememberedFolders = sortRememberedFolders(rememberedFolders.concat([entry]));
     landingFocusSelector = folderOpenSelector(entry);
     requestRedraw();
     return;
@@ -313,7 +356,11 @@ async function folderPermissionOf(handle) {
 async function checkFolderPermissions() {
   const pending = rememberedFolders.filter((f) => !f.permission);
   if (pending.length === 0) return;
-  await Promise.all(pending.map(async (f) => { f.permission = await folderPermissionOf(f.handle); }));
+  await Promise.all(
+    pending.map(async (f) => {
+      f.permission = await folderPermissionOf(f.handle);
+    })
+  );
   const landing = landingScreenConfig();
   if (!landing || !landing.folders || !pending.some((f) => rememberedFolders.includes(f))) return; // the list is gone
   if (landingFocusSelector === null) landingFocusSelector = landingControlSelector(document.activeElement) || '';
@@ -360,4 +407,3 @@ async function forgetFolder(entry) {
   landingFocusSelector = next ? folderOpenSelector(next) : null;
   requestRedraw();
 }
-

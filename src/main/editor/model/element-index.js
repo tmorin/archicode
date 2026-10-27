@@ -15,7 +15,10 @@ function withoutNthPresent(list, n) {
   for (let place = 0; place < copy.length; place++) {
     if (!isPresent(copy[place])) continue;
     seen++;
-    if (seen === n) { copy.splice(place, 1); break; }
+    if (seen === n) {
+      copy.splice(place, 1);
+      break;
+    }
   }
   return copy;
 }
@@ -31,25 +34,42 @@ function withoutNthPresent(list, n) {
  * the manifest root's own `level` once, from its un-generalized
  * `bareKind`, before ever calling this function for that root.
  */
-function indexElementRecursive(node, kind, reference, sourceFile, category, index, settings, level, declarations, attachedRoots) {
+function indexElementRecursive(
+  node,
+  kind,
+  reference,
+  sourceFile,
+  category,
+  index,
+  settings,
+  level,
+  declarations,
+  attachedRoots
+) {
   const rawRelationships = Array.isArray(node.relationships) ? node.relationships : [];
   // an item with no value is no relationship (the command line reads none, issue #105): it is left out, and each relationship keeps its place in the list it was read from
   // (`fileIndex`: the list of the manifest; in a plateau that patches the element, the list the plateau resolves), which the forms of an element address it by (`data-index`)
-  const relationships = rawRelationships.map((r, fileIndex) => ({ r, fileIndex })).filter(({ r }) => isPresent(r)).map(({ r, fileIndex }) => {
-    const rel = r && typeof r === 'object' ? r : {};
-    return {
-      fileIndex,
-      // Jackson reads a number or a boolean into a String field: a destination `8080` names the element "8080"
-      destination: (typeof rel.destination === 'number' || typeof rel.destination === 'boolean') ? String(rel.destination) : rel.destination,
-      label: (rel.label !== undefined && rel.label !== null) ? rel.label : settings.relationships.defaultSyntheticLabel,
-      // The label as written in the manifest (null when absent): the viewpoint kernel needs it, because ArchiCode
-      // draws a natural link without a label, whereas `label` above is the display fallback.
-      rawLabel: (rel.label !== undefined && rel.label !== null) ? rel.label : null,
-      qualifiers: Array.isArray(rel.qualifiers) ? rel.qualifiers.filter(isPresent) : [], // an item with no value is no item
-      tags: rel.tags && typeof rel.tags === 'object' ? rel.tags : {},
-      resolved: false // filled in by resolveRelationships (FLOW-4)
-    };
-  });
+  const relationships = rawRelationships
+    .map((r, fileIndex) => ({ r, fileIndex }))
+    .filter(({ r }) => isPresent(r))
+    .map(({ r, fileIndex }) => {
+      const rel = r && typeof r === 'object' ? r : {};
+      return {
+        fileIndex,
+        // Jackson reads a number or a boolean into a String field: a destination `8080` names the element "8080"
+        destination:
+          typeof rel.destination === 'number' || typeof rel.destination === 'boolean'
+            ? String(rel.destination)
+            : rel.destination,
+        label: rel.label !== undefined && rel.label !== null ? rel.label : settings.relationships.defaultSyntheticLabel,
+        // The label as written in the manifest (null when absent): the viewpoint kernel needs it, because ArchiCode
+        // draws a natural link without a label, whereas `label` above is the display fallback.
+        rawLabel: rel.label !== undefined && rel.label !== null ? rel.label : null,
+        qualifiers: Array.isArray(rel.qualifiers) ? rel.qualifiers.filter(isPresent) : [], // an item with no value is no item
+        tags: rel.tags && typeof rel.tags === 'object' ? rel.tags : {},
+        resolved: false // filled in by resolveRelationships (FLOW-4)
+      };
+    });
 
   const record = {
     reference,
@@ -87,7 +107,18 @@ function indexElementRecursive(node, kind, reference, sourceFile, category, inde
     const childKind = attached ? attached.kind : childNode.kind;
     // DEC-3: the level of a node is its own kind
     const childLevel = attached ? attached.level : childKind;
-    const childRecord = indexElementRecursive(childNode, childKind, childReference, attached ? attached.file : sourceFile, category, index, settings, childLevel, declarations, attachedRoots);
+    const childRecord = indexElementRecursive(
+      childNode,
+      childKind,
+      childReference,
+      attached ? attached.file : sourceFile,
+      category,
+      index,
+      settings,
+      childLevel,
+      declarations,
+      attachedRoots
+    );
     record.children.push(childRecord);
   }
 
@@ -120,4 +151,3 @@ function childKindOptionsForLevel(level) {
 function childKindOptionsFor(record) {
   return childKindOptionsForLevel(record.level);
 }
-

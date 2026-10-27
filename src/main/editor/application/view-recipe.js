@@ -32,12 +32,33 @@ function currentViewDefinition() {
   const facetName = diagramFacet && currentDiagramFacet() ? diagramFacet : null;
   if (mapIsShown()) {
     const state = currentMapState();
-    return canonicalViewDefinition({ viewpoint: 'map', layer: mapLayer(), properties: Object.assign({ pinned: state.pinned, hidden: state.hidden, opened: state.opened, facet: facetName, 'hide-unlinked': diagramHideUnlinked }, mapPartsShown(), diagramShowOverrides(true)) });
+    return canonicalViewDefinition({
+      viewpoint: 'map',
+      layer: mapLayer(),
+      properties: Object.assign(
+        {
+          pinned: state.pinned,
+          hidden: state.hidden,
+          opened: state.opened,
+          facet: facetName,
+          'hide-unlinked': diagramHideUnlinked
+        },
+        mapPartsShown(),
+        diagramShowOverrides(true)
+      )
+    });
   }
   if (diagramTabShown()) {
     const sel = elementSelection();
     const record = findElementRecord(sel.key, sel.layer);
-    return canonicalViewDefinition({ viewpoint: effectiveDiagramViewpoint(record), layer: layerOfReference(sel.key, sel.layer), properties: Object.assign({ element: sel.key, facet: facetName, 'hide-unlinked': diagramHideUnlinked }, diagramShowOverrides(false)) });
+    return canonicalViewDefinition({
+      viewpoint: effectiveDiagramViewpoint(record),
+      layer: layerOfReference(sel.key, sel.layer),
+      properties: Object.assign(
+        { element: sel.key, facet: facetName, 'hide-unlinked': diagramHideUnlinked },
+        diagramShowOverrides(false)
+      )
+    });
   }
   return null;
 }
@@ -52,19 +73,33 @@ function describeViewDefinition(view) {
   const definition = canonicalViewDefinition(view);
   const nameOf = (reference, layer) => {
     const record = AppState.index && AppState.index[layer] ? AppState.index[layer].get(reference) : null;
-    return record ? (record.name || record.id) : reference;
+    return record ? record.name || record.id : reference;
   };
   let text;
   if (definition.viewpoint === 'map') {
     const pinned = stringList(definition.properties.pinned);
-    text = pinned.length ? 'Map of ' + pinned.slice(0, 3).map((reference) => nameOf(reference, definition.layer)).join(', ') + (pinned.length > 3 ? ' and ' + (pinned.length - 3) + ' more' : '') : (definition.layer === 'technology' ? 'Map of the environments' : 'Map');
+    text = pinned.length
+      ? 'Map of ' +
+        pinned
+          .slice(0, 3)
+          .map((reference) => nameOf(reference, definition.layer))
+          .join(', ') +
+        (pinned.length > 3 ? ' and ' + (pinned.length - 3) + ' more' : '')
+      : definition.layer === 'technology'
+        ? 'Map of the environments'
+        : 'Map';
   } else {
-    text = (definition.properties.element ? nameOf(definition.properties.element, definition.layer) : '(no element)') + ' — ' + capitalizeWord(definition.viewpoint);
+    text =
+      (definition.properties.element ? nameOf(definition.properties.element, definition.layer) : '(no element)') +
+      ' — ' +
+      capitalizeWord(definition.viewpoint);
   }
   return text + (definition.properties.facet ? ' (facet ' + definition.properties.facet + ')' : '');
 }
 
-function viewLabel(view) { return (typeof view.name === 'string' && view.name) || describeViewDefinition(view); }
+function viewLabel(view) {
+  return (typeof view.name === 'string' && view.name) || describeViewDefinition(view);
+}
 
 /**
  * The elements of a plateau, by layer: `AppState.index` for the plateau drawn, else the model the plateau gives (a step is told at a plateau that is not the one on screen).
@@ -91,11 +126,16 @@ function viewProblem(view, plateau, name) {
     if (!pinned.length || pinned.some((reference) => index[layer].has(reference))) return null;
     return viewLacksInPlateau(pinned, layer, plateau) || 'None of the elements it was pinned on exists any more.';
   }
-  if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
+  if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint))
+    return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
   const layer = viewLayerOf(view);
-  if (typeof properties.element !== 'string' || !properties.element) return 'the view `' + viewName + '` has no element: write the reference of one in `properties.element`';
+  if (typeof properties.element !== 'string' || !properties.element)
+    return 'the view `' + viewName + '` has no element: write the reference of one in `properties.element`';
   if (!index[layer].has(properties.element)) {
-    return viewLacksInPlateau([properties.element], layer, plateau) || 'the view `' + viewName + '` names `' + properties.element + '`, which does not exist';
+    return (
+      viewLacksInPlateau([properties.element], layer, plateau) ||
+      'the view `' + viewName + '` names `' + properties.element + '`, which does not exist'
+    );
   }
   return null;
 }
@@ -112,7 +152,14 @@ function viewLacksInPlateau(references, layer, plateau) {
   const declared = declaredAnywhereCached()[layer];
   const there = references.filter((reference) => declared.has(reference));
   if (!there.length) return null;
-  return (references.length === 1 ? 'The element “' + references[0] + '”' : 'The elements it was pinned on') + ' ' + (references.length === 1 ? 'is' : 'are') + ' not in the plateau “' + named + '”.';
+  return (
+    (references.length === 1 ? 'The element “' + references[0] + '”' : 'The elements it was pinned on') +
+    ' ' +
+    (references.length === 1 ? 'is' : 'are') +
+    ' not in the plateau “' +
+    named +
+    '”.'
+  );
 }
 
 /** Puts the editor where the view was saved. Returns why it cannot, or null once it is done (the caller redraws). */
@@ -120,7 +167,11 @@ function applySavedView(view) {
   const problem = viewProblem(view);
   if (problem) return problem;
   const properties = isPlainObject(view.properties) ? view.properties : {};
-  diagramFacet = typeof properties.facet === 'string' && AppState.workspace.settings.facets.customs.some((facet) => facet.name === properties.facet) ? properties.facet : null;
+  diagramFacet =
+    typeof properties.facet === 'string' &&
+    AppState.workspace.settings.facets.customs.some((facet) => facet.name === properties.facet)
+      ? properties.facet
+      : null;
   setDiagramShow(properties);
   diagramHideUnlinked = properties['hide-unlinked'] === true;
   if (view.viewpoint === 'map') {
@@ -148,4 +199,3 @@ function applySavedView(view) {
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   return null;
 }
-

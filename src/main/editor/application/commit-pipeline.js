@@ -16,7 +16,10 @@
  * of every commit path below.
  */
 function rebuildIndexAndRender() {
-  const { index, rootsByCategory, duplicates, plateauTree } = buildIndex(AppState.manifestFiles, AppState.workspace.settings);
+  const { index, rootsByCategory, duplicates, plateauTree } = buildIndex(
+    AppState.manifestFiles,
+    AppState.workspace.settings
+  );
   AppState.index = index;
   AppState.duplicateReferences = duplicates;
   AppState.plateauTree = plateauTree;
@@ -54,10 +57,14 @@ function commitElementEdit(reference, mutatorFn, layer, options) {
 function commitElementEditNow(reference, mutatorFn, layer, options) {
   const located = locateContentNode(reference, layer, options && options.record);
   if (!located) {
-    throw new Error('"' + reference + '" cannot be found in the loaded manifests (it may have been removed or renamed); nothing was changed.');
+    throw new Error(
+      '"' +
+        reference +
+        '" cannot be found in the loaded manifests (it may have been removed or renamed); nothing was changed.'
+    );
   }
   const { mf, node, parentArray, indexInParent } = located;
-  const elementLayer = options && options.record ? (layer || 'application') : layerOfReference(reference, layer);
+  const elementLayer = options && options.record ? layer || 'application' : layerOfReference(reference, layer);
   const result = mutatorFn(node, parentArray, indexInParent);
   let dirtyReference = reference;
   if (result && result.renamedTo) {
@@ -115,9 +122,11 @@ function validateElementId(rawId) {
   const id = typeof rawId === 'string' ? rawId.trim() : '';
   if (id === '') return { valid: false, error: 'Id is required.' };
   if (/\s/.test(id)) return { valid: false, error: 'An id cannot contain spaces.' };
-  if (/[./\\]/.test(id)) return { valid: false, error: 'An id cannot contain "." (it separates the levels of a reference), "/" or "\\".' };
+  if (/[./\\]/.test(id))
+    return { valid: false, error: 'An id cannot contain "." (it separates the levels of a reference), "/" or "\\".' };
   if (/^[-.]/.test(id)) return { valid: false, error: 'An id cannot start with "-" or ".".' };
-  if (!/^[A-Za-z0-9_-]+$/.test(id)) return { valid: false, error: 'An id may only contain letters, digits, "_" and "-".' };
+  if (!/^[A-Za-z0-9_-]+$/.test(id))
+    return { valid: false, error: 'An id may only contain letters, digits, "_" and "-".' };
   return { valid: true, id };
 }
 
@@ -165,20 +174,33 @@ function commitCreateTopLevelElement(spec, options) {
   if (plateau === null) return commitCreateTopLevelElementNow(spec, null);
   // wave 014 (run 0082): in a layered workspace the new manifest says `plateau: <the plateau drawn>` in its header, under `guardedLayerWrite`
   return guardedLayerWrite({
-    plateau, confirmed: !!(options && options.confirmed), afterConfirm: options && options.afterConfirm, summary: 'Add “' + spec.id + '” to the plateau `' + plateau + '`',
+    plateau,
+    confirmed: !!(options && options.confirmed),
+    afterConfirm: options && options.afterConfirm,
+    summary: 'Add “' + spec.id + '” to the plateau `' + plateau + '`',
     again: () => commitCreateTopLevelElement(spec, Object.assign({}, options, { confirmed: true })),
     write: () => commitCreateTopLevelElementNow(spec, plateau),
     verify: (created) => {
-      if (!AppState.index[spec.category].has(created.createdReference)) throw new Error('Not written: the plateau `' + plateau + '` does not read back the new element `' + created.createdReference + '`. Nothing was changed.');
+      if (!AppState.index[spec.category].has(created.createdReference))
+        throw new Error(
+          'Not written: the plateau `' +
+            plateau +
+            '` does not read back the new element `' +
+            created.createdReference +
+            '`. Nothing was changed.'
+        );
     }
   });
 }
 
 /** `commitCreateTopLevelElement`, writing the manifest with `plateau: <plateau>` in its header when `plateau` is a plateau other than baseline. */
-function commitCreateTopLevelElementNow({ category, headerKind, attachUnderReference, id, name, description }, plateau) {
+function commitCreateTopLevelElementNow(
+  { category, headerKind, attachUnderReference, id, name, description },
+  plateau
+) {
   const idCheck = validateElementId(id);
   if (!idCheck.valid) throw new Error(idCheck.error);
-  const reference = attachUnderReference ? (attachUnderReference + '.' + id) : id;
+  const reference = attachUnderReference ? attachUnderReference + '.' + id : id;
   if (AppState.index[category] && AppState.index[category].has(reference)) {
     throw new Error('Another element already uses reference "' + reference + '".');
   }
@@ -189,11 +211,20 @@ function commitCreateTopLevelElementNow({ category, headerKind, attachUnderRefer
   if (name) content.name = name;
   if (description) content.description = description;
   const manifestsDir = plateau !== null ? plateauFolderFor(plateau, category) : firstManifestsDir();
-  const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, category === 'application' ? 'app.' : 'env.', reference);
+  const relPath = allocateManifestRelPath(
+    manifestsDir === undefined ? 'manifests' : manifestsDir,
+    category === 'application' ? 'app.' : 'env.',
+    reference
+  );
   const mf = {
-    relPath, header, content, error: null,
+    relPath,
+    header,
+    content,
+    error: null,
     rawText: serializeManifestFile(header, content), // W-3's serializer, reused as-is
-    dirty: true, existedOnDisk: false, lastKnownDiskModified: null
+    dirty: true,
+    existedOnDisk: false,
+    lastKnownDiskModified: null
   };
   adoptRemovedFile(mf);
   AppState.manifestFiles.push(mf);
@@ -214,7 +245,8 @@ function commitCreateChildElement({ parentReference, layer, kind, id, name, desc
   const category = layerOfReference(parentReference, layer);
   const parentRecord = category ? AppState.index[category].get(parentReference) : null;
   if (!parentRecord) return { ok: false, field: 'kind', error: 'The parent "' + parentReference + '" does not exist.' };
-  if (childKindOptionsFor(parentRecord).indexOf(kind) === -1) return { ok: false, field: 'kind', error: 'Invalid kind for this parent.' };
+  if (childKindOptionsFor(parentRecord).indexOf(kind) === -1)
+    return { ok: false, field: 'kind', error: 'Invalid kind for this parent.' };
   const idCheck = validateElementId(id);
   if (!idCheck.valid) return { ok: false, field: 'id', error: idCheck.error };
   const createdReference = parentReference + '.' + idCheck.id;
@@ -222,24 +254,35 @@ function commitCreateChildElement({ parentReference, layer, kind, id, name, desc
     return { ok: false, field: 'id', error: 'Another element already uses reference "' + createdReference + '".' };
   }
   const plateau = writingPlateau();
-  const afterConfirm = () => { AppState.selection = { kind: 'element', key: createdReference, layer: category, mode: 'edit' }; requestRedraw(); }; // after the author said yes, as after the click
+  const afterConfirm = () => {
+    AppState.selection = { kind: 'element', key: createdReference, layer: category, mode: 'edit' };
+    requestRedraw();
+  }; // after the author said yes, as after the click
   // wave 014 (run 0082): a child of an element another plateau declares is a manifest of the plateau drawn, with `header.parent`; it cannot be written in the file of its parent
   const inheritedParent = plateau !== null && plateau !== BASELINE_PLATEAU && parentRecord.declaredIn !== plateau;
   try {
     let written;
     if (inheritedParent) {
       const headerKind = kind;
-      written = commitCreateTopLevelElement({ category, headerKind, attachUnderReference: parentReference, id: idCheck.id, name, description }, { confirmed, afterConfirm });
+      written = commitCreateTopLevelElement(
+        { category, headerKind, attachUnderReference: parentReference, id: idCheck.id, name, description },
+        { confirmed, afterConfirm }
+      );
     } else {
-      written = commitElementEdit(parentReference, (node) => {
-        node.elements = Array.isArray(node.elements) ? node.elements.slice() : [];
-        const child = { kind, id: idCheck.id };
-        if (name) child.name = name;
-        if (description) child.description = description;
-        node.elements.push(child);
-        // UX review follow-up: the new child is wholly unsaved on its own, independent of the parent's own dirty state
-        AppState.dirtyReferences.add(nodeKey(createdReference, category));
-      }, category, { live: true, confirmed, afterConfirm });
+      written = commitElementEdit(
+        parentReference,
+        (node) => {
+          node.elements = Array.isArray(node.elements) ? node.elements.slice() : [];
+          const child = { kind, id: idCheck.id };
+          if (name) child.name = name;
+          if (description) child.description = description;
+          node.elements.push(child);
+          // UX review follow-up: the new child is wholly unsaved on its own, independent of the parent's own dirty state
+          AppState.dirtyReferences.add(nodeKey(createdReference, category));
+        },
+        category,
+        { live: true, confirmed, afterConfirm }
+      );
     }
     if (written && written.pending) return { ok: true, pending: true, layer: category };
   } catch (e) {
@@ -283,7 +326,12 @@ function scanDanglingRelationshipsFor(deletedRefs, category) {
     if (deletedRefs.has(record.reference)) continue; // DEC-4: "elsewhere" excludes the deleted subtree itself
     for (const rel of record.relationships) {
       if (deletedRefs.has(rel.destination)) {
-        affected.push({ ownerReference: record.reference, ownerSourceFile: record.sourceFile, label: rel.label, destination: rel.destination });
+        affected.push({
+          ownerReference: record.reference,
+          ownerSourceFile: record.sourceFile,
+          label: rel.label,
+          destination: rel.destination
+        });
       }
     }
   }
@@ -292,7 +340,12 @@ function scanDanglingRelationshipsFor(deletedRefs, category) {
     for (const record of AppState.index.technology.values()) {
       for (const application of record.applications) {
         if (deletedRefs.has(String(application))) {
-          affected.push({ ownerReference: record.reference, ownerSourceFile: record.sourceFile, label: 'deploys application', destination: String(application) });
+          affected.push({
+            ownerReference: record.reference,
+            ownerSourceFile: record.sourceFile,
+            label: 'deploys application',
+            destination: String(application)
+          });
         }
       }
     }
@@ -303,7 +356,12 @@ function scanDanglingRelationshipsFor(deletedRefs, category) {
       if (deletedRefs.has(record.reference)) continue;
       for (const used of record.uses || []) {
         if (deletedRefs.has(String(used))) {
-          affected.push({ ownerReference: record.reference, ownerSourceFile: record.sourceFile, label: 'uses', destination: String(used) });
+          affected.push({
+            ownerReference: record.reference,
+            ownerSourceFile: record.sourceFile,
+            label: 'uses',
+            destination: String(used)
+          });
         }
       }
     }
@@ -320,7 +378,7 @@ function manifestLayer(mf) {
 
 /** The reference of the root element of a manifest file (its header.parent, when it has one, then its id). */
 function manifestRootReference(mf) {
-  return mf.header && mf.header.parent ? (mf.header.parent + '.' + mf.content.id) : String(mf.content.id);
+  return mf.header && mf.header.parent ? mf.header.parent + '.' + mf.content.id : String(mf.content.id);
 }
 
 /** Call `fn(node, reference)` for the root element of a manifest file and every element nested in it, whatever the depth. */
@@ -328,8 +386,9 @@ function walkContentNodes(mf, fn) {
   if (!mf || !mf.content || typeof mf.content !== 'object') return;
   const walk = (node, reference) => {
     fn(node, reference);
-    for (const child of (Array.isArray(node.elements) ? node.elements : [])) {
-      if (child && typeof child === 'object' && child.id !== undefined && child.id !== null) walk(child, reference + '.' + String(child.id));
+    for (const child of Array.isArray(node.elements) ? node.elements : []) {
+      if (child && typeof child === 'object' && child.id !== undefined && child.id !== null)
+        walk(child, reference + '.' + String(child.id));
     }
   };
   walk(mf.content, manifestRootReference(mf));
@@ -351,7 +410,9 @@ function computeDeleteImpact(reference, category) {
   const deletedRefs = computeDeletedReferenceSet(reference, category);
   return {
     deletedRefs,
-    deletedReferences: Array.from(deletedRefs).filter((ref) => AppState.index[category].has(ref)).sort(),
+    deletedReferences: Array.from(deletedRefs)
+      .filter((ref) => AppState.index[category].has(ref))
+      .sort(),
     affected: scanDanglingRelationshipsFor(deletedRefs, category),
     files: computeDeletedManifestFiles(deletedRefs, category)
   };
@@ -383,11 +444,23 @@ function commitDeleteElement(reference, category, affected, options) {
   if (!record) throw new Error('"' + reference + '" cannot be found in the loaded manifests; nothing was deleted.');
   const inherited = plateau !== BASELINE_PLATEAU && record.declaredIn !== plateau;
   return guardedLayerWrite({
-    plateau, confirmed: !!(options && options.confirmed), summary: 'Delete “' + (record.name || reference) + '” in the plateau `' + plateau + '`',
+    plateau,
+    confirmed: !!(options && options.confirmed),
+    summary: 'Delete “' + (record.name || reference) + '” in the plateau `' + plateau + '`',
     again: () => commitDeleteElement(reference, category, affected, Object.assign({}, options, { confirmed: true })),
-    write: () => (inherited ? writeRemovePatch(plateau, category, reference) : commitDeleteElementNow(reference, category, affected, plateau)),
+    write: () =>
+      inherited
+        ? writeRemovePatch(plateau, category, reference)
+        : commitDeleteElementNow(reference, category, affected, plateau),
     verify: () => {
-      if (AppState.index[category].has(reference)) throw new Error('Not written: the plateau `' + plateau + '` still has `' + reference + '` after the delete. Nothing was changed.');
+      if (AppState.index[category].has(reference))
+        throw new Error(
+          'Not written: the plateau `' +
+            plateau +
+            '` still has `' +
+            reference +
+            '` after the delete. Nothing was changed.'
+        );
     }
   });
 }
@@ -413,7 +486,9 @@ function commitDeleteElementNow(reference, category, affected, plateau) {
     if (mfLayer === null) continue;
     walkContentNodes(mf, (node, ownerRef) => {
       if (mfLayer === category && Array.isArray(node.relationships)) {
-        const kept = node.relationships.filter((r) => !(r && r.destination !== undefined && r.destination !== null && deletedRefs.has(String(r.destination))));
+        const kept = node.relationships.filter(
+          (r) => !(r && r.destination !== undefined && r.destination !== null && deletedRefs.has(String(r.destination)))
+        );
         if (kept.length !== node.relationships.length) {
           node.relationships = kept;
           touchedRelPaths.add(mf.relPath);
@@ -424,7 +499,8 @@ function commitDeleteElementNow(reference, category, affected, plateau) {
       if (category === 'technology' && mfLayer === 'technology' && Array.isArray(node.uses)) {
         const kept = node.uses.filter((u) => !deletedRefs.has(String(u)));
         if (kept.length !== node.uses.length) {
-          if (kept.length > 0) node.uses = kept; else delete node.uses;
+          if (kept.length > 0) node.uses = kept;
+          else delete node.uses;
           touchedRelPaths.add(mf.relPath);
           AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer));
         }
@@ -459,7 +535,8 @@ function commitDeleteElementNow(reference, category, affected, plateau) {
     }
   }
   AppState.manifestFiles = AppState.manifestFiles.filter((f) => !removedFiles.has(f.relPath));
-  if (plateau !== null && plateau !== BASELINE_PLATEAU) { // a patch of the plateau that names a deleted element would no longer resolve
+  if (plateau !== null && plateau !== BASELINE_PLATEAU) {
+    // a patch of the plateau that names a deleted element would no longer resolve
     const pruned = prunePatchesNaming(plateau, deletedRefs, category);
     if (pruned) touchedRelPaths.add(pruned.relPath);
   }
@@ -486,4 +563,3 @@ function commitDeleteElementNow(reference, category, affected, plateau) {
   saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
   rebuildIndexAndRender();
 }
-

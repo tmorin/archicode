@@ -26,7 +26,8 @@ function moveKindFits(record, parentRecord) {
 
 /** The reference of the parent an element of `located` is under now (a nested element: the reference minus its id; a manifest root: its `header.parent`), or null at the top. */
 function currentParentOf(reference, located) {
-  if (located.parentArray === null) return located.mf.header && located.mf.header.parent ? String(located.mf.header.parent) : null;
+  if (located.parentArray === null)
+    return located.mf.header && located.mf.header.parent ? String(located.mf.header.parent) : null;
   return reference.slice(0, reference.length - String(located.node.id).length - 1);
 }
 
@@ -50,12 +51,27 @@ function moveContextOf(reference, layer) {
   const record = index ? index.get(reference) : null;
   const located = record ? locateContentNode(reference, layer) : null;
   if (!located) return null;
-  return { reference, layer, index, record, located, nested: located.parentArray !== null, parentNow: currentParentOf(reference, located), writing: writingPlateau() };
+  return {
+    reference,
+    layer,
+    index,
+    record,
+    located,
+    nested: located.parentArray !== null,
+    parentNow: currentParentOf(reference, located),
+    writing: writingPlateau()
+  };
 }
 
 /** Why the element cannot get a manifest of its own named after `reference`, or null: the name of the file is the reference, and a `/` or a `\` in an id (a hand-written manifest may have one) would make it a folder. */
 function manifestNameProblem(ctx, reference) {
-  return /[/\\]/.test(reference) ? 'A manifest of its own is needed for “' + ctx.reference + '” there, and its reference “' + reference + '” has a “/” or a “\\” in it, which cannot be in the name of a file: rename the element first.' : null;
+  return /[/\\]/.test(reference)
+    ? 'A manifest of its own is needed for “' +
+        ctx.reference +
+        '” there, and its reference “' +
+        reference +
+        '” has a “/” or a “\\” in it, which cannot be in the name of a file: rename the element first.'
+    : null;
 }
 
 /**
@@ -68,7 +84,8 @@ function moveRouteUnder(ctx, parent) {
   const parentLocated = locateContentNode(parent.reference, ctx.layer);
   if (!parentLocated) return { reason: '“' + parent.reference + '” cannot be found in the manifests.' };
   if (parentLocated.mf === ctx.located.mf) return { route: 'inline' };
-  if (ctx.writing === null || plateauOfManifest(parentLocated.mf) === ctx.writing) return { route: 'paste', file: parentLocated.mf.relPath };
+  if (ctx.writing === null || plateauOfManifest(parentLocated.mf) === ctx.writing)
+    return { route: 'paste', file: parentLocated.mf.relPath };
   const unnamed = manifestNameProblem(ctx, parent.reference + '.' + String(ctx.located.node.id));
   if (unnamed) return { reason: unnamed };
   return { route: 'extract', plateau: plateauOfManifest(parentLocated.mf) };
@@ -77,17 +94,50 @@ function moveRouteUnder(ctx, parent) {
 /** `{ route }` when `parent` can hold the element, `{ reason }` (one sentence that names the parent) when not. The checks are the ones a move makes, in the order it makes them. */
 function moveParentVerdict(ctx, parent) {
   const ref = parent.reference;
-  if (ref === ctx.reference) return { reason: '“' + ref + '” is the element itself: an element cannot be moved into itself.' };
-  if (ref.indexOf(ctx.reference + '.') === 0) return { reason: '“' + ref + '” is inside “' + ctx.reference + '”: an element cannot be moved into what it contains.' };
+  if (ref === ctx.reference)
+    return { reason: '“' + ref + '” is the element itself: an element cannot be moved into itself.' };
+  if (ref.indexOf(ctx.reference + '.') === 0)
+    return {
+      reason: '“' + ref + '” is inside “' + ctx.reference + '”: an element cannot be moved into what it contains.'
+    };
   if (ref === ctx.parentNow) return { reason: '“' + ctx.reference + '” is already under “' + ref + '”.' };
   if (!moveKindFits(ctx.record, parent)) {
     const holds = childKindOptionsFor(parent);
-    return { reason: 'A ' + ctx.record.kind + ' cannot be put under “' + ref + '”, ' + (holds.length ? 'which holds ' + holds.join(' and ') + ' only' : 'a ' + parent.kind + ' that holds nothing') + '.' };
+    return {
+      reason:
+        'A ' +
+        ctx.record.kind +
+        ' cannot be put under “' +
+        ref +
+        '”, ' +
+        (holds.length ? 'which holds ' + holds.join(' and ') + ' only' : 'a ' + parent.kind + ' that holds nothing') +
+        '.'
+    };
   }
   const id = String(ctx.located.node.id);
-  if (ctx.index.has(ref + '.' + id)) return { reason: '“' + ref + '” already holds an element with the id “' + id + '” (“' + ref + '.' + id + '”); rename one of the two first.' };
+  if (ctx.index.has(ref + '.' + id))
+    return {
+      reason:
+        '“' +
+        ref +
+        '” already holds an element with the id “' +
+        id +
+        '” (“' +
+        ref +
+        '.' +
+        id +
+        '”); rename one of the two first.'
+    };
   const twice = (AppState.duplicateReferences || []).find((d) => d.layer === ctx.layer && d.reference === ref);
-  if (twice) return { reason: '“' + ref + '” is declared twice (' + twice.sources.join(', ') + '): which of the two is the parent is not for the editor to guess.' };
+  if (twice)
+    return {
+      reason:
+        '“' +
+        ref +
+        '” is declared twice (' +
+        twice.sources.join(', ') +
+        '): which of the two is the parent is not for the editor to guess.'
+    };
   return moveRouteUnder(ctx, parent);
 }
 
@@ -95,11 +145,30 @@ function moveParentVerdict(ctx, parent) {
 function moveTopVerdict(ctx) {
   const roots = topLevelKindsOf(ctx.layer);
   const id = String(ctx.located.node.id);
-  if (roots.indexOf(ctx.record.kind) === -1) return { reason: 'A ' + ctx.record.kind + ' is never at the top level: the ' + ctx.layer + ' layer holds only ' + wordsList(roots) + ' there.' };
+  if (roots.indexOf(ctx.record.kind) === -1)
+    return {
+      reason:
+        'A ' +
+        ctx.record.kind +
+        ' is never at the top level: the ' +
+        ctx.layer +
+        ' layer holds only ' +
+        wordsList(roots) +
+        ' there.'
+    };
   if (!ctx.nested && !ctx.parentNow) return { reason: '“' + ctx.reference + '” is already at the top level.' };
-  if (ctx.index.has(id)) return { reason: 'The top level already holds an element with the id “' + id + '”; rename one of the two first.' };
+  if (ctx.index.has(id))
+    return { reason: 'The top level already holds an element with the id “' + id + '”; rename one of the two first.' };
   const twice = (AppState.duplicateReferences || []).find((d) => d.layer === ctx.layer && d.reference === id);
-  if (twice) return { reason: '“' + id + '” is declared twice (' + twice.sources.join(', ') + '): which of the two is at the top level is not for the editor to guess.' };
+  if (twice)
+    return {
+      reason:
+        '“' +
+        id +
+        '” is declared twice (' +
+        twice.sources.join(', ') +
+        '): which of the two is at the top level is not for the editor to guess.'
+    };
   const unnamed = ctx.nested ? manifestNameProblem(ctx, id) : null;
   if (unnamed) return { reason: unnamed };
   return { route: ctx.nested ? 'extract' : 'header', plateau: ctx.writing };
@@ -112,9 +181,21 @@ function moveTopVerdict(ctx) {
 function moveWholeProblem(ctx) {
   const subtree = computeDeletedReferenceSet(ctx.reference, ctx.layer);
   const twice = (AppState.duplicateReferences || []).filter((d) => d.layer === ctx.layer && subtree.has(d.reference));
-  if (twice.length) return '“' + twice[0].reference + '” is declared twice (' + twice[0].sources.join(', ') + '): which of the two moves is not for the editor to guess.';
+  if (twice.length)
+    return (
+      '“' +
+      twice[0].reference +
+      '” is declared twice (' +
+      twice[0].sources.join(', ') +
+      '): which of the two moves is not for the editor to guess.'
+    );
   const unreadable = AppState.manifestFiles.filter((f) => f.error);
-  if (unreadable.length) return 'A manifest cannot be read (' + unreadable.map((f) => f.relPath).join(', ') + '): a reference in it could not be rewritten.';
+  if (unreadable.length)
+    return (
+      'A manifest cannot be read (' +
+      unreadable.map((f) => f.relPath).join(', ') +
+      '): a reference in it could not be rewritten.'
+    );
   return null;
 }
 
@@ -130,7 +211,10 @@ function moveParentCandidates(reference, layer) {
   for (const parent of ctx.index.values()) {
     const verdict = moveParentVerdict(ctx, parent);
     if (verdict.reason) result.excluded.push({ reference: parent.reference, record: parent, reason: verdict.reason });
-    else { result.parents.push(parent); result.routes[parent.reference] = verdict; }
+    else {
+      result.parents.push(parent);
+      result.routes[parent.reference] = verdict;
+    }
   }
   result.parents.sort((a, b) => a.reference.localeCompare(b.reference));
   result.excluded.sort((a, b) => a.reference.localeCompare(b.reference));
@@ -146,7 +230,10 @@ function moveIsPossible(reference, layer) {
 
 /** Whether a typed search finds a parent: every word of the search is somewhere in `haystack` (name, id, reference, kind), whatever the case. */
 function moveParentMatches(haystack, query) {
-  const words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const words = String(query || '')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
   const text = String(haystack || '').toLowerCase();
   return words.every((word) => text.indexOf(word) !== -1);
 }
@@ -162,8 +249,15 @@ function scanMoveReferences(oldRef, layer) {
   const inside = (text) => text === oldRef || text.indexOf(oldRef + '.') === 0;
   const look = (value, what, file) => {
     if (value === undefined || value === null || typeof value === 'object') return;
-    if (typeof value === 'string') { if (inside(value)) { result.count++; files.add(file); } return; }
-    if (inside(String(value))) result.unsafe.push(what + ' in ' + file + ' is written as ' + typeof value + ' ' + String(value));
+    if (typeof value === 'string') {
+      if (inside(value)) {
+        result.count++;
+        files.add(file);
+      }
+      return;
+    }
+    if (inside(String(value)))
+      result.unsafe.push(what + ' in ' + file + ' is written as ' + typeof value + ' ' + String(value));
   };
   for (const mf of AppState.manifestFiles) {
     if (!writeScopeHas(mf)) continue;
@@ -172,18 +266,27 @@ function scanMoveReferences(oldRef, layer) {
     if (mfLayer === layer) look(mf.header.parent, 'the parent of ' + manifestRootReference(mf), mf.relPath);
     walkContentNodes(mf, (node, ownerRef) => {
       if (mfLayer === layer && Array.isArray(node.relationships)) {
-        for (const rel of node.relationships) if (rel && typeof rel === 'object') look(rel.destination, 'a destination of ' + ownerRef, mf.relPath);
+        for (const rel of node.relationships)
+          if (rel && typeof rel === 'object') look(rel.destination, 'a destination of ' + ownerRef, mf.relPath);
       }
-      if (layer === 'technology' && mfLayer === 'technology' && Array.isArray(node.uses)) for (const used of node.uses) look(used, 'a use of ' + ownerRef, mf.relPath);
-      if (layer === 'application' && mfLayer === 'technology' && Array.isArray(node.applications)) for (const application of node.applications) look(application, 'an application of ' + ownerRef, mf.relPath);
+      if (layer === 'technology' && mfLayer === 'technology' && Array.isArray(node.uses))
+        for (const used of node.uses) look(used, 'a use of ' + ownerRef, mf.relPath);
+      if (layer === 'application' && mfLayer === 'technology' && Array.isArray(node.applications))
+        for (const application of node.applications) look(application, 'an application of ' + ownerRef, mf.relPath);
     });
   }
   // the saved views and the steps of stories: rewritten on a copy to count them
   const copy = (entry) => JSON.parse(JSON.stringify(entry));
-  for (const view of savedViews()) if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
+  for (const view of savedViews())
+    if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
   for (const story of storiesList()) {
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
-      if (isPlainObject(step) && !step.view && rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer)) result.views++;
+      if (
+        isPlainObject(step) &&
+        !step.view &&
+        rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer)
+      )
+        result.views++;
     }
   }
   result.files = Array.from(files).sort();
@@ -199,19 +302,43 @@ function scanMoveReferences(oldRef, layer) {
  */
 function validateMove(reference, layer, newParentReference) {
   const refuse = (error) => ({ valid: false, error: error + ' Nothing was changed.' });
-  layer = layer === 'technology' || layer === 'application' ? layer : (layerOfReference(reference) || 'application');
+  layer = layer === 'technology' || layer === 'application' ? layer : layerOfReference(reference) || 'application';
   const toTop = newParentReference === MOVE_TOP_LEVEL;
   const index = AppState.index[layer];
   const drawn = drawnPlateau();
   const base = AppState.baseline ? AppState.baseline.plateau : null;
   const inBaseline = (ref) => !!AppState.baseline && AppState.baseline.index[layer].has(ref);
-  const readOnly = (ref) => '“' + ref + '” belongs to “' + plateauTitle(base) + '”, which is only read to compare and is never written; a move happens in “' + plateauTitle(drawn) + '”, the plateau drawn.';
-  if (!index.has(reference)) return refuse(inBaseline(reference) ? readOnly(reference) : '“' + reference + '” is not an element of the workspace.');
-  if (!toTop && !index.has(newParentReference)) return refuse(inBaseline(newParentReference) ? readOnly(newParentReference) : '“' + newParentReference + '” is not an element of the workspace.');
+  const readOnly = (ref) =>
+    '“' +
+    ref +
+    '” belongs to “' +
+    plateauTitle(base) +
+    '”, which is only read to compare and is never written; a move happens in “' +
+    plateauTitle(drawn) +
+    '”, the plateau drawn.';
+  if (!index.has(reference))
+    return refuse(
+      inBaseline(reference) ? readOnly(reference) : '“' + reference + '” is not an element of the workspace.'
+    );
+  if (!toTop && !index.has(newParentReference))
+    return refuse(
+      inBaseline(newParentReference)
+        ? readOnly(newParentReference)
+        : '“' + newParentReference + '” is not an element of the workspace.'
+    );
   const record = index.get(reference);
   const writing = writingPlateau();
-  if (writing !== null && writing !== BASELINE_PLATEAU && record.declaredIn !== writing) { // wave 014 (run 0082)
-    return refuse('“' + reference + '” is declared in the plateau `' + record.declaredIn + '`, and a patch never changes a parent: it is moved where it is declared. Draw `' + record.declaredIn + '` to move it.');
+  if (writing !== null && writing !== BASELINE_PLATEAU && record.declaredIn !== writing) {
+    // wave 014 (run 0082)
+    return refuse(
+      '“' +
+        reference +
+        '” is declared in the plateau `' +
+        record.declaredIn +
+        '`, and a patch never changes a parent: it is moved where it is declared. Draw `' +
+        record.declaredIn +
+        '` to move it.'
+    );
   }
   const ctx = moveContextOf(reference, layer);
   if (!ctx) return refuse('“' + reference + '” cannot be found in the manifests.');
@@ -223,8 +350,16 @@ function validateMove(reference, layer, newParentReference) {
   if (references.unsafe.length) return refuse('A reference cannot be rewritten safely: ' + references.unsafe[0] + '.');
   const id = String(ctx.located.node.id);
   const plan = {
-    layer, reference, kind: record.kind, newParentReference: toTop ? null : newParentReference, newReference: toTop ? id : newParentReference + '.' + id,
-    parentNow: ctx.parentNow, subtree: computeDeletedReferenceSet(reference, layer), references, route: verdict.route, nested: ctx.nested
+    layer,
+    reference,
+    kind: record.kind,
+    newParentReference: toTop ? null : newParentReference,
+    newReference: toTop ? id : newParentReference + '.' + id,
+    parentNow: ctx.parentNow,
+    subtree: computeDeletedReferenceSet(reference, layer),
+    references,
+    route: verdict.route,
+    nested: ctx.nested
   };
   return { valid: true, plan };
 }
@@ -261,11 +396,18 @@ function applyMovePlan(plan, node, parentArray, indexInParent) {
     if (!Array.isArray(target.elements)) target.elements = [];
     target.elements.push(node);
     // the block of the element goes as it was written, with its comments and quotes; if the layout of the file does not allow it, the ordinary save writes it
-    const movedText = moveBlockInText(oldText, oldValue, oldPath, { header: mf.header, content: mf.content }, pathOfElementNode(mf.content, node));
+    const movedText = moveBlockInText(
+      oldText,
+      oldValue,
+      oldPath,
+      { header: mf.header, content: mf.content },
+      pathOfElementNode(mf.content, node)
+    );
     if (movedText !== null) mf.rawText = movedText;
     return;
   }
-  const cut = () => { // the block leaves its file: the text without it, and the lines it was written in; null when the layout is not one this can follow (the ordinary save follows the model)
+  const cut = () => {
+    // the block leaves its file: the text without it, and the lines it was written in; null when the layout is not one this can follow (the ordinary save follows the model)
     const out = cutBlockFromText(oldText, oldValue, oldPath);
     if (out !== null) mf.rawText = out.text;
     return out;
@@ -279,7 +421,17 @@ function applyMovePlan(plan, node, parentArray, indexInParent) {
     if (!Array.isArray(targetLocated.node.elements)) targetLocated.node.elements = [];
     targetLocated.node.elements.push(node);
     const carried = cut();
-    const pasted = carried === null ? null : pasteBlockInText(otherText, otherValue, { header: other.header, content: other.content }, pathOfElementNode(other.content, node), carried.carried, carried.indent);
+    const pasted =
+      carried === null
+        ? null
+        : pasteBlockInText(
+            otherText,
+            otherValue,
+            { header: other.header, content: other.content },
+            pathOfElementNode(other.content, node),
+            carried.carried,
+            carried.indent
+          );
     other.rawText = pasted !== null ? pasted : reserializeManifestFile(other);
     other.dirty = true; // the second file changes too: "Save all changes" writes both
     return;
@@ -293,11 +445,22 @@ function applyMovePlan(plan, node, parentArray, indexInParent) {
   delete content.kind;
   detach();
   const carried = cut();
-  const relPath = allocateManifestRelPath(folderOfPath(mf.relPath), plan.layer === 'application' ? 'app.' : 'env.', plan.newReference);
+  const relPath = allocateManifestRelPath(
+    folderOfPath(mf.relPath),
+    plan.layer === 'application' ? 'app.' : 'env.',
+    plan.newReference
+  );
   const created = {
-    relPath, header, content, error: null,
-    rawText: (carried !== null && manifestTextFromBlock(carried.carried, header, content)) || serializeManifestFile(header, content),
-    dirty: true, existedOnDisk: false, lastKnownDiskModified: null
+    relPath,
+    header,
+    content,
+    error: null,
+    rawText:
+      (carried !== null && manifestTextFromBlock(carried.carried, header, content)) ||
+      serializeManifestFile(header, content),
+    dirty: true,
+    existedOnDisk: false,
+    lastKnownDiskModified: null
   };
   adoptRemovedFile(created);
   AppState.manifestFiles.push(created);
@@ -316,10 +479,22 @@ function commitMoveElement(reference, layer, newParentReference, options) {
   if (!check.valid) return { ok: false, message: check.error };
   const plan = check.plan;
   try {
-    const moved = commitElementEdit(reference, (node, parentArray, indexInParent) => {
-      applyMovePlan(plan, node, parentArray, indexInParent);
-      return { renamedTo: { from: reference, to: plan.newReference } };
-    }, plan.layer, { live: true, confirmed: !!(options && options.confirmed), afterConfirm: () => { expandAncestorsOf(plan.newReference, plan.layer); requestRedraw(); } });
+    const moved = commitElementEdit(
+      reference,
+      (node, parentArray, indexInParent) => {
+        applyMovePlan(plan, node, parentArray, indexInParent);
+        return { renamedTo: { from: reference, to: plan.newReference } };
+      },
+      plan.layer,
+      {
+        live: true,
+        confirmed: !!(options && options.confirmed),
+        afterConfirm: () => {
+          expandAncestorsOf(plan.newReference, plan.layer);
+          requestRedraw();
+        }
+      }
+    );
     if (moved && moved.pending) return { ok: true, pending: true, reference };
   } catch (e) {
     return { ok: false, message: e && e.message ? e.message : String(e) };
@@ -332,20 +507,49 @@ function commitMoveElement(reference, layer, newParentReference, options) {
 /** The sentence under the list of the Move dialog that says how a move is written for the element of `ctx`, with the ways that this list uses. */
 function moveWaysHtml(ctx, routes, top) {
   const record = ctx.record;
-  if (!ctx.nested) return '<p class="move-ways muted">“' + escapeHtml(record.id) + '” has a manifest of its own: a move changes its <code>header.parent</code> and the file stays.</p>';
-  const used = new Set(Object.keys(routes).map((ref) => routes[ref].route).concat(top.route || []));
+  if (!ctx.nested)
+    return (
+      '<p class="move-ways muted">“' +
+      escapeHtml(record.id) +
+      '” has a manifest of its own: a move changes its <code>header.parent</code> and the file stays.</p>'
+    );
+  const used = new Set(
+    Object.keys(routes)
+      .map((ref) => routes[ref].route)
+      .concat(top.route || [])
+  );
   const ways = [];
   if (used.has('inline')) ways.push('under a parent of the same file, the block moves inside it');
-  if (used.has('paste')) ways.push('under a parent of another file, the block is cut out of this file and pasted in that one, and both files are modified');
-  if (used.has('extract')) ways.push('at the top level, or under a parent of a plateau whose files are not written here, the element gets a manifest of its own');
+  if (used.has('paste'))
+    ways.push(
+      'under a parent of another file, the block is cut out of this file and pasted in that one, and both files are modified'
+    );
+  if (used.has('extract'))
+    ways.push(
+      'at the top level, or under a parent of a plateau whose files are not written here, the element gets a manifest of its own'
+    );
   if (!ways.length) return '';
-  return '<p class="move-ways muted">“' + escapeHtml(record.id) + '” is written inside “' + escapeHtml(record.sourceFile) + '”: ' + ways.join('; ') + '. Comments and quotes go with the block.</p>';
+  return (
+    '<p class="move-ways muted">“' +
+    escapeHtml(record.id) +
+    '” is written inside “' +
+    escapeHtml(record.sourceFile) +
+    '”: ' +
+    ways.join('; ') +
+    '. Comments and quotes go with the block.</p>'
+  );
 }
 
 /** What a choice of the Move dialog adds after its kind: where its block goes. */
 function moveRouteHintHtml(verdict) {
   if (verdict.route === 'paste') return ' · the block goes to <code>' + escapeHtml(verdict.file) + '</code>';
-  if (verdict.route === 'extract') return ' · in a manifest of its own' + (verdict.plateau && !!AppState.layers && verdict.plateau !== AppState.layers.current ? ' (the parent is declared in the plateau `' + escapeHtml(verdict.plateau) + '`)' : '');
+  if (verdict.route === 'extract')
+    return (
+      ' · in a manifest of its own' +
+      (verdict.plateau && !!AppState.layers && verdict.plateau !== AppState.layers.current
+        ? ' (the parent is declared in the plateau `' + escapeHtml(verdict.plateau) + '`)'
+        : '')
+    );
   return '';
 }
 
@@ -361,33 +565,129 @@ function renderMoveDialogBodyHtml(dialog) {
   const searchOf = (parent) => [parent.name || '', parent.id, parent.reference, parent.kind].join(' ');
   const topSearch = 'top level no parent';
   const choices = [];
-  if (top.route) choices.push({ value: MOVE_TOP_LEVEL, search: topSearch, html: 'Top level <small>no parent · ' + escapeHtml(record.kind) + ' at the root' + moveRouteHintHtml(top) + '</small>' });
+  if (top.route)
+    choices.push({
+      value: MOVE_TOP_LEVEL,
+      search: topSearch,
+      html:
+        'Top level <small>no parent · ' + escapeHtml(record.kind) + ' at the root' + moveRouteHintHtml(top) + '</small>'
+    });
   for (const parent of parents) {
-    choices.push({ value: parent.reference, search: searchOf(parent), html: escapeHtml(parent.name || parent.id) + ' <small><code>' + escapeHtml(parent.reference) + '</code> · ' + escapeHtml(parent.kind) + moveRouteHintHtml(routes[parent.reference]) + '</small>' });
+    choices.push({
+      value: parent.reference,
+      search: searchOf(parent),
+      html:
+        escapeHtml(parent.name || parent.id) +
+        ' <small><code>' +
+        escapeHtml(parent.reference) +
+        '</code> · ' +
+        escapeHtml(parent.kind) +
+        moveRouteHintHtml(routes[parent.reference]) +
+        '</small>'
+    });
   }
-  let body = '<p class="app-dialog-subject"><code>' + escapeHtml(dialog.reference) + '</code> · ' + escapeHtml(record.kind) +
-    (inside ? ' · the ' + inside + ' element' + (inside === 1 ? '' : 's') + ' inside it follow' + (inside === 1 ? 's' : '') : '') + '</p>';
-  const whole = ctx ? moveWholeProblem(ctx) || (references.unsafe.length ? 'A reference cannot be rewritten safely: ' + references.unsafe[0] + '.' : null) : null;
+  let body =
+    '<p class="app-dialog-subject"><code>' +
+    escapeHtml(dialog.reference) +
+    '</code> · ' +
+    escapeHtml(record.kind) +
+    (inside
+      ? ' · the ' + inside + ' element' + (inside === 1 ? '' : 's') + ' inside it follow' + (inside === 1 ? 's' : '')
+      : '') +
+    '</p>';
+  const whole = ctx
+    ? moveWholeProblem(ctx) ||
+      (references.unsafe.length ? 'A reference cannot be rewritten safely: ' + references.unsafe[0] + '.' : null)
+    : null;
   if (whole) body += '<p class="move-blocked" role="alert">No move can be written now. ' + escapeHtml(whole) + '</p>';
-  body += '<label class="app-dialog-field" for="move-filter">New parent</label>' +
-    '<input type="text" id="move-filter" data-dialog-filter data-dialog-autofocus autocomplete="off" placeholder="Search by name, id or reference" aria-label="Search the new parent" value="' + escapeHtml(dialog.query || '') + '">';
-  body += '<div class="move-parents" role="radiogroup" aria-label="New parent">' + choices.map((choice) =>
-    '<label class="app-dialog-choice move-parent" data-search="' + escapeHtml(choice.search) + '"' + (moveParentMatches(choice.search, dialog.query) ? '' : ' hidden') + '><input type="radio" name="move-parent" value="' + escapeHtml(choice.value) + '"' + (dialog.chosen === choice.value ? ' checked' : '') + '>' +
-      '<span>' + choice.html + '</span></label>').join('') + '</div>';
-  body += '<p class="move-empty muted"' + (choices.length === 0 || choices.some((choice) => moveParentMatches(choice.search, dialog.query)) ? ' hidden' : '') + '>No parent matches.</p>';
+  body +=
+    '<label class="app-dialog-field" for="move-filter">New parent</label>' +
+    '<input type="text" id="move-filter" data-dialog-filter data-dialog-autofocus autocomplete="off" placeholder="Search by name, id or reference" aria-label="Search the new parent" value="' +
+    escapeHtml(dialog.query || '') +
+    '">';
+  body +=
+    '<div class="move-parents" role="radiogroup" aria-label="New parent">' +
+    choices
+      .map(
+        (choice) =>
+          '<label class="app-dialog-choice move-parent" data-search="' +
+          escapeHtml(choice.search) +
+          '"' +
+          (moveParentMatches(choice.search, dialog.query) ? '' : ' hidden') +
+          '><input type="radio" name="move-parent" value="' +
+          escapeHtml(choice.value) +
+          '"' +
+          (dialog.chosen === choice.value ? ' checked' : '') +
+          '>' +
+          '<span>' +
+          choice.html +
+          '</span></label>'
+      )
+      .join('') +
+    '</div>';
+  body +=
+    '<p class="move-empty muted"' +
+    (choices.length === 0 || choices.some((choice) => moveParentMatches(choice.search, dialog.query))
+      ? ' hidden'
+      : '') +
+    '>No parent matches.</p>';
   if (ctx) body += moveWaysHtml(ctx, routes, top);
-  const notOffered = (top.route ? [] : [{ search: topSearch, text: 'Top level: ' + top.reason }]).concat(excluded.map((entry) => ({ search: searchOf(entry.record), text: entry.reason })));
+  const notOffered = (top.route ? [] : [{ search: topSearch, text: 'Top level: ' + top.reason }]).concat(
+    excluded.map((entry) => ({ search: searchOf(entry.record), text: entry.reason }))
+  );
   if (notOffered.length) {
-    body += '<details class="move-excluded"><summary>' + notOffered.length + (notOffered.length === 1 ? ' place is' : ' places are') + ' not offered, and why</summary><ul>' + notOffered.map((entry) =>
-      '<li data-search="' + escapeHtml(entry.search) + '"' + (moveParentMatches(entry.search, dialog.query) ? '' : ' hidden') + '>' + escapeHtml(entry.text) + '</li>').join('') + '</ul></details>';
+    body +=
+      '<details class="move-excluded"><summary>' +
+      notOffered.length +
+      (notOffered.length === 1 ? ' place is' : ' places are') +
+      ' not offered, and why</summary><ul>' +
+      notOffered
+        .map(
+          (entry) =>
+            '<li data-search="' +
+            escapeHtml(entry.search) +
+            '"' +
+            (moveParentMatches(entry.search, dialog.query) ? '' : ' hidden') +
+            '>' +
+            escapeHtml(entry.text) +
+            '</li>'
+        )
+        .join('') +
+      '</ul></details>';
   }
-  body += '<p class="move-impact">Its reference changes (the parent’s reference, then <code>' + escapeHtml(String(record.id)) + '</code>; at the top level, <code>' + escapeHtml(String(record.id)) + '</code> alone)' +
-    (references.count ? ', and ' + references.count + ' reference' + (references.count === 1 ? '' : 's') + ' to it or inside it ' + (references.count === 1 ? 'is' : 'are') + ' rewritten in ' + references.files.length + ' file' + (references.files.length === 1 ? '' : 's') : '; no other file points at it') +
-    (references.views ? ', and ' + references.views + ' saved view' + (references.views === 1 ? '' : 's') + ' of the workspace follow' + (references.views === 1 ? 's' : '') : '') + '.</p>';
+  body +=
+    '<p class="move-impact">Its reference changes (the parent’s reference, then <code>' +
+    escapeHtml(String(record.id)) +
+    '</code>; at the top level, <code>' +
+    escapeHtml(String(record.id)) +
+    '</code> alone)' +
+    (references.count
+      ? ', and ' +
+        references.count +
+        ' reference' +
+        (references.count === 1 ? '' : 's') +
+        ' to it or inside it ' +
+        (references.count === 1 ? 'is' : 'are') +
+        ' rewritten in ' +
+        references.files.length +
+        ' file' +
+        (references.files.length === 1 ? '' : 's')
+      : '; no other file points at it') +
+    (references.views
+      ? ', and ' +
+        references.views +
+        ' saved view' +
+        (references.views === 1 ? '' : 's') +
+        ' of the workspace follow' +
+        (references.views === 1 ? 's' : '')
+      : '') +
+    '.</p>';
   if (AppState.plateauTree && AppState.plateauTree.layered) {
-    body += '<p class="move-replaces muted">Move writes no <code>replaces</code>. To tell a comparison that an element moved, compare two plateaus and use “Write replaces” in the Changes panel, which lists the pairs that look like one element said twice.</p>';
+    body +=
+      '<p class="move-replaces muted">Move writes no <code>replaces</code>. To tell a comparison that an element moved, compare two plateaus and use “Write replaces” in the Changes panel, which lists the pairs that look like one element said twice.</p>';
   }
-  const actions = '<button type="button" data-action="dialog-cancel">Cancel</button><button type="button" class="btn-primary" data-action="move-confirm">Move</button>';
+  const actions =
+    '<button type="button" data-action="dialog-cancel">Cancel</button><button type="button" class="btn-primary" data-action="move-confirm">Move</button>';
   return { title: 'Move “' + label + '”', body, actions };
 }
 
@@ -400,11 +700,15 @@ function applyMoveFilter(query) {
     const match = moveParentMatches(option.getAttribute('data-search'), query);
     option.hidden = !match;
     if (match) shown++;
-    else { const radio = option.querySelector('input'); if (radio) radio.checked = false; }
+    else {
+      const radio = option.querySelector('input');
+      if (radio) radio.checked = false;
+    }
   }
   const empty = document.querySelector('.move-empty');
   if (empty) empty.hidden = shown > 0 || options.length === 0;
-  for (const item of Array.from(document.querySelectorAll('.move-excluded li'))) item.hidden = !moveParentMatches(item.getAttribute('data-search'), query); // the places not offered, and why
+  for (const item of Array.from(document.querySelectorAll('.move-excluded li')))
+    item.hidden = !moveParentMatches(item.getAttribute('data-search'), query); // the places not offered, and why
 }
 
 /** "Move" in the element's panel: applies what was typed in the form, then opens the dialog for the element selected. */
@@ -416,8 +720,19 @@ function openMoveDialog() {
   if (!layer) return;
   const writing = writingPlateau();
   const record = AppState.index[layer].get(sel.key);
-  if (writing !== null && writing !== BASELINE_PLATEAU && record && record.declaredIn !== writing) { // wave 014 (run 0082): said at once, not after a parent was chosen
-    saveStatus = { state: 'denied', message: '“' + sel.key + '” is declared in the plateau `' + record.declaredIn + '`, and a patch never changes a parent: it is moved where it is declared. Draw `' + record.declaredIn + '` to move it.' };
+  if (writing !== null && writing !== BASELINE_PLATEAU && record && record.declaredIn !== writing) {
+    // wave 014 (run 0082): said at once, not after a parent was chosen
+    saveStatus = {
+      state: 'denied',
+      message:
+        '“' +
+        sel.key +
+        '” is declared in the plateau `' +
+        record.declaredIn +
+        '`, and a patch never changes a parent: it is moved where it is declared. Draw `' +
+        record.declaredIn +
+        '` to move it.'
+    };
     requestRedraw();
     return;
   }
@@ -431,7 +746,10 @@ function openMoveDialog() {
 function submitMoveDialog(values) {
   const dialog = appDialog;
   if (!dialog || dialog.kind !== 'move') return null;
-  const chosen = values && values.parent !== undefined ? values.parent : ((document.querySelector('input[name="move-parent"]:checked') || {}).value || '');
+  const chosen =
+    values && values.parent !== undefined
+      ? values.parent
+      : (document.querySelector('input[name="move-parent"]:checked') || {}).value || '';
   const fail = (message) => {
     dialog.error = message;
     dialog.chosen = chosen || null;
@@ -455,11 +773,19 @@ function submitMoveDialog(values) {
   if (impact) {
     dialog.chosen = chosen;
     dialog.error = null;
-    openAppDialog({ kind: 'rename-siblings', reference: dialog.reference, impact, plateau: impact.plateau, moving: true, back: dialog, returnFocus: dialog.returnFocus, onConfirm: move });
+    openAppDialog({
+      kind: 'rename-siblings',
+      reference: dialog.reference,
+      impact,
+      plateau: impact.plateau,
+      moving: true,
+      back: dialog,
+      returnFocus: dialog.returnFocus,
+      onConfirm: move
+    });
     return null;
   }
   appDialog = null;
   pendingFocusSelector = dialog.returnFocus;
   return move();
 }
-

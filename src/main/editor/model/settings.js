@@ -44,16 +44,24 @@ function manifestsFolderOf(path) {
 /** `**` means something at the end of an entry, after a `/`, and nowhere else: the end of the sentence that says so, or null. */
 function manifestsPatternProblem(path) {
   if (typeof path !== 'string' || !manifestsFolderOf(path).includes('**')) return null;
-  return 'uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively (`manifests/**`, or `./**` for the folder of .archicode.yaml), ' +
-    'and `**` means nothing anywhere else. Write one path for each folder, or end the path with `/**`';
+  return (
+    'uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively (`manifests/**`, or `./**` for the folder of .archicode.yaml), ' +
+    'and `**` means nothing anywhere else. Write one path for each folder, or end the path with `/**`'
+  );
 }
 
 /** Why an entry of `settings.manifests.paths` is refused, in the words of the command line, or null: empty, absolute, `..`, or `**` where it is not read. */
 function manifestsPathSentence(path) {
   const problem = plateauPathProblem(path);
   if (problem !== null) {
-    return 'the path `' + path + '` of `settings.manifests.paths` ' + problem + ': a manifests folder must be below the folder of .archicode.yaml, written relative to it, without `..`. ' +
-      'Move the folder below .archicode.yaml (or move .archicode.yaml up, to a folder that holds both) and change the path to match';
+    return (
+      'the path `' +
+      path +
+      '` of `settings.manifests.paths` ' +
+      problem +
+      ': a manifests folder must be below the folder of .archicode.yaml, written relative to it, without `..`. ' +
+      'Move the folder below .archicode.yaml (or move .archicode.yaml up, to a folder that holds both) and change the path to match'
+    );
   }
   const pattern = manifestsPatternProblem(path);
   return pattern === null ? null : 'the path `' + path + '` of `settings.manifests.paths` ' + pattern;
@@ -123,7 +131,8 @@ function facetNameReason(name) {
     const c = name.charAt(i);
     const code = name.charCodeAt(i);
     if (c === '/' || c === '\\') return 'holds `' + c + '`, which separates the folders of a path';
-    if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) return 'holds a control character (' + facetNameEscape(code) + ')';
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f))
+      return 'holds a control character (' + facetNameEscape(code) + ')';
     if ('<>:"|?*'.indexOf(c) >= 0) return 'holds `' + c + '`, which Windows does not allow in the name of a folder';
   }
   const last = name.charAt(name.length - 1);
@@ -141,15 +150,31 @@ function facetNameEscape(code) {
 function facetNameProblem(name) {
   const reason = facetNameReason(name);
   if (reason === null) return null;
-  const shown = Array.from(name).map((ch) => { const code = ch.charCodeAt(0); return ch.length === 1 && (code < 0x20 || (code >= 0x7f && code <= 0x9f)) ? facetNameEscape(code) : ch; }).join('');
-  return 'the facet name `' + shown + '` cannot be the name of a folder: it ' + reason + ' (write a plain word, such as `journey`)';
+  const shown = Array.from(name)
+    .map((ch) => {
+      const code = ch.charCodeAt(0);
+      return ch.length === 1 && (code < 0x20 || (code >= 0x7f && code <= 0x9f)) ? facetNameEscape(code) : ch;
+    })
+    .join('');
+  return (
+    'the facet name `' +
+    shown +
+    '` cannot be the name of a folder: it ' +
+    reason +
+    ' (write a plain word, such as `journey`)'
+  );
 }
 
 /** The sentences for the facets of the settings that cannot be a folder, in the order of the file (`FacetNames.problems`). */
 function facetNameProblems(settings) {
   const problems = [];
   for (const facet of settings.facets.customs) {
-    const name = typeof facet.name === 'string' ? facet.name : facet.name === undefined || facet.name === null ? '' : String(facet.name);
+    const name =
+      typeof facet.name === 'string'
+        ? facet.name
+        : facet.name === undefined || facet.name === null
+          ? ''
+          : String(facet.name);
     const sentence = facetNameProblem(name);
     if (sentence !== null) problems.push(sentence);
   }
@@ -268,14 +293,23 @@ function parseSettings(rawSettings) {
 
   // `name` is optional; Jackson reads a number or a boolean into a String field, a blank name is no name
   const nameRaw = raw.name;
-  const name = typeof nameRaw === 'string' ? nameRaw : (typeof nameRaw === 'number' || typeof nameRaw === 'boolean') ? String(nameRaw) : '';
+  const name =
+    typeof nameRaw === 'string'
+      ? nameRaw
+      : typeof nameRaw === 'number' || typeof nameRaw === 'boolean'
+        ? String(nameRaw)
+        : '';
 
   return {
     name: name.trim() === '' ? '' : name,
     manifests: {
       // a number or a boolean is read as the text it is, as the command line reads it
       // an item with no value is no item (`paths: [null]` is an empty list), as the command line reads it
-      paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths.filter((p) => p !== null && p !== undefined).map((p) => (typeof p === 'number' || typeof p === 'boolean' ? String(p) : p)) : ['manifests']
+      paths: Array.isArray(manifestsRaw.paths)
+        ? manifestsRaw.paths
+            .filter((p) => p !== null && p !== undefined)
+            .map((p) => (typeof p === 'number' || typeof p === 'boolean' ? String(p) : p))
+        : ['manifests']
     },
     current: plateauText(raw.current),
     relationships: {
@@ -293,4 +327,3 @@ function parseSettings(rawSettings) {
     }
   };
 }
-

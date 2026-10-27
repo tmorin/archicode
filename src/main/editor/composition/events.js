@@ -6,8 +6,14 @@
  * innerHTML-template approach).
  */
 function handleAppClick(e) {
-  if (diagramPanned) { diagramPanned = false; return; } // the mouse button went up after dragging the diagram
-  if (e.target && e.target.classList && e.target.classList.contains('app-dialog-backdrop')) { closeAppDialog(); return; } // a click beside the dialog
+  if (diagramPanned) {
+    diagramPanned = false;
+    return;
+  } // the mouse button went up after dragging the diagram
+  if (e.target && e.target.classList && e.target.classList.contains('app-dialog-backdrop')) {
+    closeAppDialog();
+    return;
+  } // a click beside the dialog
   const target = e.target.closest('[data-action]');
   const action = target ? target.getAttribute('data-action') : null;
   if (helpOpen && action !== 'toggle-help' && !(e.target.closest && e.target.closest('.help-menu'))) {
@@ -22,7 +28,8 @@ function handleAppClick(e) {
   if (!target) return;
   // what an action said (a line over the story bar, the step that can be put back) lasts until the next one
   if (action !== 'dialog-submit' && action !== 'story-player-open') storyBarNotice = null; // Play changes nothing of the editor behind it (wave 021, run 0153)
-  if (removedStep && action !== 'story-undo' && action !== 'story-step-remove' && action !== 'story-player-open') removedStep = null;
+  if (removedStep && action !== 'story-undo' && action !== 'story-step-remove' && action !== 'story-player-open')
+    removedStep = null;
   if (draftTyped && ACTIONS_LEAVING_THE_FORM.has(action) && !confirmDiscardingDraft()) return;
   // wave 014 (runs 0080 and 0082): a plateau that cannot be drawn is not written (see `layerActionRefusal`)
   if (WRITE_ACTIONS.has(action)) {
@@ -40,7 +47,10 @@ function handleAppClick(e) {
       break;
     case 'toggle-header-menu':
       // e.detail is 0 for a click made with the keyboard (Enter, Space): then the focus goes along
-      setHeaderMenuOpen(!headerMenuOpen, headerMenuOpen ? { focusButton: e.detail === 0 } : { focusMenu: e.detail === 0 });
+      setHeaderMenuOpen(
+        !headerMenuOpen,
+        headerMenuOpen ? { focusButton: e.detail === 0 } : { focusMenu: e.detail === 0 }
+      );
       break;
     case 'open-folder':
       openFolder();
@@ -67,7 +77,8 @@ function handleAppClick(e) {
     case 'set-page': // the bar under the band (the pages below Timeline) and the top bar (a perspective) open a page the same way
       setPerspective(target.getAttribute('data-perspective'));
       break;
-    case 'toggle-files-group': { // wave 015 (run 0098): a group of the Files page folds and unfolds
+    case 'toggle-files-group': {
+      // wave 015 (run 0098): a group of the Files page folds and unfolds
       const group = target.getAttribute('data-group');
       if (filesFolded.has(group)) filesFolded.delete(group);
       else filesFolded.add(group);
@@ -91,7 +102,8 @@ function handleAppClick(e) {
     case 'open-mistakes': // wave 015 (run 0097): the band's button; the lists of the band are `chooseOnBand`
       openAppDialog({ kind: 'mistakes' });
       break;
-    case 'set-changes-only': { // run 0040: the diagrams draw the changes with their context, or everything
+    case 'set-changes-only': {
+      // run 0040: the diagrams draw the changes with their context, or everything
       const only = target.getAttribute('data-value') === '1';
       if (only === AppState.changesOnly) break;
       AppState.changesOnly = only;
@@ -119,16 +131,31 @@ function handleAppClick(e) {
       clearChangesFilter();
       break;
     case 'accept-candidate':
-      acceptCandidate({ layer: target.getAttribute('data-layer'), from: target.getAttribute('data-from'), to: target.getAttribute('data-to') });
+      acceptCandidate({
+        layer: target.getAttribute('data-layer'),
+        from: target.getAttribute('data-from'),
+        to: target.getAttribute('data-to')
+      });
       break;
     case 'dismiss-candidate':
-      dismissCandidate({ layer: target.getAttribute('data-layer'), from: target.getAttribute('data-from'), to: target.getAttribute('data-to') });
+      dismissCandidate({
+        layer: target.getAttribute('data-layer'),
+        from: target.getAttribute('data-from'),
+        to: target.getAttribute('data-to')
+      });
       break;
     case 'restore-candidates':
       restoreCandidates();
       break;
     case 'select-change':
-      selectChange({ thing: target.getAttribute('data-thing'), change: target.getAttribute('data-change'), layer: target.getAttribute('data-layer'), ref: target.getAttribute('data-ref'), to: target.getAttribute('data-to'), label: target.getAttribute('data-label') || '' });
+      selectChange({
+        thing: target.getAttribute('data-thing'),
+        change: target.getAttribute('data-change'),
+        layer: target.getAttribute('data-layer'),
+        ref: target.getAttribute('data-ref'),
+        to: target.getAttribute('data-to'),
+        label: target.getAttribute('data-label') || ''
+      });
       break;
     case 'select-file': {
       const relPath = target.getAttribute('data-relpath');
@@ -147,13 +174,17 @@ function handleAppClick(e) {
       if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4 — an element is never the draft's file
       if (pendingDeleteConfirmation) pendingDeleteConfirmation = null; // TDD-0010 DEC-4 — same discard-on-navigate philosophy
       const layer = target.getAttribute('data-layer'); // the tree row knows its layer (the reference can exist in both)
-      AppState.selection = layer ? { kind: 'element', key: reference, layer, mode: 'view' } : { kind: 'element', key: reference, mode: 'view' };
+      AppState.selection = layer
+        ? { kind: 'element', key: reference, layer, mode: 'view' }
+        : { kind: 'element', key: reference, mode: 'view' };
       render();
       break;
     }
     case 'diagram-zoom': {
       const dir = target.getAttribute('data-dir');
-      setDiagramScale(dir === 'in' ? diagramScaleStep(1) : dir === 'out' ? diagramScaleStep(-1) : dir === 'fit' ? 'fit' : 1);
+      setDiagramScale(
+        dir === 'in' ? diagramScaleStep(1) : dir === 'out' ? diagramScaleStep(-1) : dir === 'fit' ? 'fit' : 1
+      );
       break;
     }
     case 'toggle-maximize':
@@ -163,14 +194,18 @@ function handleAppClick(e) {
       resetDiagramView();
       break;
     case 'diagram-export':
-      if (target.getAttribute('data-format') === 'png') exportDiagramPng(); else exportDiagramSvg();
+      if (target.getAttribute('data-format') === 'png') exportDiagramPng();
+      else exportDiagramSvg();
       break;
     case 'toggle-fold': {
       const id = target.getAttribute('data-id');
       const mode = target.getAttribute('data-mode');
       if (mapIsShown()) {
         if (mode === 'expand') currentMapOpened().add(id);
-        else { closeOnMap(id); mapSelectionCheck = true; }
+        else {
+          closeOnMap(id);
+          mapSelectionCheck = true;
+        }
       }
       render();
       break;
@@ -239,7 +274,12 @@ function handleAppClick(e) {
       if (activeStory) goToStoryStep(activeStory.id, activeStory.step);
       break;
     case 'story-edit':
-      if (activeStory) { selectedStoryId = activeStory.id; storyNotice = null; libraryTab = 'stories'; setPerspective('library'); }
+      if (activeStory) {
+        selectedStoryId = activeStory.id;
+        storyNotice = null;
+        libraryTab = 'stories';
+        setPerspective('library');
+      }
       break;
     case 'story-exit':
       activeStory = null;
@@ -248,7 +288,11 @@ function handleAppClick(e) {
       break;
     case 'story-step-up':
     case 'story-step-down':
-      moveStoryStep(target.getAttribute('data-story'), Number(target.getAttribute('data-step')), action === 'story-step-down' ? 1 : -1);
+      moveStoryStep(
+        target.getAttribute('data-story'),
+        Number(target.getAttribute('data-step')),
+        action === 'story-step-down' ? 1 : -1
+      );
       break;
     case 'story-step-remove':
       removeStoryStep(target.getAttribute('data-story'), Number(target.getAttribute('data-step')));
@@ -330,7 +374,8 @@ function handleAppClick(e) {
     case 'toggle-show': {
       const name = target.getAttribute('data-show');
       if (!DIAGRAM_SHOW_NAMES.includes(name)) break;
-      if (currentPerspective === 'library') { // the page of a view: the button edits the view, as the box of its panel does
+      if (currentPerspective === 'library') {
+        // the page of a view: the button edits the view, as the box of its panel does
         const view = libraryPageView();
         const recipe = view ? libraryDiagramRecipe(view) : null;
         if (recipe) editSavedView((entry) => setViewShow(entry, name, !recipe.shows[name]));
@@ -339,7 +384,8 @@ function handleAppClick(e) {
       pushDiagramHistory();
       diagramShow[name] = !diagramShows(mapIsShown())[name];
       // back to the default is "no choice": the URL and the saved views then say nothing
-      if (diagramShow[name] === DIAGRAM_SHOW_DEFAULTS[mapIsShown() ? 'map' : 'elements'][name]) diagramShow[name] = null;
+      if (diagramShow[name] === DIAGRAM_SHOW_DEFAULTS[mapIsShown() ? 'map' : 'elements'][name])
+        diagramShow[name] = null;
       render();
       break;
     }
@@ -354,15 +400,27 @@ function handleAppClick(e) {
       render();
       break;
     case 'fold-all':
-      if (mapIsShown()) { mapStateOf().opened = defaultMapOpened(); mapSelectionCheck = true; render(); }
+      if (mapIsShown()) {
+        mapStateOf().opened = defaultMapOpened();
+        mapSelectionCheck = true;
+        render();
+      }
       break;
     case 'unfold-all':
       if (mapIsShown()) {
         // one more level each time; a big map asks first
         const more = (diagramScene && diagramScene.expandable) || [];
         const boxes = mapBoxesIfOpened(more);
-        if (boxes > MAP_UNFOLD_CONFIRM_BOXES && typeof window.confirm === 'function' &&
-            !window.confirm('Unfolding one more level draws about ' + boxes + ' boxes, which can be slow and hard to read. Unfold anyway?')) break;
+        if (
+          boxes > MAP_UNFOLD_CONFIRM_BOXES &&
+          typeof window.confirm === 'function' &&
+          !window.confirm(
+            'Unfolding one more level draws about ' +
+              boxes +
+              ' boxes, which can be slow and hard to read. Unfold anyway?'
+          )
+        )
+          break;
         for (const id of more) currentMapOpened().add(id);
         render();
         break;
@@ -372,21 +430,26 @@ function handleAppClick(e) {
       // a relationship that points at nothing is repaired where it is declared: in its owner's edit form
       const owner = target.getAttribute('data-ref');
       const ownerLayer = target.getAttribute('data-layer');
-      AppState.selection = ownerLayer ? { kind: 'element', key: owner, layer: ownerLayer, mode: 'edit' } : { kind: 'element', key: owner, mode: 'edit' };
+      AppState.selection = ownerLayer
+        ? { kind: 'element', key: owner, layer: ownerLayer, mode: 'edit' }
+        : { kind: 'element', key: owner, mode: 'edit' };
       expandAncestorsOf(owner, ownerLayer || undefined);
       scrollNavToSelection = true;
       setPerspective('elements');
       break;
     }
-    case 'toggle-diagram-key': { // issue #132: the key under a comparison, folded or open (view state; the key is changed in place, nothing is drawn again)
+    case 'toggle-diagram-key': {
+      // issue #132: the key under a comparison, folded or open (view state; the key is changed in place, nothing is drawn again)
       diagramKeyOpen = !diagramKeyOpen;
       syncDiagramKey();
       break;
     }
-    case 'toggle-map-part': { // issue #107: the Map of the technology layer draws its applications and its relationships, or not (view state, not model state)
+    case 'toggle-map-part': {
+      // issue #107: the Map of the technology layer draws its applications and its relationships, or not (view state, not model state)
       const part = target.getAttribute('data-part');
       if (!MAP_PARTS.includes(part)) break;
-      if (currentPerspective === 'library') { // the page of a view: the button edits the view, as the box of its form does
+      if (currentPerspective === 'library') {
+        // the page of a view: the button edits the view, as the box of its form does
         const view = libraryPageView();
         const recipe = view ? libraryDiagramRecipe(view) : null;
         if (recipe && recipe.parts) editSavedView((entry) => setViewMapPart(entry, part, !recipe.parts[part]));
@@ -400,7 +463,8 @@ function handleAppClick(e) {
       break;
     }
     case 'toggle-hide-unlinked':
-      if (currentPerspective === 'library') { // see 'toggle-show'
+      if (currentPerspective === 'library') {
+        // see 'toggle-show'
         const view = libraryPageView();
         const recipe = view ? libraryDiagramRecipe(view) : null;
         if (recipe) editSavedView((entry) => setViewHideUnlinked(entry, !recipe.hideUnlinked));
@@ -421,14 +485,23 @@ function handleAppClick(e) {
     }
     case 'set-element-tab': {
       const next = target.getAttribute('data-tab');
-      if (Object.prototype.hasOwnProperty.call(ELEMENT_TABS, next) && next !== elementTab) { pushDiagramHistory(); elementTab = next; }
+      if (Object.prototype.hasOwnProperty.call(ELEMENT_TABS, next) && next !== elementTab) {
+        pushDiagramHistory();
+        elementTab = next;
+      }
       render();
       break;
     }
     case 'goto-element': {
       const destinationRef = target.getAttribute('data-ref');
-      if (currentPerspective === 'library') { // a box of the page of a view (or an element named in its panel): selected here, the page and its address stay
-        selectOnLibraryPage({ kind: 'element', key: destinationRef, layer: target.getAttribute('data-layer') || 'application', mode: 'view' });
+      if (currentPerspective === 'library') {
+        // a box of the page of a view (or an element named in its panel): selected here, the page and its address stay
+        selectOnLibraryPage({
+          kind: 'element',
+          key: destinationRef,
+          layer: target.getAttribute('data-layer') || 'application',
+          mode: 'view'
+        });
         break;
       }
       if (AppState.selection.key !== destinationRef) pushDiagramHistory();
@@ -439,17 +512,28 @@ function handleAppClick(e) {
       if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4 — an element is never the draft's file
       if (pendingDeleteConfirmation) pendingDeleteConfirmation = null; // TDD-0010 DEC-4 — same discard-on-navigate philosophy
       const destinationLayer = target.getAttribute('data-layer');
-      AppState.selection = destinationLayer ? { kind: 'element', key: destinationRef, layer: destinationLayer, mode: 'view' } : { kind: 'element', key: destinationRef, mode: 'view' };
+      AppState.selection = destinationLayer
+        ? { kind: 'element', key: destinationRef, layer: destinationLayer, mode: 'view' }
+        : { kind: 'element', key: destinationRef, mode: 'view' };
       expandAncestorsOf(destinationRef, destinationLayer || undefined); // FR-14/FLOW-5
       scrollNavToSelection = true;
       render();
       break;
     }
     case 'select-link': {
-      if (currentPerspective === 'library') { // the page of a view: the link is selected in its panel, the Map's selection is not touched
+      if (currentPerspective === 'library') {
+        // the page of a view: the link is selected in its panel, the Map's selection is not touched
         const pageNth = target.getAttribute('data-nth');
         diagramLinkStop = diagramLinkKeyOf(target);
-        selectOnLibraryPage(linkSelectionFor(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'), pageNth === null ? null : parseInt(pageNth, 10), null));
+        selectOnLibraryPage(
+          linkSelectionFor(
+            target.getAttribute('data-from'),
+            target.getAttribute('data-to'),
+            target.getAttribute('data-layer'),
+            pageNth === null ? null : parseInt(pageNth, 10),
+            null
+          )
+        );
         break;
       }
       // a link is not a place: no history entry, no change of perspective, tab or box; the drafts go like for any other selection
@@ -461,15 +545,24 @@ function handleAppClick(e) {
       }
       const nth = target.getAttribute('data-nth');
       diagramLinkStop = diagramLinkKeyOf(target); // a click moves the stop of the links to its link, whether or not the browser focuses it
-      selectLink(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'), nth === null ? null : parseInt(nth, 10));
-      if (mapIsShown()) revealLinkAfterDrawing = { nth: Number.isInteger(parseInt(nth, 10)) ? parseInt(nth, 10) : null }; // the panel narrows the Map: the link must not end up behind it
+      selectLink(
+        target.getAttribute('data-from'),
+        target.getAttribute('data-to'),
+        target.getAttribute('data-layer'),
+        nth === null ? null : parseInt(nth, 10)
+      );
+      if (mapIsShown())
+        revealLinkAfterDrawing = { nth: Number.isInteger(parseInt(nth, 10)) ? parseInt(nth, 10) : null }; // the panel narrows the Map: the link must not end up behind it
       render();
       break;
     }
     case 'select-removed': {
       const removedRef = target.getAttribute('data-ref');
       const removedLayer = target.getAttribute('data-layer') || 'application';
-      if (currentPerspective === 'library') { selectOnLibraryPage({ kind: 'baseline-element', key: removedRef, layer: removedLayer, mode: 'view' }); break; }
+      if (currentPerspective === 'library') {
+        selectOnLibraryPage({ kind: 'baseline-element', key: removedRef, layer: removedLayer, mode: 'view' });
+        break;
+      }
       if (mapIsShown() && diagramScale === 'auto') {
         const canvas = document.getElementById('diagram-canvas');
         if (canvas) takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
@@ -483,14 +576,21 @@ function handleAppClick(e) {
       break;
     }
     case 'close-removed':
-      if (currentPerspective === 'library') { closeLibrarySelection(); break; }
+      if (currentPerspective === 'library') {
+        closeLibrarySelection();
+        break;
+      }
       removedPick = null;
       render();
       break;
     case 'close-inspection': // nothing else deselects on the Map; in Elements a link goes back to its element
       removedPick = null;
-      if (currentPerspective === 'library') { closeLibrarySelection(); break; }
-      if (AppState.selection.kind === 'link') dropLinkSelection(); else AppState.selection = { kind: 'none', key: null, mode: 'view' };
+      if (currentPerspective === 'library') {
+        closeLibrarySelection();
+        break;
+      }
+      if (AppState.selection.kind === 'link') dropLinkSelection();
+      else AppState.selection = { kind: 'none', key: null, mode: 'view' };
       render();
       break;
     case 'library-open-element': {
@@ -499,7 +599,9 @@ function handleAppClick(e) {
       const openedLayer = target.getAttribute('data-layer');
       if (rawYamlEditDraft) rawYamlEditDraft = null;
       if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
-      AppState.selection = openedLayer ? { kind: 'element', key: openedRef, layer: openedLayer, mode: 'view' } : { kind: 'element', key: openedRef, mode: 'view' };
+      AppState.selection = openedLayer
+        ? { kind: 'element', key: openedRef, layer: openedLayer, mode: 'view' }
+        : { kind: 'element', key: openedRef, mode: 'view' };
       expandAncestorsOf(openedRef, openedLayer || undefined);
       scrollNavToSelection = true;
       setPerspective('elements');
@@ -526,7 +628,11 @@ function handleAppClick(e) {
       // the tree of one layer: its elements, and — in Elements, where each tree has its own header — the tree itself
       const unfold = action === 'nav-unfold-all';
       const treeLayer = target.getAttribute('data-layer');
-      referencesWithChildren(treeLayer).forEach((reference) => (unfold ? AppState.expanded.add(nodeKey(reference, treeLayer)) : AppState.expanded.delete(nodeKey(reference, treeLayer))));
+      referencesWithChildren(treeLayer).forEach((reference) =>
+        unfold
+          ? AppState.expanded.add(nodeKey(reference, treeLayer))
+          : AppState.expanded.delete(nodeKey(reference, treeLayer))
+      );
       const branch = target.getAttribute('data-branch');
       if (branch === 'applications') treeExpandedApplications = unfold;
       else if (branch === 'environments') treeExpandedEnvironments = unfold;
@@ -585,11 +691,14 @@ function handleAppClick(e) {
       });
       break;
     }
-    case 'add-replaces': { // wave 009: the same writer as "Write replaces" (`replacesWith`), through the same edit as the other lists
+    case 'add-replaces': {
+      // wave 009: the same writer as "Write replaces" (`replacesWith`), through the same edit as the other lists
       const reference = target.getAttribute('data-ref');
       const record = findElementRecord(reference);
       const input = document.getElementById('add-replaces-input');
-      const result = record ? validateNewReplaces(record, input ? input.value : '') : { valid: false, error: 'Element not found.' };
+      const result = record
+        ? validateNewReplaces(record, input ? input.value : '')
+        : { valid: false, error: 'Element not found.' };
       if (!result.valid) {
         setInlineErrorText('add-replaces-error', result.error);
         break;
@@ -611,7 +720,8 @@ function handleAppClick(e) {
       commitElementWithDraft(reference, (node) => {
         const replaces = Array.isArray(node.replaces) ? node.replaces.slice() : [];
         replaces.splice(index, 1);
-        if (replaces.length > 0) node.replaces = replaces; else delete node.replaces;
+        if (replaces.length > 0) node.replaces = replaces;
+        else delete node.replaces;
       });
       break;
     }
@@ -636,7 +746,8 @@ function handleAppClick(e) {
       const index = parseInt(target.getAttribute('data-index'), 10);
       commitElementWithDraft(reference, (node) => {
         const uses = withoutNthPresent(node.uses, index);
-        if (uses.length > 0) node.uses = uses; else delete node.uses;
+        if (uses.length > 0) node.uses = uses;
+        else delete node.uses;
       });
       break;
     }
@@ -652,7 +763,7 @@ function handleAppClick(e) {
       }
       const value = valueInput ? valueInput.value : '';
       commitElementWithDraft(reference, (node) => {
-        const tags = (node.tags && typeof node.tags === 'object') ? copyOwnKeys(node.tags) : {};
+        const tags = node.tags && typeof node.tags === 'object' ? copyOwnKeys(node.tags) : {};
         setOwnKey(tags, result.key, value); // an own key even for `__proto__`: a plain assignment would drop it
         node.tags = tags;
       });
@@ -663,7 +774,7 @@ function handleAppClick(e) {
       const reference = target.getAttribute('data-ref');
       const key = target.getAttribute('data-key');
       commitElementWithDraft(reference, (node) => {
-        const tags = (node.tags && typeof node.tags === 'object') ? copyOwnKeys(node.tags) : {};
+        const tags = node.tags && typeof node.tags === 'object' ? copyOwnKeys(node.tags) : {};
         delete tags[key];
         node.tags = tags;
       });
@@ -736,7 +847,9 @@ function handleAppClick(e) {
         draft.apply(settings);
         const customs = settings.facets.customs.slice();
         const facet = customs[facetIndex];
-        customs[facetIndex] = Object.assign({}, facet, { actions: facet.actions.concat([{ operator: operator, jsonPath: result.jsonPath }]) });
+        customs[facetIndex] = Object.assign({}, facet, {
+          actions: facet.actions.concat([{ operator: operator, jsonPath: result.jsonPath }])
+        });
         settings.facets.customs = customs;
       });
       break;
@@ -764,7 +877,10 @@ function handleAppClick(e) {
       if (!mf || !mf.existedOnDisk) break;
       if (fileHasUnsavedChanges(relPath)) {
         const others = AppState.manifestFiles.filter((f) => f.dirty && f.relPath !== relPath).map((f) => f.relPath);
-        const message = 'Discard unsaved changes to ' + relPath + ' and reload it from disk?' +
+        const message =
+          'Discard unsaved changes to ' +
+          relPath +
+          ' and reload it from disk?' +
           (others.length > 0 ? '\n\nOther modified files are NOT reverted:\n' + others.join('\n') : '');
         if (!confirm(message)) break;
       }
@@ -869,7 +985,10 @@ function handleAppClick(e) {
         }
         const attachOk = childKindOptionsForLevel(parentRecord.level).indexOf(rootKind) !== -1;
         if (!attachOk) {
-          setInlineErrorText('create-attach-under-error', 'Element "' + attachUnder + '" cannot contain a "' + chosenKind + '".');
+          setInlineErrorText(
+            'create-attach-under-error',
+            'Element "' + attachUnder + '" cannot contain a "' + chosenKind + '".'
+          );
           break;
         }
       } else {
@@ -877,7 +996,10 @@ function handleAppClick(e) {
         // the real domain model allows as a genuinely unparented root.
         const blankAllowed = TOP_LEVEL_BLANK_ATTACH_ALLOWED[category] || [];
         if (blankAllowed.indexOf(chosenKind) === -1) {
-          setInlineErrorText('create-form-error', 'A "' + chosenKind + '" must have "Attach under" filled in — it is never a top-level root.');
+          setInlineErrorText(
+            'create-form-error',
+            'A "' + chosenKind + '" must have "Attach under" filled in — it is never a top-level root.'
+          );
           break;
         }
       }
@@ -889,7 +1011,7 @@ function handleAppClick(e) {
       }
       const id = idCheck.id;
       // FR-7: id-collision check against the resulting full reference.
-      const newReference = attachUnder ? (attachUnder + '.' + id) : id;
+      const newReference = attachUnder ? attachUnder + '.' + id : id;
       if (AppState.index[category] && AppState.index[category].has(newReference)) {
         setInlineErrorText('create-id-error', 'Another element already uses reference "' + newReference + '".');
         break;
@@ -900,10 +1022,24 @@ function handleAppClick(e) {
 
       let result;
       try {
-        result = commitCreateTopLevelElement({
-          category, headerKind: chosenKind, attachUnderReference: attachUnder, id, name, description
-        }, { afterConfirm: () => { AppState.selection = { kind: 'element', key: newReference, layer: category, mode: 'edit' }; render(); } });
-      } catch (err) { // wave 014 (run 0082): a plateau that cannot take the element says why
+        result = commitCreateTopLevelElement(
+          {
+            category,
+            headerKind: chosenKind,
+            attachUnderReference: attachUnder,
+            id,
+            name,
+            description
+          },
+          {
+            afterConfirm: () => {
+              AppState.selection = { kind: 'element', key: newReference, layer: category, mode: 'edit' };
+              render();
+            }
+          }
+        );
+      } catch (err) {
+        // wave 014 (run 0082): a plateau that cannot take the element says why
         setInlineErrorText('create-form-error', err && err.message ? err.message : String(err));
         break;
       }
@@ -925,8 +1061,18 @@ function handleAppClick(e) {
       // wave 014 (run 0082): an element another plateau declares is not deleted from its manifest: the plateau drawn takes it out with a `REMOVE` patch
       const writing = writingPlateau();
       const record = AppState.index[category] ? AppState.index[category].get(reference) : null;
-      const removal = writing !== null && writing !== BASELINE_PLATEAU && record && record.declaredIn !== writing ? { plateau: writing, declaredIn: record.declaredIn } : null;
-      pendingDeleteConfirmation = { reference, category, affected: impact.affected, files: removal ? [] : impact.files, deletedReferences: impact.deletedReferences, removal };
+      const removal =
+        writing !== null && writing !== BASELINE_PLATEAU && record && record.declaredIn !== writing
+          ? { plateau: writing, declaredIn: record.declaredIn }
+          : null;
+      pendingDeleteConfirmation = {
+        reference,
+        category,
+        affected: impact.affected,
+        files: removal ? [] : impact.files,
+        deletedReferences: impact.deletedReferences,
+        removal
+      };
       render();
       break;
     }
@@ -935,7 +1081,11 @@ function handleAppClick(e) {
       // pendingDeleteConfirmation and calls rebuildIndexAndRender.
       if (pendingDeleteConfirmation) {
         try {
-          commitDeleteElement(pendingDeleteConfirmation.reference, pendingDeleteConfirmation.category, pendingDeleteConfirmation.affected);
+          commitDeleteElement(
+            pendingDeleteConfirmation.reference,
+            pendingDeleteConfirmation.category,
+            pendingDeleteConfirmation.affected
+          );
         } catch (err) {
           const failed = pendingDeleteConfirmation.reference;
           pendingDeleteConfirmation = null;
@@ -984,7 +1134,10 @@ function handleAppClick(e) {
  * `panel`/`handle` references captured below.
  */
 function handleAppPointerDown(e) {
-  if (e.target.closest && e.target.closest('#diagram-canvas')) { startDiagramPan(e); return; }
+  if (e.target.closest && e.target.closest('#diagram-canvas')) {
+    startDiagramPan(e);
+    return;
+  }
   const handle = e.target.closest('[data-resize]');
   if (!handle) return;
   const panel = document.getElementById(handle.dataset.resize);
@@ -1006,7 +1159,7 @@ function handleAppPointerDown(e) {
 
   const onMove = (moveEvent) => {
     const delta = (horizontal ? moveEvent.clientX : moveEvent.clientY) - start;
-    panel.style[property] = (startSize + sign * delta) + 'px';
+    panel.style[property] = startSize + sign * delta + 'px';
   };
   const onUp = () => {
     handle.removeEventListener('pointermove', onMove);
@@ -1033,4 +1186,3 @@ function handleAppDblClick(e) {
   panelSizeStorage.remove(PANEL_SIZE_STORAGE_PREFIX + handle.dataset.resize + ':' + property);
   render();
 }
-

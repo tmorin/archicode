@@ -9,13 +9,13 @@ const ARCHICODE_KIND_PREFIX = 'archicode.morin.io/';
 // see "Stories" and "The plateaus of a workspace") (ASM-3a's fully-qualified vocabulary). A group is no kind any more, here and on the command line
 // (issue #114): `group`, `container-group`, `solution-group` and `system-group` give the sentence of `GROUP_IS_GONE`.
 const ARCHICODE_KIND_MAP = {
-  'component': { category: 'application', rootKind: 'component' },
-  'container': { category: 'application', rootKind: 'container' },
-  'person': { category: 'application', rootKind: 'person' },
-  'solution': { category: 'application', rootKind: 'solution' },
-  'system': { category: 'application', rootKind: 'system' },
-  'environment': { category: 'technology', rootKind: 'environment' },
-  'node': { category: 'technology', rootKind: 'node' }
+  component: { category: 'application', rootKind: 'component' },
+  container: { category: 'application', rootKind: 'container' },
+  person: { category: 'application', rootKind: 'person' },
+  solution: { category: 'application', rootKind: 'solution' },
+  system: { category: 'application', rootKind: 'system' },
+  environment: { category: 'technology', rootKind: 'environment' },
+  node: { category: 'technology', rootKind: 'node' }
 };
 
 function stripArchicodeKindPrefix(fullKind) {
@@ -25,4 +25,3 @@ function stripArchicodeKindPrefix(fullKind) {
   }
   return fullKind;
 }
-

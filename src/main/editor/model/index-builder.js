@@ -28,7 +28,8 @@ function buildIndex(manifestFiles, settings) {
   // loaded as layers (run 0077), the index holds the manifests of `baseline` alone; the others are read, checked, and not drawn
   const declarationsByPlateau = new Map();
   const declarationsOf = (plateau) => {
-    if (!declarationsByPlateau.has(plateau)) declarationsByPlateau.set(plateau, { application: new Map(), technology: new Map() });
+    if (!declarationsByPlateau.has(plateau))
+      declarationsByPlateau.set(plateau, { application: new Map(), technology: new Map() });
     return declarationsByPlateau.get(plateau);
   };
   // a view and a story belong to no plateau (wave 015, run 0100): each is declared once in the whole workspace
@@ -42,7 +43,8 @@ function buildIndex(manifestFiles, settings) {
     }
     const bareKind = stripArchicodeKindPrefix(mf.header.kind);
     if (bareKind === 'plateau') continue; // a manifest, not an element: the tree of plateaus is built below
-    if (bareKind === 'view' || bareKind === 'story') { // manifests, but not elements: see "Stories"
+    if (bareKind === 'view' || bareKind === 'story') {
+      // manifests, but not elements: see "Stories"
       const id = String(mf.content.id);
       if (!untied[bareKind].has(id)) untied[bareKind].set(id, []);
       untied[bareKind].get(id).push(mf.relPath);
@@ -58,13 +60,22 @@ function buildIndex(manifestFiles, settings) {
     const { category, rootKind } = mapping;
     // DEC-3: the root's own nesting-rule level is its kind
     const rootLevel = rootKind;
-    const rootReference = mf.header.parent
-      ? (mf.header.parent + '.' + mf.content.id)
-      : String(mf.content.id);
+    const rootReference = mf.header.parent ? mf.header.parent + '.' + mf.content.id : String(mf.content.id);
     // the elements of another plateau are walked to tell what they declare, into an index of their own that nothing reads
     const into = plateau === BASELINE_PLATEAU ? index : { application: new Map(), technology: new Map() };
-    const rootRecord = indexElementRecursive(mf.content, rootKind, rootReference, mf.relPath, category, into, settings, rootLevel, declarations);
-    if (plateau === BASELINE_PLATEAU) candidateRoots[category].push({ record: rootRecord, parentReference: mf.header.parent || null });
+    const rootRecord = indexElementRecursive(
+      mf.content,
+      rootKind,
+      rootReference,
+      mf.relPath,
+      category,
+      into,
+      settings,
+      rootLevel,
+      declarations
+    );
+    if (plateau === BASELINE_PLATEAU)
+      candidateRoots[category].push({ record: rootRecord, parentReference: mf.header.parent || null });
   }
 
   // DEC-5b: attach each candidate root under its resolved parent (if any);
@@ -83,7 +94,16 @@ function buildIndex(manifestFiles, settings) {
 
   const plateauTree = buildPlateauTree(manifestFiles);
   checkPlateauRedeclarations(plateauTree, declarationsByPlateau);
-  return { index, rootsByCategory, duplicates: findDuplicateReferences(Array.from(declarationsByPlateau.values()).concat([Object.assign({ application: new Map(), technology: new Map() }, untied)])), plateauTree };
+  return {
+    index,
+    rootsByCategory,
+    duplicates: findDuplicateReferences(
+      Array.from(declarationsByPlateau.values()).concat([
+        Object.assign({ application: new Map(), technology: new Map() }, untied)
+      ])
+    ),
+    plateauTree
+  };
 }
 
 /**
@@ -95,12 +115,26 @@ function duplicateReferenceMessage(reference, sources, noun) {
   const counts = new Map();
   for (const source of sources) counts.set(source, (counts.get(source) || 0) + 1);
   const times = sources.length === 2 ? 'twice' : sources.length + ' times';
-  if (counts.size === 1) return 'the ' + noun + ' `' + reference + '` is declared ' + times + ' in `' + sources[0] + '`';
-  const files = Array.from(counts.keys()).sort().map((file) => {
-    const n = counts.get(file);
-    return '`' + file + '`' + (n === 1 ? '' : n === 2 ? ' (twice)' : ' (' + n + ' times)');
-  });
-  return 'the ' + noun + ' `' + reference + '` is declared ' + times + ': in ' + files.slice(0, -1).join(', ') + ' and ' + files[files.length - 1];
+  if (counts.size === 1)
+    return 'the ' + noun + ' `' + reference + '` is declared ' + times + ' in `' + sources[0] + '`';
+  const files = Array.from(counts.keys())
+    .sort()
+    .map((file) => {
+      const n = counts.get(file);
+      return '`' + file + '`' + (n === 1 ? '' : n === 2 ? ' (twice)' : ' (' + n + ' times)');
+    });
+  return (
+    'the ' +
+    noun +
+    ' `' +
+    reference +
+    '` is declared ' +
+    times +
+    ': in ' +
+    files.slice(0, -1).join(', ') +
+    ' and ' +
+    files[files.length - 1]
+  );
 }
 
 /**
@@ -114,7 +148,13 @@ function findDuplicateReferences(declarationsOfPlateaus) {
     for (const layer of ['application', 'technology', 'view', 'story']) {
       const noun = layer === 'view' || layer === 'story' ? layer : 'reference'; // a view and a story have an id of their own
       for (const [reference, sources] of declarations[layer] || []) {
-        if (sources.length > 1) found.push({ layer, reference, sources: sources.slice(), message: duplicateReferenceMessage(reference, sources, noun) });
+        if (sources.length > 1)
+          found.push({
+            layer,
+            reference,
+            sources: sources.slice(),
+            message: duplicateReferenceMessage(reference, sources, noun)
+          });
       }
     }
   }
@@ -164,7 +204,9 @@ function normalizeRelDir(relDir) {
  * undefined when there is none.
  */
 function firstManifestsDir() {
-  return AppState.workspace.settings.manifests.paths.map((p) => normalizeRelDir(manifestsFolderOf(p))).find((p) => p !== null);
+  return AppState.workspace.settings.manifests.paths
+    .map((p) => normalizeRelDir(manifestsFolderOf(p)))
+    .find((p) => p !== null);
 }
 
 /** Resolve a (possibly multi-segment) relative directory path from a root handle; `options.create` makes the missing directories. */
@@ -177,4 +219,3 @@ async function getDirectoryHandleByRelativePath(rootHandle, relPath, options) {
   }
   return current;
 }
-

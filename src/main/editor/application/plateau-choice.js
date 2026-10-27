@@ -18,9 +18,16 @@ function createLayers(current, compare) {
 function layersBlockedReason() {
   const tree = AppState.plateauTree;
   if (!tree || !tree.layered) return null;
-  if (tree.problems.length) return tree.problems.length === 1 ? 'The plateaus have a mistake (see the note in Elements or Files), so only baseline is drawn.' : 'The plateaus have ' + tree.problems.length + ' mistakes (see the note in Elements or Files), so only baseline is drawn.';
-  if ((tree.redeclared || []).length) return 'A reference is declared again in a plateau that overrides the one that declares it (see the note in Elements or Files), so only baseline is drawn.';
-  if (elementDuplicates().length) return 'A reference is declared twice (see the note in Elements or Files), so only baseline is drawn.';
+  if (tree.problems.length)
+    return tree.problems.length === 1
+      ? 'The plateaus have a mistake (see the note in Elements or Files), so only baseline is drawn.'
+      : 'The plateaus have ' +
+          tree.problems.length +
+          ' mistakes (see the note in Elements or Files), so only baseline is drawn.';
+  if ((tree.redeclared || []).length)
+    return 'A reference is declared again in a plateau that overrides the one that declares it (see the note in Elements or Files), so only baseline is drawn.';
+  if (elementDuplicates().length)
+    return 'A reference is declared twice (see the note in Elements or Files), so only baseline is drawn.';
   return null;
 }
 
@@ -34,7 +41,10 @@ function layerAncestorsOf(id) {
 
 /** The plateaus that override a plateau directly, in the order of the band. */
 function layerChildrenOf(id) {
-  return Array.from(AppState.plateauTree.nodes.values()).filter((n) => n.parent === id).sort(compareBandSiblings).map((n) => n.id);
+  return Array.from(AppState.plateauTree.nodes.values())
+    .filter((n) => n.parent === id)
+    .sort(compareBandSiblings)
+    .map((n) => n.id);
 }
 
 /** Whether a plateau is below another in the tree (it overrides it, directly or not). */
@@ -72,7 +82,14 @@ function normalizedLayerCompare(layers) {
  * editor's (`AppState.layers`) unless a scene of the story player asks for the one of a step (`drawingOfPlateaus`).
  */
 function layerCompareOther(layers = AppState.layers) {
-  if (!layers || !layers.compare || !layers.compare.other || layers.compare.other === layers.current || !AppState.plateauTree.nodes.has(layers.compare.other)) return null;
+  if (
+    !layers ||
+    !layers.compare ||
+    !layers.compare.other ||
+    layers.compare.other === layers.current ||
+    !AppState.plateauTree.nodes.has(layers.compare.other)
+  )
+    return null;
   return layerPlateauModel(layers.compare.other);
 }
 
@@ -107,7 +124,14 @@ function syncLayers() {
   const other = layerCompareOther();
   const otherModel = other ? layerModelOf(other.id, settings) : null;
   AppState.index = model.index;
-  AppState.baseline = other ? { plateau: other, index: otherModel.index, problem: otherModel.problems ? otherModel.problems.join('\n') : null, undrawable: otherModel.undrawable } : null;
+  AppState.baseline = other
+    ? {
+        plateau: other,
+        index: otherModel.index,
+        problem: otherModel.problems ? otherModel.problems.join('\n') : null,
+        undrawable: otherModel.undrawable
+      }
+    : null;
   modelsChanged();
   AppState.workspace.application.elements = model.roots.application;
   AppState.workspace.technology.elements = model.roots.technology;
@@ -125,7 +149,8 @@ function syncLayers() {
 function drawPlateau(id, options) {
   const layers = AppState.layers;
   const compare = options && typeof options.compare === 'string' ? options.compare : null;
-  if (!layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.nodes.has(id) || layers.blocked) return false;
+  if (!layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.nodes.has(id) || layers.blocked)
+    return false;
   const before = layers.current + '|' + layerCompareChoice();
   layers.current = id;
   if (compare !== null) layers.compare = layerCompareFromChoice(compare);
@@ -148,7 +173,8 @@ function drawPlateau(id, options) {
 function drawLayersNamedByAddress() {
   const layers = AppState.layers;
   const tree = AppState.plateauTree;
-  if (!layers || !AppState.workspace || !tree || !tree.layered || layers.blocked || saveInFlight || appDialog) return false;
+  if (!layers || !AppState.workspace || !tree || !tree.layered || layers.blocked || saveInFlight || appDialog)
+    return false;
   const named = plateauFromHash();
   const id = named === null ? BASELINE_PLATEAU : named;
   if (!tree.nodes.has(id)) return false;
@@ -170,7 +196,8 @@ function settleAfterLayerChange(draw = true) {
   if (selection.kind === 'element') {
     if (selection.mode === 'edit') selection.mode = 'view';
     const layer = selection.layer || layerOfReference(selection.key, selection.layer);
-    if (!layer || !AppState.index[layer] || !AppState.index[layer].has(selection.key)) AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    if (!layer || !AppState.index[layer] || !AppState.index[layer].has(selection.key))
+      AppState.selection = { kind: 'none', key: null, mode: 'view' };
   } else if (selection.kind === 'link' || selection.kind === 'create') {
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
   }
@@ -194,7 +221,8 @@ function toggleCompareWithPast() {
   const layers = AppState.layers;
   if (!layers || layers.blocked || !AppState.plateauTree.nodes.has(layers.current)) return;
   if (layers.compare && layers.compare.mode === 'past') layers.compare = null;
-  else if (AppState.plateauTree.nodes.get(layers.current).parent !== null) layers.compare = { mode: 'past', other: AppState.plateauTree.nodes.get(layers.current).parent, chosen: false };
+  else if (AppState.plateauTree.nodes.get(layers.current).parent !== null)
+    layers.compare = { mode: 'past', other: AppState.plateauTree.nodes.get(layers.current).parent, chosen: false };
   else return;
   rememberLayerChoice();
   settleAfterLayerChange();
@@ -263,9 +291,16 @@ function layerCompareFromChoice(choice) {
 
 /** `settings.current` when it names no plateau of the layers: the sentence of the command line (`WorkspaceFactory.chosen`, `noPlateausProblems`), else null. */
 function layersOfSettingsCurrentProblem(current, tree) {
-  if (!tree.layered) return '`settings.current` is `' + current + '` but the workspace declares no plateau' + NO_PLATEAU;
+  if (!tree.layered)
+    return '`settings.current` is `' + current + '` but the workspace declares no plateau' + NO_PLATEAU;
   if (tree.problems.length || tree.nodes.has(current)) return null;
-  return '`settings.current` names the plateau `' + current + '`, which is not a plateau of this workspace (the plateaus are ' + tree.ids.map((id) => '`' + id + '`').join(', ') + ')';
+  return (
+    '`settings.current` names the plateau `' +
+    current +
+    '`, which is not a plateau of this workspace (the plateaus are ' +
+    tree.ids.map((id) => '`' + id + '`').join(', ') +
+    ')'
+  );
 }
 
 /** The plateau the address names (`plateau=`), or null. */
@@ -282,14 +317,22 @@ function plateauFromHash() {
  */
 async function openLayers(settings, tree) {
   const known = (id) => !!id && tree.layered && !tree.problems.length && tree.nodes.has(id);
-  const current = [plateauFromHash(), recalledPlateauId(), settings.current === '' ? null : settings.current].find(known) || BASELINE_PLATEAU;
+  const current =
+    [plateauFromHash(), recalledPlateauId(), settings.current === '' ? null : settings.current].find(known) ||
+    BASELINE_PLATEAU;
   const fromAddress = compareFromHash();
-  AppState.layers = createLayers(current, layerCompareFromChoice(fromAddress !== null ? fromAddress : recalledComparison()));
+  AppState.layers = createLayers(
+    current,
+    layerCompareFromChoice(fromAddress !== null ? fromAddress : recalledComparison())
+  );
   if (tree.layered && !layersBlockedReason()) {
     try {
       await loadViewpointKernel();
     } catch (e) {
-      console.error('ArchiCode: the viewpoint kernel could not be loaded, the patches of the plateaus are not applied', e);
+      console.error(
+        'ArchiCode: the viewpoint kernel could not be loaded, the patches of the plateaus are not applied',
+        e
+      );
     }
   }
   syncLayers();
@@ -326,16 +369,35 @@ function cachedNodeCounts(id) {
 /** Compute the counts of the plateaus that have none yet, one per turn of the event loop, and write them in the page Plateaus as they come (a big tree does not hold the first drawing). Only while that page is on screen (wave 015, run 0097: the band no longer says them). */
 let bandCountsTimer = null;
 function schedulePlateauCounts() {
-  if (bandCountsTimer !== null || currentPerspective !== 'plateaus' || !AppState.layers || !loadedKernel || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
+  if (
+    bandCountsTimer !== null ||
+    currentPerspective !== 'plateaus' ||
+    !AppState.layers ||
+    !loadedKernel ||
+    !AppState.plateauTree ||
+    !AppState.plateauTree.layered ||
+    AppState.layers.blocked
+  )
+    return;
   const settings = AppState.workspace.settings;
   const missing = () => {
     const cache = ensureLayerCache(settings);
-    return AppState.plateauTree.ids.filter((id) => AppState.plateauTree.nodes.get(id).parent !== null && !(cache.counts && cache.counts.has(id)));
+    return AppState.plateauTree.ids.filter(
+      (id) => AppState.plateauTree.nodes.get(id).parent !== null && !(cache.counts && cache.counts.has(id))
+    );
   };
   if (!missing().length) return;
   bandCountsTimer = setTimeout(function step() {
     bandCountsTimer = null;
-    if (currentPerspective !== 'plateaus' || !AppState.layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
+    if (
+      currentPerspective !== 'plateaus' ||
+      !AppState.layers ||
+      !AppState.workspace ||
+      !AppState.plateauTree ||
+      !AppState.plateauTree.layered ||
+      AppState.layers.blocked
+    )
+      return;
     const next = missing()[0];
     if (next === undefined) return;
     layerNodeCounts(next);
@@ -344,10 +406,16 @@ function schedulePlateauCounts() {
       for (const holder of Array.from(document.querySelectorAll('.timeline-item .timeline-changes'))) {
         const item = holder.closest('.timeline-item');
         const id = item ? item.getAttribute('data-plateau') : null;
-        if (id && AppState.plateauTree.nodes.has(id) && AppState.plateauTree.nodes.get(id).parent !== null && cachedNodeCounts(id) !== undefined && /Counting/.test(holder.textContent)) holder.innerHTML = timelineChangesHtml(id);
+        if (
+          id &&
+          AppState.plateauTree.nodes.has(id) &&
+          AppState.plateauTree.nodes.get(id).parent !== null &&
+          cachedNodeCounts(id) !== undefined &&
+          /Counting/.test(holder.textContent)
+        )
+          holder.innerHTML = timelineChangesHtml(id);
       }
     }
     if (missing().length) bandCountsTimer = setTimeout(step, 0);
   }, 0);
 }
-

@@ -51,7 +51,11 @@ function resetUiState() {
   rawYamlEditDraft = null;
   lastRenderedViewKey = null;
   scrollNavToSelection = false;
-  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* no history to edit (file:// sandboxes) */ }
+  try {
+    history.replaceState(null, '', location.pathname + location.search);
+  } catch (e) {
+    /* no history to edit (file:// sandboxes) */
+  }
 }
 
 /** "Try again" on the landing error card: re-read the already-picked folder (e.g. after fixing .archicode.yaml). */
@@ -130,4 +134,3 @@ async function tryAutoReopen() {
     await checkFolderPermissions();
   }
 }
-

@@ -195,7 +195,10 @@ function parseDirectoryNameTemplate(template) {
   }
   if (last < template.length) parts.push({ literal: template.slice(last) });
   if (!used.has(1)) {
-    return { valid: false, error: 'Template must include the facet name (the second %s), or all facets share one folder.' };
+    return {
+      valid: false,
+      error: 'Template must include the facet name (the second %s), or all facets share one folder.'
+    };
   }
   return {
     valid: true,
@@ -255,13 +258,22 @@ function readViewPropertiesEditorText(viewpoint) {
  */
 function readSettingsDraft() {
   const byId = (id) => document.getElementById(id);
-  const errorIds = ['settings-manifests-paths-error', 'settings-views-path-error', 'settings-facets-directory-template-error'];
+  const errorIds = [
+    'settings-manifests-paths-error',
+    'settings-views-path-error',
+    'settings-facets-directory-template-error'
+  ];
   for (const vp of VIEWPOINT_IDS) errorIds.push('view-properties-error-' + vp);
   errorIds.forEach((id) => setInlineErrorText(id, ''));
-  document.querySelectorAll('.facets-editor .inline-error').forEach((el) => { el.textContent = ''; });
+  document.querySelectorAll('.facets-editor .inline-error').forEach((el) => {
+    el.textContent = '';
+  });
 
   let hasError = false;
-  const fail = (id, message) => { setInlineErrorText(id, message); hasError = true; };
+  const fail = (id, message) => {
+    setInlineErrorText(id, message);
+    hasError = true;
+  };
 
   const nameInput = byId('settings-name-input');
   const pathsInput = byId('settings-manifests-paths-input');
@@ -294,14 +306,23 @@ function readSettingsDraft() {
 
   const customs = AppState.workspace.settings.facets.customs.map((facet, facetIndex) => {
     const actions = (Array.isArray(facet.actions) ? facet.actions : []).map((action, actionIndex) => {
-      const row = document.querySelector('.relationship-edit-row[data-facet-index="' + facetIndex + '"][data-action-index="' + actionIndex + '"]');
+      const row = document.querySelector(
+        '.relationship-edit-row[data-facet-index="' + facetIndex + '"][data-action-index="' + actionIndex + '"]'
+      );
       if (!row) return action;
       const result = validateFacetActionDraft(row.querySelector('.facet-action-jsonpath-input').value);
-      if (!result.valid) { setRowInlineErrorText(row, result.error); hasError = true; return action; }
+      if (!result.valid) {
+        setRowInlineErrorText(row, result.error);
+        hasError = true;
+        return action;
+      }
       return { operator: row.querySelector('.facet-action-operator-input').value, jsonPath: result.jsonPath };
     });
     const hide = document.querySelector('.facet-hide-unlinked-input[data-facet-index="' + facetIndex + '"]');
-    return Object.assign({}, facet, { actions: actions, hideUnlinked: hide ? hide.checked : facet.hideUnlinked === true });
+    return Object.assign({}, facet, {
+      actions: actions,
+      hideUnlinked: hide ? hide.checked : facet.hideUnlinked === true
+    });
   });
 
   if (hasError) return { valid: false };
@@ -339,7 +360,10 @@ function validateFacetName(name, existingCustoms) {
   // the name goes into the name of a folder: one the command line would refuse when it loads the workspace is not written (issue #147)
   const reason = facetNameReason(trimmed);
   if (reason !== null) {
-    return { valid: false, error: 'Facet name ' + reason + ': it is the name of a folder, write a plain word, such as "journey".' };
+    return {
+      valid: false,
+      error: 'Facet name ' + reason + ': it is the name of a folder, write a plain word, such as "journey".'
+    };
   }
   return { valid: true, name: trimmed };
 }
@@ -352,4 +376,3 @@ function validateFacetActionDraft(jsonPath) {
   }
   return { valid: true, jsonPath: trimmed };
 }
-

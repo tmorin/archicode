@@ -112,14 +112,31 @@ function isYamlSeqItem(line, col) {
 }
 
 const YAML_SIMPLE_ESCAPES = {
-  '0': '\0', a: '\x07', b: '\b', t: '\t', '\t': '\t', n: '\n', v: '\v', f: '\f', r: '\r', e: '\x1b',
-  ' ': ' ', '"': '"', '/': '/', '\\': '\\', N: '\u0085', _: '\u00a0', L: '\u2028', P: '\u2029'
+  0: '\0',
+  a: '\x07',
+  b: '\b',
+  t: '\t',
+  '\t': '\t',
+  n: '\n',
+  v: '\v',
+  f: '\f',
+  r: '\r',
+  e: '\x1b',
+  ' ': ' ',
+  '"': '"',
+  '/': '/',
+  '\\': '\\',
+  N: '\u0085',
+  _: '\u00a0',
+  L: '\u2028',
+  P: '\u2029'
 };
 
 /** Read the escape sequence starting at `line[i]` (a backslash): `{ text, next }`. */
 function readYamlEscape(line, i, lineIndex) {
   const c = line[i + 1];
-  if (Object.prototype.hasOwnProperty.call(YAML_SIMPLE_ESCAPES, c)) return { text: YAML_SIMPLE_ESCAPES[c], next: i + 2 };
+  if (Object.prototype.hasOwnProperty.call(YAML_SIMPLE_ESCAPES, c))
+    return { text: YAML_SIMPLE_ESCAPES[c], next: i + 2 };
   const digits = c === 'x' ? 2 : c === 'u' ? 4 : c === 'U' ? 8 : 0;
   if (digits > 0) {
     const hex = line.slice(i + 2, i + 2 + digits);
@@ -159,9 +176,15 @@ function scanYamlKey(line, col, lineIndex) {
     let j = col + 1;
     let close = -1;
     while (j < line.length) {
-      if (c === '"' && line[j] === '\\') { j += 2; continue; }
+      if (c === '"' && line[j] === '\\') {
+        j += 2;
+        continue;
+      }
       if (line[j] === c) {
-        if (c === "'" && line[j + 1] === "'") { j += 2; continue; }
+        if (c === "'" && line[j + 1] === "'") {
+          j += 2;
+          continue;
+        }
         close = j;
         break;
       }
@@ -192,9 +215,15 @@ function yamlCommentIndex(line, i) {
   if (c === '"' || c === "'") {
     let j = i + 1;
     while (j < n) {
-      if (c === '"' && line[j] === '\\') { j += 2; continue; }
+      if (c === '"' && line[j] === '\\') {
+        j += 2;
+        continue;
+      }
       if (line[j] === c) {
-        if (c === "'" && line[j + 1] === "'") { j += 2; continue; }
+        if (c === "'" && line[j + 1] === "'") {
+          j += 2;
+          continue;
+        }
         j++;
         break;
       }
@@ -211,9 +240,15 @@ function yamlCommentIndex(line, i) {
       if ((ch === '"' || ch === "'") && (prev === '' || '[{,:'.indexOf(prev) !== -1)) {
         let k = j + 1;
         while (k < n) {
-          if (ch === '"' && line[k] === '\\') { k += 2; continue; }
+          if (ch === '"' && line[k] === '\\') {
+            k += 2;
+            continue;
+          }
           if (line[k] === ch) {
-            if (ch === "'" && line[k + 1] === "'") { k += 2; continue; }
+            if (ch === "'" && line[k + 1] === "'") {
+              k += 2;
+              continue;
+            }
             break;
           }
           k++;
@@ -245,7 +280,10 @@ function stripYamlComment(line) {
     while (i < n && isYamlWs(line[i])) i++;
     if (i >= n) return line;
     if (line[i] === '#') return line.slice(0, i);
-    if (isYamlSeqItem(line, i)) { i++; continue; }
+    if (isYamlSeqItem(line, i)) {
+      i++;
+      continue;
+    }
     break;
   }
   const key = scanYamlKey(line, i, 0);
@@ -367,7 +405,10 @@ function yamlMalformedNumber(text) {
  */
 function refuseYamlScalar(message, text, eager) {
   if (!yamlDeferMalformed) throw yamlRefusedScalar(message);
-  yamlPlainNumberSeen = { value: text, number: { kind: 'malformed', big: null, value: null, source: text, message, eager: eager === true } };
+  yamlPlainNumberSeen = {
+    value: text,
+    number: { kind: 'malformed', big: null, value: null, source: text, message, eager: eager === true }
+  };
   return text;
 }
 
@@ -376,14 +417,31 @@ function yamlNumberValue(number, text) {
   let value = text;
   if (!yamlKeepWords && yamlModelNumbers) {
     if (number.kind === 'int') {
-      value = number.big >= -9007199254740991n && number.big <= 9007199254740991n ? Number(number.big) : number.javaText;
+      value =
+        number.big >= -9007199254740991n && number.big <= 9007199254740991n ? Number(number.big) : number.javaText;
     } else {
-      value = Number.isFinite(number.value) && !Number.isInteger(number.value) && String(number.value) === number.javaText ? number.value : number.javaText;
+      value =
+        Number.isFinite(number.value) && !Number.isInteger(number.value) && String(number.value) === number.javaText
+          ? number.value
+          : number.javaText;
     }
-  } else if (!yamlKeepWords && ((number.kind === 'int' && /^-?\d+$/.test(text)) || /^-?\d+\.\d+$/.test(text)) && String(Number(text)) === text) {
+  } else if (
+    !yamlKeepWords &&
+    ((number.kind === 'int' && /^-?\d+$/.test(text)) || /^-?\d+\.\d+$/.test(text)) &&
+    String(Number(text)) === text
+  ) {
     value = Number(text); // (a number tagged `!!float` that is written as a whole number stays a float: the text, marked)
   }
-  if (typeof value === 'string') yamlPlainNumberSeen = { value, number: { kind: number.kind, big: number.kind === 'int' ? number.big : null, value: number.kind === 'float' ? number.value : null, source: text } };
+  if (typeof value === 'string')
+    yamlPlainNumberSeen = {
+      value,
+      number: {
+        kind: number.kind,
+        big: number.kind === 'int' ? number.big : null,
+        value: number.kind === 'float' ? number.value : null,
+        source: text
+      }
+    };
   return value;
 }
 
@@ -415,7 +473,12 @@ function notePlainNumber(container, key, value) {
   let marks = container[YAML_PLAIN_NUMBERS];
   if (!marks) {
     marks = Object.create(null);
-    Object.defineProperty(container, YAML_PLAIN_NUMBERS, { value: marks, writable: true, enumerable: false, configurable: true });
+    Object.defineProperty(container, YAML_PLAIN_NUMBERS, {
+      value: marks,
+      writable: true,
+      enumerable: false,
+      configurable: true
+    });
   }
   marks[key] = { value, number: seen.number };
 }
@@ -442,7 +505,8 @@ function skipYamlToContent(p) {
       p.col = 0;
       continue;
     }
-    if (p.col === 0 && line.slice(0, c).indexOf('\t') !== -1) throw yamlError('tabs cannot be used for indentation', p.i);
+    if (p.col === 0 && line.slice(0, c).indexOf('\t') !== -1)
+      throw yamlError('tabs cannot be used for indentation', p.i);
     p.col = c;
     return true;
   }
@@ -480,7 +544,10 @@ function readYamlQuoted(p, quote) {
     }
     let blanks = 0;
     let j = p.i + 1;
-    while (j < p.lines.length && yamlLineBlank(p.lines[j])) { blanks++; j++; }
+    while (j < p.lines.length && yamlLineBlank(p.lines[j])) {
+      blanks++;
+      j++;
+    }
     if (j >= p.lines.length) throw yamlError('the quoted text starting here is never closed', startLine);
     out += blanksAsNewlines ? (blanks === 0 ? ' ' : '\n'.repeat(blanks)) : '\n'.repeat(blanks);
     keep = out.length;
@@ -489,12 +556,21 @@ function readYamlQuoted(p, quote) {
     i = leadingYamlWs(line);
   };
   for (;;) {
-    if (i >= line.length) { nextLine(true, true); continue; }
+    if (i >= line.length) {
+      nextLine(true, true);
+      continue;
+    }
     const c = line[i];
     if (quote === '"') {
-      if (c === '"') { p.col = i + 1; return out; }
+      if (c === '"') {
+        p.col = i + 1;
+        return out;
+      }
       if (c === '\\') {
-        if (i + 1 >= line.length) { nextLine(false, false); continue; } // an escaped line break
+        if (i + 1 >= line.length) {
+          nextLine(false, false);
+          continue;
+        } // an escaped line break
         const esc = readYamlEscape(line, i, p.i);
         out += esc.text;
         keep = out.length;
@@ -502,7 +578,12 @@ function readYamlQuoted(p, quote) {
         continue;
       }
     } else if (c === "'") {
-      if (line[i + 1] === "'") { out += "'"; keep = out.length; i += 2; continue; }
+      if (line[i + 1] === "'") {
+        out += "'";
+        keep = out.length;
+        i += 2;
+        continue;
+      }
       p.col = i + 1;
       return out;
     }
@@ -517,11 +598,13 @@ function readYamlPlainBlock(p, parentIndent) {
   const first = lines[p.i];
   if (isYamlSeqItem(first, p.col)) throw yamlError('a sequence entry is not allowed here', p.i);
   const cut = (line, from) => {
-    for (let k = from + 1; k < line.length; k++) if (isYamlCommentAt(line, k)) return line.slice(from, k).replace(/[ \t]+$/, '');
+    for (let k = from + 1; k < line.length; k++)
+      if (isYamlCommentAt(line, k)) return line.slice(from, k).replace(/[ \t]+$/, '');
     return line.slice(from).replace(/[ \t]+$/, '');
   };
   const check = (text, lineIndex) => {
-    if (/:([ \t]|$)/.test(text)) throw yamlError('a mapping value is not allowed here: "' + text.slice(0, 40) + '"', lineIndex);
+    if (/:([ \t]|$)/.test(text))
+      throw yamlError('a mapping value is not allowed here: "' + text.slice(0, 40) + '"', lineIndex);
   };
   let out = cut(first, p.col);
   check(out, p.i);
@@ -529,7 +612,10 @@ function readYamlPlainBlock(p, parentIndent) {
   let last = p.i;
   for (let j = p.i + 1; j < lines.length; j++) {
     const l = lines[j];
-    if (yamlLineBlank(l)) { blanks++; continue; }
+    if (yamlLineBlank(l)) {
+      blanks++;
+      continue;
+    }
     const ind = leadingYamlWs(l);
     if (ind <= parentIndent || l[ind] === '#') break;
     const body = cut(l, ind);
@@ -575,17 +661,26 @@ function parseYamlBlockScalar(p, parentIndent) {
   if (contentIndent !== null) {
     for (; j < lines.length; j++) {
       const l = lines[j];
-      if (yamlLineBlank(l) && l.length <= contentIndent) { content.push(''); continue; }
+      if (yamlLineBlank(l) && l.length <= contentIndent) {
+        content.push('');
+        continue;
+      }
       if (leadingYamlWs(l) < contentIndent) break;
       content.push(l.slice(contentIndent));
     }
   } else {
-    while (j < lines.length && yamlLineBlank(lines[j])) { content.push(''); j++; }
+    while (j < lines.length && yamlLineBlank(lines[j])) {
+      content.push('');
+      j++;
+    }
   }
   p.i = j;
   p.col = 0;
   let trailing = 0;
-  while (content.length > 0 && content[content.length - 1] === '') { content.pop(); trailing++; }
+  while (content.length > 0 && content[content.length - 1] === '') {
+    content.pop();
+    trailing++;
+  }
   if (content.length === 0) return chomp === '+' ? '\n'.repeat(trailing) : '';
   let body;
   if (!folded) {
@@ -596,7 +691,10 @@ function parseYamlBlockScalar(p, parentIndent) {
     let prev = null;
     let prevMore = false;
     for (const l of content) {
-      if (l === '') { blanks++; continue; }
+      if (l === '') {
+        blanks++;
+        continue;
+      }
       const more = isYamlWs(l[0]);
       if (prev === null) body += '\n'.repeat(blanks);
       else if (!prevMore && !more) body += blanks === 0 ? ' ' : '\n'.repeat(blanks);
@@ -624,8 +722,17 @@ function skipYamlFlowSpace(p, startLine) {
     if (p.col >= line.length || isYamlCommentAt(line, p.col)) {
       if (p.comments && p.col < line.length) {
         const last = p.leaves && p.leaves.length > 0 ? p.leaves[p.leaves.length - 1] : null;
-        const trails = last !== null && last.line === p.i && line.slice(0, p.col).trim() !== '' && line.slice(last.col, p.col).replace(/[\s,\]}]/g, '') === '';
-        p.comments.push({ text: line.slice(p.col), gap: line.slice(0, p.col).match(/[ \t]*$/)[0], before: p.leaves ? p.leaves.length : 0, after: trails ? p.leaves.length - 1 : -1 });
+        const trails =
+          last !== null &&
+          last.line === p.i &&
+          line.slice(0, p.col).trim() !== '' &&
+          line.slice(last.col, p.col).replace(/[\s,\]}]/g, '') === '';
+        p.comments.push({
+          text: line.slice(p.col),
+          gap: line.slice(0, p.col).match(/[ \t]*$/)[0],
+          before: p.leaves ? p.leaves.length : 0,
+          after: trails ? p.leaves.length - 1 : -1
+        });
       }
       p.i++;
       p.col = 0;
@@ -644,7 +751,10 @@ function readYamlFlowPlain(p, startLine) {
     if (p.col >= line.length) {
       let blanks = 0;
       let j = p.i + 1;
-      while (j < p.lines.length && yamlLineBlank(p.lines[j])) { blanks++; j++; }
+      while (j < p.lines.length && yamlLineBlank(p.lines[j])) {
+        blanks++;
+        j++;
+      }
       if (j >= p.lines.length) throw yamlError('the flow collection starting here is never closed', startLine);
       const next = p.lines[j];
       const ind = leadingYamlWs(next);
@@ -689,12 +799,20 @@ function parseYamlFlowNode(p, startLine) {
  * is set when an anchor, an alias or a tag is met. The reading itself is the same with or without them.
  */
 function parseYamlFlowNodeRead(p, startLine) {
-  const note = (quote, word) => { if (p.leaves) p.leaves.push({ quote, word: word === undefined ? null : word, line: p.i, col: p.col }); };
-  const forget = () => { if (p.leaves) p.leaves.pop(); }; // the scalar just read was a key
-  const keyed = (text, from, to) => { // the key spans `from` to `to`
+  const note = (quote, word) => {
+    if (p.leaves) p.leaves.push({ quote, word: word === undefined ? null : word, line: p.i, col: p.col });
+  };
+  const forget = () => {
+    if (p.leaves) p.leaves.pop();
+  }; // the scalar just read was a key
+  const keyed = (text, from, to) => {
+    // the key spans `from` to `to`
     if (!p.keys) return;
     const quote = p.lines[from.i][from.col];
-    p.keys.push({ key: text, written: (quote === '"' || quote === "'") && from.i === to.i ? p.lines[from.i].slice(from.col, to.col) : null });
+    p.keys.push({
+      key: text,
+      written: (quote === '"' || quote === "'") && from.i === to.i ? p.lines[from.i].slice(from.col, to.col) : null
+    });
   };
   skipYamlFlowSpace(p, startLine);
   const line = p.lines[p.i];
@@ -708,7 +826,11 @@ function parseYamlFlowNodeRead(p, startLine) {
     let pairs = false;
     for (;;) {
       skipYamlFlowSpace(p, startLine);
-      if (p.lines[p.i][p.col] === ']') { p.col++; if (arr.length === 0) note(''); return { value: arr, scalar: false, ast: pairs ? { type: 'unsupported' } : { type: 'seq', items } }; }
+      if (p.lines[p.i][p.col] === ']') {
+        p.col++;
+        if (arr.length === 0) note('');
+        return { value: arr, scalar: false, ast: pairs ? { type: 'unsupported' } : { type: 'seq', items } };
+      }
       const at = { i: p.i, col: p.col };
       const item = parseYamlFlowNode(p, startLine);
       const read = { i: p.i, col: p.col };
@@ -728,8 +850,14 @@ function parseYamlFlowNodeRead(p, startLine) {
       }
       skipYamlFlowSpace(p, startLine);
       const d = p.lines[p.i][p.col];
-      if (d === ',') { p.col++; continue; }
-      if (d === ']') { p.col++; return { value: arr, scalar: false, ast: pairs ? { type: 'unsupported' } : { type: 'seq', items } }; }
+      if (d === ',') {
+        p.col++;
+        continue;
+      }
+      if (d === ']') {
+        p.col++;
+        return { value: arr, scalar: false, ast: pairs ? { type: 'unsupported' } : { type: 'seq', items } };
+      }
       throw yamlError('expected "," or "]" in the flow sequence', p.i);
     }
   }
@@ -740,7 +868,11 @@ function parseYamlFlowNodeRead(p, startLine) {
     let keyProps = false;
     for (;;) {
       skipYamlFlowSpace(p, startLine);
-      if (p.lines[p.i][p.col] === '}') { p.col++; if (Object.keys(map).length === 0) note(''); return { value: map, scalar: false, ast: keyProps ? { type: 'unsupported' } : { type: 'map', entries } }; }
+      if (p.lines[p.i][p.col] === '}') {
+        p.col++;
+        if (Object.keys(map).length === 0) note('');
+        return { value: map, scalar: false, ast: keyProps ? { type: 'unsupported' } : { type: 'map', entries } };
+      }
       const at = { i: p.i, col: p.col };
       const keyNode = parseYamlFlowNode(p, startLine);
       if (!keyNode.scalar) throw yamlError('a collection cannot be a key of a flow mapping', p.i);
@@ -756,12 +888,19 @@ function parseYamlFlowNodeRead(p, startLine) {
       } else {
         note('');
       }
-      if (p.notes) entries.push({ key: keyNode.ast && keyNode.ast.type === 'scalar' ? keyNode.ast.raw : null, value: p.pairAst });
+      if (p.notes)
+        entries.push({ key: keyNode.ast && keyNode.ast.type === 'scalar' ? keyNode.ast.raw : null, value: p.pairAst });
       setYamlKey(map, keyNode.text, value);
       skipYamlFlowSpace(p, startLine);
       const d = p.lines[p.i][p.col];
-      if (d === ',') { p.col++; continue; }
-      if (d === '}') { p.col++; return { value: map, scalar: false, ast: keyProps ? { type: 'unsupported' } : { type: 'map', entries } }; }
+      if (d === ',') {
+        p.col++;
+        continue;
+      }
+      if (d === '}') {
+        p.col++;
+        return { value: map, scalar: false, ast: keyProps ? { type: 'unsupported' } : { type: 'map', entries } };
+      }
       throw yamlError('expected "," or "}" in the flow mapping', p.i);
     }
   }
@@ -784,7 +923,8 @@ function parseYamlFlowNodeRead(p, startLine) {
     skipYamlFlowSpace(p, startLine);
     const raw = yamlRawScalars;
     const first = p.lines[p.i][p.col];
-    yamlRawScalars = props.tag !== null && props.tag !== '!' && first !== undefined && '[{"\'*&!|>,]}'.indexOf(first) === -1;
+    yamlRawScalars =
+      props.tag !== null && props.tag !== '!' && first !== undefined && '[{"\'*&!|>,]}'.indexOf(first) === -1;
     let node;
     try {
       node = parseYamlFlowNode(p, startLine);
@@ -792,7 +932,10 @@ function parseYamlFlowNodeRead(p, startLine) {
       yamlRawScalars = raw;
     }
     const value = adoptYamlProperties(p, props, node.value, node.scalar ? node.text : '', p.i);
-    const ast = node.ast && node.ast.type !== 'alias' && node.ast.type !== 'unsupported' ? Object.assign({}, node.ast, { props: tokens }) : { type: 'unsupported' };
+    const ast =
+      node.ast && node.ast.type !== 'alias' && node.ast.type !== 'unsupported'
+        ? Object.assign({}, node.ast, { props: tokens })
+        : { type: 'unsupported' };
     if (ast.type === 'scalar') ast.value = value;
     return { value, text: node.text, scalar: node.scalar, ast };
   }
@@ -815,7 +958,11 @@ function parseYamlFlowNodeRead(p, startLine) {
 function parseYamlFlowPairValue(p, startLine) {
   skipYamlFlowSpace(p, startLine);
   const d = p.lines[p.i][p.col];
-  if (d === ',' || d === '}' || d === ']') { if (p.leaves) p.leaves.push({ quote: '', word: null, line: p.i, col: p.col }); p.pairAst = { type: 'scalar', raw: '', value: null }; return null; }
+  if (d === ',' || d === '}' || d === ']') {
+    if (p.leaves) p.leaves.push({ quote: '', word: null, line: p.i, col: p.col });
+    p.pairAst = { type: 'scalar', raw: '', value: null };
+    return null;
+  }
   const node = parseYamlFlowNode(p, startLine);
   p.pairAst = node.ast;
   return node.value;
@@ -844,7 +991,15 @@ function parseYamlInline(p, parentIndent, keyed) {
   if (c === '"' || c === "'") {
     value = readYamlQuoted(p, c);
     p.scalarEnd = p.col; // the column after the closing quote: what follows it on the line is a comment (see `yamlScalarTail`)
-    if (p.notes && !held && p.i !== start.i) p.notes.list.push({ kind: 'lines', line: start.i, last: p.i, from: start.col, scalarEnd: p.col, value: cloneYamlValue(value) });
+    if (p.notes && !held && p.i !== start.i)
+      p.notes.list.push({
+        kind: 'lines',
+        line: start.i,
+        last: p.i,
+        from: start.col,
+        scalarEnd: p.col,
+        value: cloneYamlValue(value)
+      });
   } else if (c === '[' || c === '{') {
     const outer = p.flowDecorated;
     p.flowDecorated = false;
@@ -856,7 +1011,15 @@ function parseYamlInline(p, parentIndent, keyed) {
       const comments = p.comments;
       p.comments = undefined;
       if (p.notes && p.flowDecorated && node) {
-        p.notes.list.push({ kind: 'flow', line: start.i, from: start.col, last: p.i, to: p.col, ast: node.ast, comments: comments.map((comment) => comment.text) });
+        p.notes.list.push({
+          kind: 'flow',
+          line: start.i,
+          from: start.col,
+          last: p.i,
+          to: p.col,
+          ast: node.ast,
+          comments: comments.map((comment) => comment.text)
+        });
       }
       p.flowDecorated = outer;
     }
@@ -866,7 +1029,15 @@ function parseYamlInline(p, parentIndent, keyed) {
   } else {
     value = readYamlPlainBlock(p, parentIndent);
     p.scalarEnd = null; // a plain text: its comment is found on its last line (see `yamlScalarTail`)
-    if (p.notes && !held && p.i !== start.i) p.notes.list.push({ kind: 'lines', line: start.i, last: p.i, from: start.col, scalarEnd: null, value: cloneYamlValue(value) });
+    if (p.notes && !held && p.i !== start.i)
+      p.notes.list.push({
+        kind: 'lines',
+        line: start.i,
+        last: p.i,
+        from: start.col,
+        scalarEnd: null,
+        value: cloneYamlValue(value)
+      });
     return value;
   }
   expectYamlEol(p);
@@ -876,7 +1047,13 @@ function parseYamlInline(p, parentIndent, keyed) {
 /** The plain scalars read as numbers that `from` notes, noted for `to` (a copy of it). */
 function copyPlainNumbers(from, to) {
   const marks = from[YAML_PLAIN_NUMBERS];
-  if (marks) Object.defineProperty(to, YAML_PLAIN_NUMBERS, { value: Object.assign(Object.create(null), marks), writable: true, enumerable: false, configurable: true });
+  if (marks)
+    Object.defineProperty(to, YAML_PLAIN_NUMBERS, {
+      value: Object.assign(Object.create(null), marks),
+      writable: true,
+      enumerable: false,
+      configurable: true
+    });
 }
 
 /** A copy of a value read by `parseYaml`, the order of the keys included: what an alias is. */
@@ -950,7 +1127,11 @@ const JAVA_RADIX_DIGITS_PER_INT = { 2: 30, 8: 10, 16: 7 };
 
 /** The value of one ASCII digit in a radix, or -1 (Java's `Character.digit`; the digits of other scripts that Java reads are not read here). */
 function javaDigit(ch, radix) {
-  const v = /^[0-9]$/.test(ch) ? ch.charCodeAt(0) - 48 : /^[a-zA-Z]$/.test(ch) ? ch.toLowerCase().charCodeAt(0) - 87 : -1;
+  const v = /^[0-9]$/.test(ch)
+    ? ch.charCodeAt(0) - 48
+    : /^[a-zA-Z]$/.test(ch)
+      ? ch.toLowerCase().charCodeAt(0) - 87
+      : -1;
   return v >= 0 && v < radix ? v : -1;
 }
 
@@ -960,7 +1141,10 @@ function javaParseRadix(text, radix) {
   let ok = i < text.length;
   for (let k = i; ok && k < text.length; k++) if (javaDigit(text[k], radix) < 0) ok = false;
   if (!ok) return { message: 'For input string: "' + text + '" under radix ' + radix };
-  const big = text.slice(i).split('').reduce((acc, ch) => acc * BigInt(radix) + BigInt(javaDigit(ch, radix)), 0n);
+  const big = text
+    .slice(i)
+    .split('')
+    .reduce((acc, ch) => acc * BigInt(radix) + BigInt(javaDigit(ch, radix)), 0n);
   return { big: text[0] === '-' ? -big : big };
 }
 
@@ -1011,12 +1195,15 @@ function yamlTaggedInt(body) {
   const negative = body[0] === '-';
   const cleaned = rest.replace(/_/g, '');
   let radix = 0;
-  if (rest[0] === '0' && rest.length > 1) radix = /[0-9_]/.test(rest[1]) ? 8 : /[xX]/.test(rest[1]) ? 16 : /[bB]/.test(rest[1]) ? 2 : 0;
+  if (rest[0] === '0' && rest.length > 1)
+    radix = /[0-9_]/.test(rest[1]) ? 8 : /[xX]/.test(rest[1]) ? 16 : /[bB]/.test(rest[1]) ? 2 : 0;
   let big;
   if (radix !== 0) {
     const digits = cleaned.slice(radix === 8 ? 1 : 2);
-    const parsed = digits.length * JAVA_RADIX_BITS[radix] <= 63 ? javaParseRadix(digits, radix) : javaBigInteger(digits, radix);
-    if (parsed.message) return { refused: 'Invalid base-' + radix + " number ('" + digits + "'), problem: " + parsed.message };
+    const parsed =
+      digits.length * JAVA_RADIX_BITS[radix] <= 63 ? javaParseRadix(digits, radix) : javaBigInteger(digits, radix);
+    if (parsed.message)
+      return { refused: 'Invalid base-' + radix + " number ('" + digits + "'), problem: " + parsed.message };
     big = parsed.big;
   } else if (/^[0-9_]*$/.test(rest)) {
     if (cleaned === '') return { refused: "Invalid number ('" + body + "')" };
@@ -1048,10 +1235,18 @@ function yamlTaggedFloat(body) {
     return { kind: 'float', value, javaText: javaDoubleText(value) };
   }
   const hex = /^([-+]?)0[xX]([0-9a-fA-F]*)\.?([0-9a-fA-F]*)[pP]([-+]?\d+)[fFdD]?$/.exec(cleaned);
-  if (hex && (hex[2] !== '' || hex[3] !== '') && /^0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?[pP]/.test(cleaned.replace(/^[-+]/, ''))) {
+  if (
+    hex &&
+    (hex[2] !== '' || hex[3] !== '') &&
+    /^0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?[pP]/.test(cleaned.replace(/^[-+]/, ''))
+  ) {
     // the mantissa is rounded once, to the nearest, as Java does; the power of two that scales it is exact (but for the numbers that are not normal)
     const scale = Number(hex[4]) - 4 * hex[3].length;
-    const value = Number(BigInt('0x' + (hex[2] + hex[3] || '0'))) * Math.pow(2, Math.trunc(scale / 2)) * Math.pow(2, scale - Math.trunc(scale / 2)) * (hex[1] === '-' ? -1 : 1);
+    const value =
+      Number(BigInt('0x' + (hex[2] + hex[3] || '0'))) *
+      Math.pow(2, Math.trunc(scale / 2)) *
+      Math.pow(2, scale - Math.trunc(scale / 2)) *
+      (hex[1] === '-' ? -1 : 1);
     return { kind: 'float', value, javaText: javaDoubleText(value) };
   }
   return refused;
@@ -1067,13 +1262,27 @@ function yamlTaggedBinary(body) {
   const bad = (ch, index, extra) => {
     const code = ch.charCodeAt(0);
     let base;
-    if (code <= 32) base = 'Illegal white space character (code 0x' + code.toString(16) + ') as character #' + (index + 1) + ' of 4-char base64 unit: can only used between units';
-    else if (ch === '=') base = "Unexpected padding character ('=') as character #" + (index + 1) + ' of 4-char base64 unit: padding only legal as 3rd or 4th character';
-    else if (code < 32 || (code >= 127 && code < 160)) base = 'Illegal character (code 0x' + code.toString(16) + ') in base64 content';
+    if (code <= 32)
+      base =
+        'Illegal white space character (code 0x' +
+        code.toString(16) +
+        ') as character #' +
+        (index + 1) +
+        ' of 4-char base64 unit: can only used between units';
+    else if (ch === '=')
+      base =
+        "Unexpected padding character ('=') as character #" +
+        (index + 1) +
+        ' of 4-char base64 unit: padding only legal as 3rd or 4th character';
+    else if (code < 32 || (code >= 127 && code < 160))
+      base = 'Illegal character (code 0x' + code.toString(16) + ') in base64 content';
     else base = "Illegal character '" + ch + "' (code 0x" + code.toString(16) + ') in base64 content';
     return { refused: extra ? base + ': ' + extra : base };
   };
-  const eof = { refused: "Unexpected end of base64-encoded String: base64 variant 'MIME' expects padding (one or more '=' characters) at the end. This Base64Variant might have been incorrectly configured" };
+  const eof = {
+    refused:
+      "Unexpected end of base64-encoded String: base64 variant 'MIME' expects padding (one or more '=' characters) at the end. This Base64Variant might have been incorrectly configured"
+  };
   const value = (ch) => BASE64_ALPHABET.indexOf(ch);
   const bytes = [];
   const len = body.length;
@@ -1119,7 +1328,11 @@ function yamlTaggedBinary(body) {
   let text = '';
   for (let i = 0; i < bytes.length; i += 3) {
     const n = (bytes[i] << 16) | ((bytes[i + 1] || 0) << 8) | (bytes[i + 2] || 0);
-    const chunk = BASE64_ALPHABET[(n >> 18) & 63] + BASE64_ALPHABET[(n >> 12) & 63] + BASE64_ALPHABET[(n >> 6) & 63] + BASE64_ALPHABET[n & 63];
+    const chunk =
+      BASE64_ALPHABET[(n >> 18) & 63] +
+      BASE64_ALPHABET[(n >> 12) & 63] +
+      BASE64_ALPHABET[(n >> 6) & 63] +
+      BASE64_ALPHABET[n & 63];
     text += i + 2 < bytes.length ? chunk : i + 1 < bytes.length ? chunk.slice(0, 3) + '=' : chunk.slice(0, 2) + '==';
   }
   return { text };
@@ -1196,13 +1409,15 @@ function parseYamlProperties(p, parentIndent, keyed) {
     p.col = line.length;
     if (!skipYamlToContent(p)) value = null;
     else if (p.col > parentIndent) value = parseYamlBlockNode(p, parentIndent);
-    else if (keyed && p.col === parentIndent && isYamlSeqItem(p.lines[p.i], p.col)) value = parseYamlSequence(p, parentIndent);
+    else if (keyed && p.col === parentIndent && isYamlSeqItem(p.lines[p.i], p.col))
+      value = parseYamlSequence(p, parentIndent);
     else value = null;
   } else {
     if (line[p.col] === '*') throw yamlError('an alias cannot have an anchor or a tag', p.i);
     if (scanYamlKey(line, p.col, p.i) !== null) throw yamlError('an anchor or a tag on a key is not supported', p.i);
     const c = line[p.col];
-    inline = c === '"' || c === "'" ? 'quoted' : c === '[' || c === '{' ? 'flow' : c === '|' || c === '>' ? 'block' : 'plain';
+    inline =
+      c === '"' || c === "'" ? 'quoted' : c === '[' || c === '{' ? 'flow' : c === '|' || c === '>' ? 'block' : 'plain';
     p.plain = undefined;
     const raw = yamlRawScalars;
     yamlRawScalars = inline === 'plain' && props.tag !== null && props.tag !== '!';
@@ -1213,15 +1428,26 @@ function parseYamlProperties(p, parentIndent, keyed) {
       yamlRawScalars = raw;
       p.notesHeld = false;
     }
-    if (value === null || typeof value !== 'object') text = p.plain !== undefined ? p.plain : value === null ? '' : String(value);
+    if (value === null || typeof value !== 'object')
+      text = p.plain !== undefined ? p.plain : value === null ? '' : String(value);
     // a plain scalar after a tag was read as the text (the tag says what it is): `value` is what the line reads as without the tag, which the save compares the tagged value with
     if (inline === 'plain' && props.tag !== null && props.tag !== '!') value = untaggedReadingOf(text);
   }
   const tagged = adoptYamlProperties(p, props, value, text, lineIndex);
   if (p.notes) {
     p.notes.list.push({
-      kind: 'props', line: lineIndex, from: props.from, end: props.end, to: props.to, anchor: props.anchor, tag: props.tag, inline,
-      changed: tagged !== value && (tagged === null || typeof tagged !== 'object'), value: tagged, multiline: p.i !== lineIndex && (inline === 'plain' || inline === 'quoted'), last: p.i,
+      kind: 'props',
+      line: lineIndex,
+      from: props.from,
+      end: props.end,
+      to: props.to,
+      anchor: props.anchor,
+      tag: props.tag,
+      inline,
+      changed: tagged !== value && (tagged === null || typeof tagged !== 'object'),
+      value: tagged,
+      multiline: p.i !== lineIndex && (inline === 'plain' || inline === 'quoted'),
+      last: p.i,
       scalarEnd: inline === 'quoted' ? p.scalarEnd : null
     });
   }
@@ -1315,14 +1541,16 @@ function parseYaml(text, notes) {
   for (let k = 0; k < lines.length; k++) {
     const l = lines[k];
     if (/^(---|\.\.\.)(?=[ \t]|$)/.test(l)) {
-      if (stripYamlComment(l.slice(3)).trim() !== '') throw yamlError('a value after "' + l.slice(0, 3) + '" is not supported', k);
+      if (stripYamlComment(l.slice(3)).trim() !== '')
+        throw yamlError('a value after "' + l.slice(0, 3) + '" is not supported', k);
       if (l.startsWith('---') && !seenContent) {
         lines[k] = '';
         continue;
       }
       if (l.startsWith('...')) {
         for (let m = k + 1; m < lines.length; m++) {
-          if (stripYamlComment(lines[m]).trim() !== '') throw yamlError('several documents in one file are not supported', m);
+          if (stripYamlComment(lines[m]).trim() !== '')
+            throw yamlError('several documents in one file are not supported', m);
         }
         lines = lines.slice(0, k);
         break;
@@ -1340,4 +1568,3 @@ function parseYaml(text, notes) {
   if (skipYamlToContent(p)) throw yamlError('unexpected content (check the indentation)', p.i);
   return root;
 }
-

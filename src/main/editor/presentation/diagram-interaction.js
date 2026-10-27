@@ -76,7 +76,10 @@ function applyDiagramScale() {
   }
   applyDiagramPan(canvas);
   const label = document.getElementById('diagram-zoom-label');
-  if (label) { label.textContent = Math.round(scale * 100) + '%'; label.setAttribute('aria-label', 'Actual size (now ' + Math.round(scale * 100) + '%)'); }
+  if (label) {
+    label.textContent = Math.round(scale * 100) + '%';
+    label.setAttribute('aria-label', 'Actual size (now ' + Math.round(scale * 100) + '%)');
+  }
   const fit = document.getElementById('diagram-fit-button');
   if (fit) fit.setAttribute('aria-pressed', String(diagramScale === 'fit'));
   const center = document.getElementById('diagram-center-button');
@@ -84,10 +87,14 @@ function applyDiagramScale() {
   // the opening view stops at a readable size: say what is left out, and how to see it
   const hint = document.getElementById('diagram-hint');
   if (hint) {
-    const whole = diagramScene.hasSvg && diagramScale === 'auto'
-      ? diagramFitScale(diagramViewSize(canvas), { width: diagramScene.width, height: diagramScene.height })
-      : 1;
-    hint.textContent = whole < DIAGRAM_MIN_READABLE_SCALE - 0.005 && scale > whole + 0.005 ? 'Part of the diagram is out of view: Fit shows all of it (' + Math.round(whole * 100) + '%).' : '';
+    const whole =
+      diagramScene.hasSvg && diagramScale === 'auto'
+        ? diagramFitScale(diagramViewSize(canvas), { width: diagramScene.width, height: diagramScene.height })
+        : 1;
+    hint.textContent =
+      whole < DIAGRAM_MIN_READABLE_SCALE - 0.005 && scale > whole + 0.005
+        ? 'Part of the diagram is out of view: Fit shows all of it (' + Math.round(whole * 100) + '%).'
+        : '';
   }
   return scale;
 }
@@ -174,7 +181,10 @@ function revealDiagramNode(node) {
 
 /** What identifies the box (or fold button) of the diagram that `el` is, to find it again once the drawing is rebuilt; null for anything else. */
 function diagramFocusTargetOf(el) {
-  const part = el && el.closest ? el.closest('#diagram-canvas .dg-node, #diagram-canvas .dg-fold, #diagram-canvas .dg-link') : null;
+  const part =
+    el && el.closest
+      ? el.closest('#diagram-canvas .dg-node, #diagram-canvas .dg-fold, #diagram-canvas .dg-link')
+      : null;
   if (part && part.classList.contains('dg-link')) return diagramLinkKeyOf(part);
   return part ? { fold: part.classList.contains('dg-fold'), id: part.getAttribute('data-id') } : null;
 }
@@ -186,12 +196,20 @@ function diagramNodeOf(el) {
   const fold = el && el.closest ? el.closest('.dg-fold') : null;
   if (!fold) return null;
   const id = fold.getAttribute('data-id');
-  return Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).find((n) => n.getAttribute('data-id') === id) || null;
+  return (
+    Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).find((n) => n.getAttribute('data-id') === id) ||
+    null
+  );
 }
 
 /** What tells a link of the drawing from the others: its pair of boxes and, when it has a twin, its position among them (`data-nth`, else null). */
 function diagramLinkKeyOf(link) {
-  return { link: true, from: link.getAttribute('data-from'), to: link.getAttribute('data-to'), nth: diagramLinkNth(link) };
+  return {
+    link: true,
+    from: link.getAttribute('data-from'),
+    to: link.getAttribute('data-to'),
+    nth: diagramLinkNth(link)
+  };
 }
 
 /** The position (`data-nth`) of a link among the links of its pair, as text; null for a link that has no twin. */
@@ -202,7 +220,9 @@ function diagramLinkNth(link) {
 
 /** The link of the drawing that `key` (see `diagramLinkKeyOf`) names; with a twin that is gone, the first link of the pair; else null. */
 function findDiagramLink(links, key) {
-  const ofPair = links.filter((el) => el.getAttribute('data-from') === key.from && el.getAttribute('data-to') === key.to);
+  const ofPair = links.filter(
+    (el) => el.getAttribute('data-from') === key.from && el.getAttribute('data-to') === key.to
+  );
   return ofPair.find((el) => diagramLinkNth(el) === key.nth) || ofPair[0] || null;
 }
 
@@ -214,10 +234,16 @@ function findDiagramLink(links, key) {
 function syncLinkTabStop(canvas) {
   if (!canvas || !canvas.querySelectorAll) return;
   const links = Array.from(canvas.querySelectorAll('.dg-link'));
-  if (!links.length) { diagramLinkStop = null; return; }
+  if (!links.length) {
+    diagramLinkStop = null;
+    return;
+  }
   const sel = diagramSelection();
   const remembered = diagramLinkStop ? findDiagramLink(links, diagramLinkStop) : null;
-  const selected = sel.kind === 'link' ? links.find((el) => el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to) : null;
+  const selected =
+    sel.kind === 'link'
+      ? links.find((el) => el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to)
+      : null;
   setLinkTabStop(links, remembered || selected || links[0]);
 }
 
@@ -231,7 +257,10 @@ let diagramNodeStop = null;
 function syncNodeTabStop(canvas) {
   if (!canvas || !canvas.querySelectorAll) return;
   const nodes = Array.from(canvas.querySelectorAll('.dg-node')).filter((el) => !el.classList.contains('dg-ghost'));
-  if (!nodes.length) { diagramNodeStop = null; return; }
+  if (!nodes.length) {
+    diagramNodeStop = null;
+    return;
+  }
   const remembered = diagramNodeStop ? nodes.find((el) => el.getAttribute('data-id') === diagramNodeStop) : null;
   const named = (cls) => nodes.find((el) => el.classList.contains(cls));
   setNodeTabStop(nodes, remembered || named('dg-selected') || named('dg-focal') || nodes[0]);
@@ -269,9 +298,10 @@ function restoreDiagramFocus(canvas) {
   if (!wanted || !canvas.querySelectorAll) return;
   const active = document.activeElement;
   if (active && active !== document.body && !(canvas.contains && canvas.contains(active))) return;
-  const find = (selector) => Array.from(canvas.querySelectorAll(selector)).find((el) => el.getAttribute('data-id') === wanted.id);
+  const find = (selector) =>
+    Array.from(canvas.querySelectorAll(selector)).find((el) => el.getAttribute('data-id') === wanted.id);
   const link = wanted.link ? findDiagramLink(Array.from(canvas.querySelectorAll('.dg-link')), wanted) : null;
-  const target = link || (wanted.link ? null : ((wanted.fold ? find('.dg-fold') : null) || find('.dg-node'))) || canvas;
+  const target = link || (wanted.link ? null : (wanted.fold ? find('.dg-fold') : null) || find('.dg-node')) || canvas;
   if (target.focus) target.focus({ preventScroll: true });
 }
 
@@ -283,24 +313,41 @@ function showDiagramScene(scene) {
   if (canvas.hasAttribute('data-map')) {
     const sel = AppState.selection;
     const pickedRemoved = removedInspectionOf(sel, 'map'); // a removed box that was clicked is the element Center puts in the middle
-    scene.focal = pickedRemoved && scene.boxes && scene.boxes[pickedRemoved.reference] ? scene.boxes[pickedRemoved.reference] : sel.kind === 'element' && scene.boxes && scene.boxes[sel.key] ? scene.boxes[sel.key] : null;
+    scene.focal =
+      pickedRemoved && scene.boxes && scene.boxes[pickedRemoved.reference]
+        ? scene.boxes[pickedRemoved.reference]
+        : sel.kind === 'element' && scene.boxes && scene.boxes[sel.key]
+          ? scene.boxes[sel.key]
+          : null;
     // scenes that say nothing about what they draw (an error) leave the selection alone and the check for the next one
     if (scene.drawnIds) {
-      const selectionIsDrawn = sel.kind === 'element' && (sel.layer === 'application' && mapLayer() === 'technology' ? !!scene.drawnApps && scene.drawnApps.has(sel.key) : scene.drawnIds.has(sel.key));
+      const selectionIsDrawn =
+        sel.kind === 'element' &&
+        (sel.layer === 'application' && mapLayer() === 'technology'
+          ? !!scene.drawnApps && scene.drawnApps.has(sel.key)
+          : scene.drawnIds.has(sel.key));
       if (mapSelectionCheck && sel.kind === 'element' && !selectionIsDrawn) {
         AppState.selection = { kind: 'none', key: null, mode: 'view' };
         syncHashFromState();
-        document.querySelectorAll('.element-header-subject, [data-action="open-as-diagram"]').forEach((el) => el.remove());
-        if (comparisonPanelOn()) refreshRightPanel(); else removeInspectionPanel(); // a comparison keeps its Changes panel
+        document
+          .querySelectorAll('.element-header-subject, [data-action="open-as-diagram"]')
+          .forEach((el) => el.remove());
+        if (comparisonPanelOn()) refreshRightPanel();
+        else removeInspectionPanel(); // a comparison keeps its Changes panel
       }
       mapSelectionCheck = false;
     }
   }
   diagramScene = scene;
-  document.querySelectorAll('[data-action="diagram-export"]').forEach((button) => { button.disabled = !scene.hasSvg; }); // nothing to download from a message
+  document.querySelectorAll('[data-action="diagram-export"]').forEach((button) => {
+    button.disabled = !scene.hasSvg;
+  }); // nothing to download from a message
   canvas.innerHTML = scene.html;
   const status = document.getElementById('diagram-status');
-  if (status) { status.textContent = scene.status; status.title = scene.status; }
+  if (status) {
+    status.textContent = scene.status;
+    status.title = scene.status;
+  }
   const legend = document.getElementById('diagram-legend');
   if (legend) legend.innerHTML = scene.legend;
   syncDiagramKey();
@@ -334,7 +381,9 @@ function markMapSelection() {
   const sel = diagramSelection();
   const removed = removedInspectionOf(sel, canvas.getAttribute('data-host') === 'library' ? 'library' : 'map'); // a removed box that was clicked
   if (removed) {
-    const box = Array.from(canvas.querySelectorAll('.dg-node')).find((el) => el.getAttribute('data-ref') === removed.reference && el.getAttribute('data-layer') === removed.layer);
+    const box = Array.from(canvas.querySelectorAll('.dg-node')).find(
+      (el) => el.getAttribute('data-ref') === removed.reference && el.getAttribute('data-layer') === removed.layer
+    );
     if (box) box.classList.add('dg-selected');
     return;
   }
@@ -343,9 +392,11 @@ function markMapSelection() {
   const onPage = canvas.getAttribute('data-host') === 'library';
   const deployed = !onPage && sel.layer === 'application' && mapLayer() === 'technology'; // a deployed application of the Map of the technology layer: told by its reference and its layer
   // an application deployed on several nodes is several boxes of one reference: all of them are the selection
-  const nodes = Array.from(canvas.querySelectorAll('.dg-node')).filter((el) => onPage || deployed
-    ? el.getAttribute('data-ref') === sel.key && (!sel.layer || el.getAttribute('data-layer') === sel.layer)
-    : el.getAttribute('data-id') === sel.key);
+  const nodes = Array.from(canvas.querySelectorAll('.dg-node')).filter((el) =>
+    onPage || deployed
+      ? el.getAttribute('data-ref') === sel.key && (!sel.layer || el.getAttribute('data-layer') === sel.layer)
+      : el.getAttribute('data-id') === sel.key
+  );
   nodes.forEach((node) => node.classList.add('dg-selected'));
 }
 
@@ -354,19 +405,32 @@ function highlightDiagram(target) {
   const svg = document.querySelector('#diagram-canvas svg');
   if (!svg) return;
   svg.querySelectorAll('.dg-on').forEach((el) => el.classList.remove('dg-on'));
-  if (!target) { svg.classList.remove('dg-dim'); return; }
+  if (!target) {
+    svg.classList.remove('dg-dim');
+    return;
+  }
   const ids = new Set();
-  const lit = (el) => { el.classList.add('dg-on'); ids.add(el.getAttribute('data-from')); ids.add(el.getAttribute('data-to')); };
+  const lit = (el) => {
+    el.classList.add('dg-on');
+    ids.add(el.getAttribute('data-from'));
+    ids.add(el.getAttribute('data-to'));
+  };
   if (target.classList.contains('dg-link')) {
     const from = target.getAttribute('data-from');
     const to = target.getAttribute('data-to');
-    svg.querySelectorAll('.dg-link, .dg-label').forEach((el) => { if (el.getAttribute('data-from') === from && el.getAttribute('data-to') === to) lit(el); });
+    svg.querySelectorAll('.dg-link, .dg-label').forEach((el) => {
+      if (el.getAttribute('data-from') === from && el.getAttribute('data-to') === to) lit(el);
+    });
   } else {
     const id = target.getAttribute('data-id');
     ids.add(id);
-    svg.querySelectorAll('.dg-link, .dg-label').forEach((el) => { if (el.getAttribute('data-from') === id || el.getAttribute('data-to') === id) lit(el); });
+    svg.querySelectorAll('.dg-link, .dg-label').forEach((el) => {
+      if (el.getAttribute('data-from') === id || el.getAttribute('data-to') === id) lit(el);
+    });
   }
-  svg.querySelectorAll('.dg-node, .dg-fold').forEach((el) => { if (ids.has(el.getAttribute('data-id'))) el.classList.add('dg-on'); });
+  svg.querySelectorAll('.dg-node, .dg-fold').forEach((el) => {
+    if (ids.has(el.getAttribute('data-id'))) el.classList.add('dg-on');
+  });
   svg.classList.add('dg-dim');
 }
 
@@ -382,7 +446,10 @@ function handleDiagramPointerOut(e) {
   if (!canvas) return;
   const into = e.relatedTarget;
   if (into && canvas.contains && canvas.contains(into)) return;
-  const focused = document.activeElement && document.activeElement.closest ? document.activeElement.closest('.dg-node, .dg-fold, .dg-link') : null;
+  const focused =
+    document.activeElement && document.activeElement.closest
+      ? document.activeElement.closest('.dg-node, .dg-fold, .dg-link')
+      : null;
   highlightDiagram(focused && canvas.contains(focused) ? focused : null);
 }
 
@@ -392,8 +459,15 @@ function handleDiagramFocus(e) {
   highlightDiagram(node);
   if (node) revealDiagramNode(node);
   // the stop of the links goes where their focus is (a click, an arrow key, Tab coming back, the focus given back after a redraw)
-  if (node && node.classList.contains('dg-link')) setLinkTabStop(Array.from(document.querySelectorAll('#diagram-canvas .dg-link')), node);
-  if (node && node.classList.contains('dg-node') && !node.classList.contains('dg-ghost')) setNodeTabStop(Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).filter((el) => !el.classList.contains('dg-ghost')), node);
+  if (node && node.classList.contains('dg-link'))
+    setLinkTabStop(Array.from(document.querySelectorAll('#diagram-canvas .dg-link')), node);
+  if (node && node.classList.contains('dg-node') && !node.classList.contains('dg-ghost'))
+    setNodeTabStop(
+      Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).filter(
+        (el) => !el.classList.contains('dg-ghost')
+      ),
+      node
+    );
 }
 
 /**
@@ -411,12 +485,19 @@ function handleAppWheel(e) {
   }
   const unit = e.deltaMode === 1 ? 16 : 1;
   const sideways = e.shiftKey && !e.deltaX;
-  moveDiagramBy(document.getElementById('diagram-canvas'), -(sideways ? e.deltaY : e.deltaX) * unit, -(sideways ? 0 : e.deltaY) * unit);
+  moveDiagramBy(
+    document.getElementById('diagram-canvas'),
+    -(sideways ? e.deltaY : e.deltaX) * unit,
+    -(sideways ? 0 : e.deltaY) * unit
+  );
 }
 
 /** The canvas never scrolls (a focused box can make the browser try); the drawing moves with `diagramCenter` instead. */
 function keepDiagramCanvasStill(e) {
-  if (e.target && e.target.id === 'diagram-canvas') { e.target.scrollLeft = 0; e.target.scrollTop = 0; }
+  if (e.target && e.target.id === 'diagram-canvas') {
+    e.target.scrollLeft = 0;
+    e.target.scrollTop = 0;
+  }
 }
 
 /** Drag the diagram with the mouse; a drag is never taken for a click on the box it started on. */
@@ -434,7 +515,12 @@ function startDiagramPan(e) {
     if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
     moved = true;
     canvas.classList.add('panning');
-    if (!taken) { applyDiagramPan(canvas); takeOverDiagramFraming(canvas); start.center = { x: diagramCenter.x, y: diagramCenter.y }; taken = true; }
+    if (!taken) {
+      applyDiagramPan(canvas);
+      takeOverDiagramFraming(canvas);
+      start.center = { x: diagramCenter.x, y: diagramCenter.y };
+      taken = true;
+    }
     const scale = resolveDiagramScale(canvas);
     diagramCenter = { x: start.center.x - dx / scale, y: start.center.y - dy / scale };
     applyDiagramPan(canvas);
@@ -446,7 +532,9 @@ function startDiagramPan(e) {
     canvas.classList.remove('panning');
     if (moved) {
       diagramPanned = true;
-      setTimeout(() => { diagramPanned = false; }, 0);
+      setTimeout(() => {
+        diagramPanned = false;
+      }, 0);
     }
   };
   document.addEventListener('pointermove', onMove);
@@ -463,7 +551,8 @@ function diagramNeighbor(from, key) {
   for (const el of document.querySelectorAll('#diagram-canvas .dg-node')) {
     if (el === from) continue;
     const group = el.querySelector('.dg-group');
-    if (group) { // a box that encloses the one the arrow starts from is not "next to" it
+    if (group) {
+      // a box that encloses the one the arrow starts from is not "next to" it
       const g = group.getBoundingClientRect();
       if (origin.x >= g.left && origin.x <= g.right && origin.y >= g.top && origin.y <= g.bottom) continue;
     }
@@ -471,7 +560,7 @@ function diagramNeighbor(from, key) {
     const dx = c.x - origin.x;
     const dy = c.y - origin.y;
     const along = key === 'ArrowRight' ? dx : key === 'ArrowLeft' ? -dx : key === 'ArrowDown' ? dy : -dy;
-    const across = (key === 'ArrowRight' || key === 'ArrowLeft') ? dy : dx;
+    const across = key === 'ArrowRight' || key === 'ArrowLeft' ? dy : dx;
     if (along <= 1 || Math.abs(across) > along * 2) continue;
     const score = along + 2 * Math.abs(across);
     if (!best || score < best.score) best = { el, score };
@@ -508,51 +597,148 @@ function handleDiagramKeydown(e) {
     }
     return;
   }
-  if (e.key === '+' || e.key === '=') { e.preventDefault(); setDiagramScale(diagramScaleStep(1)); }
-  else if (e.key === '-') { e.preventDefault(); setDiagramScale(diagramScaleStep(-1)); }
-  else if (e.key === '0') { e.preventDefault(); setDiagramScale(1); }
-  else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); setDiagramScale('fit'); }
-  else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); resetDiagramView(); }
-  else if ((e.key === 'm' || e.key === 'M') && !diagramMaximized && (anyDiagramShown() || libraryDiagramShown())) { e.preventDefault(); toggleDiagramMaximized(); }
-  else if (e.key === 'Escape' && diagramMaximized && (anyDiagramShown() || libraryDiagramShown())) { e.preventDefault(); toggleDiagramMaximized(); } // the maximized state is that of the diagram on screen (it is parked with the host)
-  else if (e.key === 'Escape' && AppState.selection.kind === 'link' && anyDiagramShown()) { e.preventDefault(); dropLinkSelection(); requestRedraw(); }
-  else if (e.key === 'Escape' && libraryDiagramShown() && libraryPickFor(selectedViewId).selection) { e.preventDefault(); closeLibrarySelection(); }
+  if (e.key === '+' || e.key === '=') {
+    e.preventDefault();
+    setDiagramScale(diagramScaleStep(1));
+  } else if (e.key === '-') {
+    e.preventDefault();
+    setDiagramScale(diagramScaleStep(-1));
+  } else if (e.key === '0') {
+    e.preventDefault();
+    setDiagramScale(1);
+  } else if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault();
+    setDiagramScale('fit');
+  } else if (e.key === 'c' || e.key === 'C') {
+    e.preventDefault();
+    resetDiagramView();
+  } else if ((e.key === 'm' || e.key === 'M') && !diagramMaximized && (anyDiagramShown() || libraryDiagramShown())) {
+    e.preventDefault();
+    toggleDiagramMaximized();
+  } else if (e.key === 'Escape' && diagramMaximized && (anyDiagramShown() || libraryDiagramShown())) {
+    e.preventDefault();
+    toggleDiagramMaximized();
+  } // the maximized state is that of the diagram on screen (it is parked with the host)
+  else if (e.key === 'Escape' && AppState.selection.kind === 'link' && anyDiagramShown()) {
+    e.preventDefault();
+    dropLinkSelection();
+    requestRedraw();
+  } else if (e.key === 'Escape' && libraryDiagramShown() && libraryPickFor(selectedViewId).selection) {
+    e.preventDefault();
+    closeLibrarySelection();
+  }
 }
 
 /** The styles of the diagram with real colors, for an SVG that must look right outside this page. */
 function diagramExportCss() {
   const style = getComputedStyle(document.documentElement);
   const c = (name) => style.getPropertyValue(name).trim();
-  return '.dg-box{fill:' + c('--bg') + ';stroke:' + c('--border') + ';stroke-width:1.25}' +
-    '.dg-stack{fill:' + c('--panel-bg') + '}' +
-    '.dg-group{fill:none;stroke:' + c('--muted') + ';stroke-opacity:.55;stroke-width:1.5}' +
+  return (
+    '.dg-box{fill:' +
+    c('--bg') +
+    ';stroke:' +
+    c('--border') +
+    ';stroke-width:1.25}' +
+    '.dg-stack{fill:' +
+    c('--panel-bg') +
+    '}' +
+    '.dg-group{fill:none;stroke:' +
+    c('--muted') +
+    ';stroke-opacity:.55;stroke-width:1.5}' +
     // what the workspace styled: the --st-* variables stay inline on the boxes, these rules read them (the colours of the theme are the fallbacks)
-    '.dg-styled>.dg-box{fill:var(--st-fill,' + c('--bg') + ');stroke:var(--st-stroke,' + c('--border') + ');stroke-width:var(--st-width,1.25px);stroke-dasharray:var(--st-dash,none)}' +
-    '.dg-styled>.dg-stack{fill:var(--st-fill,' + c('--panel-bg') + ')}' +
-    '.dg-styled>.dg-group{fill:var(--st-fill,none);stroke:var(--st-stroke,' + c('--muted') + ');stroke-opacity:var(--st-stroke-opacity,.55);stroke-width:var(--st-width,1.5px);stroke-dasharray:var(--st-dash,none)}' +
+    '.dg-styled>.dg-box{fill:var(--st-fill,' +
+    c('--bg') +
+    ');stroke:var(--st-stroke,' +
+    c('--border') +
+    ');stroke-width:var(--st-width,1.25px);stroke-dasharray:var(--st-dash,none)}' +
+    '.dg-styled>.dg-stack{fill:var(--st-fill,' +
+    c('--panel-bg') +
+    ')}' +
+    '.dg-styled>.dg-group{fill:var(--st-fill,none);stroke:var(--st-stroke,' +
+    c('--muted') +
+    ');stroke-opacity:var(--st-stroke-opacity,.55);stroke-width:var(--st-width,1.5px);stroke-dasharray:var(--st-dash,none)}' +
     '.dg-shadow>.dg-box,.dg-shadow>.dg-group{filter:drop-shadow(2px 2px 2px rgba(0,0,0,.4))}' +
-    '.dg-focal .dg-box,.dg-focal .dg-group{stroke:' + c('--accent') + ';stroke-width:2.5}' +
-    '.dg-ghost .dg-box{stroke:' + c('--danger') + ';stroke-dasharray:5 4}' +
-    '.dg-title{fill:' + c('--fg') + ';font:600 14px sans-serif}.dg-sub{fill:' + c('--muted') + ';font:12px sans-serif}.dg-desc{fill:' + c('--muted') + ';font:11px sans-serif}' +
-    '.dg-styled .dg-title{fill:var(--st-text,' + c('--fg') + ');font-weight:var(--st-weight,600);font-style:var(--st-fstyle,normal)}' +
-    '.dg-styled .dg-sub,.dg-styled .dg-desc{fill:var(--st-text,' + c('--muted') + ');font-weight:var(--st-weight,400);font-style:var(--st-fstyle,normal)}' +
+    '.dg-focal .dg-box,.dg-focal .dg-group{stroke:' +
+    c('--accent') +
+    ';stroke-width:2.5}' +
+    '.dg-ghost .dg-box{stroke:' +
+    c('--danger') +
+    ';stroke-dasharray:5 4}' +
+    '.dg-title{fill:' +
+    c('--fg') +
+    ';font:600 14px sans-serif}.dg-sub{fill:' +
+    c('--muted') +
+    ';font:12px sans-serif}.dg-desc{fill:' +
+    c('--muted') +
+    ';font:11px sans-serif}' +
+    '.dg-styled .dg-title{fill:var(--st-text,' +
+    c('--fg') +
+    ');font-weight:var(--st-weight,600);font-style:var(--st-fstyle,normal)}' +
+    '.dg-styled .dg-sub,.dg-styled .dg-desc{fill:var(--st-text,' +
+    c('--muted') +
+    ');font-weight:var(--st-weight,400);font-style:var(--st-fstyle,normal)}' +
     '.dg-over-fill .dg-title,.dg-over-fill .dg-sub{fill:var(--ov-text)}' +
-    '.dg-badge rect{fill:var(--st-fill,' + c('--panel-bg') + ');stroke:var(--st-stroke,' + c('--border') + ');stroke-width:1}.dg-badge text{fill:var(--st-text,' + c('--fg') + ');font:600 10.5px sans-serif}' +
-    '.dg-edge{fill:none;stroke:' + c('--muted') + ';stroke-width:1.4}.dg-aggregated{stroke-dasharray:7 4}' +
-    '.dg-ghost-edge{stroke:' + c('--danger') + ';stroke-dasharray:3 4}' +
+    '.dg-badge rect{fill:var(--st-fill,' +
+    c('--panel-bg') +
+    ');stroke:var(--st-stroke,' +
+    c('--border') +
+    ');stroke-width:1}.dg-badge text{fill:var(--st-text,' +
+    c('--fg') +
+    ');font:600 10.5px sans-serif}' +
+    '.dg-edge{fill:none;stroke:' +
+    c('--muted') +
+    ';stroke-width:1.4}.dg-aggregated{stroke-dasharray:7 4}' +
+    '.dg-ghost-edge{stroke:' +
+    c('--danger') +
+    ';stroke-dasharray:3 4}' +
     // the comparison of two plateaus. The colours of the states in the theme of the page (the boxes carry var(--chg-*) in their --st-* variables), the tint, the strike, the lines of the links
-    'svg{--chg-new:' + c('--chg-new') + ';--chg-changed:' + c('--chg-changed') + ';--chg-removed:' + c('--chg-removed') + ';--chg-removed-text:' + c('--chg-removed-text') + ';--chg-contains:' + c('--chg-contains') + '}' +
-    'svg{--chg-moved:' + c('--chg-moved') + ';--chg-split:' + c('--chg-split') + ';--chg-merged:' + c('--chg-merged') + '}' + // the three states of identity (wave 009), for the boxes that carry them
+    'svg{--chg-new:' +
+    c('--chg-new') +
+    ';--chg-changed:' +
+    c('--chg-changed') +
+    ';--chg-removed:' +
+    c('--chg-removed') +
+    ';--chg-removed-text:' +
+    c('--chg-removed-text') +
+    ';--chg-contains:' +
+    c('--chg-contains') +
+    '}' +
+    'svg{--chg-moved:' +
+    c('--chg-moved') +
+    ';--chg-split:' +
+    c('--chg-split') +
+    ';--chg-merged:' +
+    c('--chg-merged') +
+    '}' + // the three states of identity (wave 009), for the boxes that carry them
     '.dg-tint{fill:var(--st-tint,none);fill-opacity:.16;stroke:none}.dg-compound .dg-tint{fill-opacity:.08}' +
     '.dg-struck{text-decoration:line-through}.dg-glyph{font-weight:700}.dg-label .dg-glyph{font-size:14px}' +
-    '.dg-edge.dg-chg-new{stroke:' + c('--chg-new') + ';stroke-width:3;stroke-dasharray:none}' +
-    '.dg-edge.dg-chg-changed{stroke:' + c('--chg-changed') + ';stroke-width:2;stroke-dasharray:2 3}' +
-    '.dg-edge.dg-chg-removed{stroke:' + c('--chg-removed') + ';stroke-width:1.6;stroke-dasharray:7 4}' +
-    '.dg-arrowhead.dg-chg-new{fill:' + c('--chg-new') + '}.dg-arrowhead.dg-chg-changed{fill:' + c('--chg-changed') + '}.dg-arrowhead.dg-chg-removed{fill:' + c('--chg-removed') + '}' +
-    '.dg-arrowhead{fill:' + c('--muted') + '}' +
+    '.dg-edge.dg-chg-new{stroke:' +
+    c('--chg-new') +
+    ';stroke-width:3;stroke-dasharray:none}' +
+    '.dg-edge.dg-chg-changed{stroke:' +
+    c('--chg-changed') +
+    ';stroke-width:2;stroke-dasharray:2 3}' +
+    '.dg-edge.dg-chg-removed{stroke:' +
+    c('--chg-removed') +
+    ';stroke-width:1.6;stroke-dasharray:7 4}' +
+    '.dg-arrowhead.dg-chg-new{fill:' +
+    c('--chg-new') +
+    '}.dg-arrowhead.dg-chg-changed{fill:' +
+    c('--chg-changed') +
+    '}.dg-arrowhead.dg-chg-removed{fill:' +
+    c('--chg-removed') +
+    '}' +
+    '.dg-arrowhead{fill:' +
+    c('--muted') +
+    '}' +
     '.dg-node.dg-context{opacity:.55}' +
-    '.dg-label{fill:' + c('--fg') + ';font:11px sans-serif;paint-order:stroke;stroke:' + c('--panel-bg') + ';stroke-width:4px;stroke-linejoin:round}' +
-    '.dg-header,.dg-hit,.dg-hit-edge{fill:none;stroke:none}.dg-fold{display:none}';
+    '.dg-label{fill:' +
+    c('--fg') +
+    ';font:11px sans-serif;paint-order:stroke;stroke:' +
+    c('--panel-bg') +
+    ';stroke-width:4px;stroke-linejoin:round}' +
+    '.dg-header,.dg-hit,.dg-hit-edge{fill:none;stroke:none}.dg-fold{display:none}'
+  );
 }
 
 /** The diagram on screen as a self-contained SVG document (what the SVG file holds, and what the PNG is drawn from); null when nothing is drawn. */
@@ -569,9 +755,15 @@ function diagramExportDocument() {
   clone.classList.remove('dg-dim');
   clone.querySelectorAll('.dg-fold').forEach((el) => el.remove());
   clone.querySelectorAll('.dg-on').forEach((el) => el.classList.remove('dg-on'));
-  for (const el of clone.querySelectorAll('[tabindex],[data-action]')) { el.removeAttribute('tabindex'); el.removeAttribute('data-action'); }
+  for (const el of clone.querySelectorAll('[tabindex],[data-action]')) {
+    el.removeAttribute('tabindex');
+    el.removeAttribute('data-action');
+  }
   for (const el of clone.querySelectorAll('[aria-pressed]')) el.removeAttribute('aria-pressed');
-  for (const el of clone.querySelectorAll('.dg-links')) { el.removeAttribute('role'); el.removeAttribute('aria-label'); } // it describes keys of the page
+  for (const el of clone.querySelectorAll('.dg-links')) {
+    el.removeAttribute('role');
+    el.removeAttribute('aria-label');
+  } // it describes keys of the page
   for (const el of clone.querySelectorAll('.dg-link-selected')) el.classList.remove('dg-link-selected');
   const ns = 'http://www.w3.org/2000/svg';
   const style = document.createElementNS(ns, 'style');
@@ -581,14 +773,20 @@ function diagramExportDocument() {
   background.setAttribute('y', '-4');
   background.setAttribute('width', String(diagramScene.width));
   background.setAttribute('height', String(diagramScene.height));
-  background.setAttribute('fill', getComputedStyle(document.documentElement).getPropertyValue('--panel-bg').trim() || '#ffffff');
+  background.setAttribute(
+    'fill',
+    getComputedStyle(document.documentElement).getPropertyValue('--panel-bg').trim() || '#ffffff'
+  );
   clone.insertBefore(background, clone.firstChild);
   clone.insertBefore(style, clone.firstChild);
   return {
     xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone),
     width: diagramScene.width,
     height: diagramScene.height,
-    name: (canvas.getAttribute('data-ref') || canvas.getAttribute('data-view') || 'diagram').replace(/[^\w.-]+/g, '_') + '-' + (diagramShownView ? diagramShownView.split('|')[1] : 'diagram')
+    name:
+      (canvas.getAttribute('data-ref') || canvas.getAttribute('data-view') || 'diagram').replace(/[^\w.-]+/g, '_') +
+      '-' +
+      (diagramShownView ? diagramShownView.split('|')[1] : 'diagram')
   };
 }
 
@@ -633,7 +831,11 @@ async function exportDiagramPng() {
     downloadDiagramFile(blob, exported.name + '.png');
   } catch (e) {
     console.error('PNG export failed', e);
-    alert('The PNG could not be made: ' + (e && e.message ? e.message : String(e)) + '. The SVG download does not have this limit.');
+    alert(
+      'The PNG could not be made: ' +
+        (e && e.message ? e.message : String(e)) +
+        '. The SVG download does not have this limit.'
+    );
   }
 }
 
@@ -653,7 +855,8 @@ function linkSelectionFor(from, to, layer, nth, focal) {
   const sel = { kind: 'link', key: from + ' -> ' + to, from, to, layer: layer || 'application', mode: 'view' };
   if (focal) sel.focal = focal;
   const pair = inspectionLinkFor(sel);
-  if (pair && pair.links.length > 1 && Number.isInteger(nth) && pair.links[nth]) sel.via = relationshipsOfLink(pair.links[nth], pair).map(relationshipKeyOf);
+  if (pair && pair.links.length > 1 && Number.isInteger(nth) && pair.links[nth])
+    sel.via = relationshipsOfLink(pair.links[nth], pair).map(relationshipKeyOf);
   return sel;
 }
 
@@ -661,4 +864,3 @@ function linkSelectionFor(from, to, layer, nth, focal) {
 function pushDiagramHistory() {
   if (currentPerspective === 'elements' || mapIsShown()) history.pushState(null, '', location.href);
 }
-

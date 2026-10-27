@@ -21,7 +21,9 @@ function horizonPeriod(label) {
   const text = String(label).trim();
   const valid = (year, month, day) => {
     const d = new Date(Date.UTC(year, month - 1, day));
-    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day ? year * 10000 + month * 100 + day : null;
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day
+      ? year * 10000 + month * 100 + day
+      : null;
   };
   const lastDay = (year, month) => valid(year, month, new Date(Date.UTC(year, month, 0)).getUTCDate());
   const period = (start, end) => (start === null || end === null ? null : { start, end });
@@ -30,7 +32,8 @@ function horizonPeriod(label) {
   m = /^(\d{4})-(\d{2})$/.exec(text);
   if (m) return period(valid(Number(m[1]), Number(m[2]), 1), lastDay(Number(m[1]), Number(m[2])));
   m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-  if (m) return period(valid(Number(m[1]), Number(m[2]), Number(m[3])), valid(Number(m[1]), Number(m[2]), Number(m[3])));
+  if (m)
+    return period(valid(Number(m[1]), Number(m[2]), Number(m[3])), valid(Number(m[1]), Number(m[2]), Number(m[3])));
   m = /^(\d{4})-?Q([1-4])$/i.exec(text);
   if (m) return period(valid(Number(m[1]), (Number(m[2]) - 1) * 3 + 1, 1), lastDay(Number(m[1]), Number(m[2]) * 3));
   m = /^(\d{4})-?H([12])$/i.exec(text);
@@ -66,14 +69,21 @@ function bandTreeOf(tree) {
     if (!children.has(node.parent)) children.set(node.parent, []);
     children.get(node.parent).push(node);
   }
-  const build = (node) => ({ id: node.id, node, children: (children.get(node.id) || []).slice().sort(compareBandSiblings).map(build) });
+  const build = (node) => ({
+    id: node.id,
+    node,
+    children: (children.get(node.id) || []).slice().sort(compareBandSiblings).map(build)
+  });
   return build(tree.nodes.get(BASELINE_PLATEAU));
 }
 
 /** The ids of the band in reading order (a plateau, then what overrides it): the order the band lists its nodes in. */
 function bandOrderOf(tree) {
   const out = [];
-  const walk = (item) => { out.push(item.id); item.children.forEach(walk); };
+  const walk = (item) => {
+    out.push(item.id);
+    item.children.forEach(walk);
+  };
   const root = bandTreeOf(tree);
   if (root) walk(root);
   return out;
@@ -156,7 +166,8 @@ function graphReferencesOf(graph) {
     }
   };
   for (const layer of LAYER_NAMES) {
-    for (const root of graph[layer].elements) if (root && typeof root === 'object' && root.id) walk(layer, root, String(root.id));
+    for (const root of graph[layer].elements)
+      if (root && typeof root === 'object' && root.id) walk(layer, root, String(root.id));
   }
   return out;
 }
@@ -167,7 +178,8 @@ function namedByProperties(properties) {
   if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return [];
   if (typeof properties.element === 'string') names.add(properties.element);
   for (const key of ['pinned', 'opened', 'hidden']) {
-    for (const entry of Array.isArray(properties[key]) ? properties[key] : []) if (typeof entry === 'string') names.add(entry);
+    for (const entry of Array.isArray(properties[key]) ? properties[key] : [])
+      if (typeof entry === 'string') names.add(entry);
   }
   return Array.from(names).sort(compareUnits);
 }
@@ -196,31 +208,52 @@ function layerProblemsOf(plateau, graph, options) {
   for (const layer of LAYER_NAMES) {
     for (const [reference, node] of refs[layer]) {
       const file = layerFileOf(options && options.roots, layer, reference);
-      const told = (verb, other, key) => '`' + reference + '` ' + verb + ' `' + other + '`, which does not exist, ' + (file ? 'in `' + file + '` ' : '') + 'at `' + key + '`';
+      const told = (verb, other, key) =>
+        '`' +
+        reference +
+        '` ' +
+        verb +
+        ' `' +
+        other +
+        '`, which does not exist, ' +
+        (file ? 'in `' + file + '` ' : '') +
+        'at `' +
+        key +
+        '`';
       let position = 0;
       for (const rel of Array.isArray(node.relationships) ? node.relationships : []) {
         if (!rel || typeof rel !== 'object') continue;
         const key = 'relationships[' + position++ + '].destination';
         const destination = kernelStringOf(rel.destination);
-        if (destination !== null && !refs[layer].has(destination)) found.push({ element: reference, other: destination, sentence: told('has a relationship towards', destination, key) });
+        if (destination !== null && !refs[layer].has(destination))
+          found.push({
+            element: reference,
+            other: destination,
+            sentence: told('has a relationship towards', destination, key)
+          });
       }
       if (node.kind === 'environment') {
         let at = 0;
         for (const used of kernelStringsOf(node.uses)) {
           const key = 'uses[' + at++ + ']';
-          if (!refs[layer].has(used)) found.push({ element: reference, other: used, sentence: told('uses', used, key) });
+          if (!refs[layer].has(used))
+            found.push({ element: reference, other: used, sentence: told('uses', used, key) });
         }
       }
       if (node.kind === 'node') {
         let at = 0;
         for (const application of kernelStringsOf(node.applications)) {
           const key = 'applications[' + at++ + ']';
-          if (!refs.application.has(application)) found.push({ element: reference, other: application, sentence: told('hosts', application, key) });
+          if (!refs.application.has(application))
+            found.push({ element: reference, other: application, sentence: told('hosts', application, key) });
         }
       }
     }
   }
-  found.sort((a, b) => compareUnits(a.element, b.element) || compareUnits(a.other, b.other) || compareUnits(a.sentence, b.sentence));
+  found.sort(
+    (a, b) =>
+      compareUnits(a.element, b.element) || compareUnits(a.other, b.other) || compareUnits(a.sentence, b.sentence)
+  );
   // one sentence for each thing that is missing: the elements that point at it are one cause (`DanglingReferences.sentences`)
   const byMissing = new Map();
   for (const problem of found) {
@@ -231,14 +264,24 @@ function layerProblemsOf(plateau, graph, options) {
   const out = new Set();
   for (const group of byMissing.values()) {
     const others = new Set(group.map((p) => p.element)).size - 1;
-    out.add(in_ + group[0].sentence + (others === 0 ? '' : ' (' + others + (others === 1 ? ' more element' + scope + ' points at it)' : ' more elements' + scope + ' point at it)')));
+    out.add(
+      in_ +
+        group[0].sentence +
+        (others === 0
+          ? ''
+          : ' (' +
+            others +
+            (others === 1 ? ' more element' + scope + ' points at it)' : ' more elements' + scope + ' point at it)'))
+    );
   }
   return Array.from(out);
 }
 
 /** The layer a view, or a step of a story, is about: `technology` or else `application` (the command line reads the layer in any case). */
 function entryLayerOf(value) {
-  return String(value === undefined || value === null ? '' : value).toLowerCase() === 'technology' ? 'technology' : 'application';
+  return String(value === undefined || value === null ? '' : value).toLowerCase() === 'technology'
+    ? 'technology'
+    : 'application';
 }
 
 /** The references that the manifests declare, whatever the plateau, by layer: each root (under its `header.parent`) and every element nested in it (`ManifestParser.declaredReferences`). */
@@ -247,7 +290,9 @@ function declaredReferencesOf(manifestFiles) {
   for (const mf of manifestFiles) {
     const category = manifestLayer(mf);
     if (!category || !mf.content || mf.content.id === undefined || mf.content.id === null) continue;
-    walkContentNodes(mf, (node, reference) => { declared[category].add(reference); });
+    walkContentNodes(mf, (node, reference) => {
+      declared[category].add(reference);
+    });
   }
   return declared;
 }
@@ -288,12 +333,20 @@ function entryProblemsIn(manifestFiles, tree, declaredGiven) {
   const told = (noun, id, source, recipe) => {
     if (!layered) return;
     for (const name of namedByProperties(recipe.properties)) {
-      if (!declared[entryLayerOf(recipe.layer)].has(name)) out.push('the ' + noun + ' `' + id + '` (`' + source + '`) names `' + name + '`, which exists in no plateau');
+      if (!declared[entryLayerOf(recipe.layer)].has(name))
+        out.push('the ' + noun + ' `' + id + '` (`' + source + '`) names `' + name + '`, which exists in no plateau');
     }
   };
-  const files = (kind) => manifestFiles.filter((mf) => !mf.error && mf.header && mf.content && isPlainObject(mf.content) && manifestKindName(mf.header.kind) === kind);
+  const files = (kind) =>
+    manifestFiles.filter(
+      (mf) =>
+        !mf.error && mf.header && mf.content && isPlainObject(mf.content) && manifestKindName(mf.header.kind) === kind
+    );
   // the views and stories of .archicode.yaml (an older place for them) come after those of the manifests, unless a manifest has the id: it shadows them (`entriesOf`)
-  const legacy = (key, kind) => { const own = new Set(files(kind).map((mf) => String(mf.content.id))); return legacyEntries(key).filter((entry) => !own.has(entry.id)); };
+  const legacy = (key, kind) => {
+    const own = new Set(files(kind).map((mf) => String(mf.content.id)));
+    return legacyEntries(key).filter((entry) => !own.has(entry.id));
+  };
   if (layered) {
     for (const mf of files('view')) told('view', mf.content.id, mf.relPath, mf.content);
     for (const view of legacy('views', 'view')) told('view', view.id, '.archicode.yaml', view);
@@ -302,11 +355,13 @@ function entryProblemsIn(manifestFiles, tree, declaredGiven) {
   const broken = !!(tree && tree.problems && tree.problems.length); // a tree that is refused names the plateaus that exist no better than a workspace with none: the tree is what is told
   const tellSteps = (id, source, steps) => {
     // the steps are numbered as the command line does: an item with no value in the list is absent (run 0092), so it takes no number
-    (Array.isArray(steps) ? steps : []).filter((step) => step !== null && step !== undefined).forEach((step, i) => {
-      if (!isPlainObject(step)) return;
-      if (!broken) for (const sentence of stepPlateauProblems(source, id, i + 1, step, ids)) out.push(sentence);
-      told('story', id, source, step);
-    });
+    (Array.isArray(steps) ? steps : [])
+      .filter((step) => step !== null && step !== undefined)
+      .forEach((step, i) => {
+        if (!isPlainObject(step)) return;
+        if (!broken) for (const sentence of stepPlateauProblems(source, id, i + 1, step, ids)) out.push(sentence);
+        told('story', id, source, step);
+      });
   };
   for (const mf of files('story')) tellSteps(mf.content.id, mf.relPath, mf.content.steps);
   for (const story of legacy('stories', 'story')) tellSteps(story.id, '.archicode.yaml', story.steps);
@@ -318,7 +373,10 @@ function entryProblemsIn(manifestFiles, tree, declaredGiven) {
  * an empty one names nothing (`readText`: a key with no value is absent). Returns `{ at, against }`, each a plateau id or null.
  */
 function stepPlateauKeys(step) {
-  const text = (value) => ((typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') && String(value) !== '' ? String(value) : null);
+  const text = (value) =>
+    (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') && String(value) !== ''
+      ? String(value)
+      : null;
   return { at: text(step.at), against: text(step.against) };
 }
 
@@ -335,9 +393,22 @@ function stepPlateauProblems(source, id, number, step, ids) {
     const value = keys[key];
     if (value === null || ids.includes(value)) continue;
     unknown = true;
-    out.push(ids.length ? where + key + ': ' + value + '`, which is not a plateau of this workspace (the plateaus are ' + ids.map((i) => '`' + i + '`').join(', ') + ')' : where + key + ': ' + value + '` but the workspace declares no plateau' + NO_PLATEAU);
+    out.push(
+      ids.length
+        ? where +
+            key +
+            ': ' +
+            value +
+            '`, which is not a plateau of this workspace (the plateaus are ' +
+            ids.map((i) => '`' + i + '`').join(', ') +
+            ')'
+        : where + key + ': ' + value + '` but the workspace declares no plateau' + NO_PLATEAU
+    );
   }
-  if (!unknown && keys.at !== null && keys.at === keys.against) out.push(where + 'at: ' + keys.at + '` and `against: ' + keys.against + '`: a plateau is never compared with itself');
+  if (!unknown && keys.at !== null && keys.at === keys.against)
+    out.push(
+      where + 'at: ' + keys.at + '` and `against: ' + keys.against + '`: a plateau is never compared with itself'
+    );
   return out;
 }
 
@@ -354,7 +425,17 @@ function nestingLevelIn(refs, reference) {
  * the file, the parent and the place of the fault (`ElementIndexFactory.refusal`): keep them alike.
  */
 function nestingProblem(item, held) {
-  return '`' + item.mf.relPath + '` is not valid: unknown kind `' + item.rootKind + '` under `' + item.parentReference + '` (known: ' + (held.length ? held.slice().sort(compareUnits).join(', ') : 'none') + ') at `header.kind`';
+  return (
+    '`' +
+    item.mf.relPath +
+    '` is not valid: unknown kind `' +
+    item.rootKind +
+    '` under `' +
+    item.parentReference +
+    '` (known: ' +
+    (held.length ? held.slice().sort(compareUnits).join(', ') : 'none') +
+    ') at `header.kind`'
+  );
 }
 
 /**
@@ -362,7 +443,15 @@ function nestingProblem(item, held) {
  * cause, no parent, takes the place of the parent (`ElementIndexFactory.rootRefusal`): keep them alike. Told in a workspace that has plateaus only.
  */
 function rootProblem(item, held) {
-  return '`' + item.mf.relPath + '` is not valid: unknown kind `' + item.rootKind + '` with no `header.parent` (known: ' + held.join(', ') + ') at `header.kind`';
+  return (
+    '`' +
+    item.mf.relPath +
+    '` is not valid: unknown kind `' +
+    item.rootKind +
+    '` with no `header.parent` (known: ' +
+    held.join(', ') +
+    ') at `header.kind`'
+  );
 }
 
 /**
@@ -377,7 +466,8 @@ function resolveLayerStep(parent, node, context) {
   const register = (category, json, reference) => {
     const walk = (item, ref) => {
       refs[category].set(ref, item);
-      for (const child of Array.isArray(item.elements) ? item.elements : []) if (child && typeof child === 'object' && child.id) walk(child, ref + '.' + child.id);
+      for (const child of Array.isArray(item.elements) ? item.elements : [])
+        if (child && typeof child === 'object' && child.id) walk(child, ref + '.' + child.id);
     };
     walk(json, reference);
   };
@@ -412,14 +502,22 @@ function resolveLayerStep(parent, node, context) {
     const left = [];
     for (const item of pending) {
       const host = refs[item.category].get(item.parentReference);
-      if (!host) { left.push(item); continue; }
+      if (!host) {
+        left.push(item);
+        continue;
+      }
       // the parent has to hold the kind (issue #87): told as the command line tells it, and drawn where the manifest puts it, so that it can be repaired
       const held = childKindOptionsForLevel(nestingLevelIn(refs[item.category], item.parentReference));
       if (held.indexOf(item.rootKind) === -1) nesting[item.category].set(item.reference, nestingProblem(item, held));
       if (!Array.isArray(host.elements)) host.elements = [];
       host.elements.push(item.json);
       register(item.category, item.json, item.reference);
-      state.roots.set(item.category + '|' + item.reference, { kind: item.rootKind, level: item.level, file: item.mf.relPath, plateau: node.id });
+      state.roots.set(item.category + '|' + item.reference, {
+        kind: item.rootKind,
+        level: item.level,
+        file: item.mf.relPath,
+        plateau: node.id
+      });
     }
     if (left.length === pending.length) break;
     pending = left;
@@ -428,35 +526,77 @@ function resolveLayerStep(parent, node, context) {
   // (the editor draws what it can, so that the mistake can be repaired in it)
   // told first, and alone (the command line stops there): the application layer, then the technology layer, each by reference, as `ElementIndexFactory.indexLayers` tells them
   let mine = [];
-  for (const category of LAYER_NAMES) mine = mine.concat(Array.from(nesting[category].keys()).sort(compareUnits).map((reference) => nesting[category].get(reference)));
+  for (const category of LAYER_NAMES)
+    mine = mine.concat(
+      Array.from(nesting[category].keys())
+        .sort(compareUnits)
+        .map((reference) => nesting[category].get(reference))
+    );
   if (pending.length) {
     const sentences = new Map();
     for (const item of pending) {
-      sentences.set(item.reference, 'in the plateau `' + node.id + '`, `' + item.reference + '` is declared under `' + item.parentReference + '`, which does not exist');
+      sentences.set(
+        item.reference,
+        'in the plateau `' +
+          node.id +
+          '`, `' +
+          item.reference +
+          '` is declared under `' +
+          item.parentReference +
+          '`, which does not exist'
+      );
       state.graph[item.category].elements.push(item.json);
       state.unplaced.set(item.category + '|' + item.json.id, item.reference);
-      state.roots.set(item.category + '|' + item.reference, { kind: item.rootKind, level: item.level, file: item.mf.relPath, plateau: node.id });
+      state.roots.set(item.category + '|' + item.reference, {
+        kind: item.rootKind,
+        level: item.level,
+        file: item.mf.relPath,
+        plateau: node.id
+      });
     }
-    const folded = foldParentProblems(Array.from(sentences.keys()).sort(compareUnits).map((k) => sentences.get(k)));
+    const folded = foldParentProblems(
+      Array.from(sentences.keys())
+        .sort(compareUnits)
+        .map((k) => sentences.get(k))
+    );
     if (!mine.length) mine = folded;
   }
 
   if (node.patches.length) {
     // the command line stops at the first layer that is wrong and tells it: a layer before this one (or this one's own parents) that is wrong is what is told, though nothing is drawn
     const earlier = state.problems || (mine.length ? { plateau: node.id, sentences: mine } : null);
-    if (!context.kernel) return { fatal: ['the viewpoint kernel is not loaded, so the patches of the plateau `' + node.id + '` cannot be applied'], plateau: node.id, earlier };
+    if (!context.kernel)
+      return {
+        fatal: [
+          'the viewpoint kernel is not loaded, so the patches of the plateau `' + node.id + '` cannot be applied'
+        ],
+        plateau: node.id,
+        earlier
+      };
     const patches = node.patches.map((raw) => ({ raw, kernel: layerKernelPatch(raw) }));
-    const answer = context.kernel.applyPatches({ workspace: { application: state.graph.application, technology: state.graph.technology }, plateau: node.id, patches: patches.map((p) => p.kernel) });
+    const answer = context.kernel.applyPatches({
+      workspace: { application: state.graph.application, technology: state.graph.technology },
+      plateau: node.id,
+      patches: patches.map((p) => p.kernel)
+    });
     if (answer.error) return { fatal: [answer.error], plateau: node.id, earlier };
     const layerOf = (value) => ({ elements: value && Array.isArray(value.elements) ? value.elements : [] });
-    state.graph = { application: layerOf(answer.workspace && answer.workspace.application), technology: layerOf(answer.workspace && answer.workspace.technology) };
+    state.graph = {
+      application: layerOf(answer.workspace && answer.workspace.application),
+      technology: layerOf(answer.workspace && answer.workspace.technology)
+    };
     for (const report of answer.patches || []) {
       const sent = patches[report.rank - 1] ? patches[report.rank - 1].kernel : {};
       const origin = { plateau: node.id, rank: report.rank, operator: report.operator, selector: report.selector };
       // a REMOVE that names a `field` takes the field out of the elements it selects (wave 017, run 0126, #94): nothing leaves the graph, so it is no removal and has no
       // cascade; it is a change of that field, made by the patch, like a SET
       if (report.operator === 'REMOVE' && sent.field === undefined) {
-        state.removals.push(Object.assign({ touched: report.touched || [], removed: report.removed || [], dropped: report.dropped || [] }, origin));
+        state.removals.push(
+          Object.assign(
+            { touched: report.touched || [], removed: report.removed || [], dropped: report.dropped || [] },
+            origin
+          )
+        );
         // what the cascade took out of an element that stays is a change of that element's field, made by this patch
         for (const gone of report.dropped || []) {
           const key = gone.layer + '|' + gone.reference;
@@ -493,7 +633,15 @@ function resolveLayerStep(parent, node, context) {
 function foldParentProblems(sentences) {
   if (sentences.length < 2) return sentences;
   const others = sentences.length - 1;
-  return [sentences[0] + ' (' + others + (others === 1 ? ' more element of the plateau is declared under a parent that does not exist' : ' more elements of the plateau are declared under a parent that does not exist') + ')'];
+  return [
+    sentences[0] +
+      ' (' +
+      others +
+      (others === 1
+        ? ' more element of the plateau is declared under a parent that does not exist'
+        : ' more elements of the plateau are declared under a parent that does not exist') +
+      ')'
+  ];
 }
 
 /** The cache of the states and models of the plateaus, for one tree of plateaus and one text of the manifests (see the note above). */
@@ -504,8 +652,18 @@ function layerCacheSignature(manifestFiles) {
 }
 
 function layerCacheHolds(settings) {
-  if (!layerCache || layerCache.tree !== AppState.plateauTree || layerCache.settings !== settings || layerCache.kernel !== loadedKernel) return false;
-  if (layerCache.label !== settings.relationships.defaultSyntheticLabel || layerCache.signature.length !== AppState.manifestFiles.length) return false;
+  if (
+    !layerCache ||
+    layerCache.tree !== AppState.plateauTree ||
+    layerCache.settings !== settings ||
+    layerCache.kernel !== loadedKernel
+  )
+    return false;
+  if (
+    layerCache.label !== settings.relationships.defaultSyntheticLabel ||
+    layerCache.signature.length !== AppState.manifestFiles.length
+  )
+    return false;
   return layerCache.signature.every(([mf, text], i) => AppState.manifestFiles[i] === mf && mf.rawText === text);
 }
 
@@ -514,8 +672,16 @@ function ensureLayerCache(settings) {
     const filePlateau = new Map();
     for (const mf of AppState.manifestFiles) filePlateau.set(mf.relPath, plateauOfManifest(mf));
     layerCache = {
-      tree: AppState.plateauTree, settings, kernel: loadedKernel, label: settings.relationships.defaultSyntheticLabel, signature: layerCacheSignature(AppState.manifestFiles),
-      byPlateau: layerManifestsByPlateau(AppState.manifestFiles), filePlateau, states: new Map(), models: new Map(), counters: { steps: 0, models: 0 }
+      tree: AppState.plateauTree,
+      settings,
+      kernel: loadedKernel,
+      label: settings.relationships.defaultSyntheticLabel,
+      signature: layerCacheSignature(AppState.manifestFiles),
+      byPlateau: layerManifestsByPlateau(AppState.manifestFiles),
+      filePlateau,
+      states: new Map(),
+      models: new Map(),
+      counters: { steps: 0, models: 0 }
     };
   }
   return layerCache;
@@ -532,7 +698,11 @@ function layerStateOf(id, settings) {
     result = above;
   } else {
     cache.counters.steps++;
-    result = resolveLayerStep(above ? above.state : null, node, { byPlateau: cache.byPlateau, kernel: loadedKernel, layered: !!cache.tree.layered });
+    result = resolveLayerStep(above ? above.state : null, node, {
+      byPlateau: cache.byPlateau,
+      kernel: loadedKernel,
+      layered: !!cache.tree.layered
+    });
   }
   cache.states.set(id, result);
   return result;
@@ -562,7 +732,20 @@ function layerModelOf(id, settings) {
         const info = state.roots.get(category + '|' + reference);
         const kind = info ? info.kind : root.kind;
         const level = info ? info.level : kind;
-        roots[category].push(indexElementRecursive(root, kind, reference, info ? info.file : '', category, index, settings, level, null, state.roots));
+        roots[category].push(
+          indexElementRecursive(
+            root,
+            kind,
+            reference,
+            info ? info.file : '',
+            category,
+            index,
+            settings,
+            level,
+            null,
+            state.roots
+          )
+        );
       }
     }
     for (const category of LAYER_NAMES) {
@@ -584,8 +767,17 @@ function layerModelOf(id, settings) {
   const unreadable = problems ? AppState.manifestFiles.find((mf) => mf.error) : null;
   if (unreadable) problems = ['`' + unreadable.relPath + '` is not valid: ' + unreadable.error];
   const failedAt = told ? told.plateau : result.fatal ? result.plateau : null;
-  const model = { id, plateau: layerPlateauModel(id), index, roots, stats, removals, problems, failedAt, undrawable: !!result.fatal };
+  const model = {
+    id,
+    plateau: layerPlateauModel(id),
+    index,
+    roots,
+    stats,
+    removals,
+    problems,
+    failedAt,
+    undrawable: !!result.fatal
+  };
   cache.models.set(id, model);
   return model;
 }
-

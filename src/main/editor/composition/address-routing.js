@@ -49,7 +49,10 @@ function applyDiagramParamsFromHash() {
   // the story being walked through travels with the diagram it is showing
   const storyOfUrl = storyParam ? findStory(storyParam) : null;
   const stepOfUrl = Number(params.get('step'));
-  activeStory = storyOfUrl && Number.isInteger(stepOfUrl) && stepOfUrl >= 0 && stepOfUrl < storySteps(storyOfUrl).length ? { id: storyParam, step: stepOfUrl } : null;
+  activeStory =
+    storyOfUrl && Number.isInteger(stepOfUrl) && stepOfUrl >= 0 && stepOfUrl < storySteps(storyOfUrl).length
+      ? { id: storyParam, step: stepOfUrl }
+      : null;
   if (id === 'elements') {
     const tab = params.get('tab');
     elementTab = tab && Object.prototype.hasOwnProperty.call(ELEMENT_TABS, tab) ? tab : 'details';
@@ -61,9 +64,13 @@ function applyDiagramParamsFromHash() {
     state.pinned.forEach((reference) => expandParentsOf(reference, layer));
   }
   const shown = {};
-  for (const name of DIAGRAM_SHOW_NAMES) shown[name] = params.get(name) === '1' ? true : params.get(name) === '0' ? false : null;
+  for (const name of DIAGRAM_SHOW_NAMES)
+    shown[name] = params.get(name) === '1' ? true : params.get(name) === '0' ? false : null;
   setDiagramShow(shown);
-  technologyMapParts = { applications: params.get('applications') !== '0', relationships: params.get('relationships') !== '0' }; // drawn unless the address says 0
+  technologyMapParts = {
+    applications: params.get('applications') !== '0',
+    relationships: params.get('relationships') !== '0'
+  }; // drawn unless the address says 0
   // Fit or Center, as the link says; a zoom of the user's own is left as it is
   diagramHideUnlinked = params.get('hide-unlinked') === '1';
   if (params.get('frame') === 'fit') diagramScale = 'fit';
@@ -99,9 +106,30 @@ function restoreLinkFromHash() {
   const key = link.from + ' -> ' + link.to;
   const sel = AppState.selection;
   if (id === 'map' || id === 'environments') {
-    AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: id === 'environments' ? 'technology' : 'application', mode: 'view' };
-  } else if (id === 'elements' && sel.kind === 'element' && sel.mode === 'view' && elementTab !== 'details' && findElementRecord(sel.key, sel.layer)) {
-    AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: layerOfReference(sel.key, sel.layer) || 'application', mode: 'view', focal: sel.key };
+    AppState.selection = {
+      kind: 'link',
+      key,
+      from: link.from,
+      to: link.to,
+      layer: id === 'environments' ? 'technology' : 'application',
+      mode: 'view'
+    };
+  } else if (
+    id === 'elements' &&
+    sel.kind === 'element' &&
+    sel.mode === 'view' &&
+    elementTab !== 'details' &&
+    findElementRecord(sel.key, sel.layer)
+  ) {
+    AppState.selection = {
+      kind: 'link',
+      key,
+      from: link.from,
+      to: link.to,
+      layer: layerOfReference(sel.key, sel.layer) || 'application',
+      mode: 'view',
+      focal: sel.key
+    };
   } else {
     return;
   }
@@ -125,7 +153,9 @@ function removedFromHash() {
   if (queryIdx === -1) return null;
   const params = new URLSearchParams(location.hash.slice(queryIdx + 1));
   const reference = params.get('removed');
-  return reference ? { reference, layer: params.get('removed-layer') === 'technology' ? 'technology' : 'application' } : null;
+  return reference
+    ? { reference, layer: params.get('removed-layer') === 'technology' ? 'technology' : 'application' }
+    : null;
 }
 
 /**
@@ -155,9 +185,16 @@ function selectFromHashRef() {
   if (ref) {
     if (AppState.index.application.has(ref) || AppState.index.technology.has(ref)) {
       // `layer=` is only there when both layers have the reference (a link without it keeps its old meaning)
-      const layerParam = new URLSearchParams(location.hash.indexOf('?') === -1 ? '' : location.hash.slice(location.hash.indexOf('?') + 1)).get('layer');
-      const layer = (layerParam === 'application' || layerParam === 'technology') && AppState.index[layerParam].has(ref) ? layerParam : null;
-      AppState.selection = layer ? { kind: 'element', key: ref, layer, mode: 'view' } : { kind: 'element', key: ref, mode: 'view' };
+      const layerParam = new URLSearchParams(
+        location.hash.indexOf('?') === -1 ? '' : location.hash.slice(location.hash.indexOf('?') + 1)
+      ).get('layer');
+      const layer =
+        (layerParam === 'application' || layerParam === 'technology') && AppState.index[layerParam].has(ref)
+          ? layerParam
+          : null;
+      AppState.selection = layer
+        ? { kind: 'element', key: ref, layer, mode: 'view' }
+        : { kind: 'element', key: ref, mode: 'view' };
       expandAncestorsOf(ref, layer || undefined);
       scrollNavToSelection = true;
       return;
@@ -196,9 +233,11 @@ function diagramFramingChanged() {
 /** What the diagram shows otherwise than by default (its texts, the boxes no link reaches), for the URL. */
 function pushShowParams(params, isMap) {
   const overrides = diagramShowOverrides(isMap);
-  for (const name of DIAGRAM_SHOW_NAMES) if (name in overrides) params.push(name + '=' + (overrides[name] ? '1' : '0'));  if (diagramHideUnlinked) params.push('hide-unlinked=1');
+  for (const name of DIAGRAM_SHOW_NAMES) if (name in overrides) params.push(name + '=' + (overrides[name] ? '1' : '0'));
+  if (diagramHideUnlinked) params.push('hide-unlinked=1');
   // issue #107: the Map of the technology layer with its applications or its relationships left out
-  if (isMap && mapLayer() === 'technology') for (const part of MAP_PARTS) if (!technologyMapParts[part]) params.push(part + '=0');
+  if (isMap && mapLayer() === 'technology')
+    for (const part of MAP_PARTS) if (!technologyMapParts[part]) params.push(part + '=0');
 }
 
 /**
@@ -224,13 +263,20 @@ function removedPickForRoute() {
 /** The "#/perspective?ref=..." hash for the current perspective + selection — what the URL should read right now (UX review follow-up: the URL mirrors what's on screen). */
 function currentRouteHash() {
   const sel = elementSelection(); // a link selected in a diagram of Elements leaves the element, and so the URL, as it is
-  const ref = (sel.kind === 'element' || sel.kind === 'file') ? sel.key : null;
+  const ref = sel.kind === 'element' || sel.kind === 'file' ? sel.key : null;
   const params = [];
   if (ref) params.push('ref=' + encodeURIComponent(ref));
   // a reference that exists in both layers needs to say which one the selection is
-  if (ref && sel.kind === 'element' && referenceIsInBothLayers(ref)) params.push('layer=' + layerOfReference(ref, sel.layer));
+  if (ref && sel.kind === 'element' && referenceIsInBothLayers(ref))
+    params.push('layer=' + layerOfReference(ref, sel.layer));
   // the diagram's own choices travel in the URL too, so a link (or Back) restores them
-  if (currentPerspective === 'elements' && ref && sel.kind === 'element' && sel.mode !== 'edit' && elementTab !== 'details') {
+  if (
+    currentPerspective === 'elements' &&
+    ref &&
+    sel.kind === 'element' &&
+    sel.mode !== 'edit' &&
+    elementTab !== 'details'
+  ) {
     params.push('tab=' + (findElementRecord(ref) ? effectiveDiagramViewpoint(findElementRecord(ref)) : elementTab)); // what the tabs show, not what a leaf was asked
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
     pushShowParams(params, false);
@@ -247,7 +293,8 @@ function currentRouteHash() {
     if (libraryTab === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
     if (libraryTab === 'views' && selectedViewId) params.push('view=' + encodeURIComponent(selectedViewId));
   }
-  if ((currentPerspective === 'elements' || mapIsShown()) && activeStory && !storyPlayer) { // the player's `step=` is the one of the address while it is open (below)
+  if ((currentPerspective === 'elements' || mapIsShown()) && activeStory && !storyPlayer) {
+    // the player's `step=` is the one of the address while it is open (below)
     params.push('story=' + encodeURIComponent(activeStory.id), 'step=' + activeStory.step);
   }
   const link = linkInRoute();
@@ -261,9 +308,20 @@ function currentRouteHash() {
     params.push('compare=' + encodeURIComponent(layerCompareChoice()));
   }
   // wave 014 (run 0080): the plateau of the band, when it is not the root
-  if (AppState.layers && AppState.plateauTree && AppState.plateauTree.layered && AppState.layers.current !== BASELINE_PLATEAU) params.push('plateau=' + encodeURIComponent(AppState.layers.current));
+  if (
+    AppState.layers &&
+    AppState.plateauTree &&
+    AppState.plateauTree.layered &&
+    AppState.layers.current !== BASELINE_PLATEAU
+  )
+    params.push('plateau=' + encodeURIComponent(AppState.layers.current));
   if (storyPlayer) params.push('play=' + encodeURIComponent(storyPlayer.story), 'step=' + storyPlayer.step); // wave 021, run 0153 (#153): the story player, on top of whatever the editor shows
-  return '/' + PERSPECTIVES[currentPerspective].route + (currentPerspective === 'library' && libraryTab === 'views' ? '/views' : '') + (params.length ? '?' + params.join('&') : '');
+  return (
+    '/' +
+    PERSPECTIVES[currentPerspective].route +
+    (currentPerspective === 'library' && libraryTab === 'views' ? '/views' : '') +
+    (params.length ? '?' + params.join('&') : '')
+  );
 }
 
 /**
@@ -302,4 +360,3 @@ function setPerspective(id) {
   location.hash = currentRouteHash();
   render();
 }
-

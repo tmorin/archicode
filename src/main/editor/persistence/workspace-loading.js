@@ -6,13 +6,14 @@
  */
 function setFatalError(message, kind) {
   AppState.fatalError = message;
-  AppState.fatalErrorKind = message === null ? null : (kind || null);
+  AppState.fatalErrorKind = message === null ? null : kind || null;
 }
 
 const WORKSPACE_FILE_NAME = '.archicode.yaml'; // the only workspace file the editor opens (and writes)
 const FORMER_WORKSPACE_FILE_NAME = 'workspace.yaml'; // its name before 0.18: no alias, a folder that still has it is told to rename it
 /** The sentence for a folder that holds the former file and not the new one; the command line says the same, word for word (`WorkspaceFactory.FORMER_NAME_SENTENCE`; `workspace-file-name-cases.json` pins both). */
-const FORMER_WORKSPACE_FILE_SENTENCE = '`workspace.yaml` is no longer the name of the workspace file: rename it to `.archicode.yaml` (`git mv workspace.yaml .archicode.yaml`), or tell the command line where it is with `-w workspace.yaml`';
+const FORMER_WORKSPACE_FILE_SENTENCE =
+  '`workspace.yaml` is no longer the name of the workspace file: rename it to `.archicode.yaml` (`git mv workspace.yaml .archicode.yaml`), or tell the command line where it is with `-w workspace.yaml`';
 
 /**
  * The manifests of one folder below the root handle (the reading loop of `loadWorkspace` as a function of a folder): the direct children of `relDir` that are YAML, as the records
@@ -48,7 +49,10 @@ async function readManifestFolder(rootHandle, relDir, options) {
         if (isGeneratedViewsFolder(below, options.viewsPath)) continue;
         let loop = false;
         for (const ancestor of ancestors) {
-          if (typeof entryHandle.isSameEntry === 'function' && await entryHandle.isSameEntry(ancestor)) { loop = true; break; }
+          if (typeof entryHandle.isSameEntry === 'function' && (await entryHandle.isSameEntry(ancestor))) {
+            loop = true;
+            break;
+          }
         }
         if (!loop) await visit(entryHandle, below.join('/'), ancestors.concat([entryHandle]));
         continue;
@@ -77,8 +81,14 @@ async function readManifestFolder(rootHandle, relDir, options) {
         error = e && e.message ? e.message : String(e);
       }
       result.files.push({
-        relPath, rawText, header, content, error,
-        dirty: false, existedOnDisk: true, lastKnownDiskModified,
+        relPath,
+        rawText,
+        header,
+        content,
+        error,
+        dirty: false,
+        existedOnDisk: true,
+        lastKnownDiskModified,
         bom, // the file starts with a UTF-8 byte-order mark: `rawText` never does, the write puts it back (`withByteOrderMark`, #119)
         savedRawText: rawText // what the file holds on disk, as far as this editor knows: an edit that restores it is no change
       });
@@ -89,7 +99,8 @@ async function readManifestFolder(rootHandle, relDir, options) {
 }
 
 async function loadWorkspace(dirHandle) {
-  if (filesFoldsOwner !== dirHandle) { // the folds of the Files page belong to one folder; a reload of it keeps them
+  if (filesFoldsOwner !== dirHandle) {
+    // the folds of the Files page belong to one folder; a reload of it keeps them
     filesFolded = new Set();
     filesSelectionSeen = null;
     filesFoldsOwner = dirHandle;
@@ -129,12 +140,20 @@ async function loadWorkspace(dirHandle) {
     workspaceBom = read.bom;
   } catch (e) {
     let renamed = false;
-    try { await dirHandle.getFileHandle(WORKSPACE_FILE_NAME); } catch (_) {
-      try { await dirHandle.getFileHandle(FORMER_WORKSPACE_FILE_NAME); renamed = true; } catch (__) { /* neither: the error below */ }
+    try {
+      await dirHandle.getFileHandle(WORKSPACE_FILE_NAME);
+    } catch (_) {
+      try {
+        await dirHandle.getFileHandle(FORMER_WORKSPACE_FILE_NAME);
+        renamed = true;
+      } catch (__) {
+        /* neither: the error below */
+      }
     }
     // the file is absent and the folder still has its former name: the one sentence, as the command line says it (a file that is there and cannot be read is the error below)
     if (renamed) setFatalError(FORMER_WORKSPACE_FILE_SENTENCE, 'renamed');
-    else setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)), 'unreadable');
+    else
+      setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)), 'unreadable');
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     requestRedraw();
     return;
@@ -142,7 +161,8 @@ async function loadWorkspace(dirHandle) {
   try {
     workspaceRaw = parseYaml(workspaceText) || {};
     // a .archicode.yaml that is not a mapping is not one the editor can write back without losing it
-    if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error(readWrongShape(workspaceRaw, '')); // the sentence of the command line
+    if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw))
+      throw new Error(readWrongShape(workspaceRaw, '')); // the sentence of the command line
   } catch (e) {
     setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
@@ -232,8 +252,8 @@ async function loadWorkspace(dirHandle) {
     application: { elements: rootsByCategory.application },
     technology: { elements: rootsByCategory.technology },
     settings,
-    styles: (workspaceRaw.styles && typeof workspaceRaw.styles === 'object') ? workspaceRaw.styles : {},
-    formatters: (workspaceRaw.formatters && typeof workspaceRaw.formatters === 'object') ? workspaceRaw.formatters : {},
+    styles: workspaceRaw.styles && typeof workspaceRaw.styles === 'object' ? workspaceRaw.styles : {},
+    formatters: workspaceRaw.formatters && typeof workspaceRaw.formatters === 'object' ? workspaceRaw.formatters : {},
     // The whole parsed .archicode.yaml: writeWorkspaceYaml re-emits it, with only styles/formatters/settings replaced,
     // so the other top-level keys (application, technology, views, ...) and the unknown settings survive a save.
     topLevel: workspaceRaw,
@@ -249,4 +269,3 @@ async function loadWorkspace(dirHandle) {
   if (playing) openStoryPlayer(playing.story, playing.step, { address: 'replace' }); // a link to a story opens the player once the folder is open (wave 021, run 0153)
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
 }
-

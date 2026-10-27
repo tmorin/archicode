@@ -37,7 +37,12 @@ function parseCssColor(value) {
   let match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(text);
   if (match) {
     const hex = match[1].length === 3 ? match[1].replace(/./g, '$&$&') : match[1];
-    return { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16), a: 1 };
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+      a: 1
+    };
   }
   match = /^rgb\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*\)$/.exec(text);
   if (match) {
@@ -48,10 +53,14 @@ function parseCssColor(value) {
   if (name === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
   if (!cssColorByName) {
     cssColorByName = Object.create(null);
-    for (const entry of CSS_COLOR_TABLE.split(' ')) { if (entry) cssColorByName[entry.slice(0, entry.indexOf(':'))] = entry.slice(entry.indexOf(':') + 1); }
+    for (const entry of CSS_COLOR_TABLE.split(' ')) {
+      if (entry) cssColorByName[entry.slice(0, entry.indexOf(':'))] = entry.slice(entry.indexOf(':') + 1);
+    }
   }
   const hex = cssColorByName[name];
-  return hex ? { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16), a: 1 } : null;
+  return hex
+    ? { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16), a: 1 }
+    : null;
 }
 
 /** A parsed colour as CSS: `#rrggbb`, or `transparent`. */
@@ -63,7 +72,10 @@ function cssColorOf(color) {
 /** WCAG 2 contrast ratio of two parsed colours, from 1 to 21. */
 function contrastRatio(a, b) {
   const luminance = (c) => {
-    const [r, g, bl] = [c.r, c.g, c.b].map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
+    const [r, g, bl] = [c.r, c.g, c.b].map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
     return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
   };
   const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
@@ -82,7 +94,9 @@ const STYLE_TEXT_LIGHT = { r: 255, g: 255, b: 255, a: 1 };
  */
 function readableTextColor(fill, preferred) {
   if (preferred && preferred.a !== 0 && contrastRatio(preferred, fill) >= STYLE_MIN_CONTRAST) return preferred;
-  return contrastRatio(STYLE_TEXT_DARK, fill) >= contrastRatio(STYLE_TEXT_LIGHT, fill) ? STYLE_TEXT_DARK : STYLE_TEXT_LIGHT;
+  return contrastRatio(STYLE_TEXT_DARK, fill) >= contrastRatio(STYLE_TEXT_LIGHT, fill)
+    ? STYLE_TEXT_DARK
+    : STYLE_TEXT_LIGHT;
 }
 
 /**
@@ -98,13 +112,29 @@ const STYLE_OUTLINE_DARK_FILL = 0.05;
 
 /** The outline derived from a fill (a parsed, opaque colour): darker, same hue; lighter for a fill too dark to darken. */
 function derivedOutlineOf(fill) {
-  const linear = [fill.r, fill.g, fill.b].map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
+  const linear = [fill.r, fill.g, fill.b].map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
   const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
-  const channel = (v) => Math.round(luminance < STYLE_OUTLINE_DARK_FILL ? v + (255 - v) * (1 - STYLE_OUTLINE_DARKEN) : v * STYLE_OUTLINE_DARKEN);
+  const channel = (v) =>
+    Math.round(
+      luminance < STYLE_OUTLINE_DARK_FILL ? v + (255 - v) * (1 - STYLE_OUTLINE_DARKEN) : v * STYLE_OUTLINE_DARKEN
+    );
   return { r: channel(fill.r), g: channel(fill.g), b: channel(fill.b), a: 1 };
 }
 
-const STYLE_KEYS = ['background-color', 'line-color', 'line-style', 'line-gap', 'line-thickness', 'round-corner', 'font-color', 'font-style', 'shadowing'];
+const STYLE_KEYS = [
+  'background-color',
+  'line-color',
+  'line-style',
+  'line-gap',
+  'line-thickness',
+  'round-corner',
+  'font-color',
+  'font-style',
+  'shadowing'
+];
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -141,7 +171,13 @@ function stereotypeStyleOf(name) {
     const entry = map[name];
     if (!isPlainObject(entry)) continue;
     for (const key of STYLE_KEYS) {
-      if (Object.prototype.hasOwnProperty.call(entry, key) && entry[key] !== null && entry[key] !== undefined && String(entry[key]).trim() !== '') merged[key] = styleValueAsRead(entry, key);
+      if (
+        Object.prototype.hasOwnProperty.call(entry, key) &&
+        entry[key] !== null &&
+        entry[key] !== undefined &&
+        String(entry[key]).trim() !== ''
+      )
+        merged[key] = styleValueAsRead(entry, key);
     }
   }
   return declared ? merged : null;
@@ -149,7 +185,12 @@ function stereotypeStyleOf(name) {
 
 /** A whole number of a style (`3`, or `"3"`), 0 to `max`; null for anything else. */
 function styleWholeNumber(value, max) {
-  const n = typeof value === 'number' ? value : (typeof value === 'string' && /^\d{1,4}$/.test(value.trim()) ? Number(value) : NaN);
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^\d{1,4}$/.test(value.trim())
+        ? Number(value)
+        : NaN;
   return Number.isInteger(n) && n >= 0 ? Math.min(n, max) : null;
 }
 
@@ -167,8 +208,13 @@ function styleLookOf(style) {
   const stroke = parseCssColor(source['line-color']);
   // the outline: the author's `line-color` always wins; with a fill and none, it is derived from the fill, and as opaque as a chosen one
   // (the faded outline of a compound box is the fallback of a box with no colour at all, not of one the workspace painted)
-  if (stroke) { vars['--st-stroke'] = cssColorOf(stroke); vars['--st-stroke-opacity'] = '1'; }
-  else if (fill && fill.a !== 0) { vars['--st-stroke'] = cssColorOf(derivedOutlineOf(fill)); vars['--st-stroke-opacity'] = '1'; }
+  if (stroke) {
+    vars['--st-stroke'] = cssColorOf(stroke);
+    vars['--st-stroke-opacity'] = '1';
+  } else if (fill && fill.a !== 0) {
+    vars['--st-stroke'] = cssColorOf(derivedOutlineOf(fill));
+    vars['--st-stroke-opacity'] = '1';
+  }
   const thickness = styleWholeNumber(source['line-thickness'], 20);
   if (thickness !== null) vars['--st-width'] = thickness + 'px';
   const dash = styleWholeNumber(source['line-style'], 50);
@@ -178,7 +224,8 @@ function styleLookOf(style) {
   const round = styleWholeNumber(source['round-corner'], 100);
   if (round !== null) rx = round / 2;
   // the text: against the fill the author chose; without a fill the box is the theme's and so is its text
-  if (fill && fill.a !== 0) vars['--st-text'] = cssColorOf(readableTextColor(fill, parseCssColor(source['font-color'])));
+  if (fill && fill.a !== 0)
+    vars['--st-text'] = cssColorOf(readableTextColor(fill, parseCssColor(source['font-color'])));
   const fontStyle = typeof source['font-style'] === 'string' ? source['font-style'].toLowerCase().split(/[\s,;]+/) : [];
   if (fontStyle.includes('bold')) vars['--st-weight'] = '700';
   else if (fontStyle.includes('plain') || fontStyle.includes('normal')) vars['--st-weight'] = '400';
@@ -191,4 +238,3 @@ function styleLookOf(style) {
 function styledStereotypesOf(names) {
   return (Array.isArray(names) ? names : []).filter((name) => stereotypeStyleOf(name) !== null);
 }
-

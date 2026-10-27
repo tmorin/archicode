@@ -11,9 +11,27 @@ const DEFAULT_PERSPECTIVE = 'map';
 let currentPerspective = DEFAULT_PERSPECTIVE;
 
 const panelSizeStorage = {
-  get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
-  set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ } },
-  remove(key) { try { localStorage.removeItem(key); } catch (e) { /* storage unavailable */ } }
+  get(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      /* storage unavailable */
+    }
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      /* storage unavailable */
+    }
+  }
 };
 
 // Raw-YAML editor's one pending draft (run-0009, task-005; TDD-0009

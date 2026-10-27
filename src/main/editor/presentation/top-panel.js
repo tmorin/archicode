@@ -16,7 +16,10 @@ function renderSaveStatusHtml() {
   } else if (saveStatus.state === 'denied') {
     text = saveStatus.message;
   } else if (saveStatus.state === 'conflict') {
-    text = 'Save refused — changed on disk since loaded: ' + saveStatus.conflicts.join(', ') + '. Reopen the folder before retrying.';
+    text =
+      'Save refused — changed on disk since loaded: ' +
+      saveStatus.conflicts.join(', ') +
+      '. Reopen the folder before retrying.';
   } else if (saveStatus.state === 'reload-error') {
     text = 'Reload failed on "' + saveStatus.failedFile + '": ' + saveStatus.message + '. The in-memory copy was kept.';
   } else if (saveStatus.state === 'error') {
@@ -25,7 +28,15 @@ function renderSaveStatusHtml() {
     return '';
   }
   // title carries the full text: the top bar truncates long messages with an ellipsis.
-  return '<span class="save-status ' + (isError ? 'save-status-error' : 'save-status-success') + '" role="status" title="' + escapeHtml(text) + '">' + escapeHtml(text) + '</span>';
+  return (
+    '<span class="save-status ' +
+    (isError ? 'save-status-error' : 'save-status-success') +
+    '" role="status" title="' +
+    escapeHtml(text) +
+    '">' +
+    escapeHtml(text) +
+    '</span>'
+  );
 }
 
 /**
@@ -37,9 +48,14 @@ function renderPerspectiveTabsHtml() {
   const group = PERSPECTIVES[currentPerspective].group;
   let html = '<span class="perspective-tabs button-group" role="group" aria-label="Perspectives">';
   for (const entry of PERSPECTIVE_GROUPS) {
-    html += '<button type="button" data-action="set-perspective" data-perspective="' + entry.page + '" aria-pressed="' + (entry.id === group) + '">' +
-              escapeHtml(entry.label) +
-            '</button>';
+    html +=
+      '<button type="button" data-action="set-perspective" data-perspective="' +
+      entry.page +
+      '" aria-pressed="' +
+      (entry.id === group) +
+      '">' +
+      escapeHtml(entry.label) +
+      '</button>';
   }
   html += '</span>';
   return html;
@@ -51,9 +67,19 @@ function renderPerspectiveTabsHtml() {
 function renderPageTabsHtml() {
   const page = currentPerspective;
   if (PERSPECTIVES[page].group !== 'timeline') return '';
-  let html = '<nav class="page-tabs col-span-3" id="page-tabs" aria-label="Pages of the Timeline"><span class="button-group" role="group" aria-label="Pages">';
+  let html =
+    '<nav class="page-tabs col-span-3" id="page-tabs" aria-label="Pages of the Timeline"><span class="button-group" role="group" aria-label="Pages">';
   for (const id of ['plateaus'].concat(TIMELINE_PAGES)) {
-    html += '<button type="button" data-action="set-page" data-perspective="' + id + '" aria-pressed="' + (id === page) + '"' + (id === page ? ' aria-current="page"' : '') + '>' + escapeHtml(PERSPECTIVES[id].label) + '</button>';
+    html +=
+      '<button type="button" data-action="set-page" data-perspective="' +
+      id +
+      '" aria-pressed="' +
+      (id === page) +
+      '"' +
+      (id === page ? ' aria-current="page"' : '') +
+      '>' +
+      escapeHtml(PERSPECTIVES[id].label) +
+      '</button>';
   }
   return html + '</span></nav>';
 }
@@ -64,24 +90,48 @@ function renderPageTabsHtml() {
  * clicking it applies the form (`flushPendingDraft`), then writes.
  */
 function renderSaveAllButtonHtml() {
-  return '<span class="button-group" role="group" aria-label="Changes">' + renderCancelButtonHtml() + renderSaveButtonHtml() + '</span>';
+  return (
+    '<span class="button-group" role="group" aria-label="Changes">' +
+    renderCancelButtonHtml() +
+    renderSaveButtonHtml() +
+    '</span>'
+  );
 }
 
 /** Gives up everything not written yet. Disabled, like Save, when there is nothing to give up. */
 function renderCancelButtonHtml() {
   const count = countUnsavedChanges();
-  if (count === 0 && !draftTyped) return '<button type="button" data-action="cancel-changes" disabled title="No changes to cancel.">Cancel</button>';
-  return '<button type="button" data-action="cancel-changes"' + (saveInFlight ? ' disabled' : '') +
-    ' title="Discards what you typed and every change not written to disk, and reloads the folder.">Cancel</button>';
+  if (count === 0 && !draftTyped)
+    return '<button type="button" data-action="cancel-changes" disabled title="No changes to cancel.">Cancel</button>';
+  return (
+    '<button type="button" data-action="cancel-changes"' +
+    (saveInFlight ? ' disabled' : '') +
+    ' title="Discards what you typed and every change not written to disk, and reloads the folder.">Cancel</button>'
+  );
 }
 
 function renderSaveButtonHtml() {
   const count = countUnsavedChanges();
-  if (count === 0 && !draftTyped) return '<button type="button" class="btn-primary" data-action="save-all-changes" disabled title="No changes to save.">Save all changes</button>';
+  if (count === 0 && !draftTyped)
+    return '<button type="button" class="btn-primary" data-action="save-all-changes" disabled title="No changes to save.">Save all changes</button>';
   const busy = saveInFlight ? ' disabled aria-busy="true"' : '';
-  if (count === 0) return '<button type="button" class="btn-primary" data-action="save-all-changes"' + busy + ' title="Applies what you typed, then writes it to disk.">Save all changes</button>';
-  return '<button type="button" class="btn-primary" data-action="save-all-changes"' + busy + ' title="Writes ' + count + ' modified item' + (count === 1 ? '' : 's') +
-    ' to disk (files, pending file removals, .archicode.yaml settings). Until then, edits live in memory only.">Save all changes (' + count + ')</button>';
+  if (count === 0)
+    return (
+      '<button type="button" class="btn-primary" data-action="save-all-changes"' +
+      busy +
+      ' title="Applies what you typed, then writes it to disk.">Save all changes</button>'
+    );
+  return (
+    '<button type="button" class="btn-primary" data-action="save-all-changes"' +
+    busy +
+    ' title="Writes ' +
+    count +
+    ' modified item' +
+    (count === 1 ? '' : 's') +
+    ' to disk (files, pending file removals, .archicode.yaml settings). Until then, edits live in memory only.">Save all changes (' +
+    count +
+    ')</button>'
+  );
 }
 
 /** True once something was typed in the form on screen and not applied to the model yet. Any redraw starts a form afresh. */
@@ -141,18 +191,31 @@ function renderTopPanelHtml() {
   const name = workspaceName();
   // the name of the workspace in place of the folder, which is then the tooltip; without one, the folder and its root slash
   const label = name
-    ? '<span class="folder-name workspace-name" title="Folder: ' + escapeHtml(AppState.folder.name) + '">' + escapeHtml(name) + '</span>'
-    : '<span class="folder-name" title="Folder: ' + escapeHtml(AppState.folder.name) + ' (a browser does not tell the full path of a folder)">' +
-        escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
+    ? '<span class="folder-name workspace-name" title="Folder: ' +
+      escapeHtml(AppState.folder.name) +
+      '">' +
+      escapeHtml(name) +
+      '</span>'
+    : '<span class="folder-name" title="Folder: ' +
+      escapeHtml(AppState.folder.name) +
+      ' (a browser does not tell the full path of a folder)">' +
+      escapeHtml(AppState.folder.name) +
+      '<span class="folder-root-slash">/</span>' +
       '</span>';
-  return '<header class="top-panel col-span-3 flex items-center px-4">' +
-      label +
-      renderPerspectiveTabsHtml() +
-      // one group, pushed to the right: when the bar wraps it moves as a whole, and the status gives way before the buttons do;
-      // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick, so no Close folder
-      '<span class="top-actions">' + renderSaveStatusHtml() + saveAll + renderHelpButtonHtml() +
-        (isServedByArchiCode() ? '' : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and go back to the list of folders: it stays in the list.">Close folder</button>') +
-      '</span>' +
-    '</header>';
+  return (
+    '<header class="top-panel col-span-3 flex items-center px-4">' +
+    label +
+    renderPerspectiveTabsHtml() +
+    // one group, pushed to the right: when the bar wraps it moves as a whole, and the status gives way before the buttons do;
+    // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick, so no Close folder
+    '<span class="top-actions">' +
+    renderSaveStatusHtml() +
+    saveAll +
+    renderHelpButtonHtml() +
+    (isServedByArchiCode()
+      ? ''
+      : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and go back to the list of folders: it stays in the list.">Close folder</button>') +
+    '</span>' +
+    '</header>'
+  );
 }
-

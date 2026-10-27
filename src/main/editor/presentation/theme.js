@@ -15,7 +15,9 @@ function readStoredTheme() {
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (THEME_CHOICES.some((choice) => choice.value === stored)) return stored;
-  } catch (e) { /* storage unavailable: the system's scheme */ }
+  } catch (e) {
+    /* storage unavailable: the system's scheme */
+  }
   return 'system';
 }
 
@@ -34,7 +36,11 @@ applyTheme();
 /** Is the page in the dark scheme: forced by the choice, else the system's? */
 function isDarkScheme() {
   if (themeChoice !== 'system') return themeChoice === 'dark';
-  try { return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); } catch (e) { return false; }
+  try {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -48,7 +54,9 @@ function refreshCodeEditorThemes() {
     const doc = view.state.doc.toString();
     view.destroy();
     activeJsonEditorViews[viewpoint] = new window.CM.EditorView({
-      doc, extensions: [window.CM.basicSetup, window.CM.json()].concat(codeMirrorThemeExtensions()), parent
+      doc,
+      extensions: [window.CM.basicSetup, window.CM.json()].concat(codeMirrorThemeExtensions()),
+      parent
     });
   }
   if (activeFileEditorView) {
@@ -56,7 +64,9 @@ function refreshCodeEditorThemes() {
     const doc = activeFileEditorView.state.doc.toString();
     activeFileEditorView.destroy();
     activeFileEditorView = new window.CM.EditorView({
-      doc, extensions: [window.CM.basicSetup, window.CM.yaml()].concat(codeMirrorThemeExtensions()), parent
+      doc,
+      extensions: [window.CM.basicSetup, window.CM.yaml()].concat(codeMirrorThemeExtensions()),
+      parent
     });
   }
 }
@@ -65,7 +75,11 @@ function refreshCodeEditorThemes() {
 function setThemeChoice(value) {
   if (!THEME_CHOICES.some((choice) => choice.value === value)) return;
   themeChoice = value;
-  try { localStorage.setItem(THEME_STORAGE_KEY, value); } catch (e) { /* storage unavailable: kept for this session only */ }
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, value);
+  } catch (e) {
+    /* storage unavailable: kept for this session only */
+  }
   applyTheme();
   refreshCodeEditorThemes();
 }
@@ -73,19 +87,33 @@ function setThemeChoice(value) {
 // "System" follows the operating system as it changes: the stylesheet does by itself, the code editors need a rebuild.
 try {
   const systemScheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-  if (systemScheme && systemScheme.addEventListener) systemScheme.addEventListener('change', () => { if (themeChoice === 'system') refreshCodeEditorThemes(); });
-} catch (e) { /* no media query: nothing to follow */ }
+  if (systemScheme && systemScheme.addEventListener)
+    systemScheme.addEventListener('change', () => {
+      if (themeChoice === 'system') refreshCodeEditorThemes();
+    });
+} catch (e) {
+  /* no media query: nothing to follow */
+}
 
 /** The "Appearance" section of Settings: native radios in a fieldset, and only about this browser. */
 function renderAppearanceSectionHtml() {
-  return '<div class="edition-section" id="settings-appearance"><h3>Appearance (this browser)</h3>' +
+  return (
+    '<div class="edition-section" id="settings-appearance"><h3>Appearance (this browser)</h3>' +
     '<fieldset class="theme-choice" aria-describedby="settings-help-theme"><legend>Theme</legend>' +
-      THEME_CHOICES.map((choice) =>
-        '<label class="theme-choice-option"><input type="radio" name="theme-choice" value="' + choice.value + '"' + (themeChoice === choice.value ? ' checked' : '') + '><span>' + choice.label + '</span></label>'
-      ).join('') +
+    THEME_CHOICES.map(
+      (choice) =>
+        '<label class="theme-choice-option"><input type="radio" name="theme-choice" value="' +
+        choice.value +
+        '"' +
+        (themeChoice === choice.value ? ' checked' : '') +
+        '><span>' +
+        choice.label +
+        '</span></label>'
+    ).join('') +
     '</fieldset>' +
     '<div class="settings-help" id="settings-help-theme">Remembered by this browser only: it is not part of the workspace and does not need saving. System follows the operating system.</div>' +
-  '</div>';
+    '</div>'
+  );
 }
 
 /**
@@ -96,18 +124,33 @@ function renderAppearanceSectionHtml() {
 function codeMirrorThemeExtensions() {
   if (!window.CM || !window.CM.EditorView || !window.CM.EditorView.theme) return [];
   const dark = isDarkScheme();
-  const theme = window.CM.EditorView.theme({
-    '&': { color: 'var(--fg)', backgroundColor: 'var(--bg)' },
-    '.cm-content': { caretColor: 'var(--fg)' },
-    '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--fg)' },
-    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': { backgroundColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' },
-    '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--accent) 8%, transparent)' },
-    '.cm-gutters': { backgroundColor: 'var(--panel-bg)', color: 'var(--muted)', borderRight: '1px solid var(--border)' },
-    '.cm-activeLineGutter': { backgroundColor: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--fg)' },
-    '.cm-foldPlaceholder': { backgroundColor: 'var(--panel-bg)', color: 'var(--muted)', border: '1px solid var(--border)' },
-    '.cm-panels': { backgroundColor: 'var(--panel-bg)', color: 'var(--fg)' },
-    '.cm-tooltip': { backgroundColor: 'var(--bg)', color: 'var(--fg)', border: '1px solid var(--border)' }
-  }, { dark });
+  const theme = window.CM.EditorView.theme(
+    {
+      '&': { color: 'var(--fg)', backgroundColor: 'var(--bg)' },
+      '.cm-content': { caretColor: 'var(--fg)' },
+      '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--fg)' },
+      '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
+        { backgroundColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' },
+      '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--accent) 8%, transparent)' },
+      '.cm-gutters': {
+        backgroundColor: 'var(--panel-bg)',
+        color: 'var(--muted)',
+        borderRight: '1px solid var(--border)'
+      },
+      '.cm-activeLineGutter': {
+        backgroundColor: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+        color: 'var(--fg)'
+      },
+      '.cm-foldPlaceholder': {
+        backgroundColor: 'var(--panel-bg)',
+        color: 'var(--muted)',
+        border: '1px solid var(--border)'
+      },
+      '.cm-panels': { backgroundColor: 'var(--panel-bg)', color: 'var(--fg)' },
+      '.cm-tooltip': { backgroundColor: 'var(--bg)', color: 'var(--fg)', border: '1px solid var(--border)' }
+    },
+    { dark }
+  );
   return dark && window.CM.darkHighlight ? [theme, window.CM.darkHighlight] : [theme];
 }
 
@@ -128,4 +171,3 @@ function mountJsonEditorsIfNeeded() {
     });
   });
 }
-

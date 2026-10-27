@@ -102,7 +102,15 @@ function openDecoratedFlows(text) {
     while (next < note.line) out.push(lines[next++]);
     const block = decoratedFlowBlock(lines, note);
     if (block === null) return { unsupported: true };
-    lists.push({ expanded: block.lines, original: lines.slice(note.line, note.last + 1), column: block.column, before: { original: lines.slice(Math.max(0, note.line - 3), note.line).reverse(), opened: out.slice(-3).reverse() } });
+    lists.push({
+      expanded: block.lines,
+      original: lines.slice(note.line, note.last + 1),
+      column: block.column,
+      before: {
+        original: lines.slice(Math.max(0, note.line - 3), note.line).reverse(),
+        opened: out.slice(-3).reverse()
+      }
+    });
     out.push.apply(out, block.lines);
     next = note.last + 1;
   }
@@ -143,7 +151,10 @@ function decoratedFlowBlock(lines, note) {
     const block = emitDecoratedFlow(ast, indent);
     if (block === null || block.length === 0) return null;
     const inside = note.comments.map((text) => ' '.repeat(indent) + text);
-    return { lines: [line.slice(0, found.end) + (props ? ' ' + props : '') + comment].concat(inside, block), column: lead.length };
+    return {
+      lines: [line.slice(0, found.end) + (props ? ' ' + props : '') + comment].concat(inside, block),
+      column: lead.length
+    };
   }
   if (found === null && dashes === 1) {
     const props = line.slice(lead.length, note.from).trim();
@@ -153,10 +164,17 @@ function decoratedFlowBlock(lines, note) {
     const block = emitDecoratedFlow(ast, indent);
     if (block === null || block.length === 0) return null;
     const inside = note.comments.map((text) => ' '.repeat(indent) + text);
-    if (ast.type === 'map' && props === '') { // a map item is written as the emitter writes it, its first key after the dash
-      return { lines: [' '.repeat(dashCol) + '- ' + block[0].slice(indent) + comment].concat(inside, block.slice(1)), column: dashCol };
+    if (ast.type === 'map' && props === '') {
+      // a map item is written as the emitter writes it, its first key after the dash
+      return {
+        lines: [' '.repeat(dashCol) + '- ' + block[0].slice(indent) + comment].concat(inside, block.slice(1)),
+        column: dashCol
+      };
     }
-    return { lines: [' '.repeat(dashCol) + '-' + (props ? ' ' + props : '') + comment].concat(inside, block), column: dashCol };
+    return {
+      lines: [' '.repeat(dashCol) + '-' + (props ? ' ' + props : '') + comment].concat(inside, block),
+      column: dashCol
+    };
   }
   return null;
 }
@@ -262,7 +280,8 @@ function openYamlDecorations(text) {
     yamlModelNumbers = numbers;
   }
   if (notes.list.length === 0 && !notes.unsupported) return null;
-  if (notes.unsupported || /[\u0002\u0003]/.test(text) || notes.list.some((note) => note.kind === 'flow')) return { unsupported: true };
+  if (notes.unsupported || /[\u0002\u0003]/.test(text) || notes.list.some((note) => note.kind === 'flow'))
+    return { unsupported: true };
   const bom = text.charAt(0) === '﻿' ? '﻿' : '';
   const eol = /\r\n/.test(text) ? '\r\n' : '\n';
   const lines = text.slice(bom.length).split(/\r\n|\r|\n/);
@@ -274,7 +293,17 @@ function openYamlDecorations(text) {
   const edits = [];
   for (const note of list) {
     const line = lines[note.line];
-    const entry = { id: entries.length, kind: note.kind, original: lines.slice(note.line, lastOf(note) + 1), opened: null, bare: false, expansion: null, tokens: null, anchor: null, context: null };
+    const entry = {
+      id: entries.length,
+      kind: note.kind,
+      original: lines.slice(note.line, lastOf(note) + 1),
+      opened: null,
+      bare: false,
+      expansion: null,
+      tokens: null,
+      anchor: null,
+      context: null
+    };
     let replacement;
     if (spanned(note)) {
       // the text over several lines is the line the emitter writes for it, with the comment of its last line
@@ -290,7 +319,12 @@ function openYamlDecorations(text) {
       const value = note.value;
       let token = serializeYamlInline(value);
       if (quote === '"' && typeof value === 'string') token = '"' + escapeYamlDoubleQuoted(value) + '"';
-      else if (quote === "'" && typeof value === 'string' && !/[\u0000-\u001f\u007f\u0085\u2028\u2029\ufeff]/.test(value)) token = "'" + value.replace(/'/g, "''") + "'";
+      else if (
+        quote === "'" &&
+        typeof value === 'string' &&
+        !/[\u0000-\u001f\u007f\u0085\u2028\u2029\ufeff]/.test(value)
+      )
+        token = "'" + value.replace(/'/g, "''") + "'";
       replacement = [line.slice(0, note.from) + token + tail];
     } else if (note.kind === 'props') {
       const before = line.slice(0, note.from);
@@ -319,7 +353,9 @@ function openYamlDecorations(text) {
       } else if (/:[ \t]*$/.test(before)) {
         entry.context = 'key';
         const column = line.match(/^ *(?:- +)*/)[0].length;
-        replacement = [before.replace(/[ \t]+$/, '') + rest].concat(serializeYamlValue(note.value, column + 2).split('\n'));
+        replacement = [before.replace(/[ \t]+$/, '') + rest].concat(
+          serializeYamlValue(note.value, column + 2).split('\n')
+        );
       } else if (/^ *- +$/.test(before)) {
         entry.context = 'item';
         replacement = serializeYamlValue([note.value], yamlIndentOf(before)).split('\n');
@@ -382,13 +418,17 @@ function closeYamlDecorations(patched, opened, emitted) {
   if (patched.indexOf('\u0002') === -1) return patched;
   const bom = patched.charAt(0) === '﻿' ? '﻿' : '';
   const eol = /\r\n/.test(patched) ? '\r\n' : '\n';
-  let current = patched.slice(bom.length).split(/\r\n|\r|\n/).map((raw) => {
-    const found = /\u0002(\d+)\u0003/.exec(raw);
-    if (found === null || opened.entries[Number(found[1])] === undefined) return { text: raw.replace(/[\u0002\u0003]/g, ''), id: null };
-    let text = raw.replace(found[0], '');
-    if (opened.entries[Number(found[1])].bare && text.endsWith(' #')) text = text.slice(0, -2);
-    return { text, id: Number(found[1]) };
-  });
+  let current = patched
+    .slice(bom.length)
+    .split(/\r\n|\r|\n/)
+    .map((raw) => {
+      const found = /\u0002(\d+)\u0003/.exec(raw);
+      if (found === null || opened.entries[Number(found[1])] === undefined)
+        return { text: raw.replace(/[\u0002\u0003]/g, ''), id: null };
+      let text = raw.replace(found[0], '');
+      if (opened.entries[Number(found[1])].bare && text.endsWith(' #')) text = text.slice(0, -2);
+      return { text, id: Number(found[1]) };
+    });
   const build = (items) => bom + items.map((item) => item.text).join(eol);
   const says = (items) => yamlTextSays(build(items), emitted);
   if (!says(current)) return emitted;
@@ -411,9 +451,21 @@ function closeYamlDecorations(patched, opened, emitted) {
         }
       } else {
         // the lines the alias stood for: the ones the file had, or, when an edit changed them, the line and what is under it (the check below tells whether it still says the same)
-        const same = entry.expansion.every((text, k) => current[at + k] !== undefined && current[at + k].text === text && (k === 0 || current[at + k].id === null));
+        const same = entry.expansion.every(
+          (text, k) =>
+            current[at + k] !== undefined && current[at + k].text === text && (k === 0 || current[at + k].id === null)
+        );
         const texts = current.map((item) => item.text);
-        const last = same ? at + entry.expansion.length - 1 : entry.context === 'scalar' ? at : yamlLastLineUnderKey(texts, at, entry.context === 'item' ? yamlIndentOf(texts[at]) : texts[at].match(/^ *(?:- +)*/)[0].length, false);
+        const last = same
+          ? at + entry.expansion.length - 1
+          : entry.context === 'scalar'
+            ? at
+            : yamlLastLineUnderKey(
+                texts,
+                at,
+                entry.context === 'item' ? yamlIndentOf(texts[at]) : texts[at].match(/^ *(?:- +)*/)[0].length,
+                false
+              );
         if (!same && yamlLineSignature(texts[at]) !== yamlLineSignature(entry.opened)) continue;
         candidate.splice(at, last - at + 1, ...written(entry));
       }
@@ -505,20 +557,38 @@ function mergeBareDashItems(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (blockFrom !== -1) {
-      if (line.trim() === '' || yamlIndentOf(line) > blockFrom) { out.push(line); continue; }
+      if (line.trim() === '' || yamlIndentOf(line) > blockFrom) {
+        out.push(line);
+        continue;
+      }
       blockFrom = -1;
     }
     const header = yamlBlockHeader(line);
-    if (header) { blockFrom = header[1].length; out.push(line); continue; }
+    if (header) {
+      blockFrom = header[1].length;
+      out.push(line);
+      continue;
+    }
     const dash = /^( *)-$/.exec(stripYamlComment(line).replace(/[ \t]+$/, ''));
     let j = i + 1;
     while (dash && j < lines.length && (lines[j].trim() === '' || /^[ \t]*#/.test(lines[j]))) j++;
     const dashCol = dash ? dash[1].length : -1;
     const keyCol = dash && j < lines.length ? yamlIndentOf(lines[j]) : -1;
-    if (keyCol <= dashCol || /^ *\t/.test(lines[j]) || isYamlSeqItem(lines[j], keyCol) || scanYamlKey(lines[j], keyCol, 0) === null) { out.push(line); continue; }
+    if (
+      keyCol <= dashCol ||
+      /^ *\t/.test(lines[j]) ||
+      isYamlSeqItem(lines[j], keyCol) ||
+      scanYamlKey(lines[j], keyCol, 0) === null
+    ) {
+      out.push(line);
+      continue;
+    }
     const last = yamlLastLineUnderKey(lines, i, dashCol, false);
     const shift = keyCol - dashCol - 2;
-    if (shift > 0 && lines.slice(j, last + 1).some((l) => l.trim() !== '' && yamlIndentOf(l) < keyCol)) { out.push(line); continue; }
+    if (shift > 0 && lines.slice(j, last + 1).some((l) => l.trim() !== '' && yamlIndentOf(l) < keyCol)) {
+      out.push(line);
+      continue;
+    }
     const merged = ' '.repeat(dashCol) + '- ' + lines[j].slice(keyCol);
     const bare = stripYamlComment(merged).length === merged.length;
     out.push(merged + (bare ? ' #' : '') + '\u0004' + items.length + '\u0005');
@@ -538,7 +608,10 @@ function splitBareDashItems(text, items) {
   const out = [];
   for (let i = 0; i < lines.length; i++) {
     const found = /\u0004(\d+)\u0005/.exec(lines[i]);
-    if (found === null) { out.push(lines[i]); continue; }
+    if (found === null) {
+      out.push(lines[i]);
+      continue;
+    }
     const item = items[Number(found[1])];
     if (item === undefined) return null;
     let line = lines[i].replace(found[0], '');
@@ -556,4 +629,3 @@ function splitBareDashItems(text, items) {
   const back = bom + out.join(eol);
   return /[\u0004\u0005]/.test(back) ? null : back;
 }
-

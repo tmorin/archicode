@@ -42,7 +42,10 @@ function patchYamlTextAt(oldText, newValue) {
     if (patched === null) return null;
     if (!brackets) return closeFlowLists(patched, opened.lists);
     const bracketed = bracketChangedFlows(patched, opened, widest);
-    return closeFlowLists(bracketed.text, opened.lists.filter((list) => !bracketed.done.has(list)));
+    return closeFlowLists(
+      bracketed.text,
+      opened.lists.filter((list) => !bracketed.done.has(list))
+    );
   };
   const run = (brackets) => {
     const quoted = { lines: 0, voteLines: textLines.slice() }; // the quotes of the author are in the text as written, not in the lists opened
@@ -107,7 +110,10 @@ function markKeyColumnLists(text) {
       blockFrom = -1;
     }
     const header = yamlBlockHeader(lines[i]);
-    if (header) { blockFrom = header[1].length; continue; }
+    if (header) {
+      blockFrom = header[1].length;
+      continue;
+    }
     const col = yamlBareKeyColumn(lines[i]);
     const last = col === -1 ? i : yamlLastLineUnderKey(lines, i, col, true);
     if (last === i) continue;
@@ -115,11 +121,16 @@ function markKeyColumnLists(text) {
     for (let j = i + 1; j <= last; j++) shift[j] += 2;
   }
   if (keys.size === 0) return null;
-  return bom + lines.map((line, i) => {
-    const moved = line.trim() === '' ? line : ' '.repeat(shift[i]) + line;
-    if (!keys.has(i)) return moved;
-    return stripYamlComment(line).length < line.length ? moved + '\u0001L' : moved + ' #\u0001K';
-  }).join(eol);
+  return (
+    bom +
+    lines
+      .map((line, i) => {
+        const moved = line.trim() === '' ? line : ' '.repeat(shift[i]) + line;
+        if (!keys.has(i)) return moved;
+        return stripYamlComment(line).length < line.length ? moved + '\u0001L' : moved + ' #\u0001K';
+      })
+      .join(eol)
+  );
 }
 
 /**
@@ -166,18 +177,30 @@ function shiftYamlLine(line, delta) {
 function emitFlowBlock(value, read, indent) {
   const lines = serializeYamlValue(value, indent).split('\n');
   const leaves = read.leaves;
-  const carrying = lines.map((line, i) => (/^ *(?:- )*-$/.test(line) || /:$/.test(line) ? -1 : i)).filter((i) => i !== -1); // the lines that end with a value
+  const carrying = lines
+    .map((line, i) => (/^ *(?:- )*-$/.test(line) || /:$/.test(line) ? -1 : i))
+    .filter((i) => i !== -1); // the lines that end with a value
   // the lines do not match one to one what was read: nothing is applied to them, but a comment is the author's text and is not lost, it goes above the block
-  if (carrying.length !== leaves.length) return read.comments.map((comment) => ' '.repeat(indent) + comment.text).concat(lines);
+  if (carrying.length !== leaves.length)
+    return read.comments.map((comment) => ' '.repeat(indent) + comment.text).concat(lines);
   carrying.forEach((at, k) => {
     const added = readYamlScalarLine(lines[at]);
     if (added === null || added.quote !== '') return;
     const token = lines[at].slice(added.valueAt);
-    if (leaves[k].quote === '') { // a word that reads as the emitter's token (`on` for `true`, `~` for `null`) stays the author's
+    if (leaves[k].quote === '') {
+      // a word that reads as the emitter's token (`on` for `true`, `~` for `null`) stays the author's
       const word = leaves[k].word;
-      if (word !== null && word !== token && /^(true|false|null|-?\d+(\.\d+)?)$/.test(token) && yamlWordIsToken(word, token)) lines[at] = lines[at].slice(0, added.valueAt) + word;
+      if (
+        word !== null &&
+        word !== token &&
+        /^(true|false|null|-?\d+(\.\d+)?)$/.test(token) &&
+        yamlWordIsToken(word, token)
+      )
+        lines[at] = lines[at].slice(0, added.valueAt) + word;
     } else if (added.plainable) {
-      lines[at] = lines[at].slice(0, added.valueAt) + (leaves[k].quote === '"' ? '"' + escapeYamlDoubleQuoted(token) + '"' : "'" + token.replace(/'/g, "''") + "'");
+      lines[at] =
+        lines[at].slice(0, added.valueAt) +
+        (leaves[k].quote === '"' ? '"' + escapeYamlDoubleQuoted(token) + '"' : "'" + token.replace(/'/g, "''") + "'");
     }
   });
   // the keys the author quoted
@@ -190,7 +213,8 @@ function emitFlowBlock(value, read, indent) {
   if (keyLines.length === read.keys.length && keyLines.every((k, n) => k.found.key === read.keys[n].key)) {
     keyLines.forEach((k, n) => {
       const written = read.keys[n].written;
-      if (written !== null && lines[k.at].slice(k.prefix.length, k.found.end - 1) === serializeYamlKey(k.found.key)) lines[k.at] = k.prefix + written + ':' + lines[k.at].slice(k.found.end);
+      if (written !== null && lines[k.at].slice(k.prefix.length, k.found.end - 1) === serializeYamlKey(k.found.key))
+        lines[k.at] = k.prefix + written + ':' + lines[k.at].slice(k.found.end);
     });
   }
   // the comments: at the end of the line of the value they follow, or on lines of their own above the value they come before (above the lines of the keys that lead to it)
@@ -199,10 +223,14 @@ function emitFlowBlock(value, read, indent) {
   const after = new Map();
   for (const comment of read.comments) {
     if (comment.after !== -1 && comment.after < carrying.length) {
-      if (!after.has(carrying[comment.after])) after.set(carrying[comment.after], (comment.gap === '' ? '  ' : comment.gap) + comment.text);
+      if (!after.has(carrying[comment.after]))
+        after.set(carrying[comment.after], (comment.gap === '' ? '  ' : comment.gap) + comment.text);
       continue;
     }
-    if (comment.before >= carrying.length) { below.push(' '.repeat(indent) + comment.text); continue; }
+    if (comment.before >= carrying.length) {
+      below.push(' '.repeat(indent) + comment.text);
+      continue;
+    }
     let at = carrying[comment.before];
     const floor = comment.before === 0 ? -1 : carrying[comment.before - 1];
     while (at - 1 > floor) at--;
@@ -242,11 +270,18 @@ function openFlowListsRead(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (blockFrom !== -1) {
-      if (line.trim() === '' || yamlIndentOf(line) > blockFrom) { out.push(line); continue; }
+      if (line.trim() === '' || yamlIndentOf(line) > blockFrom) {
+        out.push(line);
+        continue;
+      }
       blockFrom = -1;
     }
     const header = yamlBlockHeader(line);
-    if (header) { blockFrom = header[1].length; out.push(line); continue; }
+    if (header) {
+      blockFrom = header[1].length;
+      out.push(line);
+      continue;
+    }
     // `key: [`, `- key: {` (the key plain or quoted), or `- [` / `- {`: where a flow collection starts, and the text before it
     const lead = line.match(/^ *(?:- +)*/)[0];
     const found = scanYamlKey(line, lead.length, i);
@@ -257,8 +292,13 @@ function openFlowListsRead(text) {
     }
     const keyed = found !== null && at < line.length && (line[at] === '[' || line[at] === '{');
     const item = !keyed && /^ *- +[[{]/.test(line);
-    if (!keyed && !item) { out.push(line); continue; }
-    const m = keyed ? [line.slice(0, at), lead, line.slice(lead.length, found.end - 1).replace(/[ \t]+$/, '')] : line.match(/^( *)(- +)(?=[[{])/); // [text before the collection, indentation (and dashes), key as written]
+    if (!keyed && !item) {
+      out.push(line);
+      continue;
+    }
+    const m = keyed
+      ? [line.slice(0, at), lead, line.slice(lead.length, found.end - 1).replace(/[ \t]+$/, '')]
+      : line.match(/^( *)(- +)(?=[[{])/); // [text before the collection, indentation (and dashes), key as written]
     if (!keyed) at = m[0].length;
     const p = { lines, i, col: at, leaves: [], keys: [], comments: [] };
     let node;
@@ -268,7 +308,10 @@ function openFlowListsRead(text) {
       node = parseYamlFlowNode(p, i);
       tailText = lines[p.i].slice(p.col);
       const tail = lines[p.i].slice(p.col).match(/^[ \t]*$|^[ \t]+(#.*)$/);
-      if (!tail || node.scalar || node.value === null || typeof node.value !== 'object') { out.push(line); continue; }
+      if (!tail || node.scalar || node.value === null || typeof node.value !== 'object') {
+        out.push(line);
+        continue;
+      }
       comment = tail[1] || '';
     } catch (e) {
       out.push(line);
@@ -280,33 +323,64 @@ function openFlowListsRead(text) {
     if (keyed) {
       const key = m[2]; // as written, quotes included
       const empty = yamlEmptyCollection(node.value);
-      expanded = empty ? [m[1] + key + ': ' + empty + note].concat(p.comments.map((c) => ' '.repeat(m[1].length + 2) + c.text)) : [m[1] + key + ':' + note].concat(emitFlowBlock(node.value, p, m[1].length + 2));
+      expanded = empty
+        ? [m[1] + key + ': ' + empty + note].concat(p.comments.map((c) => ' '.repeat(m[1].length + 2) + c.text))
+        : [m[1] + key + ':' + note].concat(emitFlowBlock(node.value, p, m[1].length + 2));
       column = m[1].length;
-      if (!empty) { // the block must say what the flow collection says
+      if (!empty) {
+        // the block must say what the flow collection says
         const keyless = [key + ':'].concat(expanded.slice(1).map((l) => shiftYamlLine(l, -m[1].length)));
         let same = false;
         try {
-          same = serializeYamlValue(parseYaml(keyless.join('\n')), 0) === serializeYamlValue({ [found.key]: node.value }, 0);
-        } catch (e) { /* not the same */ }
-        if (!same) { out.push(line); continue; }
+          same =
+            serializeYamlValue(parseYaml(keyless.join('\n')), 0) === serializeYamlValue({ [found.key]: node.value }, 0);
+        } catch (e) {
+          /* not the same */
+        }
+        if (!same) {
+          out.push(line);
+          continue;
+        }
       }
     } else {
       const dashes = m[1].length;
       const block = emitFlowBlock([node.value], p, dashes);
       expanded = block.slice();
-      if (note) { const first = expanded.findIndex((l) => !/^ *#/.test(l)); expanded[first] += note; }
+      if (note) {
+        const first = expanded.findIndex((l) => !/^ *#/.test(l));
+        expanded[first] += note;
+      }
       column = dashes;
       let same = false;
       try {
-        same = serializeYamlValue(parseYaml(block.map((l) => shiftYamlLine(l, -dashes)).join('\n')), 0) === serializeYamlValue([node.value], 0);
-      } catch (e) { /* not the same */ }
-      if (!same) { out.push(line); continue; }
+        same =
+          serializeYamlValue(parseYaml(block.map((l) => shiftYamlLine(l, -dashes)).join('\n')), 0) ===
+          serializeYamlValue([node.value], 0);
+      } catch (e) {
+        /* not the same */
+      }
+      if (!same) {
+        out.push(line);
+        continue;
+      }
     }
     const original = lines.slice(i, p.i + 1);
     if (expanded.join('\n') !== original.join('\n')) {
       const written = original.join('\n');
       // `index`, `kind`, `empty`, `tail`, `width`, `pad` and `bare` are for `markOpenedFlows` and `bracketChangedFlows`: where the collection starts in the text opened, how it was written
-      lists.push({ expanded, original, column, before: { original: lines.slice(Math.max(0, i - 3), i).reverse(), opened: out.slice(-3).reverse() }, index: out.length, kind: keyed ? 'keyed' : 'item', empty: yamlEmptyCollection(node.value) !== null, tail: tailText, width: p.i === i ? line.length : 0, pad: { seq: /\[ +[^\s\]#]/.test(written), map: /\{ +[^\s}#]/.test(written) }, bare: false });
+      lists.push({
+        expanded,
+        original,
+        column,
+        before: { original: lines.slice(Math.max(0, i - 3), i).reverse(), opened: out.slice(-3).reverse() },
+        index: out.length,
+        kind: keyed ? 'keyed' : 'item',
+        empty: yamlEmptyCollection(node.value) !== null,
+        tail: tailText,
+        width: p.i === i ? line.length : 0,
+        pad: { seq: /\[ +[^\s\]#]/.test(written), map: /\{ +[^\s}#]/.test(written) },
+        bare: false
+      });
     }
     out.push.apply(out, expanded);
     i = p.i;
@@ -327,7 +401,11 @@ function closeFlowLists(text, lists) {
   let lines = text.split(/\r\n|\r|\n/);
   let from = 0;
   const keyOf = (list) => list.expanded.join('\n');
-  const twinOf = (list) => lists.some((other) => other !== list && keyOf(other) === keyOf(list) && other.original.join('\n') !== list.original.join('\n'));
+  const twinOf = (list) =>
+    lists.some(
+      (other) =>
+        other !== list && keyOf(other) === keyOf(list) && other.original.join('\n') !== list.original.join('\n')
+    );
   // how many of the (up to three) lines right before the collection are those it had, as written or as opened: counted from the nearest one, up to the first that is not
   const contextOf = (list, i, delta) => {
     let score = 0;
@@ -335,7 +413,11 @@ function closeFlowLists(text, lists) {
       const written = list.before.original[k];
       const opened = list.before.opened[k];
       const line = lines[i - 1 - k];
-      if (!((written !== undefined && line === shiftYamlLine(written, delta)) || (opened !== undefined && line === shiftYamlLine(opened, delta)))) break;
+      if (!(
+        (written !== undefined && line === shiftYamlLine(written, delta)) ||
+        (opened !== undefined && line === shiftYamlLine(opened, delta))
+      ))
+        break;
       score++;
     }
     return score;
@@ -347,7 +429,13 @@ function closeFlowLists(text, lists) {
       if (!list.expanded.every((line, k) => lines[i + k] === shiftYamlLine(line, delta))) return null;
       const next = lines[i + size];
       // the edit added a line after the last one that belongs to the collection (an item, a key): it is not the collection that was written
-      if (next !== undefined && next.trim() !== '' && !next.trim().startsWith('#') && yamlIndentOf(next) > list.column + delta) return null;
+      if (
+        next !== undefined &&
+        next.trim() !== '' &&
+        !next.trim().startsWith('#') &&
+        yamlIndentOf(next) > list.column + delta
+      )
+        return null;
       return { i, delta };
     };
     const found = (start, end) => {
@@ -373,7 +461,10 @@ function closeFlowLists(text, lists) {
       place = found(from, lines.length) || found(0, from);
     }
     if (place === null) return;
-    lines = lines.slice(0, place.i).concat(list.original.map((line) => shiftYamlLine(line, place.delta)), lines.slice(place.i + size));
+    lines = lines.slice(0, place.i).concat(
+      list.original.map((line) => shiftYamlLine(line, place.delta)),
+      lines.slice(place.i + size)
+    );
     from = place.i + list.original.length;
   });
   return lines.join(eol);
@@ -416,10 +507,20 @@ function bracketChangedFlows(text, opened, widest) {
     if (start.bare && lines[i].endsWith(' #')) lines[i] = lines[i].slice(0, -2);
     if (start.empty) continue; // `[]` and `{}` are what the emitter writes for nothing, not a layout the author chose: filled, they are a block
     let end = i + 1;
-    while (end < lines.length && lines[end].trim() !== '' && yamlIndentOf(lines[end]) > start.column && !/\u0006/.test(lines[end])) end++;
+    while (
+      end < lines.length &&
+      lines[end].trim() !== '' &&
+      yamlIndentOf(lines[end]) > start.column &&
+      !/\u0006/.test(lines[end])
+    )
+      end++;
     const region = lines.slice(i, end);
     const delta = yamlIndentOf(region[0]) - yamlIndentOf(start.expanded[0]);
-    if (region.length === start.expanded.length && region.every((line, k) => line === shiftYamlLine(start.expanded[k], delta))) continue; // as it was opened: `closeFlowLists` puts it back
+    if (
+      region.length === start.expanded.length &&
+      region.every((line, k) => line === shiftYamlLine(start.expanded[k], delta))
+    )
+      continue; // as it was opened: `closeFlowLists` puts it back
     let line;
     try {
       line = bracketedLine(region, start, widest);
@@ -451,7 +552,8 @@ function bracketedLine(region, start, widest) {
     const lead = first.match(/^ *(?:- +)*/)[0];
     const key = scanYamlKey(first, lead.length, 0);
     if (key === null) return null;
-    if (region.length === 1) { // the collection the edit emptied: `[]` or `{}` on its line, the comment as the author wrote it
+    if (region.length === 1) {
+      // the collection the edit emptied: `[]` or `{}` on its line, the comment as the author wrote it
       const emptied = body.slice(key.end).trim();
       return emptied === '[]' || emptied === '{}' ? body + tail : null;
     }
@@ -466,7 +568,13 @@ function bracketedLine(region, start, widest) {
     if (node[0].trim() === '') node.shift();
     else firstIsChecked = true; // its comment was taken out above, with `body`
   }
-  if (node.length === 0 || node.some((line, k) => (k === 0 && firstIsChecked ? false : stripYamlComment(line).replace(/[ \t]+$/, '') !== line.replace(/[ \t]+$/, '')))) return null; // a comment inside
+  if (
+    node.length === 0 ||
+    node.some((line, k) =>
+      k === 0 && firstIsChecked ? false : stripYamlComment(line).replace(/[ \t]+$/, '') !== line.replace(/[ \t]+$/, '')
+    )
+  )
+    return null; // a comment inside
   const flow = yamlBlockLinesToFlow(node, start.pad);
   if (flow === null) return null;
   const line = head + flow + tail;
@@ -491,4 +599,3 @@ function bracketedLine(region, start, widest) {
 function bracketWidth(widest) {
   return Math.max(100, Math.min(120, widest));
 }
-

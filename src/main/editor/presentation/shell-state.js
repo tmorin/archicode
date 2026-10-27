@@ -12,6 +12,5 @@ const PANEL_SIZE_STORAGE_PREFIX = 'archicode-standalone-editor:panel-size:';
 function savedPanelSizeStyle(panelId, property) {
   const raw = panelSizeStorage.get(PANEL_SIZE_STORAGE_PREFIX + panelId + ':' + property);
   const size = Number(raw);
-  return size > 0 ? (property + ': ' + size + 'px;') : '';
+  return size > 0 ? property + ': ' + size + 'px;' : '';
 }
-

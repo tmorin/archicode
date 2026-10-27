@@ -7,36 +7,72 @@
  */
 function renderDiagramCanvasHtml(record, overlayHtml, host) {
   // no record: the map of the whole layer (the workspace for the application layer)
-  const subject = host ? 'the view ' + escapeHtml(viewLabel(host.view)) : record ? escapeHtml(record.name || record.id) : mapLayer() === 'technology' ? 'the technology layer' : 'the workspace';
+  const subject = host
+    ? 'the view ' + escapeHtml(viewLabel(host.view))
+    : record
+      ? escapeHtml(record.name || record.id)
+      : mapLayer() === 'technology'
+        ? 'the technology layer'
+        : 'the workspace';
   const canvasAttributes = host
-    ? ' data-host="library" data-view="' + escapeHtml(host.view.id) + '" tabindex="0" aria-label="Diagram of ' + subject + '. Arrow keys move between boxes, Enter selects one, plus and minus zoom."'
-    : (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
-      '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"';
+    ? ' data-host="library" data-view="' +
+      escapeHtml(host.view.id) +
+      '" tabindex="0" aria-label="Diagram of ' +
+      subject +
+      '. Arrow keys move between boxes, Enter selects one, plus and minus zoom."'
+    : (record ? '' : ' data-map="true"') +
+      ' tabindex="0" aria-label="' +
+      (record ? 'Diagram' : 'Map') +
+      ' of ' +
+      subject +
+      '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' +
+      (record ? escapeHtml(record.reference) : '') +
+      '"';
   const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
-  return '<div class="diagram-stage">' + (overlayHtml || '') + '<div class="diagram-canvas" id="diagram-canvas"' + canvasAttributes + '><span class="muted">Computing the diagram…</span></div>' +
+  return (
+    '<div class="diagram-stage">' +
+    (overlayHtml || '') +
+    '<div class="diagram-canvas" id="diagram-canvas"' +
+    canvasAttributes +
+    '><span class="muted">Computing the diagram…</span></div>' +
     '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
-      // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
-      (record || host ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
-          '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
-          '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>') +
-      '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + hideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
-      // wave 015 (run 0097, W-9, #98): what the diagram draws of a comparison is the diagram's choice, not the band's; only while a plateau is compared
-      (layerCompareOther() ? '<span class="button-group changes-switch" role="group" aria-label="What the diagram draws of the comparison">' +
-        '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' + !AppState.changesOnly + '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
-        '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' + AppState.changesOnly + '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>' : '') +
-      renderMapPartsToolHtml(record, host) +
-      '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
-      renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
-      '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
-      '<span class="button-group" role="group" aria-label="Zoom">' +
-        '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
-        '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
-        '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
-      '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' + (diagramScale === 'auto') + '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
-      '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' + (diagramScale === 'fit') + '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
+    // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
+    (record || host
+      ? ''
+      : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
+        '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
+        '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>') +
+    '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' +
+    hideUnlinked +
+    '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
+    // wave 015 (run 0097, W-9, #98): what the diagram draws of a comparison is the diagram's choice, not the band's; only while a plateau is compared
+    (layerCompareOther()
+      ? '<span class="button-group changes-switch" role="group" aria-label="What the diagram draws of the comparison">' +
+        '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' +
+        !AppState.changesOnly +
+        '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
+        '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' +
+        AppState.changesOnly +
+        '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>'
+      : '') +
+    renderMapPartsToolHtml(record, host) +
+    '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
+    renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
+    '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
+    '<span class="button-group" role="group" aria-label="Zoom">' +
+    '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
+    '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
+    '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
+    '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' +
+    (diagramScale === 'auto') +
+    '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
+    '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' +
+    (diagramScale === 'fit') +
+    '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
     '</div></div>' +
     // under the drawing: what it is (its status), the hint, and the key to the lines
-    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>';
+    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>'
+  );
 }
 
 /**
@@ -44,13 +80,26 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
  * until a drawing is on screen (`showDiagramScene` turns them on).
  */
 function renderDiagramDownloadHtml() {
-  const icon = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"><path d="M8 2v8M4.5 7 8 10.5 11.5 7M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const tool = (format, title) => '<button type="button" class="download-button" data-action="diagram-export" data-format="' + format + '" disabled aria-label="Download as ' + format.toUpperCase() + '" title="' + escapeHtml(title) + '">' +
-    icon + '<span>' + format.toUpperCase() + '</span></button>';
-  return '<span class="button-group" role="group" aria-label="Download the diagram">' +
+  const icon =
+    '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"><path d="M8 2v8M4.5 7 8 10.5 11.5 7M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const tool = (format, title) =>
+    '<button type="button" class="download-button" data-action="diagram-export" data-format="' +
+    format +
+    '" disabled aria-label="Download as ' +
+    format.toUpperCase() +
+    '" title="' +
+    escapeHtml(title) +
+    '">' +
+    icon +
+    '<span>' +
+    format.toUpperCase() +
+    '</span></button>';
+  return (
+    '<span class="button-group" role="group" aria-label="Download the diagram">' +
     tool('png', 'Download the diagram as a PNG image, twice the size it has on screen') +
     tool('svg', 'Download the diagram as a self-contained SVG file') +
-  '</span>';
+    '</span>'
+  );
 }
 
 /**
@@ -58,25 +107,71 @@ function renderDiagramDownloadHtml() {
  * application layer and the diagrams of an element have neither. On the page of a saved view they edit the view, as the texts do.
  */
 function renderMapPartsToolHtml(record, host) {
-  const parts = host ? (host.isMap && host.layer === 'technology' ? host.parts : null) : (!record && mapLayer() === 'technology' ? mapPartsShown() : null);
+  const parts = host
+    ? host.isMap && host.layer === 'technology'
+      ? host.parts
+      : null
+    : !record && mapLayer() === 'technology'
+      ? mapPartsShown()
+      : null;
   if (!parts) return '';
-  const tool = (name, label, title) => '<button type="button" data-action="toggle-map-part" data-part="' + name + '" aria-pressed="' + parts[name] + '" title="' + escapeHtml(title) + '">' + label + '</button>';
-  return '<span class="button-group" role="group" aria-label="What the map draws">' +
-    tool('applications', 'Applications', 'Draw the applications deployed on the nodes, as boxes inside the nodes that are open') +
-    tool('relationships', 'Relationships', 'Draw the links: the relationships that environments and nodes declare, and the dependencies between environments that the deployed applications give') +
-  '</span>';
+  const tool = (name, label, title) =>
+    '<button type="button" data-action="toggle-map-part" data-part="' +
+    name +
+    '" aria-pressed="' +
+    parts[name] +
+    '" title="' +
+    escapeHtml(title) +
+    '">' +
+    label +
+    '</button>';
+  return (
+    '<span class="button-group" role="group" aria-label="What the map draws">' +
+    tool(
+      'applications',
+      'Applications',
+      'Draw the applications deployed on the nodes, as boxes inside the nodes that are open'
+    ) +
+    tool(
+      'relationships',
+      'Relationships',
+      'Draw the links: the relationships that environments and nodes declare, and the dependencies between environments that the deployed applications give'
+    ) +
+    '</span>'
+  );
 }
 
 /** The texts the diagram draws, each one a button that is lit while it is shown. */
 function renderDiagramShowGroupHtml(isMap, drawn) {
   const shows = drawn || diagramShows(isMap); // `drawn`: what the page of a view in the Library draws
-  const tool = (name, label, title) => '<button type="button" data-action="toggle-show" data-show="' + name + '" aria-pressed="' + shows[name] + '" title="' + escapeHtml(title) + '">' + label + '</button>';
-  return '<span class="button-group" role="group" aria-label="Show">' +
+  const tool = (name, label, title) =>
+    '<button type="button" data-action="toggle-show" data-show="' +
+    name +
+    '" aria-pressed="' +
+    shows[name] +
+    '" title="' +
+    escapeHtml(title) +
+    '">' +
+    label +
+    '</button>';
+  return (
+    '<span class="button-group" role="group" aria-label="Show">' +
     tool('labels', 'Labels', 'The caption of each link: its label, and its qualifiers in brackets') +
     tool('qualifiers', 'Qualifiers', 'The qualifiers of each element, after its kind') +
-    tool('descriptions', 'Descriptions', 'The description of each element that does not contain others, up to ' + DIAGRAM_DESCRIPTION_LINES + ' lines (all of it with Wrap)') +
-    tool('wrap', 'Wrap', 'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis (a box that contains others still cuts its kind), and show the whole of a long link label (otherwise cut after four lines)') +
-  '</span>';
+    tool(
+      'descriptions',
+      'Descriptions',
+      'The description of each element that does not contain others, up to ' +
+        DIAGRAM_DESCRIPTION_LINES +
+        ' lines (all of it with Wrap)'
+    ) +
+    tool(
+      'wrap',
+      'Wrap',
+      'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis (a box that contains others still cuts its kind), and show the whole of a long link label (otherwise cut after four lines)'
+    ) +
+    '</span>'
+  );
 }
 
 /**
@@ -113,7 +208,15 @@ function modelsKey(comparison, facet) {
   return [
     modelVersion,
     facet ? JSON.stringify(toKernelFacet(facet)) : '',
-    comparison && comparison.layers ? 'vs:' + AppState.baseline.plateau.id + (comparison.future ? ':future' : '') + ':' + AppState.changesOnly + ':' + AppState.hideWording : '',
+    comparison && comparison.layers
+      ? 'vs:' +
+        AppState.baseline.plateau.id +
+        (comparison.future ? ':future' : '') +
+        ':' +
+        AppState.changesOnly +
+        ':' +
+        AppState.hideWording
+      : '',
     AppState.workspace.settings.relationships.defaultSyntheticLabel
   ].join('~');
 }
@@ -121,13 +224,25 @@ function modelsKey(comparison, facet) {
 /** The key of the drawing `recipe` asks for (see `mountDiagramIfNeeded`): the models and the knobs of the kernel input, then what is drawn from its answer. */
 function diagramCacheKey(recipe, comparison, viewKey) {
   const { isMap, reference, viewpoint, facet, mapState, shows, hideUnlinked } = recipe;
-  const layer = isMap ? (recipe.layer === 'technology' ? 'technology' : 'application') : (recipe.layer || layerOfReference(reference) || 'technology'); // as `buildKernelInput` settles it
+  const layer = isMap
+    ? recipe.layer === 'technology'
+      ? 'technology'
+      : 'application'
+    : recipe.layer || layerOfReference(reference) || 'technology'; // as `buildKernelInput` settles it
   return [
-    modelsKey(comparison, facet), viewpoint, layer, reference,
+    modelsKey(comparison, facet),
+    viewpoint,
+    layer,
+    reference,
     isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
     // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
-    isMap && layer === 'technology' ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships]) : '',
-    hideUnlinked, JSON.stringify(shows), JSON.stringify(AppState.workspace.styles || null), viewKey
+    isMap && layer === 'technology'
+      ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
+      : '',
+    hideUnlinked,
+    JSON.stringify(shows),
+    JSON.stringify(AppState.workspace.styles || null),
+    viewKey
   ].join('|');
 }
 
@@ -149,7 +264,10 @@ function quietReferencesThroughFacet(kernel, facet) {
     if (first === undefined) continue;
     const focals = [];
     for (const [reference, record] of AppState.index[layer]) {
-      const viewpoint = mapIsShown() || elementTab === 'details' || (elementTab === 'detailed' && LEAF_KINDS.includes(record.kind)) ? 'overview' : elementTab;
+      const viewpoint =
+        mapIsShown() || elementTab === 'details' || (elementTab === 'detailed' && LEAF_KINDS.includes(record.kind))
+          ? 'overview'
+          : elementTab;
       focals.push({ reference, viewpoint });
     }
     const input = buildKernelInput('overview', first, { layer, facet }).input;
@@ -157,8 +275,9 @@ function quietReferencesThroughFacet(kernel, facet) {
     input.focals = focals;
     const out = kernel.quiet(input);
     // an error through a facet: the facet removes the elements (or fails for all of them, as `compute` does for each)
-    if (out.error) { if (facet) focals.forEach((focal) => quiet.add(focal.reference)); }
-    else out.quiet.forEach((reference) => quiet.add(reference));
+    if (out.error) {
+      if (facet) focals.forEach((focal) => quiet.add(focal.reference));
+    } else out.quiet.forEach((reference) => quiet.add(reference));
   }
   treeQuietCache = Object.assign({ key, quiet }, models);
   return quiet;
@@ -172,7 +291,13 @@ async function markTreeThroughFacet() {
   const rows = Array.from(document.querySelectorAll('.tree-node-row[data-ref]'));
   // the map has no element of its own to be quiet: its tree says what is on the map (.off-map), not what the facet empties
   const facet = anyDiagramShown() && !mapIsShown() ? currentDiagramFacet() : null;
-  if (!facet) { rows.forEach((row) => { row.classList.remove('quiet'); row.removeAttribute('title'); }); return; }
+  if (!facet) {
+    rows.forEach((row) => {
+      row.classList.remove('quiet');
+      row.removeAttribute('title');
+    });
+    return;
+  }
   try {
     const kernel = await loadViewpointKernel();
     if (currentDiagramFacet() !== facet || mapIsShown()) return; // a newer render took over
@@ -205,7 +330,12 @@ function mainDiagramRecipe(canvas) {
   const record = isMap ? null : findElementRecord(reference);
   if (!isMap && !record) return null;
   return {
-    host: 'main', view: null, isMap, reference, record, layer: isMap ? mapLayer() : undefined,
+    host: 'main',
+    view: null,
+    isMap,
+    reference,
+    record,
+    layer: isMap ? mapLayer() : undefined,
     // the diagram of the Elements perspective is always the overview of the element, whatever the Diagram perspective shows
     viewpoint: isMap ? 'map' : effectiveDiagramViewpoint(record),
     facet: currentDiagramFacet(),
@@ -256,16 +386,32 @@ function viewDiagramRecipe(view, index, host) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const isMap = view.viewpoint === 'map';
   const layer = viewLayerOf(view);
-  const facet = typeof properties.facet === 'string' ? AppState.workspace.settings.facets.customs.find((candidate) => candidate.name === properties.facet) || null : null;
+  const facet =
+    typeof properties.facet === 'string'
+      ? AppState.workspace.settings.facets.customs.find((candidate) => candidate.name === properties.facet) || null
+      : null;
   const shows = shownTextsOf(view);
   const recipe = {
-    host, view, isMap, reference: '', record: null, layer, viewpoint: 'map', facet, mapState: null, parts: isMap ? mapPartsOf(view) : null,
+    host,
+    view,
+    isMap,
+    reference: '',
+    record: null,
+    layer,
+    viewpoint: 'map',
+    facet,
+    mapState: null,
+    parts: isMap ? mapPartsOf(view) : null,
     hideUnlinked: properties['hide-unlinked'] === true,
     shows
   };
   if (isMap) {
     const known = (list) => stringList(list).filter((reference) => index[layer].has(reference));
-    recipe.mapState = { opened: known(properties.opened), pinned: known(properties.pinned), hidden: known(properties.hidden) };
+    recipe.mapState = {
+      opened: known(properties.opened),
+      pinned: known(properties.pinned),
+      hidden: known(properties.hidden)
+    };
   } else {
     recipe.reference = properties.element;
     recipe.record = index[layer].get(properties.element);
@@ -276,7 +422,8 @@ function viewDiagramRecipe(view, index, host) {
 
 /** The recipe of the diagram in `canvas`, from the host that wrote it; null when there is nothing to draw (the element is gone). */
 function diagramRecipeOf(canvas) {
-  if (canvas.getAttribute('data-host') === 'library') return libraryDiagramRecipe(findSavedView(canvas.getAttribute('data-view')));
+  if (canvas.getAttribute('data-host') === 'library')
+    return libraryDiagramRecipe(findSavedView(canvas.getAttribute('data-view')));
   return mainDiagramRecipe(canvas);
 }
 
@@ -291,7 +438,11 @@ function mountDiagramIfNeeded() {
   // the map must not end (and be cached) after the user has left it
   const seq = ++diagramSeq;
   const canvas = document.getElementById('diagram-canvas');
-  if (!canvas) { diagramScene = null; pendingDiagramFocus = null; return; }
+  if (!canvas) {
+    diagramScene = null;
+    pendingDiagramFocus = null;
+    return;
+  }
   const recipe = diagramRecipeOf(canvas);
   if (!recipe) return;
   const { isMap, reference, viewpoint, facet, mapState } = recipe;
@@ -299,14 +450,37 @@ function mountDiagramIfNeeded() {
   // run 0039: a comparison needs the kernel before the input can be built (the union is its answer): load it, then draw again
   if ((comparisonState() || {}).pending) {
     loadViewpointKernel().then(
-      () => { if (seq === diagramSeq) mountDiagramIfNeeded(); },
-      (e) => { if (seq === diagramSeq) showDiagramScene(buildDiagramScene('kernel-error', '<div class="error-panel">The diagram could not be computed: ' + escapeHtml(e && e.message ? e.message : String(e)) + '</div>', '', '', { width: 0, height: 0 }, null)); }
+      () => {
+        if (seq === diagramSeq) mountDiagramIfNeeded();
+      },
+      (e) => {
+        if (seq === diagramSeq)
+          showDiagramScene(
+            buildDiagramScene(
+              'kernel-error',
+              '<div class="error-panel">The diagram could not be computed: ' +
+                escapeHtml(e && e.message ? e.message : String(e)) +
+                '</div>',
+              '',
+              '',
+              { width: 0, height: 0 },
+              null
+            )
+          );
+      }
     );
     return;
   }
   // issue #37: the key is the version of the models and the small parts that vary, so a render that finds its drawing in `diagramCache` builds no kernel input
   // and serialises no model. The input is built below, only when the drawing is to be computed.
-  const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(isMap && recipe.layer === 'technology' ? ['technology'] : [], readonly ? ['view:' + recipe.view.id] : []).join('|');
+  const viewKey = [
+    isMap ? 'map' : reference,
+    viewpoint,
+    facet ? facet.name : '',
+    isMap ? mapState.pinned.join(',') : ''
+  ]
+    .concat(isMap && recipe.layer === 'technology' ? ['technology'] : [], readonly ? ['view:' + recipe.view.id] : [])
+    .join('|');
   const comparison = comparisonState();
   const key = diagramCacheKey(recipe, comparison, viewKey);
   const nothing = nothingDrawnScene(viewKey, comparison);
@@ -318,21 +492,57 @@ function mountDiagramIfNeeded() {
     showDiagramScene(Object.assign({}, diagramCache.scene));
     return;
   }
-  const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, layer: recipe.layer, opened: mapState.opened, pinned: mapState.pinned, applications: recipePartsOf(recipe).applications, relationships: recipePartsOf(recipe).relationships } : { facet, layer: recipe.layer });
+  const { input } = buildKernelInput(
+    viewpoint,
+    reference,
+    isMap
+      ? {
+          facet,
+          layer: recipe.layer,
+          opened: mapState.opened,
+          pinned: mapState.pinned,
+          applications: recipePartsOf(recipe).applications,
+          relationships: recipePartsOf(recipe).relationships
+        }
+      : { facet, layer: recipe.layer }
+  );
   if (isMap) input.hidden = mapState.hidden;
   const models = modelsNow(); // taken before the drawing is computed: an edit that lands while it is being laid out makes the entry stale, not fresh
   (async () => {
     try {
       const [kernel, elk] = await Promise.all([loadViewpointKernel(), loadElk()]);
-      const { scene, cacheable } = await computeDiagramScene(recipe, input, comparison, null, kernel, elk, viewKey, readonly);
+      const { scene, cacheable } = await computeDiagramScene(
+        recipe,
+        input,
+        comparison,
+        null,
+        kernel,
+        elk,
+        viewKey,
+        readonly
+      );
       if (seq !== diagramSeq) return;
-      if (!cacheable) { showDiagramScene(scene); return; } // a message (an error, a facet that removes the element) is shown, not kept
+      if (!cacheable) {
+        showDiagramScene(scene);
+        return;
+      } // a message (an error, a facet that removes the element) is shown, not kept
       diagramCache = Object.assign({ key, scene }, models);
       showDiagramScene(Object.assign({}, scene));
     } catch (e) {
       console.error('Diagram failed', e);
       if (seq === diagramSeq) {
-        showDiagramScene(buildDiagramScene(viewKey, '<div class="error-panel">The diagram could not be computed: ' + escapeHtml(e && e.message ? e.message : String(e)) + '</div>', '', '', { width: 0, height: 0 }, null));
+        showDiagramScene(
+          buildDiagramScene(
+            viewKey,
+            '<div class="error-panel">The diagram could not be computed: ' +
+              escapeHtml(e && e.message ? e.message : String(e)) +
+              '</div>',
+            '',
+            '',
+            { width: 0, height: 0 },
+            null
+          )
+        );
       }
     }
   })();
@@ -349,11 +559,23 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
   const { isMap, reference, record, viewpoint, facet, shows, hideUnlinked } = recipe;
   const result = isMap && facet ? computeMapThroughFacet(kernel, input) : kernel.compute(input);
   if (result.error) {
-    const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer, result.error, source);
+    const removed =
+      !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer, result.error, source);
     return {
-      scene: buildDiagramScene(viewKey, removed
-        ? '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes this element.' + (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') + '</div>'
-        : '<div class="error-panel">' + escapeHtml(result.error) + '</div>', '', '', { width: 0, height: 0 }, null),
+      scene: buildDiagramScene(
+        viewKey,
+        removed
+          ? '<div class="muted diagram-empty">Nothing to show: facet “' +
+              escapeHtml(facet.name) +
+              '” removes this element.' +
+              (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') +
+              '</div>'
+          : '<div class="error-panel">' + escapeHtml(result.error) + '</div>',
+        '',
+        '',
+        { width: 0, height: 0 },
+        null
+      ),
       cacheable: false
     };
   }
@@ -367,35 +589,102 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
     hiddenCount = kept.hidden;
     drawn = { items: kept.items, links: kept.links };
     const ids = new Set(kept.items.map((item) => item.id));
-    shownResult = Object.assign({}, result, { items: result.items.filter((item) => ids.has(item.id)), links: result.links.filter((link) => ids.has(link.from) && ids.has(link.to)) });
+    shownResult = Object.assign({}, result, {
+      items: result.items.filter((item) => ids.has(item.id)),
+      links: result.links.filter((link) => ids.has(link.from) && ids.has(link.to))
+    });
   }
   let status = diagramStatusText(viewpoint, reference, facet, shownResult, ghosts, input.layer);
   if (hiddenCount) status += ' ' + hiddenCount + ' unlinked ' + (hiddenCount === 1 ? 'box' : 'boxes') + ' hidden.';
   // the styled stereotypes of the boxes on screen, each once, in the order they are met
   const drawnStereotypes = [];
-  for (const item of drawn.items) for (const name of (item.ghost || !Array.isArray(item.stereotypes) ? [] : item.stereotypes)) if (!drawnStereotypes.includes(name)) drawnStereotypes.push(name);
-  const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes) + (comparison && comparison.layers ? diagramComparisonLegendHtml(comparison, comparisonCountsOf(shownResult, isMap ? null : reference)) : '');
+  for (const item of drawn.items)
+    for (const name of item.ghost || !Array.isArray(item.stereotypes) ? [] : item.stereotypes)
+      if (!drawnStereotypes.includes(name)) drawnStereotypes.push(name);
+  const legend =
+    diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes) +
+    (comparison && comparison.layers
+      ? diagramComparisonLegendHtml(comparison, comparisonCountsOf(shownResult, isMap ? null : reference))
+      : '');
   let scene;
   if (!elk) {
-    scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer, readonly, source), status, '', { width: 0, height: 0 }, null);
+    scene = buildDiagramScene(
+      viewKey,
+      renderDiagramFallbackHtml(drawn, input.layer, readonly, source),
+      status,
+      '',
+      { width: 0, height: 0 },
+      null
+    );
     scene.drawnIds = new Set(drawn.items.filter((item) => !item.ghost).map((item) => item.id));
   } else if (isMap && !drawn.items.length) {
-    scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no ' + (input.layer === 'technology' ? 'technology' : 'application') + ' element' +
-      (input.hidden.length ? ' left once the hidden ones are out' + (readonly ? '.' : ': show some again with their eye, or with the chips above the map.') : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
+    scene = buildDiagramScene(
+      viewKey,
+      '<div class="muted diagram-empty">Nothing to show: the map has no ' +
+        (input.layer === 'technology' ? 'technology' : 'application') +
+        ' element' +
+        (input.hidden.length
+          ? ' left once the hidden ones are out' +
+            (readonly ? '.' : ': show some again with their eye, or with the chips above the map.')
+          : ' yet.') +
+        '</div>',
+      status,
+      '',
+      { width: 0, height: 0 },
+      null
+    );
     scene.drawnIds = new Set();
   } else if (!isMap && diagramHasNothingToDraw(drawn)) {
-    const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? (readonly ? ' (the deep viewpoint includes what is inside it)' : ' (try Deep to include what is inside it)') : '';
-    scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, { readonly, layer: recipe.layer, source }), status, '', { width: 0, height: 0 }, null);
+    const hint =
+      viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind)
+        ? readonly
+          ? ' (the deep viewpoint includes what is inside it)'
+          : ' (try Deep to include what is inside it)'
+        : '';
+    scene = buildDiagramScene(
+      viewKey,
+      diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, { readonly, layer: recipe.layer, source }),
+      status,
+      '',
+      { width: 0, height: 0 },
+      null
+    );
   } else {
     // the Map starts without captions on its links (they take most of its room): the tooltip says what a link stands for
-    const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap, itemLayer: recipe.layer, source })), drawn, reference, { map: isMap, layer: input.layer, opened: isMap ? input.opened : [], pinned: isMap ? input.pinned : [], show: shows, readonly, itemLayer: recipe.layer, source });
+    const drawing = renderDiagramSvg(
+      await elk.layout(
+        buildElkGraph(drawn, {
+          captions: shows.labels,
+          qualifiers: shows.qualifiers,
+          descriptions: shows.descriptions,
+          wrap: shows.wrap,
+          itemLayer: recipe.layer,
+          source
+        })
+      ),
+      drawn,
+      reference,
+      {
+        map: isMap,
+        layer: input.layer,
+        opened: isMap ? input.opened : [],
+        pinned: isMap ? input.pinned : [],
+        show: shows,
+        readonly,
+        itemLayer: recipe.layer,
+        source
+      }
+    );
     scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
     scene.boxes = drawing.boxes;
     scene.links = drawing.links;
     scene.drawnIds = new Set(Object.keys(drawing.boxes));
   }
   // the applications deployed on the nodes that the Map of the technology layer draws are elements of the other layer: a box has their reference, not their id (issue #107)
-  if (isMap) scene.drawnApps = new Set(drawn.items.filter((item) => !item.ghost && item.id !== item.reference).map((item) => item.reference));
+  if (isMap)
+    scene.drawnApps = new Set(
+      drawn.items.filter((item) => !item.ghost && item.id !== item.reference).map((item) => item.reference)
+    );
   if (isMap && !readonly) Object.assign(scene, diagramFoldTargets(shownResult, reference));
   return { scene, cacheable: true };
 }
@@ -407,31 +696,72 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
 function nothingDrawnScene(viewKey, comparison) {
   const duplicates = elementDuplicates();
   if (duplicates.length) {
-    return buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
-      (duplicates.length === 1 ? 'a reference is' : duplicates.length + ' references are') + ' declared more than once.</strong><ul>' +
-      duplicates.map((d) => '<li>' + duplicateMessageHtml(d.message) + '</li>').join('') + '</ul></div>', '', '', { width: 0, height: 0 }, null);
+    return buildDiagramScene(
+      viewKey,
+      '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
+        (duplicates.length === 1 ? 'a reference is' : duplicates.length + ' references are') +
+        ' declared more than once.</strong><ul>' +
+        duplicates.map((d) => '<li>' + duplicateMessageHtml(d.message) + '</li>').join('') +
+        '</ul></div>',
+      '',
+      '',
+      { width: 0, height: 0 },
+      null
+    );
   }
   if (comparison && comparison.problems) {
-    return buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' + escapeHtml(comparison.problems[0]) + '</strong>' +
-      (comparison.problems.length > 1 ? '<ul>' + comparison.problems.slice(1).map((m) => '<li>' + duplicateMessageHtml(m) + '</li>').join('') + '</ul>' : '') + '</div>', '', '', { width: 0, height: 0 }, null);
+    return buildDiagramScene(
+      viewKey,
+      '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
+        escapeHtml(comparison.problems[0]) +
+        '</strong>' +
+        (comparison.problems.length > 1
+          ? '<ul>' +
+            comparison.problems
+              .slice(1)
+              .map((m) => '<li>' + duplicateMessageHtml(m) + '</li>')
+              .join('') +
+            '</ul>'
+          : '') +
+        '</div>',
+      '',
+      '',
+      { width: 0, height: 0 },
+      null
+    );
   }
   return null;
 }
 
 /** The center of Elements on a diagram tab: the header (tabs, facet, Maximize) and the diagram of the selected element. */
 function renderElementDiagramHtml(record) {
-  return '<div class="diagram-view">' + renderStoryBarHtml() +
-    renderElementHeaderHtml(renderElementTitleHtml(record),
-      renderDiagramHeaderActionsHtml(renderShowOnMapButtonHtml(record))) +
-    renderDiagramCanvasHtml(record) + '</div>';
+  return (
+    '<div class="diagram-view">' +
+    renderStoryBarHtml() +
+    renderElementHeaderHtml(
+      renderElementTitleHtml(record),
+      renderDiagramHeaderActionsHtml(renderShowOnMapButtonHtml(record))
+    ) +
+    renderDiagramCanvasHtml(record) +
+    '</div>'
+  );
 }
 
 /** Elements → Map: the same element, in the whole layer it lives in (the page Applications, or the page Environments for an element of the technology layer). */
 function renderShowOnMapButtonHtml(record) {
   const layer = record.layer === 'technology' ? 'technology' : 'application';
   if (!AppState.index[layer].has(record.reference)) return '';
-  return '<button type="button" class="with-icon" data-action="show-on-map" data-ref="' + escapeHtml(record.reference) + '" data-layer="' + layer + '" aria-label="Show on map" title="Draw the map of the ' + (layer === 'technology' ? 'technology layer' : 'workspace') + ' keeping only what touches this element">' +
-    controlIconHtml(CONTROL_ICON_PATHS.map) + '<span class="control-label">Show on map</span></button>';
+  return (
+    '<button type="button" class="with-icon" data-action="show-on-map" data-ref="' +
+    escapeHtml(record.reference) +
+    '" data-layer="' +
+    layer +
+    '" aria-label="Show on map" title="Draw the map of the ' +
+    (layer === 'technology' ? 'technology layer' : 'workspace') +
+    ' keeping only what touches this element">' +
+    controlIconHtml(CONTROL_ICON_PATHS.map) +
+    '<span class="control-label">Show on map</span></button>'
+  );
 }
 
 /** The title of a page that draws a Map, by the layer it draws. */
@@ -449,10 +779,22 @@ function renderMapPerspectiveHtml() {
   const record = sel.kind === 'element' ? findElementRecord(sel.key, sel.layer) : null;
   return {
     left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
-    center: '<div class="diagram-view">' + renderStoryBarHtml() +
-      renderElementHeaderHtml('<h2>' + MAP_PAGE_TITLES[mapLayer()] + '</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
-        renderDiagramHeaderActionsHtml(renderOpenAsDiagramButtonHtml(record))) +
-      renderDiagramCanvasHtml(null, renderMapChipsHtml()) + '</div>',
+    center:
+      '<div class="diagram-view">' +
+      renderStoryBarHtml() +
+      renderElementHeaderHtml(
+        '<h2>' +
+          MAP_PAGE_TITLES[mapLayer()] +
+          '</h2>' +
+          (record
+            ? '<span class="element-header-subject" title="Selected on the map">' +
+              escapeHtml(record.name || record.id) +
+              '</span>'
+            : ''),
+        renderDiagramHeaderActionsHtml(renderOpenAsDiagramButtonHtml(record))
+      ) +
+      renderDiagramCanvasHtml(null, renderMapChipsHtml()) +
+      '</div>',
     right: renderInspectionHtml(true),
     bottom: null
   };
@@ -461,8 +803,15 @@ function renderMapPerspectiveHtml() {
 /** Map → Diagram: the selected element, on its own. */
 function renderOpenAsDiagramButtonHtml(record) {
   if (!record) return '';
-  return '<button type="button" class="with-icon" data-action="open-as-diagram" data-ref="' + escapeHtml(record.reference) + '" data-layer="' + escapeHtml(record.layer || 'application') + '" aria-label="Open in Elements" title="Open this element in Elements, on its diagram: its relationships, on their own">' +
-    controlIconHtml(CONTROL_ICON_PATHS.elements) + '<span class="control-label">Open in Elements</span></button>';
+  return (
+    '<button type="button" class="with-icon" data-action="open-as-diagram" data-ref="' +
+    escapeHtml(record.reference) +
+    '" data-layer="' +
+    escapeHtml(record.layer || 'application') +
+    '" aria-label="Open in Elements" title="Open this element in Elements, on its diagram: its relationships, on their own">' +
+    controlIconHtml(CONTROL_ICON_PATHS.elements) +
+    '<span class="control-label">Open in Elements</span></button>'
+  );
 }
 
 /** The elements of the layer the Map draws, each with what the map does with it: Pin keeps only what touches it, Hide leaves it out. */
@@ -470,17 +819,28 @@ function renderMapScopeHtml() {
   const layer = mapLayer();
   const roots = (AppState.workspace && AppState.workspace[layer] && AppState.workspace[layer].elements) || [];
   const visible = [];
-  const collect = (record) => { visible.push(nodeKey(record.reference, layer)); if (AppState.expanded.has(nodeKey(record.reference, layer))) sortedForNav(record.children).forEach(collect); };
+  const collect = (record) => {
+    visible.push(nodeKey(record.reference, layer));
+    if (AppState.expanded.has(nodeKey(record.reference, layer))) sortedForNav(record.children).forEach(collect);
+  };
   sortedForNav(roots).forEach(collect);
   // one tab stop for the whole tree: the row the user was on, or the first one
   resolveNavActive(visible);
   navTabStopGiven = false;
-  let html = '<div class="nav-section map-scope">' + renderNavHeaderHtml(MAP_PAGE_TITLES[layer], renderNavToolsHtml(layer)) +
-             '<div class="map-scope-hint" id="map-scope-hint">Pin (P) keeps only what touches an element. The eye (H) leaves it out. Greyed rows are not on the map.</div>';
+  let html =
+    '<div class="nav-section map-scope">' +
+    renderNavHeaderHtml(MAP_PAGE_TITLES[layer], renderNavToolsHtml(layer)) +
+    '<div class="map-scope-hint" id="map-scope-hint">Pin (P) keeps only what touches an element. The eye (H) leaves it out. Greyed rows are not on the map.</div>';
   treeComparison = comparisonForTrees();
   try {
     html += roots.length
-      ? '<div role="tree" aria-label="' + (layer === 'technology' ? 'Technology' : 'Application') + ' elements of the map" aria-describedby="map-scope-hint">' + sortedForNav(roots).map((r) => renderMapScopeNodeHtml(r, 1)).join('') + '</div>'
+      ? '<div role="tree" aria-label="' +
+        (layer === 'technology' ? 'Technology' : 'Application') +
+        ' elements of the map" aria-describedby="map-scope-hint">' +
+        sortedForNav(roots)
+          .map((r) => renderMapScopeNodeHtml(r, 1))
+          .join('') +
+        '</div>'
       : '<div class="tree-empty">No elements.</div>';
   } finally {
     treeComparison = null;
@@ -492,7 +852,8 @@ function renderMapScopeHtml() {
 function mapElementIsOnMap(reference, layer) {
   const boxes = diagramScene && diagramScene.boxes;
   if (!boxes || !String(diagramScene.viewKey).startsWith('map|')) return null; // a drawing of the map only
-  if (layer === 'application' && mapLayer() === 'technology') return diagramScene.drawnApps ? diagramScene.drawnApps.has(reference) : null; // a deployed application: not known while the drawing is a fallback
+  if (layer === 'application' && mapLayer() === 'technology')
+    return diagramScene.drawnApps ? diagramScene.drawnApps.has(reference) : null; // a deployed application: not known while the drawing is a fallback
   const folded = diagramScene.expandable || [];
   if (Object.prototype.hasOwnProperty.call(boxes, reference)) return true;
   for (let ref = String(reference); ref.includes('.');) {
@@ -504,7 +865,14 @@ function mapElementIsOnMap(reference, layer) {
 
 /** What a screen reader hears for a row of the tree of the map: the name, then the state the colours and the icons show. */
 function mapScopeRowLabel(name, pinned, hidden, offMap, stereotypes, change) {
-  return name + (stereotypes ? ', ' + stereotypes : '') + (pinned ? ', pinned' : '') + (hidden ? ', hidden' : '') + (offMap && !hidden ? ', not on the map' : '') + (change ? ', ' + CHANGE_WORDS[change].word : '');
+  return (
+    name +
+    (stereotypes ? ', ' + stereotypes : '') +
+    (pinned ? ', pinned' : '') +
+    (hidden ? ', hidden' : '') +
+    (offMap && !hidden ? ', not on the map' : '') +
+    (change ? ', ' + CHANGE_WORDS[change].word : '')
+  );
 }
 
 /** Grey the rows of the elements the map does not draw (a pin, a hidden element or "Hide unlinked" left them out); applied after each drawing. */
@@ -515,13 +883,32 @@ function markMapScope() {
     const pinned = row.classList.contains('pinned');
     const hidden = row.classList.contains('left-out');
     row.classList.toggle('off-map', offMap && !hidden);
-    if (offMap && !hidden) row.title = 'Not on the map right now'; else row.removeAttribute('title');
-    row.setAttribute('aria-label', mapScopeRowLabel(row.getAttribute('data-name'), pinned, hidden, offMap, row.getAttribute('data-stereotypes'), row.getAttribute('data-change')));
+    if (offMap && !hidden) row.title = 'Not on the map right now';
+    else row.removeAttribute('title');
+    row.setAttribute(
+      'aria-label',
+      mapScopeRowLabel(
+        row.getAttribute('data-name'),
+        pinned,
+        hidden,
+        offMap,
+        row.getAttribute('data-stereotypes'),
+        row.getAttribute('data-change')
+      )
+    );
   });
 }
 
 /** A short form of the kind for the tree of the map, where every pixel of the row is wanted by the name. */
-const MAP_KIND_ABBREVIATIONS = { person: 'PRS', system: 'SYS', solution: 'SOL', container: 'CTN', component: 'CMP', environment: 'ENV', node: 'NOD' };
+const MAP_KIND_ABBREVIATIONS = {
+  person: 'PRS',
+  system: 'SYS',
+  solution: 'SOL',
+  container: 'CTN',
+  component: 'CMP',
+  environment: 'ENV',
+  node: 'NOD'
+};
 
 /** The short form of a kind for the rows of both trees (the full kind is in the tooltip). */
 function kindAbbreviation(kind) {
@@ -533,10 +920,16 @@ function kindAbbreviation(kind) {
 const MAP_PIN_PATH = 'M9.5 1.5l5 5-1.6.6-2.3 2.3.2 3-1.3 1.3-2.5-2.5L3 14.2 1.8 13l3.7-3.9L3 6.6 4.3 5.3l3 .2L9.6 3.2z';
 const MAP_ICON_OPEN = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">';
 const MAP_PIN_ICON = MAP_ICON_OPEN + '<path d="' + MAP_PIN_PATH + '" fill="currentColor"/></svg>'; // pinned
-const MAP_UNPINNED_ICON = MAP_ICON_OPEN + '<path d="' + MAP_PIN_PATH + '" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
-const MAP_EYE = '<path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="1.9" fill="currentColor"/>';
+const MAP_UNPINNED_ICON =
+  MAP_ICON_OPEN +
+  '<path d="' +
+  MAP_PIN_PATH +
+  '" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+const MAP_EYE =
+  '<path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="1.9" fill="currentColor"/>';
 const MAP_VISIBLE_ICON = MAP_ICON_OPEN + MAP_EYE + '</svg>';
-const MAP_HIDE_ICON = MAP_ICON_OPEN + MAP_EYE + '<path d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.6"/></svg>'; // hidden
+const MAP_HIDE_ICON =
+  MAP_ICON_OPEN + MAP_EYE + '<path d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.6"/></svg>'; // hidden
 
 function renderMapScopeNodeHtml(record, level) {
   const reference = record.reference;
@@ -550,7 +943,7 @@ function renderMapScopeNodeHtml(record, level) {
   const hiddenItself = map.hidden.includes(reference);
   const encloses = map.pinned.some((p) => p === reference || p.startsWith(reference + '.'));
   const offMap = mapElementIsOnMap(reference) === false && !hidden;
-  const label = (record.name !== undefined && record.name !== null && record.name !== '') ? record.name : record.id;
+  const label = record.name !== undefined && record.name !== null && record.name !== '' ? record.name : record.id;
   const ref = escapeHtml(reference);
   const kind = String(record.kind);
   const abbreviation = kindAbbreviation(kind);
@@ -558,31 +951,100 @@ function renderMapScopeNodeHtml(record, level) {
   const styled = styledStereotypesOf(stereotypesOfRecord(record));
   const change = treeChangeOf(record); // a comparison: the glyph after the name (run 0040)
   // a row folds or unfolds its branch, nothing more: the tree of the map selects no element
-  let html = '<div class="tree-node"><div class="tree-node-row map-scope-row' + (pinned ? ' pinned' : '') + (hidden ? ' left-out' : '') + (offMap ? ' off-map' : '') + (hasChildren ? ' foldable' : '') + '"' +
-             ' role="treeitem" style="--level:' + level + '" aria-level="' + level + '"' + (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
-             ' tabindex="' + navTabIndex(key) + '" data-node="' + escapeHtml(key) + '" data-name="' + escapeHtml(label) + '"' + (styled.length ? ' data-stereotypes="' + escapeHtml(styled.join(', ')) + '"' : '') + (change ? ' data-change="' + change + '"' : '') +
-             ' aria-label="' + escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap, styled.join(', '), change)) + '"' + (offMap ? ' title="Not on the map right now"' : '') +
-             (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '" data-layer="' + layer + '"' : '') + '>';
+  let html =
+    '<div class="tree-node"><div class="tree-node-row map-scope-row' +
+    (pinned ? ' pinned' : '') +
+    (hidden ? ' left-out' : '') +
+    (offMap ? ' off-map' : '') +
+    (hasChildren ? ' foldable' : '') +
+    '"' +
+    ' role="treeitem" style="--level:' +
+    level +
+    '" aria-level="' +
+    level +
+    '"' +
+    (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
+    ' tabindex="' +
+    navTabIndex(key) +
+    '" data-node="' +
+    escapeHtml(key) +
+    '" data-name="' +
+    escapeHtml(label) +
+    '"' +
+    (styled.length ? ' data-stereotypes="' + escapeHtml(styled.join(', ')) + '"' : '') +
+    (change ? ' data-change="' + change + '"' : '') +
+    ' aria-label="' +
+    escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap, styled.join(', '), change)) +
+    '"' +
+    (offMap ? ' title="Not on the map right now"' : '') +
+    (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '" data-layer="' + layer + '"' : '') +
+    '>';
   html += hasChildren
     ? '<span class="tree-toggle" aria-hidden="true">' + (isExpanded ? '▾' : '▸') + '</span>'
     : '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
-  html += '<span class="tree-node-kind" title="' + escapeHtml(kind) + '">' + escapeHtml(abbreviation) + '</span>' +
-          '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' + treeChangeMarkHtml(change) + stereotypeBadgesHtml(styled);
+  html +=
+    '<span class="tree-node-kind" title="' +
+    escapeHtml(kind) +
+    '">' +
+    escapeHtml(abbreviation) +
+    '</span>' +
+    '<span class="tree-node-label" title="' +
+    escapeHtml(label) +
+    '">' +
+    escapeHtml(label) +
+    '</span>' +
+    treeChangeMarkHtml(change) +
+    stereotypeBadgesHtml(styled);
   // what the map does with the element is visible without hovering; the buttons themselves appear on hover, focus and the active row
   if (pinned) html += '<span class="map-scope-mark" title="Pinned" aria-hidden="true">' + MAP_PIN_ICON + '</span>';
   // Pin is always the last button, at the same place under the mouse: Hide comes before it, and is not drawn at all when it cannot be used
   // (a pinned element, or one around a pinned element, is not hidden), so that pinning or unpinning never moves the button to click next.
   // The buttons are for the pointer and the finger: the keyboard has the row itself (arrows, P and H), so they are not tab stops.
   const canHide = !pinned && !encloses;
-  html += '<span class="map-scope-actions">' +
+  html +=
+    '<span class="map-scope-actions">' +
     (canHide || hiddenItself
-      ? '<button type="button" tabindex="-1" class="map-scope-btn" data-action="map-hide" data-ref="' + ref + '" aria-pressed="' + hiddenItself + '" aria-label="' + (hiddenItself ? 'Show ' : 'Hide ') + escapeHtml(label) +
-        '" title="' + (hiddenItself ? 'Bring this element back on the map' : 'Leave this element and what is inside it out of the map') + ' (H)">' + (hiddenItself ? MAP_HIDE_ICON : MAP_VISIBLE_ICON) + '</button>'
+      ? '<button type="button" tabindex="-1" class="map-scope-btn" data-action="map-hide" data-ref="' +
+        ref +
+        '" aria-pressed="' +
+        hiddenItself +
+        '" aria-label="' +
+        (hiddenItself ? 'Show ' : 'Hide ') +
+        escapeHtml(label) +
+        '" title="' +
+        (hiddenItself
+          ? 'Bring this element back on the map'
+          : 'Leave this element and what is inside it out of the map') +
+        ' (H)">' +
+        (hiddenItself ? MAP_HIDE_ICON : MAP_VISIBLE_ICON) +
+        '</button>'
       : '') +
-    '<button type="button" tabindex="-1" class="map-scope-btn" data-action="map-pin" data-ref="' + ref + '" aria-pressed="' + pinned + '" aria-label="' + (pinned ? 'Unpin ' : 'Pin ') + escapeHtml(label) +
-      '" title="' + (pinned ? 'Stop keeping only what touches this element' : hiddenItself ? 'Keep only what touches this element (it comes back on the map)' : 'Keep only what touches this element') + ' (P)">' + (pinned ? MAP_PIN_ICON : MAP_UNPINNED_ICON) + '</button>' +
+    '<button type="button" tabindex="-1" class="map-scope-btn" data-action="map-pin" data-ref="' +
+    ref +
+    '" aria-pressed="' +
+    pinned +
+    '" aria-label="' +
+    (pinned ? 'Unpin ' : 'Pin ') +
+    escapeHtml(label) +
+    '" title="' +
+    (pinned
+      ? 'Stop keeping only what touches this element'
+      : hiddenItself
+        ? 'Keep only what touches this element (it comes back on the map)'
+        : 'Keep only what touches this element') +
+    ' (P)">' +
+    (pinned ? MAP_PIN_ICON : MAP_UNPINNED_ICON) +
+    '</button>' +
     '</span></div>';
-  if (hasChildren && isExpanded) html += '<div class="tree-node-children" role="group" id="' + groupId + '">' + sortedForNav(record.children).map((child) => renderMapScopeNodeHtml(child, level + 1)).join('') + '</div>';
+  if (hasChildren && isExpanded)
+    html +=
+      '<div class="tree-node-children" role="group" id="' +
+      groupId +
+      '">' +
+      sortedForNav(record.children)
+        .map((child) => renderMapScopeNodeHtml(child, level + 1))
+        .join('') +
+      '</div>';
   return html + '</div>';
 }
 
@@ -619,10 +1081,21 @@ function handleActivateKeydown(e) {
 function plainControlFocusOf(el) {
   const control = el && el.closest ? el.closest('.nav-row[role="button"], .tree-branch-title[role="button"]') : null;
   if (!control) return null;
-  if (control.hasAttribute('data-story')) return { selector: '.nav-row[role="button"]', attribute: 'data-story', value: control.getAttribute('data-story') };
-  if (control.classList.contains('nav-row')) return { selector: '.nav-row[role="button"]', attribute: 'data-relpath', value: control.getAttribute('data-relpath') };
+  if (control.hasAttribute('data-story'))
+    return { selector: '.nav-row[role="button"]', attribute: 'data-story', value: control.getAttribute('data-story') };
+  if (control.classList.contains('nav-row'))
+    return {
+      selector: '.nav-row[role="button"]',
+      attribute: 'data-relpath',
+      value: control.getAttribute('data-relpath')
+    };
   const header = control.closest('.tree-branch-header');
-  return { selector: '.tree-branch-title[role="button"]', attribute: 'data-branch', value: header ? header.getAttribute('data-branch') : null, parent: '.tree-branch-header' };
+  return {
+    selector: '.tree-branch-title[role="button"]',
+    attribute: 'data-branch',
+    value: header ? header.getAttribute('data-branch') : null,
+    parent: '.tree-branch-header'
+  };
 }
 
 function handleNavKeydown(e) {
@@ -632,12 +1105,24 @@ function handleNavKeydown(e) {
   const index = rows.indexOf(row);
   const foldable = row.hasAttribute('aria-expanded');
   const expanded = row.getAttribute('aria-expanded') === 'true';
-  const toggle = () => { navActiveKey = row.getAttribute('data-node'); toggleExpandedKey(row.getAttribute('data-node')); requestRedraw(); };
+  const toggle = () => {
+    navActiveKey = row.getAttribute('data-node');
+    toggleExpandedKey(row.getAttribute('data-node'));
+    requestRedraw();
+  };
   switch (e.key) {
-    case 'ArrowDown': focusNavRow(rows[index + 1]); break;
-    case 'ArrowUp': focusNavRow(rows[index - 1]); break;
-    case 'Home': focusNavRow(rows[0]); break;
-    case 'End': focusNavRow(rows[rows.length - 1]); break;
+    case 'ArrowDown':
+      focusNavRow(rows[index + 1]);
+      break;
+    case 'ArrowUp':
+      focusNavRow(rows[index - 1]);
+      break;
+    case 'Home':
+      focusNavRow(rows[0]);
+      break;
+    case 'End':
+      focusNavRow(rows[rows.length - 1]);
+      break;
     case 'ArrowRight':
       if (foldable && !expanded) toggle();
       else if (foldable) focusNavRow(rows[index + 1]);
@@ -649,24 +1134,32 @@ function handleNavKeydown(e) {
         focusNavRow(parent && parent.parentElement.querySelector(':scope > .tree-node-row'));
       }
       break;
-    case 'Enter': case ' ':
+    case 'Enter':
+    case ' ':
       // on the map a row only folds; in Elements it selects the element (the arrows fold)
-      if (row.classList.contains('map-scope-row')) { if (foldable) toggle(); }
-      else { navActiveKey = row.getAttribute('data-node'); row.click(); }
+      if (row.classList.contains('map-scope-row')) {
+        if (foldable) toggle();
+      } else {
+        navActiveKey = row.getAttribute('data-node');
+        row.click();
+      }
       break;
-    case 'p': case 'P': {
+    case 'p':
+    case 'P': {
       navActiveKey = row.getAttribute('data-node');
       const button = row.querySelector('[data-action="map-pin"]');
       if (button) button.click();
       break;
     }
-    case 'h': case 'H': {
+    case 'h':
+    case 'H': {
       navActiveKey = row.getAttribute('data-node');
       const button = row.querySelector('[data-action="map-hide"]');
       if (button) button.click();
       break;
     }
-    default: return;
+    default:
+      return;
   }
   e.preventDefault();
 }
@@ -678,13 +1171,37 @@ function renderMapChipsHtml() {
   const chip = (reference, kind) => {
     const record = AppState.index[mapLayer()].get(reference);
     if (!record) return '';
-    return '<span class="map-chip map-chip-' + kind + '"><span>' + (kind === 'pin' ? 'Pinned' : 'Hidden') + ': ' + escapeHtml(record.name || record.id) + '</span>' +
-      '<button type="button" data-action="map-' + (kind === 'pin' ? 'unpin' : 'unhide') + '" data-ref="' + escapeHtml(reference) + '" aria-label="' +
-      (kind === 'pin' ? 'Unpin ' : 'Show again ') + escapeHtml(record.name || record.id) + '" title="' + (kind === 'pin' ? 'Unpin' : 'Show again') + '">×</button></span>';
+    return (
+      '<span class="map-chip map-chip-' +
+      kind +
+      '"><span>' +
+      (kind === 'pin' ? 'Pinned' : 'Hidden') +
+      ': ' +
+      escapeHtml(record.name || record.id) +
+      '</span>' +
+      '<button type="button" data-action="map-' +
+      (kind === 'pin' ? 'unpin' : 'unhide') +
+      '" data-ref="' +
+      escapeHtml(reference) +
+      '" aria-label="' +
+      (kind === 'pin' ? 'Unpin ' : 'Show again ') +
+      escapeHtml(record.name || record.id) +
+      '" title="' +
+      (kind === 'pin' ? 'Unpin' : 'Show again') +
+      '">×</button></span>'
+    );
   };
-  const clear = map.pinned.length + map.hidden.length > 2
-    ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden">Clear all</button>' : '';
-  return '<div class="map-chips">' + map.pinned.map((r) => chip(r, 'pin')).join('') + map.hidden.map((r) => chip(r, 'hide')).join('') + clear + '</div>';
+  const clear =
+    map.pinned.length + map.hidden.length > 2
+      ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden">Clear all</button>'
+      : '';
+  return (
+    '<div class="map-chips">' +
+    map.pinned.map((r) => chip(r, 'pin')).join('') +
+    map.hidden.map((r) => chip(r, 'hide')).join('') +
+    clear +
+    '</div>'
+  );
 }
 
 /**
@@ -697,4 +1214,3 @@ function renderMapChipsHtml() {
 function renderSettingsPerspectiveHtml() {
   return { left: null, center: renderSettingsViewHtml(), right: null, bottom: null };
 }
-

@@ -1,11 +1,15 @@
 // ---- Actions ----
 
 function storiesSorted() {
-  return storiesList().slice().sort((a, b) => storyLabel(a).localeCompare(storyLabel(b), undefined, { sensitivity: 'base' }));
+  return storiesList()
+    .slice()
+    .sort((a, b) => storyLabel(a).localeCompare(storyLabel(b), undefined, { sensitivity: 'base' }));
 }
 
 function savedViewsSorted() {
-  return savedViews().slice().sort((a, b) => viewLabel(a).localeCompare(viewLabel(b), undefined, { sensitivity: 'base' }));
+  return savedViews()
+    .slice()
+    .sort((a, b) => viewLabel(a).localeCompare(viewLabel(b), undefined, { sensitivity: 'base' }));
 }
 
 /** Has this entry changed in memory since it was read (its manifest, or .archicode.yaml for an older one)? */
@@ -18,16 +22,24 @@ function entryIsModified(entry) {
 function nameCurrentView() {
   const definition = currentViewDefinition();
   if (!definition) return;
-  const existing = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
+  const existing = savedViews().find(
+    (view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition)
+  );
   if (existing) {
     alert('This diagram is already saved as “' + viewLabel(existing) + '”. Rename it in Stories.');
     return;
   }
-  openTextDialog('Name this view', 'It is kept in a file of its own, to be put in stories.', describeViewDefinition(definition), 'Save view', (name) => {
-    const current = currentViewDefinition();
-    if (current) viewForDefinition(current, name);
-    requestRedraw();
-  });
+  openTextDialog(
+    'Name this view',
+    'It is kept in a file of its own, to be put in stories.',
+    describeViewDefinition(definition),
+    'Save view',
+    (name) => {
+      const current = currentViewDefinition();
+      if (current) viewForDefinition(current, name);
+      requestRedraw();
+    }
+  );
 }
 
 /** Asks which story the diagram on screen goes in. */
@@ -54,30 +66,59 @@ function storyStepPlateaus() {
   let note = null;
   const asked = layers.compare;
   if (asked && against === null) {
-    if (asked.mode === 'future' && !asked.other) note = 'The comparison with the future waits for a plateau to be chosen, so no plateau is named for it.';
-    else if (asked.other && asked.other === layers.current) note = 'The plateau compared with is the plateau drawn: nothing is compared, so no plateau is named for it.';
-    else if (asked.other && !tree.nodes.has(asked.other)) note = 'The plateau compared with is not a plateau of this workspace any more, so no plateau is named for it.';
+    if (asked.mode === 'future' && !asked.other)
+      note = 'The comparison with the future waits for a plateau to be chosen, so no plateau is named for it.';
+    else if (asked.other && asked.other === layers.current)
+      note = 'The plateau compared with is the plateau drawn: nothing is compared, so no plateau is named for it.';
+    else if (asked.other && !tree.nodes.has(asked.other))
+      note = 'The plateau compared with is not a plateau of this workspace any more, so no plateau is named for it.';
   }
   // the plateau drawn first: if it cannot be told, nothing is written; if only the plateau compared with cannot, the step is told at the plateau drawn and `against` is left out, with the reason
   const foundAt = stepPlateauProblem({ at: layers.current });
   let named = against;
   if (!foundAt && named !== null) {
     const foundAgainst = stepPlateauProblem({ at: layers.current, against: named });
-    if (foundAgainst) { named = null; note = foundAgainst.problem + ' No plateau is named for the comparison.'; }
+    if (foundAgainst) {
+      named = null;
+      note = foundAgainst.problem + ' No plateau is named for the comparison.';
+    }
   }
-  return { at: layers.current, against: named, note, problem: foundAt ? foundAt.problem : null, checked: !foundAt && named !== null };
+  return {
+    at: layers.current,
+    against: named,
+    note,
+    problem: foundAt ? foundAt.problem : null,
+    checked: !foundAt && named !== null
+  };
 }
 
 /** The box of the story picker: keep the plateau drawn, and the plateau compared with, in the step. Empty when the workspace has no plateau. */
 function storyPlateauChoiceHtml() {
   const offer = storyStepPlateaus();
   if (!offer) return '';
-  if (offer.blocked) return '<p class="settings-help app-dialog-plateaus-note">The plateaus cannot be drawn (' + escapeHtml(offer.blocked) + '), so the step is added without a plateau.</p>';
+  if (offer.blocked)
+    return (
+      '<p class="settings-help app-dialog-plateaus-note">The plateaus cannot be drawn (' +
+      escapeHtml(offer.blocked) +
+      '), so the step is added without a plateau.</p>'
+    );
   const code = (id) => '<code>' + escapeHtml(id) + '</code>';
-  const label = offer.against === null ? 'Tell the step at the plateau drawn, ' + code(offer.at) : 'Tell the step at ' + code(offer.at) + ', compared with ' + code(offer.against);
-  return '<label class="app-dialog-choice app-dialog-plateaus"><input type="checkbox" data-dialog-plateaus' + (offer.checked ? ' checked' : '') + (offer.problem ? ' disabled' : '') + '><span>' + label + '</span></label>' +
-    '<p class="settings-help app-dialog-plateaus-note">' + (offer.problem ? escapeHtml(offer.problem) + ' ' : '') + (offer.note ? escapeHtml(offer.note) + ' ' : '') +
-    'The step names plateaus by id: a comparison that follows the plateau drawn (the past, the future) is written as the plateau it is now.</p>';
+  const label =
+    offer.against === null
+      ? 'Tell the step at the plateau drawn, ' + code(offer.at)
+      : 'Tell the step at ' + code(offer.at) + ', compared with ' + code(offer.against);
+  return (
+    '<label class="app-dialog-choice app-dialog-plateaus"><input type="checkbox" data-dialog-plateaus' +
+    (offer.checked ? ' checked' : '') +
+    (offer.problem ? ' disabled' : '') +
+    '><span>' +
+    label +
+    '</span></label>' +
+    '<p class="settings-help app-dialog-plateaus-note">' +
+    (offer.problem ? escapeHtml(offer.problem) + ' ' : '') +
+    (offer.note ? escapeHtml(offer.note) + ' ' : '') +
+    'The step names plateaus by id: a comparison that follows the plateau drawn (the past, the future) is written as the plateau it is now.</p>'
+  );
 }
 
 /**
@@ -90,12 +131,21 @@ function addCurrentViewToStoryChoice(choice) {
   let story = choice.storyId ? findStory(choice.storyId) : null;
   if (!story && choice.newName) {
     const wanted = choice.newName.trim().toLowerCase();
-    story = storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) || createStory(choice.newName.trim());
+    story =
+      storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) ||
+      createStory(choice.newName.trim());
   }
-  if (!definition || !story) { requestRedraw(); return; }
+  if (!definition || !story) {
+    requestRedraw();
+    return;
+  }
   // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
-  const named = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
-  const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
+  const named = savedViews().find(
+    (view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition)
+  );
+  const step = named
+    ? { view: named.id }
+    : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
   const plateaus = choice.withPlateaus ? storyStepPlateaus() : null;
   const keeps = !!plateaus && !plateaus.blocked && !plateaus.problem;
   if (keeps) {
@@ -108,7 +158,16 @@ function addCurrentViewToStoryChoice(choice) {
   activeStory = { id: story.id, step: at };
   selectedStoryId = story.id;
   storyBarEditing = true;
-  storyBarNotice = 'Added as step ' + (at + 1) + ' of “' + storyLabel(story) + '”' + (keeps ? ', told at ' + plateaus.at + (plateaus.against !== null ? ', compared with ' + plateaus.against : '') : '') + '.';
+  storyBarNotice =
+    'Added as step ' +
+    (at + 1) +
+    ' of “' +
+    storyLabel(story) +
+    '”' +
+    (keeps
+      ? ', told at ' + plateaus.at + (plateaus.against !== null ? ', compared with ' + plateaus.against : '')
+      : '') +
+    '.';
   pendingFocusSelector = '.story-bar-text';
   markEntryChanged(story);
   requestRedraw();
@@ -144,8 +203,12 @@ function stepDrawing(step, home) {
 function homeOfStory(storyId) {
   const now = currentPlateauDrawing();
   if (!now) return null;
-  if (!storyHome || storyHome.story !== storyId || !activeStory || activeStory.id !== storyId) storyHome = { story: storyId, plateau: now.plateau, against: now.against, set: now };
-  else if (storyHome.set && (storyHome.set.plateau !== now.plateau || storyHome.set.against !== now.against)) { storyHome.plateau = now.plateau; storyHome.against = now.against; }
+  if (!storyHome || storyHome.story !== storyId || !activeStory || activeStory.id !== storyId)
+    storyHome = { story: storyId, plateau: now.plateau, against: now.against, set: now };
+  else if (storyHome.set && (storyHome.set.plateau !== now.plateau || storyHome.set.against !== now.against)) {
+    storyHome.plateau = now.plateau;
+    storyHome.against = now.against;
+  }
   return storyHome;
 }
 
@@ -179,7 +242,10 @@ function goToStoryStep(storyId, index) {
   selectedStoryId = storyId;
   drawPlateausOfStep(storyId, steps[index]);
   const problem = stepProblem(steps[index], undefined, index + 1) || applySavedView(stepView(steps[index]));
-  if (problem && !mapIsShown() && currentPerspective !== 'elements') { currentPerspective = 'map'; useDiagramHost('main'); } // somewhere to show the bar
+  if (problem && !mapIsShown() && currentPerspective !== 'elements') {
+    currentPerspective = 'map';
+    useDiagramHost('main');
+  } // somewhere to show the bar
   activeStory = { id: storyId, step: index };
   storyBarEditing = false;
   storyBarNotice = null;
@@ -198,7 +264,10 @@ function newStory() {
   openTextDialog('New story', 'Name of the story', '', 'Create story', (name) => {
     const wanted = name.trim().toLowerCase();
     const story = storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) || createStory(name);
-    if (story) { selectedStoryId = story.id; storyNotice = null; }
+    if (story) {
+      selectedStoryId = story.id;
+      storyNotice = null;
+    }
     requestRedraw();
   });
 }
@@ -220,13 +289,15 @@ function moveStoryStep(storyId, index, delta) {
   if (!steps || index < 0 || index >= steps.length || to < 0 || to >= steps.length) return;
   [steps[index], steps[to]] = [steps[to], steps[index]];
   if (activeStory && activeStory.id === storyId) {
-    if (activeStory.step === index) activeStory.step = to; else if (activeStory.step === to) activeStory.step = index;
+    if (activeStory.step === index) activeStory.step = to;
+    else if (activeStory.step === to) activeStory.step = index;
   }
   // the focus follows the step that moved: the same button, or the other one when this step is now at an end
   const action = delta > 0 ? 'story-step-down' : 'story-step-up';
   const other = delta > 0 ? 'story-step-up' : 'story-step-down';
   const atEnd = delta > 0 ? to === steps.length - 1 : to === 0;
-  pendingFocusSelector = '[data-action="' + (atEnd ? other : action) + '"][data-story="' + story.id + '"][data-step="' + to + '"]';
+  pendingFocusSelector =
+    '[data-action="' + (atEnd ? other : action) + '"][data-story="' + story.id + '"][data-step="' + to + '"]';
   markEntryChanged(story);
   requestRedraw();
 }
@@ -238,11 +309,14 @@ function removeStoryStep(storyId, index) {
   story.steps.splice(index, 1);
   if (activeStory && activeStory.id === storyId) {
     if (activeStory.step > index) activeStory.step--;
-    if (activeStory.step >= story.steps.length) activeStory = story.steps.length ? { id: storyId, step: story.steps.length - 1 } : null;
+    if (activeStory.step >= story.steps.length)
+      activeStory = story.steps.length ? { id: storyId, step: story.steps.length - 1 } : null;
   }
   // the focus goes to the Remove of the step that took its place, else of the one before it, else to the Undo
   const next = Math.min(index, story.steps.length - 1);
-  pendingFocusSelector = story.steps.length ? '[data-action="story-step-remove"][data-story="' + story.id + '"][data-step="' + next + '"]' : '[data-action="story-undo"]';
+  pendingFocusSelector = story.steps.length
+    ? '[data-action="story-step-remove"][data-story="' + story.id + '"][data-step="' + next + '"]'
+    : '[data-action="story-undo"]';
   markEntryChanged(story);
   requestRedraw();
 }
@@ -252,7 +326,10 @@ function undoRemoveStoryStep() {
   const removed = removedStep;
   const story = removed ? findStory(removed.storyId) : null;
   removedStep = null;
-  if (!story) { requestRedraw(); return; }
+  if (!story) {
+    requestRedraw();
+    return;
+  }
   const steps = writableSteps(story);
   const at = Math.min(removed.index, steps.length);
   steps.splice(at, 0, removed.step);
@@ -281,9 +358,11 @@ function setStepPlateau(storyId, index, key, value) {
   const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
   if ((key !== 'at' && key !== 'against') || !isPlainObject(step)) return false;
   if (value === '' ? step[key] === undefined : step[key] === value) return false;
-  if (value === '') delete step[key]; else step[key] = value;
+  if (value === '') delete step[key];
+  else step[key] = value;
   markEntryChanged(story);
-  pendingFocusSelector = '[data-story-step-plateau="' + key + '"][data-story="' + story.id + '"][data-step="' + index + '"]';
+  pendingFocusSelector =
+    '[data-story-step-plateau="' + key + '"][data-story="' + story.id + '"][data-step="' + index + '"]';
   requestRedraw();
   return true;
 }
@@ -303,21 +382,30 @@ function keepStepAsNamedView(storyId, index) {
   const story = findStory(storyId);
   const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
   if (!isPlainObject(step) || step.view || !step.viewpoint) return;
-  openTextDialog('Keep as a named view', 'It is kept in a file of its own; the step then points at it.', describeViewDefinition(step), 'Save view', (name) => {
-    const target = findStory(storyId);
-    const current = target && Array.isArray(target.steps) ? target.steps[index] : null;
-    if (!isPlainObject(current) || current.view) { requestRedraw(); return; }
-    const view = viewForDefinition(canonicalViewDefinition(current), name);
-    const text = current.text;
-    // the plateaus the step is told at and compared with are the step's, not the view's: they stay (wave 015, run 0101)
-    const kept = { view: view.id };
-    if (current.at !== undefined) kept.at = current.at;
-    if (current.against !== undefined) kept.against = current.against;
-    if (text) kept.text = text;
-    target.steps[index] = kept;
-    markEntryChanged(target);
-    requestRedraw();
-  });
+  openTextDialog(
+    'Keep as a named view',
+    'It is kept in a file of its own; the step then points at it.',
+    describeViewDefinition(step),
+    'Save view',
+    (name) => {
+      const target = findStory(storyId);
+      const current = target && Array.isArray(target.steps) ? target.steps[index] : null;
+      if (!isPlainObject(current) || current.view) {
+        requestRedraw();
+        return;
+      }
+      const view = viewForDefinition(canonicalViewDefinition(current), name);
+      const text = current.text;
+      // the plateaus the step is told at and compared with are the step's, not the view's: they stay (wave 015, run 0101)
+      const kept = { view: view.id };
+      if (current.at !== undefined) kept.at = current.at;
+      if (current.against !== undefined) kept.against = current.against;
+      if (text) kept.text = text;
+      target.steps[index] = kept;
+      markEntryChanged(target);
+      requestRedraw();
+    }
+  );
 }
 
 /**
@@ -363,7 +451,11 @@ function openSavedView(viewId) {
   const view = findSavedView(viewId);
   if (!view) return;
   const problem = applySavedView(view);
-  if (problem) { storyNotice = problem; requestRedraw(); return; }
+  if (problem) {
+    storyNotice = problem;
+    requestRedraw();
+    return;
+  }
   activeStory = null;
   storyNotice = null;
   location.hash = currentRouteHash();
@@ -375,7 +467,10 @@ function renameSavedView(viewId) {
   if (!view) return;
   openTextDialog('Rename the view', 'Name of the view', viewLabel(view), 'Rename', (name) => {
     const target = findSavedView(viewId);
-    if (target) { target.name = name; markEntryChanged(target); }
+    if (target) {
+      target.name = name;
+      markEntryChanged(target);
+    }
     requestRedraw();
   });
 }
@@ -384,7 +479,21 @@ function deleteSavedView(viewId) {
   const view = findSavedView(viewId);
   if (!view) return;
   const used = storiesUsingView(viewId);
-  if (!confirm('Delete the view “' + viewLabel(view) + '”?' + (used ? '\n\n' + used + ' step' + (used === 1 ? '' : 's') + ' of stories show it; they will say the view is missing.' : ''))) return;
+  if (
+    !confirm(
+      'Delete the view “' +
+        viewLabel(view) +
+        '”?' +
+        (used
+          ? '\n\n' +
+            used +
+            ' step' +
+            (used === 1 ? '' : 's') +
+            ' of stories show it; they will say the view is missing.'
+          : '')
+    )
+  )
+    return;
   removeEntry(view, 'views');
   requestRedraw();
 }
@@ -410,7 +519,8 @@ function moveLegacyEntriesToManifests() {
     }
     if (Array.isArray(top[key])) {
       const rest = top[key].filter((entry) => !entries.includes(entry));
-      if (rest.length) top[key] = rest; else delete top[key];
+      if (rest.length) top[key] = rest;
+      else delete top[key];
     }
   };
   move('views', 'view', views);
@@ -418,4 +528,3 @@ function moveLegacyEntriesToManifests() {
   markWorkspaceYamlChanged();
   requestRedraw();
 }
-
