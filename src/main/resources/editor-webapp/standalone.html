@@ -945,6 +945,7 @@ try {
      instead, each as wide as the window: the tree, then the centre, then the inspection, the page scrolling from one to the next. The sizes the user gave the panels
      (inline widths, by dragging) are for the wide layout: they do not apply here, and neither do the handles that set them. Wider windows are untouched. */
   @media (max-width: 40rem) {
+    .timeline-item { margin-left: calc(var(--depth, 0) * 0.5rem); }
     #app { height: auto; min-height: 100vh; }
     .app-shell { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
     .app-shell [data-resize] { display: none; }
@@ -8057,11 +8058,7 @@ function bandPlateauSelectHtml(root, disabled) {
   const options = [];
   const walk = (item, depth) => {
     options.push(
-      bandOptionHtml(
-        item.id,
-        BAND_INDENT.repeat(Math.min(depth, 6)) + bandPlateauLabel(item.id),
-        item.id === layers.current
-      )
+      bandOptionHtml(item.id, BAND_INDENT.repeat(depth) + bandPlateauLabel(item.id), item.id === layers.current)
     );
     item.children.forEach((child) => walk(child, depth + 1));
   };
@@ -8106,7 +8103,7 @@ function bandCompareSelectHtml(root, disabled) {
     const walk = (item, depth) => {
       html += bandOptionHtml(
         'plateau:' + item.id,
-        BAND_INDENT.repeat(Math.min(depth, 6)) + bandPlateauLabel(item.id),
+        BAND_INDENT.repeat(depth) + bandPlateauLabel(item.id),
         selected === 'plateau:' + item.id,
         item.id === layers.current ? ' disabled' : ''
       );
@@ -20172,7 +20169,7 @@ function timelineItemHtml(item, depth) {
     '" data-plateau="' +
     escapeHtml(item.id) +
     '" style="--depth:' +
-    Math.min(depth, 6) +
+    depth +
     '">' +
     '<div class="timeline-main"><button type="button" class="timeline-name" data-action="timeline-draw" data-plateau="' +
     escapeHtml(item.id) +

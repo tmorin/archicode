@@ -97,7 +97,7 @@ function timelineItemHtml(item, depth) {
     '" data-plateau="' +
     escapeHtml(item.id) +
     '" style="--depth:' +
-    Math.min(depth, 6) +
+    depth +
     '">' +
     '<div class="timeline-main"><button type="button" class="timeline-name" data-action="timeline-draw" data-plateau="' +
     escapeHtml(item.id) +
