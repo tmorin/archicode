@@ -186,3 +186,40 @@ let diagramKeyOpen = false;
  * key, or null (nothing remembered yet, or the selection came from elsewhere, an address).
  */
 let diagramLinkStop = null;
+
+/** What is open on the map of the application layer; null until the map is first drawn, then the default plus what the user opened or closed. */
+let mapOpened = null;
+
+/** The elements the map of the application layer is about (none: all of them), and the ones it leaves out. */
+let mapPinned = [];
+
+let mapHidden = [];
+
+/** The same three, for the map of the technology layer (the page Environments). */
+let technologyMapState = { opened: null, pinned: [], hidden: [] };
+
+/**
+ * What the Map of the technology layer draws besides its environments and nodes (wave 016, run 0114, issue #107): the applications deployed on the nodes, as boxes inside them, and the
+ * relationships (the ones the technology elements declare, and the dependencies between environments that the deployed applications give). Both are drawn, a choice of whoever looks:
+ * the tools of the diagram turn them off, a saved view keeps `applications: false` and `relationships: false`, the address `applications=0` and `relationships=0`. The Map of the
+ * application layer has neither.
+ */
+const MAP_PARTS = ['applications', 'relationships'];
+
+let technologyMapParts = { applications: true, relationships: true };
+
+/** The row (a `nodeKey`) of the tree that takes the focus when the user tabs into it (one tab stop for the whole tree). */
+let navActiveKey = null;
+
+/** The next render brings the selected row of the tree into view (set when the selection changes without a click in the tree). */
+let scrollNavToSelection = false;
+
+/**
+ * An action of the map (fold, hide, pin, hide unlinked, facet) is about to redraw it: the element selected, if the
+ * redraw no longer draws it, is then deselected (showDiagramScene does it, once it knows what was drawn). A map that
+ * merely opens on an element carried over from Elements keeps it, so that Open in Elements leads back to it.
+ */
+let mapSelectionCheck = false;
+
+/** What the kernel has already warned about (a facet in a syntax that is going away): said once, not at every redraw. */
+const kernelWarningsShown = new Set();
