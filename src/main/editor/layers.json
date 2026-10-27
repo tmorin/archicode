@@ -153,6 +153,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/dialogs.js",
+      "layer": "presentation"
+    },
+    {
       "file": "application/story-actions.js",
       "layer": "application"
     },
