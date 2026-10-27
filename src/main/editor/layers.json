@@ -65,8 +65,8 @@
       "layer": "model"
     },
     {
-      "file": "unsorted/from-15.js",
-      "layer": "unsorted"
+      "file": "application/plateau-choice.js",
+      "layer": "application"
     },
     {
       "file": "presentation/plateau-band.js",
