@@ -9580,13 +9580,6 @@ function escapeHtml(value) {
   }[c]));
 }
 
-// Top-level Applications/Environments branch expand state (IF-2). Kept
-// outside AppState (deliberately not part of CTR-1's `expanded` Set,
-// which is reserved for per-element tree-node expand state) — simple
-// module-level booleans, defaulting to expanded for a useful first view.
-let treeExpandedApplications = true;
-let treeExpandedEnvironments = true;
-
 // =====================================================================
 // Perspectives (Eclipse-style named panel arrangements) — three now, so
 // this is a real per-region dispatch (see renderShellHtml), not just a
@@ -9623,8 +9616,6 @@ const PERSPECTIVE_GROUPS = [
 ];
 /** The pages of Timeline other than Plateaus, in the order of the second bar (which begins with Plateaus). */
 const TIMELINE_PAGES = ['map', 'environments', 'elements'];
-const DEFAULT_PERSPECTIVE = 'map';
-let currentPerspective = DEFAULT_PERSPECTIVE;
 /**
  * The page an address names, by the id of `PERSPECTIVES`, from its route: "#/timeline/plateaus", "#/timeline/applications", "#/timeline/environments", "#/timeline/elements",
  * "#/stories" (and "#/stories/views"), "#/files" and "#/settings". These are the only routes (0.17: the former ones, "#/map", "#/elements", "#/library", "#/diagram", "#/plateaus",
@@ -9940,18 +9931,30 @@ function setPerspective(id) {
 // =====================================================================
 const PANEL_SIZE_STORAGE_PREFIX = 'archicode-standalone-editor:panel-size:';
 
-const panelSizeStorage = {
-  get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
-  set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ } },
-  remove(key) { try { localStorage.removeItem(key); } catch (e) { /* storage unavailable */ } }
-};
-
 /** The inline `style="..."` attribute content for a resizable panel, from its persisted size (or '' if none saved). */
 function savedPanelSizeStyle(panelId, property) {
   const raw = panelSizeStorage.get(PANEL_SIZE_STORAGE_PREFIX + panelId + ':' + property);
   const size = Number(raw);
   return size > 0 ? (property + ': ' + size + 'px;') : '';
 }
+
+// Top-level Applications/Environments branch expand state (IF-2). Kept
+// outside AppState (deliberately not part of CTR-1's `expanded` Set,
+// which is reserved for per-element tree-node expand state) — simple
+// module-level booleans, defaulting to expanded for a useful first view.
+let treeExpandedApplications = true;
+
+let treeExpandedEnvironments = true;
+
+const DEFAULT_PERSPECTIVE = 'map';
+
+let currentPerspective = DEFAULT_PERSPECTIVE;
+
+const panelSizeStorage = {
+  get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ } },
+  remove(key) { try { localStorage.removeItem(key); } catch (e) { /* storage unavailable */ } }
+};
 
 // Raw-YAML editor's one pending draft (run-0009, task-005; TDD-0009
 // DEC-6/DEC-10, CTR-2) — holds { relPath, text, error } for the single
@@ -9999,7 +10002,6 @@ let pendingDeleteConfirmation = null;
  * the edit that would resolve it.
  */
 let saveStatus = { state: 'idle' };
-
 /**
  * The key of a row of a tree. A reference can exist in both layers (the application solution `hub` and the environment
  * `hub`), so what the UI remembers about a row (unfolded, modified, the tab stop) is keyed by layer and reference:
