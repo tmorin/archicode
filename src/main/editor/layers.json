@@ -97,6 +97,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/shell-state.js",
+      "layer": "presentation"
+    },
+    {
       "file": "model/ui-state.js",
       "layer": "model"
     },
