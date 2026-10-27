@@ -1,7 +1,7 @@
 'use strict';
 // The six YAML parts of the editor (wave 024, run 0184, DEC-5) name nothing outside the six that is not declared in a
-// part of layer core (run 0185, DEC-7). The ratchet cannot say it while `unsorted` is outside the layers; the check runs over a root folder, so it is
-// shown to fail on a temporary copy of the tree where a YAML part names a function of `unsorted`.
+// part of layer core (run 0185, DEC-7). The check runs over a root folder, so it is shown to
+// fail on a temporary copy of the tree where a YAML part names a function of a part that is not of layer core (run 0186: no part is `unsorted` any more).
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -77,7 +77,7 @@ test('the six YAML parts are layer core, in order, the parser first with use str
   assert.ok(first.startsWith("'use strict';"), 'core/yaml-parser.js starts with use strict');
 });
 
-test('the check fails on a copy where a YAML part names a function of unsorted', async () => {
+test('the check fails on a copy where a YAML part names a function of a part that is not of layer core', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yaml-parts-'));
   try {
     fs.cpSync(path.join(REPO, 'src/main/editor'), path.join(root, 'src/main/editor'), { recursive: true });
@@ -85,13 +85,13 @@ test('the check fails on a copy where a YAML part names a function of unsorted',
     const { mapOf, assemble } = await import(BUILD);
     const { analyse } = await import(CHECK);
     const layers = JSON.parse(fs.readFileSync(path.join(root, 'src/main/editor/layers.json'), 'utf8'));
-    const unsortedFiles = new Set(layers.parts.filter((p) => p.layer === 'unsorted').map((p) => p.file));
-    const unsorted = mapOf(root).parts.filter((p) => unsortedFiles.has(p.file));
+    const outsideCore = new Set(layers.parts.filter((p) => p.layer !== 'core').map((p) => p.file));
+    const outside = mapOf(root).parts.filter((p) => outsideCore.has(p.file));
     const analysis = analyse(assemble(root).text);
     const target = analysis.decls.find(
-      (d) => d.kind === 'function' && unsorted.some((u) => u.first <= d.start && d.start <= u.last)
+      (d) => d.kind === 'function' && outside.some((u) => u.first <= d.start && d.start <= u.last)
     );
-    assert.ok(target, 'unsorted holds a function');
+    assert.ok(target, 'a part outside core holds a function');
     const file = path.join(root, 'src/main/editor', YAML_PARTS[1]);
     fs.appendFileSync(file, `\nfunction yamlPartsProbe() {\n  return ${target.names[0]};\n}\n`);
     const { problems } = await namesOutsideTheSix(root);
