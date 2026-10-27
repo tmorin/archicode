@@ -261,9 +261,6 @@ function layerCompareFromChoice(choice) {
   return null;
 }
 
-/** What makes a plateau, said wherever a workspace has none and is asked for one (`WorkspaceFactory.NO_PLATEAU`). */
-const NO_PLATEAU = ' (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)';
-
 /** `settings.current` when it names no plateau of the layers: the sentence of the command line (`WorkspaceFactory.chosen`, `noPlateausProblems`), else null. */
 function layersOfSettingsCurrentProblem(current, tree) {
   if (!tree.layered) return '`settings.current` is `' + current + '` but the workspace declares no plateau' + NO_PLATEAU;
