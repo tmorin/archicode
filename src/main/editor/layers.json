@@ -153,6 +153,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/story-menu.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/story-scene.js",
       "layer": "presentation"
     },
