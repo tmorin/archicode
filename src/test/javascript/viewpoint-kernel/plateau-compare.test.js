@@ -922,7 +922,7 @@ test('Center puts the removed box that was clicked in the middle, as it does the
   assert.match(source, /const pickedRemoved = removedInspectionOf\(sel, 'map'\)/);
   assert.match(
     source,
-    /scene\.focal = pickedRemoved && scene\.boxes && scene\.boxes\[pickedRemoved\.reference\] \? scene\.boxes\[pickedRemoved\.reference\]/
+    /scene\.focal =\s*pickedRemoved && scene\.boxes && scene\.boxes\[pickedRemoved\.reference\]\s*\? scene\.boxes\[pickedRemoved\.reference\]/
   );
 });
 
