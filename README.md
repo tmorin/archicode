@@ -118,6 +118,13 @@ java -jar target/quarkus-app/quarkus-run.jar \
   editor serve --host 127.0.0.1 --port 48080
 ```
 
+## Editor sources
+
+The editor page `src/main/resources/editor-webapp/standalone.html` is generated: do not edit it. Edit the parts in
+`src/main/editor/` (six layer folders, `core` to `composition`, in the order of `layers.json`), then run
+`npm run editor:build` and commit the page with the parts. `npm run format` formats the parts,
+`npm run editor:check` checks the page is the assembly of the parts and the layer rules. `CLAUDE.md` tells the rest.
+
 ## Maintenance
 
 **Dependencies upgrade**
