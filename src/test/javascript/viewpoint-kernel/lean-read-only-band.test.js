@@ -162,8 +162,8 @@ test('the band holds two lists and nothing else, whatever the number of plateaus
   assert.equal(drawn.drawn, 'step8', 'the plateau drawn is selected, however far down the chain it is');
   assert.match(
     drawn.html,
-    /<option value="step8" selected>\u2003{6}Step 8 /,
-    'indented by its depth, up to six steps, so that a long chain does not push its names out of the list'
+    /<option value="step8" selected>\u2003{8}Step 8 /,
+    'indented by its depth, one em space per level, with no cap'
   );
   // nothing, the past that follows the plateau drawn, then the whole tree, in which the plateau drawn is greyed
   assert.deepEqual(plain(drawn.compare.slice(0, 2).map((o) => o.value)), ['', 'past']);
@@ -173,7 +173,7 @@ test('the band holds two lists and nothing else, whatever the number of plateaus
     ['baseline'].concat(Array.from({ length: 8 }, (_, i) => 'step' + (i + 1))).map((id) => 'plateau:' + id)
   );
   assert.deepEqual(plain(drawn.compare.filter((o) => o.disabled).map((o) => o.value)), ['plateau:step8']);
-  assert.match(drawn.html, /<option value="plateau:step8" disabled>\u2003{6}Step 8 /, 'indented like the other list');
+  assert.match(drawn.html, /<option value="plateau:step8" disabled>\u2003{8}Step 8 /, 'indented like the other list');
   chooseOnBand(sandbox, 'compare', 'plateau:step2');
   assert.deepEqual(plain(state.layers.compare), { mode: 'other', other: 'step2', chosen: true });
 });

@@ -55,11 +55,7 @@ function bandPlateauSelectHtml(root, disabled) {
   const options = [];
   const walk = (item, depth) => {
     options.push(
-      bandOptionHtml(
-        item.id,
-        BAND_INDENT.repeat(Math.min(depth, 6)) + bandPlateauLabel(item.id),
-        item.id === layers.current
-      )
+      bandOptionHtml(item.id, BAND_INDENT.repeat(depth) + bandPlateauLabel(item.id), item.id === layers.current)
     );
     item.children.forEach((child) => walk(child, depth + 1));
   };
@@ -104,7 +100,7 @@ function bandCompareSelectHtml(root, disabled) {
     const walk = (item, depth) => {
       html += bandOptionHtml(
         'plateau:' + item.id,
-        BAND_INDENT.repeat(Math.min(depth, 6)) + bandPlateauLabel(item.id),
+        BAND_INDENT.repeat(depth) + bandPlateauLabel(item.id),
         selected === 'plateau:' + item.id,
         item.id === layers.current ? ' disabled' : ''
       );

@@ -926,6 +926,7 @@
      instead, each as wide as the window: the tree, then the centre, then the inspection, the page scrolling from one to the next. The sizes the user gave the panels
      (inline widths, by dragging) are for the wide layout: they do not apply here, and neither do the handles that set them. Wider windows are untouched. */
   @media (max-width: 40rem) {
+    .timeline-item { margin-left: calc(var(--depth, 0) * 0.5rem); }
     #app { height: auto; min-height: 100vh; }
     .app-shell { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
     .app-shell [data-resize] { display: none; }

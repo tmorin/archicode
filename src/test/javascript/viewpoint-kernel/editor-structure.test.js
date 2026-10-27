@@ -422,7 +422,7 @@ test('the Plateaus page lists the plateaus of the layered Brightcart in the orde
   const page = sandbox.renderActivePerspectiveHtml();
   assert.equal(page.left, null);
   const items = Array.from(
-    page.center.matchAll(/<li class="timeline-item[^"]*" data-plateau="([^"]+)" style="--depth:(\d)"/g),
+    page.center.matchAll(/<li class="timeline-item[^"]*" data-plateau="([^"]+)" style="--depth:(\d+)"/g),
     (m) => [m[1], Number(m[2])]
   );
   assert.deepEqual(
