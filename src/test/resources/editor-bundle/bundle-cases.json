@@ -1,0 +1,1571 @@
+{
+  "note": "Contract of the bundle codec (run 0191, DEC-1 to DEC-5, CTR-1, CTR-2). Order of the path rules in bundlePathProblem: empty, absolute, backslash, control character, space and hash, leading or trailing space, empty segment, .. then ., hidden, not YAML. Line numbers count from 1. skipped keeps the input order. bytes are lists of numbers; text is UTF-8.",
+  "bundle": [
+    {
+      "name": "a plain file",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "id: a\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\nid: a\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "two files given in reverse order come out sorted",
+      "files": [
+        {
+          "path": "b.yaml",
+          "text": "b: 2\n"
+        },
+        {
+          "path": "a.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\na: 1\n--- # file: b.yaml\nb: 2\n",
+        "carried": [
+          "a.yaml",
+          "b.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "a .yml name is YAML",
+      "files": [
+        {
+          "path": "a.yml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yml\na: 1\n",
+        "carried": [
+          "a.yml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "CRLF stays in the file, the separator line is LF",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "a: 1\r\nb: 2\r\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\na: 1\r\nb: 2\r\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "a BOM is content",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "﻿a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\n﻿a: 1\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "a missing final newline is marked and one newline is added",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "a: 1"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml # no final newline\na: 1\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "a lone CR at the end is a missing final newline",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "a: 1\r"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml # no final newline\na: 1\r\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "an empty file has no marker",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": ""
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "an empty file between two files",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": ""
+        },
+        {
+          "path": "b.yaml",
+          "text": "x: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\n--- # file: b.yaml\nx: 1\n",
+        "carried": [
+          "a.yaml",
+          "b.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "a file that is one newline",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\n\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "--- alone on a line stays what it is",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "a: 1\n---\nb: 2\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\na: 1\n---\nb: 2\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "--- # file: not at a line start is no separator",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "x: '--- # file: y.yaml'\n  --- # file: z.yaml\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\nx: '--- # file: y.yaml'\n  --- # file: z.yaml\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "a real separator line makes the file skipped",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "a: 1\n--- # file: b.yaml\nb: 2\n"
+        },
+        {
+          "path": "c.yaml",
+          "text": "c: 3\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: c.yaml\nc: 3\n",
+        "carried": [
+          "c.yaml"
+        ],
+        "skipped": [
+          {
+            "path": "a.yaml",
+            "reason": "holds a line that looks like a bundle separator"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.yaml` (holds a line that looks like a bundle separator)"
+      }
+    },
+    {
+      "name": "a separator line with CRLF is a separator too",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "a: 1\r\n--- # file: b.yaml\r\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a.yaml",
+            "reason": "holds a line that looks like a bundle separator"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.yaml` (holds a line that looks like a bundle separator)"
+      }
+    },
+    {
+      "name": "a separator line at the very end without a newline is a separator too",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "a: 1\n--- # file: b.yaml"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a.yaml",
+            "reason": "holds a line that looks like a bundle separator"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.yaml` (holds a line that looks like a bundle separator)"
+      }
+    },
+    {
+      "name": "a non-YAML name is skipped",
+      "files": [
+        {
+          "path": "notes.md",
+          "text": "hello\n"
+        },
+        {
+          "path": "a.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\na: 1\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [
+          {
+            "path": "notes.md",
+            "reason": "not YAML"
+          }
+        ],
+        "sentence": "1 file was not exported: `notes.md` (not YAML)"
+      }
+    },
+    {
+      "name": ".YAML is not YAML (the name test is case sensitive)",
+      "files": [
+        {
+          "path": "a.YAML",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a.YAML",
+            "reason": "not YAML"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.YAML` (not YAML)"
+      }
+    },
+    {
+      "name": "a toml and a json manifest are skipped",
+      "files": [
+        {
+          "path": "a.toml",
+          "text": "a = 1\n"
+        },
+        {
+          "path": "b.json",
+          "text": "{}\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a.toml",
+            "reason": "not YAML"
+          },
+          {
+            "path": "b.json",
+            "reason": "not YAML"
+          }
+        ],
+        "sentence": "2 files were not exported: `a.toml` (not YAML), `b.json` (not YAML)"
+      }
+    },
+    {
+      "name": "bytes that are not UTF-8 are skipped",
+      "files": [
+        {
+          "path": "a.yaml",
+          "bytes": [
+            97,
+            58,
+            32,
+            255,
+            10
+          ]
+        },
+        {
+          "path": "b.yaml",
+          "text": "b: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: b.yaml\nb: 1\n",
+        "carried": [
+          "b.yaml"
+        ],
+        "skipped": [
+          {
+            "path": "a.yaml",
+            "reason": "not UTF-8"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.yaml` (not UTF-8)"
+      }
+    },
+    {
+      "name": "a truncated UTF-8 sequence is not UTF-8",
+      "files": [
+        {
+          "path": "a.yaml",
+          "bytes": [
+            97,
+            58,
+            32,
+            195
+          ]
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a.yaml",
+            "reason": "not UTF-8"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.yaml` (not UTF-8)"
+      }
+    },
+    {
+      "name": "valid UTF-8 bytes are carried",
+      "files": [
+        {
+          "path": "a.yaml",
+          "bytes": [
+            110,
+            58,
+            32,
+            195,
+            169,
+            10
+          ]
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\nn: é\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "the workspace file at the root is carried",
+      "files": [
+        {
+          "path": ".archicode.yaml",
+          "text": "settings: {}\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: .archicode.yaml\nsettings: {}\n",
+        "carried": [
+          ".archicode.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "a hidden file and a nested workspace file are skipped, with the sentence in input order",
+      "files": [
+        {
+          "path": ".hidden.yaml",
+          "text": "a: 1\n"
+        },
+        {
+          "path": "sub/.archicode.yaml",
+          "text": "b: 1\n"
+        },
+        {
+          "path": "dir/.x.yaml",
+          "text": "c: 1\n"
+        },
+        {
+          "path": ".gitkeep",
+          "text": ""
+        },
+        {
+          "path": "ok.yaml",
+          "text": "d: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: ok.yaml\nd: 1\n",
+        "carried": [
+          "ok.yaml"
+        ],
+        "skipped": [
+          {
+            "path": ".hidden.yaml",
+            "reason": "hidden"
+          },
+          {
+            "path": "sub/.archicode.yaml",
+            "reason": "hidden"
+          },
+          {
+            "path": "dir/.x.yaml",
+            "reason": "hidden"
+          },
+          {
+            "path": ".gitkeep",
+            "reason": "hidden"
+          }
+        ],
+        "sentence": "4 files were not exported: `.hidden.yaml` (hidden), `sub/.archicode.yaml` (hidden), `dir/.x.yaml` (hidden), `.gitkeep` (hidden)"
+      }
+    },
+    {
+      "name": "a refused path form: \"\"",
+      "files": [
+        {
+          "path": "",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "",
+            "reason": "empty path"
+          }
+        ],
+        "sentence": "1 file was not exported: `` (empty path)"
+      }
+    },
+    {
+      "name": "a refused path form: \"/abs.yaml\"",
+      "files": [
+        {
+          "path": "/abs.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "/abs.yaml",
+            "reason": "absolute path"
+          }
+        ],
+        "sentence": "1 file was not exported: `/abs.yaml` (absolute path)"
+      }
+    },
+    {
+      "name": "a refused path form: \"C:/x.yaml\"",
+      "files": [
+        {
+          "path": "C:/x.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "C:/x.yaml",
+            "reason": "absolute path"
+          }
+        ],
+        "sentence": "1 file was not exported: `C:/x.yaml` (absolute path)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a\\\\b.yaml\"",
+      "files": [
+        {
+          "path": "a\\b.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a\\b.yaml",
+            "reason": "holds a backslash"
+          }
+        ],
+        "sentence": "1 file was not exported: `a\\b.yaml` (holds a backslash)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a\\u0000b.yaml\"",
+      "files": [
+        {
+          "path": "a\u0000b.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a\u0000b.yaml",
+            "reason": "holds a control character"
+          }
+        ],
+        "sentence": "1 file was not exported: `a\u0000b.yaml` (holds a control character)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a\\tb.yaml\"",
+      "files": [
+        {
+          "path": "a\tb.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a\tb.yaml",
+            "reason": "holds a control character"
+          }
+        ],
+        "sentence": "1 file was not exported: `a\tb.yaml` (holds a control character)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a #b.yaml\"",
+      "files": [
+        {
+          "path": "a #b.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a #b.yaml",
+            "reason": "holds a space and a hash"
+          }
+        ],
+        "sentence": "1 file was not exported: `a #b.yaml` (holds a space and a hash)"
+      }
+    },
+    {
+      "name": "a refused path form: \" a.yaml\"",
+      "files": [
+        {
+          "path": " a.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": " a.yaml",
+            "reason": "starts or ends with a space"
+          }
+        ],
+        "sentence": "1 file was not exported: ` a.yaml` (starts or ends with a space)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a//b.yaml\"",
+      "files": [
+        {
+          "path": "a//b.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a//b.yaml",
+            "reason": "has an empty segment"
+          }
+        ],
+        "sentence": "1 file was not exported: `a//b.yaml` (has an empty segment)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a/\"",
+      "files": [
+        {
+          "path": "a/",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a/",
+            "reason": "has an empty segment"
+          }
+        ],
+        "sentence": "1 file was not exported: `a/` (has an empty segment)"
+      }
+    },
+    {
+      "name": "a refused path form: \"../x.yaml\"",
+      "files": [
+        {
+          "path": "../x.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "../x.yaml",
+            "reason": "leaves the workspace folder"
+          }
+        ],
+        "sentence": "1 file was not exported: `../x.yaml` (leaves the workspace folder)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a/../b.yaml\"",
+      "files": [
+        {
+          "path": "a/../b.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a/../b.yaml",
+            "reason": "leaves the workspace folder"
+          }
+        ],
+        "sentence": "1 file was not exported: `a/../b.yaml` (leaves the workspace folder)"
+      }
+    },
+    {
+      "name": "a refused path form: \"./a.yaml\"",
+      "files": [
+        {
+          "path": "./a.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "./a.yaml",
+            "reason": "has a `.` segment"
+          }
+        ],
+        "sentence": "1 file was not exported: `./a.yaml` (has a `.` segment)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a/./b.yaml\"",
+      "files": [
+        {
+          "path": "a/./b.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a/./b.yaml",
+            "reason": "has a `.` segment"
+          }
+        ],
+        "sentence": "1 file was not exported: `a/./b.yaml` (has a `.` segment)"
+      }
+    },
+    {
+      "name": "a refused path form: \"a/.b.yaml\"",
+      "files": [
+        {
+          "path": "a/.b.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "a/.b.yaml",
+            "reason": "hidden"
+          }
+        ],
+        "sentence": "1 file was not exported: `a/.b.yaml` (hidden)"
+      }
+    },
+    {
+      "name": "a refused path form: \".hidden/a.yaml\"",
+      "files": [
+        {
+          "path": ".hidden/a.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": ".hidden/a.yaml",
+            "reason": "hidden"
+          }
+        ],
+        "sentence": "1 file was not exported: `.hidden/a.yaml` (hidden)"
+      }
+    },
+    {
+      "name": "a path twice: the later one is skipped",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "first: 1\n"
+        },
+        {
+          "path": "a.yaml",
+          "text": "second: 2\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\nfirst: 1\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [
+          {
+            "path": "a.yaml",
+            "reason": "path twice"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.yaml` (path twice)"
+      }
+    },
+    {
+      "name": "a file then a folder of the same name: the later path is skipped",
+      "files": [
+        {
+          "path": "a.yaml",
+          "text": "a: 1\n"
+        },
+        {
+          "path": "a.yaml/b.yaml",
+          "text": "b: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\na: 1\n",
+        "carried": [
+          "a.yaml"
+        ],
+        "skipped": [
+          {
+            "path": "a.yaml/b.yaml",
+            "reason": "file and folder"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.yaml/b.yaml` (file and folder)"
+      }
+    },
+    {
+      "name": "a folder then a file of the same name: the later path is skipped",
+      "files": [
+        {
+          "path": "a.yaml/b.yaml",
+          "text": "b: 1\n"
+        },
+        {
+          "path": "a.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml/b.yaml\nb: 1\n",
+        "carried": [
+          "a.yaml/b.yaml"
+        ],
+        "skipped": [
+          {
+            "path": "a.yaml",
+            "reason": "file and folder"
+          }
+        ],
+        "sentence": "1 file was not exported: `a.yaml` (file and folder)"
+      }
+    },
+    {
+      "name": "paths are in code point order, not UTF-16 order",
+      "files": [
+        {
+          "path": "😀.yaml",
+          "text": "c: 1\n"
+        },
+        {
+          "path": "～.yaml",
+          "text": "b: 1\n"
+        },
+        {
+          "path": "a.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a.yaml\na: 1\n--- # file: ～.yaml\nb: 1\n--- # file: 😀.yaml\nc: 1\n",
+        "carried": [
+          "a.yaml",
+          "～.yaml",
+          "😀.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "the slash is compared as a character of the whole path",
+      "files": [
+        {
+          "path": "a/b.yaml",
+          "text": "c: 1\n"
+        },
+        {
+          "path": "a.yaml",
+          "text": "b: 1\n"
+        },
+        {
+          "path": "a-b.yaml",
+          "text": "a: 1\n"
+        }
+      ],
+      "expect": {
+        "text": "--- # file: a-b.yaml\na: 1\n--- # file: a.yaml\nb: 1\n--- # file: a/b.yaml\nc: 1\n",
+        "carried": [
+          "a-b.yaml",
+          "a.yaml",
+          "a/b.yaml"
+        ],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "no file gives an empty text",
+      "files": [],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [],
+        "sentence": ""
+      }
+    },
+    {
+      "name": "only skipped files give an empty text and the sentence",
+      "files": [
+        {
+          "path": "notes.md",
+          "text": "x"
+        }
+      ],
+      "expect": {
+        "text": "",
+        "carried": [],
+        "skipped": [
+          {
+            "path": "notes.md",
+            "reason": "not YAML"
+          }
+        ],
+        "sentence": "1 file was not exported: `notes.md` (not YAML)"
+      }
+    }
+  ],
+  "unbundle": [
+    {
+      "name": "two files",
+      "text": "--- # file: a.yaml\na: 1\n--- # file: b.yaml\nb: 2\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n"
+          },
+          {
+            "path": "b.yaml",
+            "text": "b: 2\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "files given out of order come out sorted",
+      "text": "--- # file: b.yaml\nb: 2\n--- # file: a.yaml\na: 1\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n"
+          },
+          {
+            "path": "b.yaml",
+            "text": "b: 2\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "code point order with an astral character",
+      "text": "--- # file: 😀.yaml\nc: 1\n--- # file: ～.yaml\nb: 1\n--- # file: a.yaml\na: 1\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n"
+          },
+          {
+            "path": "～.yaml",
+            "text": "b: 1\n"
+          },
+          {
+            "path": "😀.yaml",
+            "text": "c: 1\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CRLF inside a file is kept",
+      "text": "--- # file: a.yaml\na: 1\r\nb: 2\r\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\r\nb: 2\r\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the marker drops exactly one newline",
+      "text": "--- # file: a.yaml # no final newline\na: 1\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the marker after a CRLF drops the LF only",
+      "text": "--- # file: a.yaml # no final newline\na: 1\r\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\r"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a file with no final newline and no marker is kept as it is",
+      "text": "--- # file: a.yaml\na: 1",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a separator with CRLF",
+      "text": "--- # file: a.yaml\r\na: 1\r\n--- # file: b.yaml # no final newline\r\nb: 2\r\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\r\n"
+          },
+          {
+            "path": "b.yaml",
+            "text": "b: 2\r"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a BOM of the bundle itself is removed once",
+      "text": "﻿--- # file: a.yaml\na: 1\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a BOM inside a file is content",
+      "text": "--- # file: a.yaml\n﻿a: 1\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "﻿a: 1\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a second BOM after the first is content",
+      "text": "﻿﻿--- # file: a.yaml\na: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: text before the first `--- # file:` line must be blank or a comment"
+        ]
+      }
+    },
+    {
+      "name": "a separator alone is an empty file",
+      "text": "--- # file: a.yaml\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "a separator at the end of the text without a newline is an empty file",
+      "text": "--- # file: a.yaml",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "--- alone on a line is content",
+      "text": "--- # file: a.yaml\na: 1\n---\nb: 2\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n---\nb: 2\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "an indented separator is content",
+      "text": "--- # file: a.yaml\nx: 1\n  --- # file: b.yaml\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "x: 1\n  --- # file: b.yaml\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a lead-in of blank and comment lines",
+      "text": "# archicode bundle\n\n# more\n--- # file: a.yaml\na: 1\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a lead-in with CRLF lines",
+      "text": "# a\r\n\r\n--- # file: a.yaml\na: 1\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a bad lead-in is one problem naming the first bad line",
+      "text": "# fine\nhello\nworld\n--- # file: a.yaml\na: 1\n",
+      "expect": {
+        "problems": [
+          "line 2: text before the first `--- # file:` line must be blank or a comment"
+        ]
+      }
+    },
+    {
+      "name": "no text gives no file",
+      "text": "",
+      "expect": {
+        "problems": [
+          "the bundle holds no file"
+        ]
+      }
+    },
+    {
+      "name": "a comment only gives no file",
+      "text": "# only a comment\n",
+      "expect": {
+        "problems": [
+          "the bundle holds no file"
+        ]
+      }
+    },
+    {
+      "name": "a text with no separator and a bad line is no file",
+      "text": "a: 1\n",
+      "expect": {
+        "problems": [
+          "the bundle holds no file"
+        ]
+      }
+    },
+    {
+      "name": "a separator with an empty path",
+      "text": "--- # file: \na: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `` cannot be imported: empty path"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"/etc/x.yaml\"",
+      "text": "--- # file: /etc/x.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `/etc/x.yaml` cannot be imported: absolute path"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"C:/x.yaml\"",
+      "text": "--- # file: C:/x.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `C:/x.yaml` cannot be imported: absolute path"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a\\\\b.yaml\"",
+      "text": "--- # file: a\\b.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a\\b.yaml` cannot be imported: holds a backslash"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a\\tb.yaml\"",
+      "text": "--- # file: a\tb.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a\tb.yaml` cannot be imported: holds a control character"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a\\u0000b.yaml\"",
+      "text": "--- # file: a\u0000b.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a\u0000b.yaml` cannot be imported: holds a control character"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a #b.yaml\"",
+      "text": "--- # file: a #b.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a #b.yaml` cannot be imported: holds a space and a hash"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \" a.yaml\"",
+      "text": "--- # file:  a.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path ` a.yaml` cannot be imported: starts or ends with a space"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a.yaml \"",
+      "text": "--- # file: a.yaml \nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a.yaml ` cannot be imported: starts or ends with a space"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a//b.yaml\"",
+      "text": "--- # file: a//b.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a//b.yaml` cannot be imported: has an empty segment"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a/\"",
+      "text": "--- # file: a/\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a/` cannot be imported: has an empty segment"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"../x.yaml\"",
+      "text": "--- # file: ../x.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `../x.yaml` cannot be imported: leaves the workspace folder"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a/../b.yaml\"",
+      "text": "--- # file: a/../b.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a/../b.yaml` cannot be imported: leaves the workspace folder"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"./a.yaml\"",
+      "text": "--- # file: ./a.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `./a.yaml` cannot be imported: has a `.` segment"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a/./b.yaml\"",
+      "text": "--- # file: a/./b.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a/./b.yaml` cannot be imported: has a `.` segment"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \".hidden.yaml\"",
+      "text": "--- # file: .hidden.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `.hidden.yaml` cannot be imported: hidden"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a/.b.yaml\"",
+      "text": "--- # file: a/.b.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a/.b.yaml` cannot be imported: hidden"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \".hidden/a.yaml\"",
+      "text": "--- # file: .hidden/a.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `.hidden/a.yaml` cannot be imported: hidden"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"sub/.archicode.yaml\"",
+      "text": "--- # file: sub/.archicode.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `sub/.archicode.yaml` cannot be imported: hidden"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"notes.md\"",
+      "text": "--- # file: notes.md\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `notes.md` cannot be imported: not YAML"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a.YAML\"",
+      "text": "--- # file: a.YAML\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a.YAML` cannot be imported: not YAML"
+        ]
+      }
+    },
+    {
+      "name": "a refused path form: \"a.toml\"",
+      "text": "--- # file: a.toml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `a.toml` cannot be imported: not YAML"
+        ]
+      }
+    },
+    {
+      "name": "the workspace file at the root is accepted",
+      "text": "--- # file: .archicode.yaml\nsettings: {}\n",
+      "expect": {
+        "files": [
+          {
+            "path": ".archicode.yaml",
+            "text": "settings: {}\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a bundle with no workspace file is accepted",
+      "text": "--- # file: a.yaml\na: 1\n",
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a path twice names both lines",
+      "text": "--- # file: a.yaml\nx: 1\n--- # file: a.yaml\ny: 2\n",
+      "expect": {
+        "problems": [
+          "line 3: the path `a.yaml` is declared twice (first at line 1)"
+        ]
+      }
+    },
+    {
+      "name": "a file and then a folder of the same name",
+      "text": "--- # file: a.yaml\nx: 1\n--- # file: a.yaml/b.yaml\ny: 2\n",
+      "expect": {
+        "problems": [
+          "line 3: the paths `a.yaml` and `a.yaml/b.yaml` clash: one is a file and the other is inside it as a folder"
+        ]
+      }
+    },
+    {
+      "name": "a folder and then a file of the same name",
+      "text": "--- # file: a.yaml/b.yaml\ny: 2\n--- # file: a.yaml\nx: 1\n",
+      "expect": {
+        "problems": [
+          "line 3: the paths `a.yaml/b.yaml` and `a.yaml` clash: one is a file and the other is inside it as a folder"
+        ]
+      }
+    },
+    {
+      "name": "every problem is reported, in the order of the file, and no file is returned",
+      "text": "--- # file: ../a.yaml\nx\n--- # file: /b.yaml\ny\n--- # file: c.yaml\nz\n--- # file: c.yaml\nw\n",
+      "expect": {
+        "problems": [
+          "line 1: the path `../a.yaml` cannot be imported: leaves the workspace folder",
+          "line 3: the path `/b.yaml` cannot be imported: absolute path",
+          "line 7: the path `c.yaml` is declared twice (first at line 5)"
+        ]
+      }
+    },
+    {
+      "name": "a bad lead-in and a bad path are both reported",
+      "text": "hello\n--- # file: ../a.yaml\nx\n",
+      "expect": {
+        "problems": [
+          "line 1: text before the first `--- # file:` line must be blank or a comment",
+          "line 2: the path `../a.yaml` cannot be imported: leaves the workspace folder"
+        ]
+      }
+    },
+    {
+      "name": "a text over maxBytes is one problem",
+      "text": "--- # file: a.yaml\na: 1\n",
+      "maxBytes": 10,
+      "expect": {
+        "problems": [
+          "the bundle is 24 bytes, over the limit of 10 bytes"
+        ]
+      }
+    },
+    {
+      "name": "a text of exactly maxBytes is accepted",
+      "text": "--- # file: a.yaml\na: 1\n",
+      "maxBytes": 24,
+      "expect": {
+        "files": [
+          {
+            "path": "a.yaml",
+            "text": "a: 1\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "one byte over maxBytes is refused",
+      "text": "--- # file: a.yaml\na: 1\n",
+      "maxBytes": 23,
+      "expect": {
+        "problems": [
+          "the bundle is 24 bytes, over the limit of 23 bytes"
+        ]
+      }
+    },
+    {
+      "name": "the size is in UTF-8 bytes, not characters",
+      "text": "--- # file: a.yaml\nn: é\n",
+      "maxBytes": 24,
+      "expect": {
+        "problems": [
+          "the bundle is 25 bytes, over the limit of 24 bytes"
+        ]
+      }
+    },
+    {
+      "name": "the size is judged before anything else",
+      "text": "hello\n../x\n",
+      "maxBytes": 5,
+      "expect": {
+        "problems": [
+          "the bundle is 11 bytes, over the limit of 5 bytes"
+        ]
+      }
+    }
+  ]
+}
