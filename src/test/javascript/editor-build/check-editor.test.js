@@ -1,10 +1,10 @@
 'use strict';
 // Tests of scripts/check-editor.mjs (wave 024, run 0183, step 5.2a): the analysis, the counts, --list, --cut and
-// --write-names, on synthetic pages and temporary trees; the real page is counted by --cut against run 0182's numbers.
+// --write-names, on synthetic pages and temporary trees; the page of af1ed2d is counted by cutCounts against run 0182's numbers.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { spawnSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -254,16 +254,18 @@ test('--cut evaluates a table on a synthetic page', () => {
   );
 });
 
-test('--cut on the real page prints the 311, 162 and 100 of run 0182', () => {
-  const { code, out } = run(['--cut', CUT]);
-  assert.equal(code, 0);
-  assert.deepEqual(
-    out
-      .trim()
-      .split('\n')
-      .map((l) => Number(l.split(': ').pop())),
-    [311, 162, 100]
-  );
+test('--cut on the page of af1ed2d gives the 311, 162 and 100 of run 0182', async () => {
+  const { cutCounts } = await loadModule();
+  const html = execFileSync('git', ['show', `af1ed2d:${PAGE_PATH}`], {
+    cwd: REPO,
+    encoding: 'utf8',
+    maxBuffer: 256 * 1024 * 1024
+  });
+  const cut = JSON.parse(fs.readFileSync(CUT, 'utf8'));
+  const counts = cutCounts(html, cut);
+  assert.equal(counts.asCut.upward, 311);
+  assert.equal(counts.moved.upward, 162);
+  assert.equal(counts.noRender.upward, 100);
 });
 
 test('command line: unknown option, no mode, two modes, a missing value', () => {
