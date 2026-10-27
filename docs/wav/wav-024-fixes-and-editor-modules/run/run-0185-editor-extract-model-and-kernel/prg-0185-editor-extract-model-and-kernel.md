@@ -22,3 +22,5 @@ wave: 024
 ## Lessons Learnt
 
 - Nothing yet.
+
+- 2026-10-27: task-002 set from blocked to pending: its precondition (W-6 committed) is met by cd987cf and 9cf628e.
