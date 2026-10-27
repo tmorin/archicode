@@ -37,6 +37,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "model/app-state.js",
+      "layer": "model"
+    },
+    {
       "file": "model/settings.js",
       "layer": "model"
     },
