@@ -548,12 +548,6 @@ function readKey(obj, key, fallback) {
 // tells a workspace file that has it what to write instead, and the small readers the settings share.
 // =====================================================================
 
-/** The sentence for a workspace file that still has the key that listed the plateaus. It is the command line's (`WorkspaceFactory.REMOVED_KEY`), word for word. */
-const REMOVED_PLATEAUS_KEY =
-  '`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, ' +
-  'and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, ' +
-  'and `patches` for what it changes)';
-
 /** A scalar of the file as the command line reads it into a String (a number or a boolean is its text); '' for anything else. */
 function plateauText(value) {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : '';

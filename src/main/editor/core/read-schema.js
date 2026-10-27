@@ -440,3 +440,9 @@ function parseManifestText(text) {
   }
 }
 
+
+/** The sentence for a workspace file that still has the key that listed the plateaus. It is the command line's (`WorkspaceFactory.REMOVED_KEY`), word for word. */
+const REMOVED_PLATEAUS_KEY =
+  '`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, ' +
+  'and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, ' +
+  'and `patches` for what it changes)';
