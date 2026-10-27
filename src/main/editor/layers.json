@@ -153,6 +153,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/view-edit.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/dialogs.js",
       "layer": "presentation"
     },
