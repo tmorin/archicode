@@ -168,7 +168,7 @@ wave_manifest:
       slug: editor-extract-pages-and-player
       phase: P3
       depends_on: [W-7]
-      run: null
+      run: 0186
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/**'
