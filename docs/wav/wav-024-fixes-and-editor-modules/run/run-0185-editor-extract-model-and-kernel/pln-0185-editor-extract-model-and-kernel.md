@@ -98,7 +98,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-002
-      status: 'blocked'
+      status: 'pending'
       title: 'Precondition and baseline: the W-6 work is committed, the page is the measured one'
       depends_on: [task-001]
       produces:
