@@ -121,8 +121,8 @@
       "layer": "model"
     },
     {
-      "file": "unsorted/from-34.js",
-      "layer": "unsorted"
+      "file": "presentation/top-panel.js",
+      "layer": "presentation"
     },
     {
       "file": "presentation/left-panel.js",
