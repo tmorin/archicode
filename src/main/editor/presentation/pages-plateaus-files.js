@@ -19,7 +19,7 @@ function settlePlateausPanel() {
   loadViewpointKernel().then(() => {
     if (currentPerspective !== page) return;
     if (page === 'plateaus') refreshRightPanel();
-    else render(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
+    else requestRedraw(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
   }).catch((e) => console.error('ArchiCode: the viewpoint kernel could not be loaded, the changes are not listed', e));
 }
 

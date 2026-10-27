@@ -160,7 +160,7 @@ function handleAppInput(e) {
     pushDiagramHistory();
     diagramFacet = e.target.value || null;
     mapSelectionCheck = true;
-    render();
+    requestRedraw();
     return;
   }
   if (e.target.matches && e.target.matches('.auto-grow-textarea')) {
@@ -308,7 +308,7 @@ function writeElementDraft(reference, layer, draft, structuralFn) {
   } catch (e) {
     saveStatus = { state: 'error', failedFile: reference, message: e && e.message ? e.message : String(e) };
     keptElementForm = typedForm; // `render()` puts it back and drops it (no dialog is open): view state, no `modelsChanged()`
-    render();
+    requestRedraw();
     return false;
   }
   return true;

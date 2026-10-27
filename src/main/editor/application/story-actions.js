@@ -26,7 +26,7 @@ function nameCurrentView() {
   openTextDialog('Name this view', 'It is kept in a file of its own, to be put in stories.', describeViewDefinition(definition), 'Save view', (name) => {
     const current = currentViewDefinition();
     if (current) viewForDefinition(current, name);
-    render();
+    requestRedraw();
   });
 }
 
@@ -92,7 +92,7 @@ function addCurrentViewToStoryChoice(choice) {
     const wanted = choice.newName.trim().toLowerCase();
     story = storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) || createStory(choice.newName.trim());
   }
-  if (!definition || !story) { render(); return; }
+  if (!definition || !story) { requestRedraw(); return; }
   // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
   const named = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
   const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
@@ -111,7 +111,7 @@ function addCurrentViewToStoryChoice(choice) {
   storyBarNotice = 'Added as step ' + (at + 1) + ' of “' + storyLabel(story) + '”' + (keeps ? ', told at ' + plateaus.at + (plateaus.against !== null ? ', compared with ' + plateaus.against : '') : '') + '.';
   pendingFocusSelector = '.story-bar-text';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 /**
@@ -185,13 +185,13 @@ function goToStoryStep(storyId, index) {
   storyBarNotice = null;
   storyNotice = null;
   location.hash = currentRouteHash();
-  render();
+  requestRedraw();
 }
 
 function selectStory(id) {
   selectedStoryId = id;
   storyNotice = null;
-  render();
+  requestRedraw();
 }
 
 function newStory() {
@@ -199,7 +199,7 @@ function newStory() {
     const wanted = name.trim().toLowerCase();
     const story = storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) || createStory(name);
     if (story) { selectedStoryId = story.id; storyNotice = null; }
-    render();
+    requestRedraw();
   });
 }
 
@@ -210,7 +210,7 @@ function deleteStory(id) {
   if (selectedStoryId === id) selectedStoryId = null;
   if (activeStory && activeStory.id === id) activeStory = null;
   removedStep = null;
-  render();
+  requestRedraw();
 }
 
 function moveStoryStep(storyId, index, delta) {
@@ -228,7 +228,7 @@ function moveStoryStep(storyId, index, delta) {
   const atEnd = delta > 0 ? to === steps.length - 1 : to === 0;
   pendingFocusSelector = '[data-action="' + (atEnd ? other : action) + '"][data-story="' + story.id + '"][data-step="' + to + '"]';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 function removeStoryStep(storyId, index) {
@@ -244,7 +244,7 @@ function removeStoryStep(storyId, index) {
   const next = Math.min(index, story.steps.length - 1);
   pendingFocusSelector = story.steps.length ? '[data-action="story-step-remove"][data-story="' + story.id + '"][data-step="' + next + '"]' : '[data-action="story-undo"]';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 /** Puts back the step that was just removed, where it was. */
@@ -252,14 +252,14 @@ function undoRemoveStoryStep() {
   const removed = removedStep;
   const story = removed ? findStory(removed.storyId) : null;
   removedStep = null;
-  if (!story) { render(); return; }
+  if (!story) { requestRedraw(); return; }
   const steps = writableSteps(story);
   const at = Math.min(removed.index, steps.length);
   steps.splice(at, 0, removed.step);
   if (activeStory && activeStory.id === story.id && activeStory.step >= at) activeStory.step++;
   pendingFocusSelector = '[data-action="story-step-remove"][data-story="' + story.id + '"][data-step="' + at + '"]';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 function addStoryStep(storyId, viewId) {
@@ -268,7 +268,7 @@ function addStoryStep(storyId, viewId) {
   writableSteps(story).push({ view: viewId });
   pendingFocusSelector = '#story-add-view';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 /**
@@ -284,7 +284,7 @@ function setStepPlateau(storyId, index, key, value) {
   if (value === '') delete step[key]; else step[key] = value;
   markEntryChanged(story);
   pendingFocusSelector = '[data-story-step-plateau="' + key + '"][data-story="' + story.id + '"][data-step="' + index + '"]';
-  render();
+  requestRedraw();
   return true;
 }
 
@@ -295,7 +295,7 @@ function repairStoryStep(storyId, index, viewId) {
   if (!isPlainObject(step) || !findSavedView(viewId)) return;
   step.view = viewId;
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 /** A step that carries its own view becomes a named view (a file of its own, that other stories can use). */
@@ -306,7 +306,7 @@ function keepStepAsNamedView(storyId, index) {
   openTextDialog('Keep as a named view', 'It is kept in a file of its own; the step then points at it.', describeViewDefinition(step), 'Save view', (name) => {
     const target = findStory(storyId);
     const current = target && Array.isArray(target.steps) ? target.steps[index] : null;
-    if (!isPlainObject(current) || current.view) { render(); return; }
+    if (!isPlainObject(current) || current.view) { requestRedraw(); return; }
     const view = viewForDefinition(canonicalViewDefinition(current), name);
     const text = current.text;
     // the plateaus the step is told at and compared with are the step's, not the view's: they stay (wave 015, run 0101)
@@ -316,7 +316,7 @@ function keepStepAsNamedView(storyId, index) {
     if (text) kept.text = text;
     target.steps[index] = kept;
     markEntryChanged(target);
-    render();
+    requestRedraw();
   });
 }
 
@@ -329,7 +329,7 @@ function selectOnLibraryPage(selection) {
   libraryPickFor(selectedViewId).selection = selection;
   const canvas = document.getElementById('diagram-canvas');
   if (canvas && diagramScale === 'auto') takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
-  render();
+  requestRedraw();
   bringLibrarySelectionIntoSight();
 }
 
@@ -356,18 +356,18 @@ function bringLibrarySelectionIntoSight() {
 /** The selection of the page of a view is given up (the panel's cross, Escape): the panel keeps the view. */
 function closeLibrarySelection() {
   libraryPickFor(selectedViewId).selection = null;
-  render();
+  requestRedraw();
 }
 
 function openSavedView(viewId) {
   const view = findSavedView(viewId);
   if (!view) return;
   const problem = applySavedView(view);
-  if (problem) { storyNotice = problem; render(); return; }
+  if (problem) { storyNotice = problem; requestRedraw(); return; }
   activeStory = null;
   storyNotice = null;
   location.hash = currentRouteHash();
-  render();
+  requestRedraw();
 }
 
 function renameSavedView(viewId) {
@@ -376,7 +376,7 @@ function renameSavedView(viewId) {
   openTextDialog('Rename the view', 'Name of the view', viewLabel(view), 'Rename', (name) => {
     const target = findSavedView(viewId);
     if (target) { target.name = name; markEntryChanged(target); }
-    render();
+    requestRedraw();
   });
 }
 
@@ -386,7 +386,7 @@ function deleteSavedView(viewId) {
   const used = storiesUsingView(viewId);
   if (!confirm('Delete the view “' + viewLabel(view) + '”?' + (used ? '\n\n' + used + ' step' + (used === 1 ? '' : 's') + ' of stories show it; they will say the view is missing.' : ''))) return;
   removeEntry(view, 'views');
-  render();
+  requestRedraw();
 }
 
 /** The views and the stories that are still in .archicode.yaml (and not shadowed by a manifest): what "Move to manifests" takes out. */
@@ -416,6 +416,6 @@ function moveLegacyEntriesToManifests() {
   move('views', 'view', views);
   move('stories', 'story', stories);
   markWorkspaceYamlChanged();
-  render();
+  requestRedraw();
 }
 

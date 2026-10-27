@@ -182,7 +182,7 @@ function settleAfterLayerChange(draw = true) {
   diagramCache = null;
   if (draw) {
     try {
-      render();
+      requestRedraw();
     } finally {
       layerChangeIsAnEntry = false; // a render that showed no shell (or failed) did not write the address: the next one is not this change
     }

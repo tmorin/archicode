@@ -408,7 +408,7 @@ function commitPlateauDelete(id, options) {
   if (!result.pending && AppState.layers.current + '|' + layerCompareChoice() !== drawingBefore) {
     rememberLayerChoice();
     settleAfterLayerChange(false);
-    render();
+    requestRedraw();
   }
   return result;
 }

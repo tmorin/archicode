@@ -135,3 +135,4 @@ function render() {
   schedulePlateauCounts(); // what each plateau of the page Plateaus says is computed after the drawing, one plateau per turn
 }
 
+onRedraw(() => render()); // the parts below ask with requestRedraw(); the composition says what draws (late-bound: `render` is looked up at each request)

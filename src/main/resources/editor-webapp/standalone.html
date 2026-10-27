@@ -5025,6 +5025,22 @@ function modelsChanged() {
   modelVersion++;
 }
 
+/**
+ * Redraw is requested, never called (RFC-002 rule 2; wave 024, run 0187). A part below the composition asks for the page to be drawn again with
+ * `requestRedraw()`; the composition says what draws it with `onRedraw(handler)` once, when it loads. The request is carried out at once, in the
+ * caller's turn (what a direct call did), so the order of what is drawn and written does not move. `modelsChanged()` is not a request: it bumps the
+ * version the caches read and draws nothing.
+ */
+let redrawHandler = null;
+
+function onRedraw(handler) {
+  redrawHandler = handler;
+}
+
+function requestRedraw() {
+  if (redrawHandler) redrawHandler();
+}
+
 function createInitialAppState() {
   modelsChanged(); // a new state holds new models (a folder closed, another one opened)
   return {
@@ -6667,7 +6683,7 @@ function settleAfterLayerChange(draw = true) {
   diagramCache = null;
   if (draw) {
     try {
-      render();
+      requestRedraw();
     } finally {
       layerChangeIsAnEntry = false; // a render that showed no shell (or failed) did not write the address: the next one is not this change
     }
@@ -7280,7 +7296,7 @@ function confirmLayerWrite(dialog) {
   } catch (e) {
     saveStatus = { state: 'error', failedFile: dialog.plateau, message: e && e.message ? e.message : String(e) };
     keptElementForm = typedForm; // `render()` puts it back and drops it (no dialog is open): view state, no `modelsChanged()`
-    render();
+    requestRedraw();
   }
 }
 
@@ -8123,7 +8139,7 @@ function commitPlateauDelete(id, options) {
   if (!result.pending && AppState.layers.current + '|' + layerCompareChoice() !== drawingBefore) {
     rememberLayerChoice();
     settleAfterLayerChange(false);
-    render();
+    requestRedraw();
   }
   return result;
 }
@@ -8955,7 +8971,7 @@ async function loadWorkspace(dirHandle) {
     if (renamed) setFatalError(FORMER_WORKSPACE_FILE_SENTENCE, 'renamed');
     else setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)), 'unreadable');
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
   try {
@@ -8965,7 +8981,7 @@ async function loadWorkspace(dirHandle) {
   } catch (e) {
     setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -8974,7 +8990,7 @@ async function loadWorkspace(dirHandle) {
   if (readProblem) {
     setFatalError('Could not read/parse .archicode.yaml: ' + readProblem);
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -8985,7 +9001,7 @@ async function loadWorkspace(dirHandle) {
   if (pathProblems.length) {
     setFatalError('Could not read the plateaus of .archicode.yaml:\n' + pathProblems.join('\n'));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -8994,7 +9010,7 @@ async function loadWorkspace(dirHandle) {
   if (facetProblems.length) {
     setFatalError('Could not read the plateaus of .archicode.yaml:\n' + facetProblems.join('\n'));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
     return;
   }
   AppState.changesOnly = recalledFlag('changes-only'); // run 0040: how the comparison is read, as the last time in this folder
@@ -9036,7 +9052,7 @@ async function loadWorkspace(dirHandle) {
     if (sentence !== null) {
       setFatalError('Could not read the plateaus of .archicode.yaml:\n' + sentence);
       AppState.selection = { kind: 'none', key: null, mode: 'view' };
-      render();
+      requestRedraw();
       return;
     }
   }
@@ -9064,7 +9080,7 @@ async function loadWorkspace(dirHandle) {
   await openLayers(settings, plateauTree);
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   const playing = storyPlayerAddress(); // read before render(), which writes the address back without `play=`
-  render();
+  requestRedraw();
   if (playing) openStoryPlayer(playing.story, playing.step, { address: 'replace' }); // a link to a story opens the player once the folder is open (wave 021, run 0153)
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
 }
@@ -9234,13 +9250,13 @@ async function openServedFolder() {
     landingBusy = openingMessage(info.folder);
     AppState.folder = { handle, name: info.folder };
     AppState.permissionState = 'granted';
-    render();
+    requestRedraw();
     await loadWorkspace(handle);
   } catch (e) {
     landingBusy = null;
     console.error('ArchiCode: opening the served folder failed', e);
     setFatalError('The editor server could not be reached: ' + (e && e.message ? e.message : String(e)) + '. Reload the page, or restart `archicode editor serve`.');
-    render();
+    requestRedraw();
   }
 }
 
@@ -9268,14 +9284,14 @@ async function openFolder() {
     landingBusy = openingMessage(handle.name, entry ? entry.name : '');
     AppState.folder = { handle, name: handle.name, id: entry ? entry.id : null };
     AppState.permissionState = 'granted';
-    render();
+    requestRedraw();
     await loadWorkspace(handle);
   } catch (e) {
     landingBusy = null;
-    if (e && e.name === 'AbortError') { render(); return; } // user dismissed the picker
+    if (e && e.name === 'AbortError') { requestRedraw(); return; } // user dismissed the picker
     console.error('ArchiCode: openFolder failed', e);
     setFatalError('Failed to open folder: ' + (e && e.message ? e.message : String(e)));
-    render();
+    requestRedraw();
   }
 }
 
@@ -9317,7 +9333,7 @@ async function openRememberedFolder(entry) {
     }
     if (!rememberedFolders.includes(entry)) rememberedFolders = sortRememberedFolders(rememberedFolders.concat([entry]));
     landingFocusSelector = folderOpenSelector(entry);
-    render();
+    requestRedraw();
     return;
   }
   entry.problem = null;
@@ -9329,7 +9345,7 @@ async function openRememberedFolder(entry) {
   AppState.folder = { handle: entry.handle, name: entry.handle.name, id: entry.id || null };
   AppState.permissionState = 'granted';
   landingBusy = openingMessage(entry.handle.name, entry.name);
-  render();
+  requestRedraw();
   try {
     const kept = await rememberFolder(entry.handle, entry);
     if (kept) AppState.folder.id = kept.id;
@@ -9388,7 +9404,7 @@ async function checkFolderPermissions() {
   const landing = landingScreenConfig();
   if (!landing || !landing.folders || !pending.some((f) => rememberedFolders.includes(f))) return; // the list is gone
   if (landingFocusSelector === null) landingFocusSelector = landingControlSelector(document.activeElement) || '';
-  render();
+  requestRedraw();
 }
 
 /** "Remembered folders" on the error card: leaves the folder that did not open (storage untouched) for the list. */
@@ -9398,9 +9414,9 @@ async function showRememberedFolders() {
   AppState = createInitialAppState();
   resetUiState();
   landingNotice = null;
-  render();
+  requestRedraw();
   await refreshRememberedFolders();
-  render();
+  requestRedraw();
   await checkFolderPermissions();
 }
 
@@ -9416,7 +9432,7 @@ async function forgetFolder(entry) {
     console.error('ArchiCode: a remembered folder could not be removed from the list', e);
     landingNotice = '“' + title + '” could not be removed from the list: ' + (e && e.message ? e.message : String(e));
     landingFocusSelector = '[data-action="forget-folder"][data-folder-id="' + (entry.id || '') + '"]';
-    render();
+    requestRedraw();
     return;
   }
   const at = rememberedFolders.indexOf(entry);
@@ -9429,7 +9445,7 @@ async function forgetFolder(entry) {
   landingNotice = '“' + title + '” is no longer in the list. Nothing was deleted on disk.';
   const next = rememberedFolders[at] || rememberedFolders[at - 1];
   landingFocusSelector = next ? folderOpenSelector(next) : null;
-  render();
+  requestRedraw();
 }
 
 /**
@@ -9493,7 +9509,7 @@ async function retryFolder() {
   if (!AppState.folder || !AppState.folder.handle) return;
   const entry = rememberedFolderById(AppState.folder.id);
   landingBusy = openingMessage(AppState.folder.name, entry && AppState.folder.id ? entry.name : '');
-  render();
+  requestRedraw();
   await loadWorkspace(AppState.folder.handle);
 }
 
@@ -9523,9 +9539,9 @@ async function closeFolder() {
   AppState = createInitialAppState();
   resetUiState();
   landingNotice = null;
-  render();
+  requestRedraw();
   await refreshRememberedFolders();
-  render();
+  requestRedraw();
   await checkFolderPermissions();
 }
 
@@ -9543,7 +9559,7 @@ async function tryAutoReopen() {
   if (!last) {
     landingBusy = null;
     AppState.permissionState = 'none';
-    render();
+    requestRedraw();
     await checkFolderPermissions(); // after the card is drawn: the list says what each folder will need
     return;
   }
@@ -9555,12 +9571,12 @@ async function tryAutoReopen() {
   if (last.permission === 'granted') {
     AppState.permissionState = 'granted';
     landingBusy = openingMessage(handle.name, last.name);
-    render();
+    requestRedraw();
     await loadWorkspace(handle);
   } else {
     landingBusy = null;
     AppState.permissionState = 'needs-click';
-    render();
+    requestRedraw();
     await checkFolderPermissions();
   }
 }
@@ -10348,7 +10364,7 @@ function rebuildIndexAndRender() {
   AppState.relationshipStats = resolveRelationships(index);
   modelsChanged(); // every edit of the plateau drawn ends here (see `modelVersion`)
   syncLayers(); // wave 014 (run 0080): the plateau on the band is resolved again from the manifests as they are now (nothing for a workspace with no layers)
-  render();
+  requestRedraw();
 }
 
 /**
@@ -10545,7 +10561,7 @@ function commitCreateChildElement({ parentReference, layer, kind, id, name, desc
     return { ok: false, field: 'id', error: 'Another element already uses reference "' + createdReference + '".' };
   }
   const plateau = writingPlateau();
-  const afterConfirm = () => { AppState.selection = { kind: 'element', key: createdReference, layer: category, mode: 'edit' }; render(); }; // after the author said yes, as after the click
+  const afterConfirm = () => { AppState.selection = { kind: 'element', key: createdReference, layer: category, mode: 'edit' }; requestRedraw(); }; // after the author said yes, as after the click
   // wave 014 (run 0082): a child of an element another plateau declares is a manifest of the plateau drawn, with `header.parent`; it cannot be written in the file of its parent
   const inheritedParent = plateau !== null && plateau !== BASELINE_PLATEAU && parentRecord.declaredIn !== plateau;
   try {
@@ -11087,7 +11103,7 @@ function clearDirtyReferencesForFile(relPath) {
 async function saveAllChanges() {
   if (saveInFlight) return; // a second click (or key) while a save is running: the first one finishes alone
   saveInFlight = true;
-  render(); // the Save button is disabled while saving (still inside the user gesture: ensureWritePermission needs it)
+  requestRedraw(); // the Save button is disabled while saving (still inside the user gesture: ensureWritePermission needs it)
   try {
     await performSave();
   } catch (e) {
@@ -11095,7 +11111,7 @@ async function saveAllChanges() {
     saveStatus = { state: 'error', failedFile: 'the folder', message: e && e.message ? e.message : String(e) };
   } finally {
     saveInFlight = false;
-    render();
+    requestRedraw();
   }
 }
 
@@ -11105,7 +11121,7 @@ let saveInFlight = false;
 async function performSave() {
   if (!(await ensureWritePermission())) {
     saveStatus = { state: 'denied', message: 'Write permission was not granted; nothing was saved.' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -11115,7 +11131,7 @@ async function performSave() {
   const settingsDirty = workspace.settingsDirty;
   if (dirtyFiles.length === 0 && removals.length === 0 && !settingsDirty) {
     saveStatus = { state: 'success', message: 'Nothing to save.' };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -11149,7 +11165,7 @@ async function performSave() {
     }
   } catch (e) {
     saveStatus = { state: 'error', failedFile: checking, message: 'could not check it on disk before saving (' + (e && e.message ? e.message : String(e)) + '). Nothing was saved.' };
-    render();
+    requestRedraw();
     return;
   }
   if (unknownOnDisk.length > 0) {
@@ -11158,12 +11174,12 @@ async function performSave() {
       message: 'a file already exists at ' + (unknownOnDisk.length === 1 ? 'this path' : 'these paths') + ' on disk, but this editor did not know it (it was added since the folder was opened). ' +
         'Saving would overwrite it, so nothing was saved. Reopen the folder to load it, then create the element again.'
     };
-    render();
+    requestRedraw();
     return;
   }
   if (conflicts.length > 0) {
     saveStatus = { state: 'conflict', conflicts };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -11190,7 +11206,7 @@ async function performSave() {
       }
     } catch (e) {
       saveStatus = { state: 'error', failedFile: f.relPath, message: e && e.message ? e.message : String(e) };
-      render();
+      requestRedraw();
       return;
     }
   }
@@ -11202,7 +11218,7 @@ async function performSave() {
       AppState.removedFileBaselines.delete(relPath);
     } catch (e) {
       saveStatus = { state: 'error', failedFile: relPath, message: e && e.message ? e.message : String(e) };
-      render();
+      requestRedraw();
       return;
     }
   }
@@ -11215,13 +11231,13 @@ async function performSave() {
       workspace.settingsLastKnownDiskModified = await statWorkspaceYaml(); // FR-19
     } catch (e) {
       saveStatus = { state: 'error', failedFile: '.archicode.yaml', message: e && e.message ? e.message : String(e) };
-      render();
+      requestRedraw();
       return;
     }
   }
 
   saveStatus = { state: 'success', message: hasUnsavedChanges() ? 'Saved. Changes made while saving are not saved yet.' : 'Saved.' };
-  render();
+  requestRedraw();
 }
 
 /**
@@ -11275,7 +11291,7 @@ async function reloadManifestFile(relPath) {
     ({ text: rawText, bom } = await readTextAndMark(file));
   } catch (e) {
     saveStatus = { state: 'reload-error', failedFile: relPath, message: e && e.message ? e.message : String(e) };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -11295,7 +11311,7 @@ async function reloadManifestFile(relPath) {
   const sel = AppState.selection;
   if (sel.kind === 'element' && !findElementRecord(sel.key)) {
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
+    requestRedraw();
   }
 }
 
@@ -11334,7 +11350,7 @@ function commitFileEdit(relPath, newText) {
   // at all; record the draft (with its error) and re-render.
   if (error) {
     rawYamlEditDraft = { relPath, text: newText, error };
-    render();
+    requestRedraw();
     return;
   }
 
@@ -11831,13 +11847,13 @@ function commitMoveElement(reference, layer, newParentReference, options) {
     const moved = commitElementEdit(reference, (node, parentArray, indexInParent) => {
       applyMovePlan(plan, node, parentArray, indexInParent);
       return { renamedTo: { from: reference, to: plan.newReference } };
-    }, plan.layer, { live: true, confirmed: !!(options && options.confirmed), afterConfirm: () => { expandAncestorsOf(plan.newReference, plan.layer); render(); } });
+    }, plan.layer, { live: true, confirmed: !!(options && options.confirmed), afterConfirm: () => { expandAncestorsOf(plan.newReference, plan.layer); requestRedraw(); } });
     if (moved && moved.pending) return { ok: true, pending: true, reference };
   } catch (e) {
     return { ok: false, message: e && e.message ? e.message : String(e) };
   }
   expandAncestorsOf(plan.newReference, plan.layer);
-  render();
+  requestRedraw();
   return { ok: true, reference: plan.newReference };
 }
 
@@ -11930,7 +11946,7 @@ function openMoveDialog() {
   const record = AppState.index[layer].get(sel.key);
   if (writing !== null && writing !== BASELINE_PLATEAU && record && record.declaredIn !== writing) { // wave 014 (run 0082): said at once, not after a parent was chosen
     saveStatus = { state: 'denied', message: '“' + sel.key + '” is declared in the plateau `' + record.declaredIn + '`, and a patch never changes a parent: it is moved where it is declared. Draw `' + record.declaredIn + '` to move it.' };
-    render();
+    requestRedraw();
     return;
   }
   openAppDialog({ kind: 'move', reference: sel.key, layer });
@@ -11947,7 +11963,7 @@ function submitMoveDialog(values) {
   const fail = (message) => {
     dialog.error = message;
     dialog.chosen = chosen || null;
-    render();
+    requestRedraw();
     return null;
   };
   if (!chosen) return fail('Choose the new parent.');
@@ -11957,7 +11973,7 @@ function submitMoveDialog(values) {
     const result = commitMoveElement(dialog.reference, dialog.layer, chosen);
     if (!result.ok) {
       saveStatus = { state: 'error', failedFile: dialog.reference, message: result.message };
-      render();
+      requestRedraw();
     }
     return result;
   };
@@ -13219,7 +13235,7 @@ function chooseCurrentPlateau(select) {
     if (draft) commitSettingsEdit(draft.apply); // what was typed in the form is kept: the redraw gives the form afresh from the model
     saveStatus = { state: 'error', failedFile: '.archicode.yaml', message: e && e.message ? e.message : String(e) };
     restore();
-    render();
+    requestRedraw();
   }
 }
 
@@ -13819,7 +13835,7 @@ function handleAppInput(e) {
     pushDiagramHistory();
     diagramFacet = e.target.value || null;
     mapSelectionCheck = true;
-    render();
+    requestRedraw();
     return;
   }
   if (e.target.matches && e.target.matches('.auto-grow-textarea')) {
@@ -13967,7 +13983,7 @@ function writeElementDraft(reference, layer, draft, structuralFn) {
   } catch (e) {
     saveStatus = { state: 'error', failedFile: reference, message: e && e.message ? e.message : String(e) };
     keptElementForm = typedForm; // `render()` puts it back and drops it (no dialog is open): view state, no `modelsChanged()`
-    render();
+    requestRedraw();
     return false;
   }
   return true;
@@ -14802,7 +14818,7 @@ function goToChange(row, focus) {
   }
   changesWalk = { key: changeRowKey(row), selection: changesSelectionStamp() };
   scrollChangesToSelection = true;
-  render();
+  requestRedraw();
 }
 
 /** Next change / Previous change: the walk stops at the ends of the list (the button there is disabled), it does not wrap. Returns whether the reader moved. */
@@ -14876,7 +14892,7 @@ function setChangesFilter(kind, value) {
   if (near) goToChange(near, focus);
   else {
     pendingFocusSelector = focus;
-    render();
+    requestRedraw();
   }
   return true;
 }
@@ -14889,7 +14905,7 @@ function clearChangesFilter() {
   filter.state = 'all';
   filter.layer = 'all';
   pendingFocusSelector = '[data-changes-filter="state"]';
-  render();
+  requestRedraw();
 }
 
 /**
@@ -15148,7 +15164,7 @@ function renderStateWordHintsHtml(layer, reference) {
  * `rebuildIndexAndRender`, which tells the cache of the comparison that the model changed. Returns `{ ok: true }` or `{ ok: false, message }`.
  */
 function acceptCandidate(candidate) {
-  const refuse = (message) => { candidateMessage = message; render(); return { ok: false, message }; };
+  const refuse = (message) => { candidateMessage = message; requestRedraw(); return { ok: false, message }; };
   const state = comparisonState();
   if (!state || !state.records) return refuse('Nothing is compared: choose a plateau in Compare with, on the band, first.');
   return acceptLayeredCandidate(candidate, state, refuse);
@@ -15189,7 +15205,7 @@ function acceptLayeredCandidate(candidate, state, refuse) {
     commitElementEdit(candidate.to, (node) => { node.replaces = replacesWith(node.replaces, candidate.from); }, layer, { record, allowReadOnly: true });
   } catch (e) {
     candidateMessage = e && e.message ? e.message : String(e);
-    render();
+    requestRedraw();
     return { ok: false, message: candidateMessage };
   }
   return { ok: true };
@@ -15276,7 +15292,7 @@ function dismissCandidate(candidate) {
   if (!state || !state.records) return;
   candidateMessage = null;
   dismissedCandidates.add(candidateKey(state, candidate));
-  render();
+  requestRedraw();
 }
 
 /** "Show again": the pairs set aside for the plateaus compared come back. */
@@ -15285,7 +15301,7 @@ function restoreCandidates() {
   if (!state || !state.records) return;
   candidateMessage = null;
   for (const candidate of state.candidates || []) dismissedCandidates.delete(candidateKey(state, candidate));
-  render();
+  requestRedraw();
 }
 
 /** The Changes tab while the comparison is still being read (the kernel loads with the first drawing): the panel is there, the list follows. */
@@ -15340,12 +15356,12 @@ function setRightTab(tab) {
   if (currentPerspective === 'library') { // the page Stories has its own pair of tabs: View | Changes
     libraryRightTab = tab === 'changes' ? 'changes' : 'view';
     scrollChangesToSelection = tab === 'changes';
-    render();
+    requestRedraw();
     return;
   }
   changesTabPick = tab === 'changes' ? { stamp: rightPanelStamp() } : null;
   scrollChangesToSelection = tab === 'changes';
-  render();
+  requestRedraw();
 }
 
 /** The Changes tab was just opened: the row of the selection is brought into view in the list (a long list opens at its top otherwise). */
@@ -15373,7 +15389,7 @@ function selectChange(row, options) {
     changesTabPick = keepList ? { stamp: rightPanelStamp() } : null; // the new selection is what the panel shows; the Changes tab is one click away
     if (currentPerspective === 'library') libraryRightTab = keepList ? 'changes' : 'view';
     scrollChangesToSelection = keepList;
-    render();
+    requestRedraw();
     changesWalk.selection = changesSelectionStamp();
   };
   if (currentPerspective === 'library' && changeSelectionIsShown()) { // the page of a view: the thing is selected on the page, its address and the Map's selection stay
@@ -15679,7 +15695,7 @@ function settlePlateausPanel() {
   loadViewpointKernel().then(() => {
     if (currentPerspective !== page) return;
     if (page === 'plateaus') refreshRightPanel();
-    else render(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
+    else requestRedraw(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
   }).catch((e) => console.error('ArchiCode: the viewpoint kernel could not be loaded, the changes are not listed', e));
 }
 
@@ -16539,7 +16555,7 @@ function focusControl(control) {
 
 function toggleDiagramMaximized() {
   diagramMaximized = !diagramMaximized;
-  render();
+  requestRedraw();
   const canvas = document.getElementById('diagram-canvas');
   if (canvas) canvas.focus({ preventScroll: true }); // so that Esc (or M) keeps working
 }
@@ -18290,7 +18306,7 @@ function handleDiagramKeydown(e) {
   else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); resetDiagramView(); }
   else if ((e.key === 'm' || e.key === 'M') && !diagramMaximized && (anyDiagramShown() || libraryDiagramShown())) { e.preventDefault(); toggleDiagramMaximized(); }
   else if (e.key === 'Escape' && diagramMaximized && (anyDiagramShown() || libraryDiagramShown())) { e.preventDefault(); toggleDiagramMaximized(); } // the maximized state is that of the diagram on screen (it is parked with the host)
-  else if (e.key === 'Escape' && AppState.selection.kind === 'link' && anyDiagramShown()) { e.preventDefault(); dropLinkSelection(); render(); }
+  else if (e.key === 'Escape' && AppState.selection.kind === 'link' && anyDiagramShown()) { e.preventDefault(); dropLinkSelection(); requestRedraw(); }
   else if (e.key === 'Escape' && libraryDiagramShown() && libraryPickFor(selectedViewId).selection) { e.preventDefault(); closeLibrarySelection(); }
 }
 
@@ -19071,7 +19087,7 @@ function handleNavKeydown(e) {
   const index = rows.indexOf(row);
   const foldable = row.hasAttribute('aria-expanded');
   const expanded = row.getAttribute('aria-expanded') === 'true';
-  const toggle = () => { navActiveKey = row.getAttribute('data-node'); toggleExpandedKey(row.getAttribute('data-node')); render(); };
+  const toggle = () => { navActiveKey = row.getAttribute('data-node'); toggleExpandedKey(row.getAttribute('data-node')); requestRedraw(); };
   switch (e.key) {
     case 'ArrowDown': focusNavRow(rows[index + 1]); break;
     case 'ArrowUp': focusNavRow(rows[index - 1]); break;
@@ -19680,9 +19696,9 @@ function editSavedView(change, later) {
   if (!changed && !viewEditNotice) return false;
   if (later) { // see handleViewFieldChange: the button that is being pressed is still there, and "Save all changes" is already lit
     if (changed) syncSaveAllButtonsInPlace();
-    setTimeout(() => { if (libraryPageView() === view) render(); }, 250);
+    setTimeout(() => { if (libraryPageView() === view) requestRedraw(); }, 250);
   } else {
-    render();
+    requestRedraw();
   }
   return changed;
 }
@@ -19960,7 +19976,7 @@ function openAppDialog(dialog) {
     delete dialog.typedForm;
   }
   appDialog = Object.assign({ returnFocus: actionSelectorOf(typeof document !== 'undefined' ? document.activeElement : null) }, dialog);
-  render();
+  requestRedraw();
 }
 
 /** The fields of the form of the element on screen, in the order the page draws them. */
@@ -20018,12 +20034,12 @@ function closeAppDialog() {
     keptElementForm = null; // the form behind was applied before the Move dialog opened
     appDialog = back;
     pendingFocusSelector = null;
-    render();
+    requestRedraw();
     return;
   }
   pendingFocusSelector = appDialog ? appDialog.returnFocus : null;
   appDialog = null;
-  render();
+  requestRedraw();
 }
 
 function openTextDialog(title, label, value, confirmLabel, onSubmit) {
@@ -20143,7 +20159,7 @@ function submitAppDialog(values) {
     if (result && result.pending) return; // the dialog of the plateaus it changes has taken this one's place
     appDialog = null;
     pendingFocusSelector = dialog.returnFocus;
-    render();
+    requestRedraw();
     return;
   }
   if (dialog.kind === 'plateau-form') {
@@ -20159,7 +20175,7 @@ function submitAppDialog(values) {
     if (result && result.pending) return; // the dialog of the plateaus it changes has taken this one's place
     appDialog = null;
     pendingFocusSelector = dialog.returnFocus;
-    if (dialog.mode === 'create') drawPlateau(String(spec.id).trim()); else render();
+    if (dialog.mode === 'create') drawPlateau(String(spec.id).trim()); else requestRedraw();
     return;
   }
   if (dialog.kind === 'story-picker') {
@@ -20228,7 +20244,7 @@ function nameCurrentView() {
   openTextDialog('Name this view', 'It is kept in a file of its own, to be put in stories.', describeViewDefinition(definition), 'Save view', (name) => {
     const current = currentViewDefinition();
     if (current) viewForDefinition(current, name);
-    render();
+    requestRedraw();
   });
 }
 
@@ -20294,7 +20310,7 @@ function addCurrentViewToStoryChoice(choice) {
     const wanted = choice.newName.trim().toLowerCase();
     story = storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) || createStory(choice.newName.trim());
   }
-  if (!definition || !story) { render(); return; }
+  if (!definition || !story) { requestRedraw(); return; }
   // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
   const named = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
   const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
@@ -20313,7 +20329,7 @@ function addCurrentViewToStoryChoice(choice) {
   storyBarNotice = 'Added as step ' + (at + 1) + ' of “' + storyLabel(story) + '”' + (keeps ? ', told at ' + plateaus.at + (plateaus.against !== null ? ', compared with ' + plateaus.against : '') : '') + '.';
   pendingFocusSelector = '.story-bar-text';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 /**
@@ -20387,13 +20403,13 @@ function goToStoryStep(storyId, index) {
   storyBarNotice = null;
   storyNotice = null;
   location.hash = currentRouteHash();
-  render();
+  requestRedraw();
 }
 
 function selectStory(id) {
   selectedStoryId = id;
   storyNotice = null;
-  render();
+  requestRedraw();
 }
 
 function newStory() {
@@ -20401,7 +20417,7 @@ function newStory() {
     const wanted = name.trim().toLowerCase();
     const story = storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) || createStory(name);
     if (story) { selectedStoryId = story.id; storyNotice = null; }
-    render();
+    requestRedraw();
   });
 }
 
@@ -20412,7 +20428,7 @@ function deleteStory(id) {
   if (selectedStoryId === id) selectedStoryId = null;
   if (activeStory && activeStory.id === id) activeStory = null;
   removedStep = null;
-  render();
+  requestRedraw();
 }
 
 function moveStoryStep(storyId, index, delta) {
@@ -20430,7 +20446,7 @@ function moveStoryStep(storyId, index, delta) {
   const atEnd = delta > 0 ? to === steps.length - 1 : to === 0;
   pendingFocusSelector = '[data-action="' + (atEnd ? other : action) + '"][data-story="' + story.id + '"][data-step="' + to + '"]';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 function removeStoryStep(storyId, index) {
@@ -20446,7 +20462,7 @@ function removeStoryStep(storyId, index) {
   const next = Math.min(index, story.steps.length - 1);
   pendingFocusSelector = story.steps.length ? '[data-action="story-step-remove"][data-story="' + story.id + '"][data-step="' + next + '"]' : '[data-action="story-undo"]';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 /** Puts back the step that was just removed, where it was. */
@@ -20454,14 +20470,14 @@ function undoRemoveStoryStep() {
   const removed = removedStep;
   const story = removed ? findStory(removed.storyId) : null;
   removedStep = null;
-  if (!story) { render(); return; }
+  if (!story) { requestRedraw(); return; }
   const steps = writableSteps(story);
   const at = Math.min(removed.index, steps.length);
   steps.splice(at, 0, removed.step);
   if (activeStory && activeStory.id === story.id && activeStory.step >= at) activeStory.step++;
   pendingFocusSelector = '[data-action="story-step-remove"][data-story="' + story.id + '"][data-step="' + at + '"]';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 function addStoryStep(storyId, viewId) {
@@ -20470,7 +20486,7 @@ function addStoryStep(storyId, viewId) {
   writableSteps(story).push({ view: viewId });
   pendingFocusSelector = '#story-add-view';
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 /**
@@ -20486,7 +20502,7 @@ function setStepPlateau(storyId, index, key, value) {
   if (value === '') delete step[key]; else step[key] = value;
   markEntryChanged(story);
   pendingFocusSelector = '[data-story-step-plateau="' + key + '"][data-story="' + story.id + '"][data-step="' + index + '"]';
-  render();
+  requestRedraw();
   return true;
 }
 
@@ -20497,7 +20513,7 @@ function repairStoryStep(storyId, index, viewId) {
   if (!isPlainObject(step) || !findSavedView(viewId)) return;
   step.view = viewId;
   markEntryChanged(story);
-  render();
+  requestRedraw();
 }
 
 /** A step that carries its own view becomes a named view (a file of its own, that other stories can use). */
@@ -20508,7 +20524,7 @@ function keepStepAsNamedView(storyId, index) {
   openTextDialog('Keep as a named view', 'It is kept in a file of its own; the step then points at it.', describeViewDefinition(step), 'Save view', (name) => {
     const target = findStory(storyId);
     const current = target && Array.isArray(target.steps) ? target.steps[index] : null;
-    if (!isPlainObject(current) || current.view) { render(); return; }
+    if (!isPlainObject(current) || current.view) { requestRedraw(); return; }
     const view = viewForDefinition(canonicalViewDefinition(current), name);
     const text = current.text;
     // the plateaus the step is told at and compared with are the step's, not the view's: they stay (wave 015, run 0101)
@@ -20518,7 +20534,7 @@ function keepStepAsNamedView(storyId, index) {
     if (text) kept.text = text;
     target.steps[index] = kept;
     markEntryChanged(target);
-    render();
+    requestRedraw();
   });
 }
 
@@ -20531,7 +20547,7 @@ function selectOnLibraryPage(selection) {
   libraryPickFor(selectedViewId).selection = selection;
   const canvas = document.getElementById('diagram-canvas');
   if (canvas && diagramScale === 'auto') takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
-  render();
+  requestRedraw();
   bringLibrarySelectionIntoSight();
 }
 
@@ -20558,18 +20574,18 @@ function bringLibrarySelectionIntoSight() {
 /** The selection of the page of a view is given up (the panel's cross, Escape): the panel keeps the view. */
 function closeLibrarySelection() {
   libraryPickFor(selectedViewId).selection = null;
-  render();
+  requestRedraw();
 }
 
 function openSavedView(viewId) {
   const view = findSavedView(viewId);
   if (!view) return;
   const problem = applySavedView(view);
-  if (problem) { storyNotice = problem; render(); return; }
+  if (problem) { storyNotice = problem; requestRedraw(); return; }
   activeStory = null;
   storyNotice = null;
   location.hash = currentRouteHash();
-  render();
+  requestRedraw();
 }
 
 function renameSavedView(viewId) {
@@ -20578,7 +20594,7 @@ function renameSavedView(viewId) {
   openTextDialog('Rename the view', 'Name of the view', viewLabel(view), 'Rename', (name) => {
     const target = findSavedView(viewId);
     if (target) { target.name = name; markEntryChanged(target); }
-    render();
+    requestRedraw();
   });
 }
 
@@ -20588,7 +20604,7 @@ function deleteSavedView(viewId) {
   const used = storiesUsingView(viewId);
   if (!confirm('Delete the view “' + viewLabel(view) + '”?' + (used ? '\n\n' + used + ' step' + (used === 1 ? '' : 's') + ' of stories show it; they will say the view is missing.' : ''))) return;
   removeEntry(view, 'views');
-  render();
+  requestRedraw();
 }
 
 /** The views and the stories that are still in .archicode.yaml (and not shadowed by a manifest): what "Move to manifests" takes out. */
@@ -20618,7 +20634,7 @@ function moveLegacyEntriesToManifests() {
   move('views', 'view', views);
   move('stories', 'story', stories);
   markWorkspaceYamlChanged();
-  render();
+  requestRedraw();
 }
 
 // ---- What is drawn ----
@@ -20857,7 +20873,7 @@ function handleHashChange() {
   if (storyPlayer && (!wanted || wanted.story !== storyPlayer.story)) closeStoryPlayer({ address: false });
   if (hashWithoutPlayer(location.hash) !== hashWithoutPlayer('#' + currentRouteHash())) {
     syncPerspectiveFromHash();
-    render();
+    requestRedraw();
   }
   if (wanted) {
     if (!storyPlayer) openStoryPlayer(wanted.story, wanted.step, { address: 'none' });
@@ -23138,6 +23154,7 @@ function render() {
   schedulePlateauCounts(); // what each plateau of the page Plateaus says is computed after the drawing, one plateau per turn
 }
 
+onRedraw(() => render()); // the parts below ask with requestRedraw(); the composition says what draws (late-bound: `render` is looked up at each request)
 // =====================================================================
 // Bootstrap
 // =====================================================================

@@ -59,7 +59,7 @@ async function retryFolder() {
   if (!AppState.folder || !AppState.folder.handle) return;
   const entry = rememberedFolderById(AppState.folder.id);
   landingBusy = openingMessage(AppState.folder.name, entry && AppState.folder.id ? entry.name : '');
-  render();
+  requestRedraw();
   await loadWorkspace(AppState.folder.handle);
 }
 
@@ -89,9 +89,9 @@ async function closeFolder() {
   AppState = createInitialAppState();
   resetUiState();
   landingNotice = null;
-  render();
+  requestRedraw();
   await refreshRememberedFolders();
-  render();
+  requestRedraw();
   await checkFolderPermissions();
 }
 
@@ -109,7 +109,7 @@ async function tryAutoReopen() {
   if (!last) {
     landingBusy = null;
     AppState.permissionState = 'none';
-    render();
+    requestRedraw();
     await checkFolderPermissions(); // after the card is drawn: the list says what each folder will need
     return;
   }
@@ -121,12 +121,12 @@ async function tryAutoReopen() {
   if (last.permission === 'granted') {
     AppState.permissionState = 'granted';
     landingBusy = openingMessage(handle.name, last.name);
-    render();
+    requestRedraw();
     await loadWorkspace(handle);
   } else {
     landingBusy = null;
     AppState.permissionState = 'needs-click';
-    render();
+    requestRedraw();
     await checkFolderPermissions();
   }
 }

@@ -22,7 +22,7 @@ function openAppDialog(dialog) {
     delete dialog.typedForm;
   }
   appDialog = Object.assign({ returnFocus: actionSelectorOf(typeof document !== 'undefined' ? document.activeElement : null) }, dialog);
-  render();
+  requestRedraw();
 }
 
 /** The fields of the form of the element on screen, in the order the page draws them. */
@@ -80,12 +80,12 @@ function closeAppDialog() {
     keptElementForm = null; // the form behind was applied before the Move dialog opened
     appDialog = back;
     pendingFocusSelector = null;
-    render();
+    requestRedraw();
     return;
   }
   pendingFocusSelector = appDialog ? appDialog.returnFocus : null;
   appDialog = null;
-  render();
+  requestRedraw();
 }
 
 function openTextDialog(title, label, value, confirmLabel, onSubmit) {
@@ -205,7 +205,7 @@ function submitAppDialog(values) {
     if (result && result.pending) return; // the dialog of the plateaus it changes has taken this one's place
     appDialog = null;
     pendingFocusSelector = dialog.returnFocus;
-    render();
+    requestRedraw();
     return;
   }
   if (dialog.kind === 'plateau-form') {
@@ -221,7 +221,7 @@ function submitAppDialog(values) {
     if (result && result.pending) return; // the dialog of the plateaus it changes has taken this one's place
     appDialog = null;
     pendingFocusSelector = dialog.returnFocus;
-    if (dialog.mode === 'create') drawPlateau(String(spec.id).trim()); else render();
+    if (dialog.mode === 'create') drawPlateau(String(spec.id).trim()); else requestRedraw();
     return;
   }
   if (dialog.kind === 'story-picker') {

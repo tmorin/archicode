@@ -319,13 +319,13 @@ function commitMoveElement(reference, layer, newParentReference, options) {
     const moved = commitElementEdit(reference, (node, parentArray, indexInParent) => {
       applyMovePlan(plan, node, parentArray, indexInParent);
       return { renamedTo: { from: reference, to: plan.newReference } };
-    }, plan.layer, { live: true, confirmed: !!(options && options.confirmed), afterConfirm: () => { expandAncestorsOf(plan.newReference, plan.layer); render(); } });
+    }, plan.layer, { live: true, confirmed: !!(options && options.confirmed), afterConfirm: () => { expandAncestorsOf(plan.newReference, plan.layer); requestRedraw(); } });
     if (moved && moved.pending) return { ok: true, pending: true, reference };
   } catch (e) {
     return { ok: false, message: e && e.message ? e.message : String(e) };
   }
   expandAncestorsOf(plan.newReference, plan.layer);
-  render();
+  requestRedraw();
   return { ok: true, reference: plan.newReference };
 }
 
@@ -418,7 +418,7 @@ function openMoveDialog() {
   const record = AppState.index[layer].get(sel.key);
   if (writing !== null && writing !== BASELINE_PLATEAU && record && record.declaredIn !== writing) { // wave 014 (run 0082): said at once, not after a parent was chosen
     saveStatus = { state: 'denied', message: '“' + sel.key + '” is declared in the plateau `' + record.declaredIn + '`, and a patch never changes a parent: it is moved where it is declared. Draw `' + record.declaredIn + '` to move it.' };
-    render();
+    requestRedraw();
     return;
   }
   openAppDialog({ kind: 'move', reference: sel.key, layer });
@@ -435,7 +435,7 @@ function submitMoveDialog(values) {
   const fail = (message) => {
     dialog.error = message;
     dialog.chosen = chosen || null;
-    render();
+    requestRedraw();
     return null;
   };
   if (!chosen) return fail('Choose the new parent.');
@@ -445,7 +445,7 @@ function submitMoveDialog(values) {
     const result = commitMoveElement(dialog.reference, dialog.layer, chosen);
     if (!result.ok) {
       saveStatus = { state: 'error', failedFile: dialog.reference, message: result.message };
-      render();
+      requestRedraw();
     }
     return result;
   };

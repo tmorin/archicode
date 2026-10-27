@@ -711,6 +711,7 @@
     "noteWorkspaceName",
     "nothingDrawnScene",
     "ofSplitOf",
+    "onRedraw",
     "oneLetterApart",
     "oneLine",
     "openAppDialog",
@@ -855,6 +856,7 @@
     "reconcileLinkSelection",
     "recordIn",
     "recordKey",
+    "redrawHandler",
     "refFromHash",
     "referenceIsInBothLayers",
     "referencesWithChildren",
@@ -1031,6 +1033,7 @@
     "replacesSectionShown",
     "replacesWith",
     "replacingElementHtml",
+    "requestRedraw",
     "requireWritablePlateau",
     "reserializeManifestFile",
     "resetDiagramView",
@@ -1332,5 +1335,5 @@
     "yamlWordIsToken",
     "yamlWordsOf"
   ],
-  "unnamed": 18
+  "unnamed": 19
 }
