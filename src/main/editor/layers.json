@@ -149,8 +149,8 @@
       "layer": "model"
     },
     {
-      "file": "unsorted/from-55.js",
-      "layer": "unsorted"
+      "file": "application/view-recipe.js",
+      "layer": "application"
     },
     {
       "file": "application/story-entries.js",
