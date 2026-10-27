@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 025
-status: proposed
+status: planned
 date: 2026-10-27
 related:
   - docs/wav/wav-025-hosted-editor/wbc-025-hosted-editor.md
@@ -34,7 +34,7 @@ A person with nothing installed opens https://tmorin.github.io/archicode/editor/
 wave_manifest:
   wave: 025
   slug: hosted-editor
-  status: proposed
+  status: planned
   sources:
     - 'gh:tmorin/archicode#175'
     - 'gh:tmorin/archicode#162'
