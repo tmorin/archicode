@@ -145,6 +145,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/diagram-page.js",
+      "layer": "presentation"
+    },
+    {
       "file": "model/stories-model.js",
       "layer": "model"
     },
