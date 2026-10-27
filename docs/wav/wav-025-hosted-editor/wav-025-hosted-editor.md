@@ -105,7 +105,7 @@ wave_manifest:
       slug: browser-workspace
       phase: P2
       depends_on: []
-      run: null
+      run: 0192
       delegation: hard_judgment
       delegation_reason: 'deletes and overwrites user data (a browser workspace can be deleted, reset or replaced) and changes the published editor; a flaw loses a visitor''s work'
       likely_paths:
