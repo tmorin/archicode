@@ -153,6 +153,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "composition/events.js",
+      "layer": "composition"
+    },
+    {
       "file": "presentation/landing.js",
       "layer": "presentation"
     },
