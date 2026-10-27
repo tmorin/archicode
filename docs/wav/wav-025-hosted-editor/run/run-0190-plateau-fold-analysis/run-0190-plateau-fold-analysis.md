@@ -1,7 +1,7 @@
 ---
 type: run
 run: 0190
-status: in-progress
+status: completed
 profile: single-document
 wave: 025
 ---
@@ -59,7 +59,7 @@ Files outside likely_paths: none
 Run by one agent; the commands were read, not all re-run.
 
 - Done-when 1 to 4 hold in Findings: the recipe run on a copy of the layered Brightcart with `plateau list`, `diff`, `views generate` and `query graph` before and after; a section each for several plateaus above one, siblings, `--archive`, views and stories, and the plateaus a fold cannot apply to (root, leaf, `settings.current`); the checks, the size and the recommendation (build later, fix the manual first); the oracle (`plateau list`, `diff` and `views generate` before and after). Spot-checked against the repository: `inhouse` has 26 patches and `marketplace` 23 (`src/test/resources/brightcart/layered`), `discovery.search` carries a `replaces`, `inhouse` declares `commerce.search`, `PlateauTree.redeclared`, `ListPlateausCommand`, `PlateauGroup`, `filePlateauFolderWarning` and `[[fold-by-hand]]` exist, and `--archive` appears in section 14 of `docs/fixtures/brightcart-spec.md` as an option of `merge F into P` only.
-- Done-when 5 does NOT hold. `gh issue view 65 --json comments` returns 3 comments and none links this document. The text is in Findings; posting is publishing and no session gave the permission. The last criterion of gate P1 stays open until the author posts it or says to.
+- (Superseded, see the next bullet.) Done-when 5 did not hold when this was written. `gh issue view 65 --json comments` returns 3 comments and none links this document. The text is in Findings; posting is publishing and no session gave the permission. The last criterion of gate P1 stays open until the author posts it or says to.
 - `git status` shows no change made by this run outside `docs/wav/wav-025-hosted-editor/run/`: the other modified files (CLAUDE.md, `src/doc/README.adoc`, the editor sources, page and tests) belong to W-1 (run 0189) and the wave documents.
 - No pln exists (profile `single-document`), so there is no `execution_manifest.status` to set. Status stays `in-progress` because done-when 5 is unmet.
 
@@ -170,6 +170,10 @@ Not posted: posting is publishing, and this run was not given the author's permi
 > Semantics settled: several plateaus above one: refuse and name them (folding into one changes the others; shown on a copy); siblings: untouched, only `--against <folded>` from outside breaks; `--archive`: none (it belongs to the other operation, "make the future the new root", which stays out); steps with `at`/`against` naming the plateau: refuse and list (the obvious rewrite gives two self-comparisons); `settings.current` naming it, the root and a leaf: refuse.
 >
 > Size: about one large run (a Java writer of YAML text that keeps comments and quotes is the cost; the command line has none). If built, do `plateau fold <id> --dry-run` first (plan and refusals, no writer), then the writer. Oracle for a build: `plateau list`, `diff` and `views generate` before and after, equal for every plateau that stays but for the PLATEAU and PATCH columns of the cascade.
+
+### Comment posted (done-when item 5)
+
+Posted on 2026-10-27 by the orchestrator with the author's explicit permission in the session, after pushing the branch `wave-025-hosted-editor` so that the link works: https://github.com/tmorin/archicode/issues/65#issuecomment-6453127180 (`gh issue view 65 --json comments` returns 4 comments). The text is the one above, unchanged.
 
 ### Not verified
 
