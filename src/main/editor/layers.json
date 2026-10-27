@@ -125,6 +125,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/element-form.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/inspection.js",
       "layer": "presentation"
     },
