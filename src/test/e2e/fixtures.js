@@ -8,13 +8,15 @@
 //                          the test fails at its end when there is one, whichever flow it was. A flow that expects an
 //                          error has no place in this suite: the errors of the editor are sentences on the page.
 //
+//   hosted                 starts the hosted-style page server (harness.js, startHostedPage) and stops it at the end.
+//
 // The order (wave 024, run 0181, W-10): `pageErrors` lists `serve` among its parameters, so that Playwright sets `serve`
 // up first and tears it down last. `pageErrors` judges the page after the test body, while its server is still up: a
 // fixture that does not depend on `serve` may end after it, and a request the page sends as the server stops is refused
 // and reported as an error nobody did wrong. No filter and no wait stand in for that order.
 
 const { test: base, expect } = require('@playwright/test');
-const { startServer } = require('./harness');
+const { startServer, startHostedPage } = require('./harness');
 
 const test = base.extend({
   serve: [
@@ -33,9 +35,21 @@ const test = base.extend({
     { timeout: 120000 }
   ],
 
+  // The hosted-style page (no JVM): started by the fixture, stopped when the test ends. It resolves with the URL.
+  hosted: [
+    // eslint-disable-next-line no-empty-pattern -- Playwright reads the fixtures a function uses from its first parameter
+    async ({}, use) => {
+      const started = await startHostedPage();
+      await use(started);
+      await started.stop();
+    },
+    { timeout: 30000 }
+  ],
+
   pageErrors: [
-    async ({ page, serve }, use) => {
+    async ({ page, serve, hosted }, use) => {
       void serve; // the dependency is the point: see the head comment
+      void hosted; // the same for the hosted-style page
       const errors = [];
       page.on('console', (message) => {
         if (message.type() !== 'error') {

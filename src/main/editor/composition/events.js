@@ -73,6 +73,31 @@ function handleAppClick(e) {
     case 'close-folder':
       closeFolder();
       break;
+    // the browser workspaces of the landing card (run 0192, IMP-5); the flows are application/browser-workspaces.js
+    case 'new-browser-workspace':
+      newBrowserWorkspace();
+      break;
+    case 'open-browser-workspace':
+      openBrowserWorkspace(target.getAttribute('data-workspace-id'));
+      break;
+    case 'rename-browser-workspace':
+      renameBrowserWorkspaceRow(target.getAttribute('data-workspace-id'));
+      break;
+    case 'ask-delete-browser-workspace':
+      askToDeleteBrowserWorkspace(target.getAttribute('data-workspace-id'));
+      break;
+    case 'delete-browser-workspace':
+      confirmDeleteBrowserWorkspace(target.getAttribute('data-workspace-id'));
+      break;
+    case 'cancel-browser-workspace-question':
+      cancelBrowserWorkspaceQuestion();
+      break;
+    case 'submit-browser-name':
+      submitBrowserNameDraft();
+      break;
+    case 'cancel-browser-name':
+      cancelBrowserNameDraft();
+      break;
     case 'set-perspective':
     case 'set-page': // the bar under the band (the pages below Timeline) and the top bar (a perspective) open a page the same way
       setPerspective(target.getAttribute('data-perspective'));
@@ -1186,3 +1211,28 @@ function handleAppDblClick(e) {
   panelSizeStorage.remove(PANEL_SIZE_STORAGE_PREFIX + handle.dataset.resize + ':' + property);
   render();
 }
+
+/**
+ * The name field and the question of the browser workspaces on the landing card (run 0192, IF-2, IF-3, DEC-7): what is typed is kept in
+ * `landingNameDraft` (no redraw: the field is the source), Enter in the field creates or renames, and Escape cancels the field or the question.
+ */
+function handleBrowserCardInput(e) {
+  if (e.target && e.target.matches && e.target.matches('input[data-browser-name]')) setBrowserNameDraft(e.target.value);
+}
+
+function handleBrowserCardKeydown(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.isComposing) return;
+  const inField = !!(e.target && e.target.matches && e.target.matches('input[data-browser-name]'));
+  if (e.key === 'Enter' && inField && landingNameDraft) {
+    e.preventDefault();
+    setBrowserNameDraft(e.target.value);
+    submitBrowserNameDraft();
+  } else if (e.key === 'Escape' && !AppState.workspace && (landingNameDraft || landingPendingDelete !== null)) {
+    e.preventDefault();
+    if (landingNameDraft) cancelBrowserNameDraft();
+    else cancelBrowserWorkspaceQuestion();
+  }
+}
+
+document.addEventListener('input', handleBrowserCardInput);
+document.addEventListener('keydown', handleBrowserCardKeydown);

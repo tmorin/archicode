@@ -33,7 +33,7 @@ function render() {
     // was ('' when that was not on the card); else the primary button of the card
     const keep = landingFocusSelector === '';
     const wanted = landingFocusSelector && app.querySelector ? app.querySelector(landingFocusSelector) : null;
-    landingFocusSelector = null;
+    if (app.querySelector) landingFocusSelector = null; // consumed once the card could be searched (a host with no DOM keeps the request)
     const primary = wanted || (keep ? null : document.getElementById('landing-primary'));
     if (primary) primary.focus();
     return;

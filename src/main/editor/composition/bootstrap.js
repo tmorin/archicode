@@ -11,14 +11,24 @@ document.addEventListener('DOMContentLoaded', () => {
     openServedFolder();
     return;
   }
-  if (!isFileSystemAccessSupported()) {
+  landingBusy = 'Looking for your last workspace…';
+  render(); // no blank page while IndexedDB / the folder permission are checked
+  startPage();
+});
+
+/**
+ * A page that is not served: ask once whether the browser can keep a workspace (DEC-4), then reopen what was open. A browser that can neither pick a folder
+ * nor keep a workspace gets its card and stops.
+ */
+async function startPage() {
+  await probeBrowserStore();
+  if (!canKeepWorkspace()) {
+    landingBusy = null;
     render();
     return;
   }
-  landingBusy = 'Looking for your last workspace…';
-  render(); // no blank page while IndexedDB / the folder permission are checked
-  tryAutoReopen();
-});
+  await tryAutoReopen();
+}
 
 // Covers back/forward and a hand-edited URL — setPerspective() (the
 // in-app tab click) already renders directly, so this mostly re-confirms

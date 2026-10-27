@@ -48,6 +48,8 @@ function resetUiState() {
   helpOpen = false;
   headerMenuOpen = false;
   pendingDeleteConfirmation = null;
+  landingPendingDelete = null; // the question and the name field of the card of the browser workspaces (run 0192)
+  landingNameDraft = null;
   rawYamlEditDraft = null;
   lastRenderedViewKey = null;
   scrollNavToSelection = false;
@@ -74,7 +76,15 @@ async function closeFolder() {
   }
   // the folder stays remembered; only the next load does not reopen it (TDD-0020 DEC-5)
   const folder = AppState.folder;
-  if (folder && folder.handle && !isServedByArchiCode()) {
+  const wasBrowserWorkspace = !!(folder && folder.browserWorkspace);
+  if (wasBrowserWorkspace) {
+    // a browser workspace is kept: only the pointer that reopens it goes, and the remembered folders are not touched (run 0192, DEC-5)
+    try {
+      await clearBrowserLast();
+    } catch (e) {
+      console.error('ArchiCode: closeFolder failed to clear the pointer of the browser workspace', e);
+    }
+  } else if (folder && folder.handle && !isServedByArchiCode()) {
     try {
       if (folder.id) {
         // under the id it has now: another tab may have merged its records, or removed it (then nothing to clear)
@@ -94,21 +104,50 @@ async function closeFolder() {
   resetUiState();
   landingNotice = null;
   requestRedraw();
-  await refreshRememberedFolders();
+  if (!wasBrowserWorkspace || isFileSystemAccessSupported()) await refreshRememberedFolders();
+  if (wasBrowserWorkspace) await refreshBrowserWorkspaces();
   requestRedraw();
   await checkFolderPermissions();
 }
 
-/** On every page load: try to silently reopen a stored handle (FLOW-2). */
-async function tryAutoReopen() {
-  let last = null;
+/**
+ * The workspace the browser reopens (DEC-5): the one `last` points at, when it is still there and can be read; `{ id, openedAt }`, or null.
+ * Only reads the browser database. Never rejects.
+ */
+async function browserWorkspaceToReopen() {
+  if (browserStoreState !== 'ready') return null;
   try {
-    const remembered = await readRememberedFolders(); // migrates what an earlier version stored (TDD-0020 DEC-2)
-    rememberedFolders = remembered.folders;
-    last = remembered.last;
+    await refreshBrowserWorkspaces();
+    const pointer = await readBrowserLast();
+    const row = pointer ? browserWorkspaceById(pointer.id) : null;
+    return row && !row.problem ? pointer : null;
   } catch (e) {
-    console.error('ArchiCode: failed to read the remembered folders', e);
-    rememberedFolders = [];
+    console.error('ArchiCode: the last browser workspace could not be read', e);
+    return null;
+  }
+}
+
+/**
+ * On every page load: try to silently reopen what was open (FLOW-1, FLOW-2). Of the two pointers, the browser workspace and the last
+ * remembered folder, the one opened more recently wins (DEC-5); the other is only read, never written, and when the winner does not open
+ * the other is not tried: the card says what happened. The store is probed before this (composition/bootstrap.js).
+ */
+async function tryAutoReopen() {
+  const browserPointer = await browserWorkspaceToReopen();
+  let last = null;
+  if (isFileSystemAccessSupported()) {
+    try {
+      const remembered = await readRememberedFolders(); // migrates what an earlier version stored (TDD-0020 DEC-2)
+      rememberedFolders = remembered.folders;
+      last = remembered.last;
+    } catch (e) {
+      console.error('ArchiCode: failed to read the remembered folders', e);
+      rememberedFolders = [];
+    }
+  }
+  if (browserPointer && (!last || browserPointer.openedAt > last.openedAt)) {
+    await openBrowserWorkspace(browserPointer.id);
+    return;
   }
   if (!last) {
     landingBusy = null;

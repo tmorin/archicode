@@ -439,6 +439,7 @@ async function performSave() {
     message: hasUnsavedChanges() ? 'Saved. Changes made while saving are not saved yet.' : 'Saved.'
   };
   requestRedraw();
+  if (AppState.folder && AppState.folder.browserWorkspace) askForPersistentStorage();
 }
 
 /**

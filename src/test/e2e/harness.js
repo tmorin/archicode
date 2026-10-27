@@ -8,6 +8,7 @@
 
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
+const http = require('node:http');
 const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
@@ -18,6 +19,7 @@ const ROOT = path.resolve(__dirname, '..', '..', '..');
 const JAR = process.env.ARCHICODE_E2E_JAR || path.join(ROOT, 'target', 'quarkus-app', 'quarkus-run.jar');
 const EXAMPLES = path.join(ROOT, 'src', 'doc', 'examples');
 const START_TIMEOUT_MS = 60000;
+const PAGE = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'standalone.html');
 
 // The program and its leading arguments: the java of JAVA_HOME (else the one on the PATH) on the jar.
 function spawnLine() {
@@ -126,4 +128,34 @@ async function startServer(example, files = {}) {
   };
 }
 
-module.exports = { startServer, EXAMPLES, ROOT };
+// The page as the hosted site serves it (wave 025, run 0192, DEC-11): a Node `http` server on 127.0.0.1 and a free port
+// that answers `GET /` with the committed standalone.html and 404 for everything else, with no JVM and so no
+// <meta name="archicode-server">. The page is read at each request, so a rebuilt page is what the next test gets.
+// Resolves with the URL and a stop function.
+async function startHostedPage() {
+  const port = await freePort();
+  const server = http.createServer((request, response) => {
+    const route = (request.url || '').split(/[?#]/)[0];
+    if (request.method === 'GET' && route === '/') {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      response.end(fs.readFileSync(PAGE));
+    } else {
+      response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+      response.end('not found');
+    }
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', resolve);
+  });
+  return {
+    url: `http://127.0.0.1:${port}/`,
+    stop: () =>
+      new Promise((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections();
+      })
+  };
+}
+
+module.exports = { startServer, startHostedPage, EXAMPLES, ROOT };
