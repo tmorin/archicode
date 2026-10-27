@@ -125,6 +125,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/changes-panel.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/right-panel.js",
       "layer": "presentation"
     },
