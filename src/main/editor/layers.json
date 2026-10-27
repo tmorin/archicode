@@ -105,8 +105,8 @@
       "layer": "model"
     },
     {
-      "file": "unsorted/from-30.js",
-      "layer": "unsorted"
+      "file": "application/commit-pipeline.js",
+      "layer": "application"
     },
     {
       "file": "persistence/save.js",
