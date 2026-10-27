@@ -1778,8 +1778,6 @@ function diagramCacheKey(recipe, comparison, viewKey) {
   ].join('|');
 }
 
-let treeQuietCache = null;
-
 /**
  * The references whose diagram has nothing to draw through the facet, in the viewpoint now selected (what a click on
  * the element would show). The kernel answers for a whole layer in one call (`quiet`, issue #81: one `compute` per element cost 420 ms on the 82 elements of
@@ -1864,14 +1862,6 @@ function mainDiagramRecipe(canvas) {
     shows: diagramShows(isMap)
   };
 }
-
-/**
- * What is selected on the page of a view in the Library: a box (an element) or a link of its diagram, read in the panel on the right. It
- * is the page's own, with the shapes of the Map's selection so that the same panels render it, and it is never `AppState.selection`:
- * a click on this page selects here and leaves the Map, Elements, their tree and the address as they are. One view at a time (another
- * view starts with nothing selected); kept while the reader is on the Map and comes back to the same view.
- */
-let libraryPick = { view: null, selection: null };
 
 function libraryPickFor(viewId) {
   if (libraryPick.view !== viewId) libraryPick = { view: viewId, selection: null };

@@ -419,15 +419,6 @@ function renderUnreadManifestsHtml(list) {
     (list ? '<ul>' + files.map((relPath) => '<li class="file-relpath">' + escapeHtml(relPath) + '</li>').join('') + '</ul>' : ' See Files.') + '</div>';
 }
 
-/**
- * The Files page lists every file of the workspace, always (wave 015, run 0098, #101; there is no scope to choose). With layers the files are grouped by plateau, and a group
- * folds and unfolds. The folded groups are kept for as long as the editor is open on the same folder, and are never written in the workspace. A group has a key: `plateau:<id>`,
- * or `none` for the files that belong to no plateau (those the editor could not read, and the views and the stories, which belong to no plateau since wave 015, run 0100).
- */
-let filesFolded = new Set();
-let filesFoldsOwner = null; // the folder handle the folds belong to: a reload of the same folder keeps them, another folder starts again
-let filesSelectionSeen = null; // the open file and the group it was in when its group was last unfolded for it
-
 const FILES_NO_PLATEAU_GROUP = 'none';
 
 /** The group of the Files page a file is in. */
@@ -623,8 +614,6 @@ function editorVersion() {
   const meta = typeof document !== 'undefined' && document.querySelector ? document.querySelector('meta[name="archicode-version"]') : null;
   return meta && meta.getAttribute('content') ? meta.getAttribute('content') : 'dev';
 }
-
-let helpOpen = false;
 
 /** The "?" button, with its menu right behind it (so Tab goes from one to the other) when the help is open. */
 function renderHelpButtonHtml() {
@@ -2008,13 +1997,6 @@ function renderInspectionHtml(onMap) {
   return withChangesPanel(inspectionPanelHtml(AppState.selection, onMap ? 'map' : 'elements'));
 }
 
-/**
- * A removed box was clicked on the Map or on a diagram of Elements (run 0039): `{ reference, layer, selection }`, `selection` being the selection of the page
- * (as text) at that moment. The panel shows what the baseline had of it for as long as the page's selection is that one: any other click changes the selection
- * and ends it, with no place to remember to clear it. On the page of a view in the Library the pick is the selection of the page itself (`baseline-element`).
- */
-let removedPick = null;
-
 /** The removed element the panel is to show: the one picked on this page, or the page-of-a-view selection that names one; null when none, or when it is no longer removed. */
 function removedInspectionOf(sel, mode) {
   let picked = null;
@@ -2673,8 +2655,6 @@ function renderChangesPanelHtml(state) {
 
 /** The pairs set aside with "Not related": remembered in this page only, for the pair of plateaus they were set aside in. No storage. */
 const dismissedCandidates = new Set();
-/** Why a candidate could not be written, told in the panel; null otherwise. Cleared by the next thing done with a candidate. */
-let candidateMessage = null;
 
 function candidateKey(state, candidate) {
   return [state.base.id, state.target.id, candidate.layer, candidate.from, candidate.to].join('|');
@@ -2983,8 +2963,6 @@ function renderChangesPendingHtml() {
 
 // ---- The right-hand panel with a comparison on: Selected | Changes ----
 
-/** The Changes tab was asked for while the selection of the page was this one (`rightPanelStamp`); any other selection ends it, as for `removedPick`. */
-let changesTabPick = null;
 /** The panel was drawn while the kernel was not loaded: the first drawing fills it (`refreshRightPanel`). */
 let rightPanelPending = false;
 
