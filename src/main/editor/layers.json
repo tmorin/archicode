@@ -133,8 +133,8 @@
       "layer": "model"
     },
     {
-      "file": "unsorted/from-48.js",
-      "layer": "unsorted"
+      "file": "presentation/diagram-controls.js",
+      "layer": "presentation"
     },
     {
       "file": "model/styles.js",
