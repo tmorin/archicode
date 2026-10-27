@@ -125,6 +125,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/help-and-settings.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/theme.js",
       "layer": "presentation"
     },
