@@ -250,7 +250,7 @@ execution_graph:
       risk: 'low'
       confidence: 82
     - id: task-015
-      status: 'pending'
+      status: 'done'
       title: 'Test commit (DEC-5 a): the --cut real-page test reads the page of af1ed2d from git'
       depends_on: [task-014]
       produces:
@@ -260,7 +260,7 @@ execution_graph:
       risk: 'low'
       confidence: 82
     - id: task-016
-      status: 'pending'
+      status: 'done'
       title: 'Relocate REMOVED_PLATEAUS_KEY to core/read-schema.js'
       depends_on: [task-015]
       produces:
@@ -273,7 +273,7 @@ execution_graph:
       risk: 'medium'
       confidence: 85
     - id: task-017
-      status: 'pending'
+      status: 'done'
       title: 'Move row 20: index-builder to src/main/editor/model/index-builder.js'
       depends_on: [task-016]
       produces:
@@ -285,7 +285,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-018
-      status: 'pending'
+      status: 'done'
       title: 'Move row 14: origin-and-cascade to src/main/editor/model/origin-and-cascade.js'
       depends_on: [task-017]
       produces:
@@ -297,7 +297,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-019
-      status: 'pending'
+      status: 'done'
       title: 'Move row 13: layer-loader to src/main/editor/model/layer-loader.js'
       depends_on: [task-018]
       produces:
@@ -309,7 +309,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-020
-      status: 'pending'
+      status: 'done'
       title: 'Move row 12: plateau-tree to src/main/editor/model/plateau-tree.js'
       depends_on: [task-019]
       produces:
@@ -321,7 +321,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-021
-      status: 'pending'
+      status: 'done'
       title: 'Move row 11: element-index to src/main/editor/model/element-index.js'
       depends_on: [task-020]
       produces:
@@ -333,7 +333,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-022
-      status: 'pending'
+      status: 'done'
       title: 'Move row 10: manifest-kinds to src/main/editor/core/manifest-kinds.js'
       depends_on: [task-021]
       produces:
@@ -345,7 +345,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-023
-      status: 'pending'
+      status: 'done'
       title: 'Move row 9: settings to src/main/editor/model/settings.js'
       depends_on: [task-022]
       produces:
@@ -357,7 +357,7 @@ execution_graph:
       risk: 'medium'
       confidence: 88
     - id: task-024
-      status: 'pending'
+      status: 'done'
       title: 'Move row 8: app-state to src/main/editor/model/app-state.js'
       depends_on: [task-023]
       produces:
@@ -369,7 +369,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-025
-      status: 'pending'
+      status: 'done'
       title: 'Move row 7: remembered-folders to src/main/editor/persistence/remembered-folders.js'
       depends_on: [task-024]
       produces:
@@ -381,7 +381,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-026
-      status: 'pending'
+      status: 'done'
       title: 'Step 7.1 end: node suite, EditorReadSchemaTest and GuideViewPropertiesTest'
       depends_on: [task-025]
       produces:
@@ -391,7 +391,7 @@ execution_graph:
       risk: 'medium'
       confidence: 86
     - id: task-027
-      status: 'pending'
+      status: 'done'
       title: 'Test commit (DEC-5 b): the #37 test slices diagramCacheKey to its closing brace'
       depends_on: [task-026]
       produces:
@@ -401,7 +401,7 @@ execution_graph:
       risk: 'low'
       confidence: 82
     - id: task-028
-      status: 'pending'
+      status: 'done'
       title: 'Relocation group 1 (DEC-4): page registry and shell to model/ui-state.js'
       depends_on: [task-027]
       produces:
@@ -414,7 +414,7 @@ execution_graph:
       risk: 'medium'
       confidence: 84
     - id: task-029
-      status: 'pending'
+      status: 'done'
       title: 'Relocation group 2 (DEC-4): panels to model/ui-state.js'
       depends_on: [task-028]
       produces:
@@ -427,7 +427,7 @@ execution_graph:
       risk: 'medium'
       confidence: 84
     - id: task-030
-      status: 'pending'
+      status: 'done'
       title: 'Relocation group 3 (DEC-4): diagram to model/ui-state.js'
       depends_on: [task-029]
       produces:
@@ -440,7 +440,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-031
-      status: 'pending'
+      status: 'done'
       title: 'Relocation group 4 (DEC-4): map to model/ui-state.js'
       depends_on: [task-030]
       produces:
@@ -453,7 +453,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-032
-      status: 'pending'
+      status: 'done'
       title: 'Relocation group 5 (DEC-4): dialogs and the plateau constant to model/ui-state.js'
       depends_on: [task-031]
       produces:
@@ -466,7 +466,7 @@ execution_graph:
       risk: 'medium'
       confidence: 84
     - id: task-033
-      status: 'pending'
+      status: 'done'
       title: 'End-of-run checks of 0182 DEC-6 and the shown-to-fail commands'
       depends_on: [task-032]
       produces:
@@ -476,7 +476,7 @@ execution_graph:
       risk: 'medium'
       confidence: 78
     - id: task-034
-      status: 'pending'
+      status: 'done'
       title: 'Record the evidence in the run document and the prg'
       depends_on: [task-033]
       produces:
@@ -1066,6 +1066,7 @@ task_catalog:
       escalation_triggers:
         - 'The test cannot be made to pass without changing a decision of the TDD.'
       delegation_tier: 'standard'
+      results: 'tier standard, effort medium, failed first check and the escalated retry (high); blocked by the implement workflow'
     - id: task-016
       title: 'Relocate REMOVED_PLATEAUS_KEY to core/read-schema.js'
       source_requirements:
@@ -3426,7 +3427,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 34
@@ -3479,7 +3480,7 @@ execution_manifest:
   lowest_confidence_tasks:
     - task-033
     - task-030
-  next_action: 'The main agent or the author commits the work of W-6 by path (gap-002), then the implement workflow starts at task-001.'
+  next_action: 'The pull request run is read at gate-001.'
   criteria:
     - 'All tasks done and their verification green, or the run stopped at task-002 with the reason logged.'
     - 'The assembled page equals the committed one through the twenty moves and differs afterwards only in the order of declarations.'
