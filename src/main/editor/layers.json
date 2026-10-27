@@ -37,6 +37,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "model/element-index.js",
+      "layer": "model"
+    },
+    {
       "file": "model/plateau-tree.js",
       "layer": "model"
     },
