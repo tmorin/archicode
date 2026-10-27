@@ -157,7 +157,7 @@ wave_manifest:
       slug: editor-extract-model-and-kernel
       phase: P3
       depends_on: [W-6]
-      run: null
+      run: 0185
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/**'
