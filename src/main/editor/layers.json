@@ -37,6 +37,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "model/index-builder.js",
+      "layer": "model"
+    },
+    {
       "file": "core/read-schema.js",
       "layer": "core"
     },
