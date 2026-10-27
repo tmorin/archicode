@@ -125,6 +125,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/inspection.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/changes-panel.js",
       "layer": "presentation"
     },
