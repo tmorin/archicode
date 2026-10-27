@@ -21,7 +21,7 @@ The Stage 5 review of the TDD (prg, Findings, 2026-10-27) found points the TDD t
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'A whole workspace becomes one YAML text and one YAML text becomes the same files again, byte for byte (#162 proposal 1, wave 025 W-3), as two pure functions of the editor page, not called by anything yet.'
   technical_approach: 'Write the contract first as data (bundle-cases.json) and two node tests (cases, round trip over every shipped workspace), then the part persistence/bundle.js, its entries in layers.json and names.json, and the rebuilt page. Apply the Stage 5 findings to the TDD first.'
   total_tasks: 5
@@ -79,7 +79,7 @@ execution_graph:
       risk: 'low'
       confidence: 90
     - id: task-002
-      status: 'pending'
+      status: 'done'
       title: 'Write bundle-cases.json and the cases test (red)'
       depends_on: [task-001]
       produces:
@@ -90,7 +90,7 @@ execution_graph:
       risk: 'low'
       confidence: 78
     - id: task-003
-      status: 'pending'
+      status: 'done'
       title: 'Write the round-trip test over every shipped workspace (red)'
       depends_on: [task-001]
       produces:
@@ -100,7 +100,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-004
-      status: 'pending'
+      status: 'done'
       title: 'Write persistence/bundle.js and register it'
       depends_on: [task-002, task-003]
       produces:
@@ -113,7 +113,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-005
-      status: 'pending'
+      status: 'done'
       title: 'Run every gate, show the tests fail on a broken marker, record in the run document'
       depends_on: [task-004]
       produces:
@@ -186,6 +186,7 @@ task_catalog:
         - 'a case cannot be expressed in the CTR-2 shape'
         - 'the vm harness cannot load a part that is not yet in the page, so the red state cannot be shown'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-003
       title: 'Write the round-trip test over every shipped workspace (red)'
       source_requirements:
@@ -204,6 +205,7 @@ task_catalog:
       escalation_triggers:
         - 'the test takes more than a few seconds to walk the folders'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-004
       title: 'Write persistence/bundle.js and register it'
       source_requirements:
@@ -511,7 +513,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed'
   autonomy_level: 'high'
   total_tasks: 5
