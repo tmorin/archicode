@@ -37,6 +37,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "model/settings.js",
+      "layer": "model"
+    },
+    {
       "file": "core/manifest-kinds.js",
       "layer": "core"
     },
