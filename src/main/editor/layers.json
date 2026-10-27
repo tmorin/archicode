@@ -97,6 +97,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "composition/address-routing.js",
+      "layer": "composition"
+    },
+    {
       "file": "presentation/shell-state.js",
       "layer": "presentation"
     },
