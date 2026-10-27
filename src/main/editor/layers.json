@@ -151,6 +151,10 @@
     {
       "file": "unsorted/from-55.js",
       "layer": "unsorted"
+    },
+    {
+      "file": "composition/bootstrap.js",
+      "layer": "composition"
     }
   ],
   "ratchet": {
