@@ -208,7 +208,8 @@ test('#37: the counters are real: a render that has to compute is seen by them',
 });
 
 test('#37: the key of the drawing is not the kernel input and no walk of the index: the source says so', () => {
-  const key = HTML.slice(HTML.indexOf('function diagramCacheKey('), HTML.indexOf('let treeQuietCache'));
+  const keyStart = HTML.indexOf('function diagramCacheKey(');
+  const key = HTML.slice(keyStart, HTML.indexOf('\n}\n', keyStart) + 3);
   assert.ok(
     key.includes('modelsKey(') &&
       !key.includes('buildKernelInput(') &&
