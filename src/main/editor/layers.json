@@ -85,8 +85,8 @@
       "layer": "persistence"
     },
     {
-      "file": "unsorted/from-24.js",
-      "layer": "unsorted"
+      "file": "application/folder-session.js",
+      "layer": "application"
     },
     {
       "file": "core/escape-html.js",
