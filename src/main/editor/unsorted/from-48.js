@@ -72,8 +72,6 @@ function renderDiagramHeaderActionsHtml(openerHtml) {
     renderMaximizeButtonHtml();
 }
 
-let headerMenuOpen = false;
-
 /**
  * Opens or closes the "⋯" menu of a diagram header WITHOUT render(), for the reason `setHelpOpen` gives: a redraw would
  * lose whatever was typed and not committed. Only aria-expanded and data-open change. `focusMenu`: the focus goes to the

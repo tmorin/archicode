@@ -62,3 +62,44 @@ let pendingDeleteConfirmation = null;
  * the edit that would resolve it.
  */
 let saveStatus = { state: 'idle' };
+
+/**
+ * The Files page lists every file of the workspace, always (wave 015, run 0098, #101; there is no scope to choose). With layers the files are grouped by plateau, and a group
+ * folds and unfolds. The folded groups are kept for as long as the editor is open on the same folder, and are never written in the workspace. A group has a key: `plateau:<id>`,
+ * or `none` for the files that belong to no plateau (those the editor could not read, and the views and the stories, which belong to no plateau since wave 015, run 0100).
+ */
+let filesFolded = new Set();
+
+let filesFoldsOwner = null; // the folder handle the folds belong to: a reload of the same folder keeps them, another folder starts again
+
+let filesSelectionSeen = null; // the open file and the group it was in when its group was last unfolded for it
+
+let helpOpen = false;
+
+/**
+ * A removed box was clicked on the Map or on a diagram of Elements (run 0039): `{ reference, layer, selection }`, `selection` being the selection of the page
+ * (as text) at that moment. The panel shows what the baseline had of it for as long as the page's selection is that one: any other click changes the selection
+ * and ends it, with no place to remember to clear it. On the page of a view in the Library the pick is the selection of the page itself (`baseline-element`).
+ */
+let removedPick = null;
+
+/** Why a candidate could not be written, told in the panel; null otherwise. Cleared by the next thing done with a candidate. */
+let candidateMessage = null;
+
+/** The Changes tab was asked for while the selection of the page was this one (`rightPanelStamp`); any other selection ends it, as for `removedPick`. */
+let changesTabPick = null;
+
+let headerMenuOpen = false;
+
+let treeQuietCache = null;
+
+/**
+ * What is selected on the page of a view in the Library: a box (an element) or a link of its diagram, read in the panel on the right. It
+ * is the page's own, with the shapes of the Map's selection so that the same panels render it, and it is never `AppState.selection`:
+ * a click on this page selects here and leaves the Map, Elements, their tree and the address as they are. One view at a time (another
+ * view starts with nothing selected); kept while the reader is on the Map and comes back to the same view.
+ */
+let libraryPick = { view: null, selection: null };
+
+/** What the last refused edit says, under its field: { view, field, text }. Gone with the next edit, another view, or leaving the Library. */
+let viewEditNotice = null;

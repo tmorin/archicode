@@ -358,9 +358,6 @@ function libraryPageView() {
   return currentPerspective === 'library' && libraryTab === 'views' ? findSavedView(selectedViewId) : null;
 }
 
-/** What the last refused edit says, under its field: { view, field, text }. Gone with the next edit, another view, or leaving the Library. */
-let viewEditNotice = null;
-
 function refuseViewEdit(view, field, text, typed) {
   viewEditNotice = { view: view.id, field, text, typed: typed === undefined ? null : String(typed) };
   return false;
