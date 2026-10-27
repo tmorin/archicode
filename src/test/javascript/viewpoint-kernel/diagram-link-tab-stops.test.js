@@ -527,7 +527,7 @@ test('the links sit in a group that says they are one tab stop, and the exported
   );
   assert.match(
     functionSource('diagramExportDocument'),
-    /querySelectorAll\('\.dg-links'\)\) \{ el\.removeAttribute\('role'\); el\.removeAttribute\('aria-label'\)/
+    /querySelectorAll\('\.dg-links'\)\) \{\s*el\.removeAttribute\('role'\);\s*el\.removeAttribute\('aria-label'\)/
   );
 });
 
