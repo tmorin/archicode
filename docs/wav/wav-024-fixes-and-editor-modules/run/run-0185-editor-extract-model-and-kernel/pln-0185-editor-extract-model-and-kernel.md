@@ -98,7 +98,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-002
-      status: 'pending'
+      status: 'done'
       title: 'Precondition and baseline: the W-6 work is committed, the page is the measured one'
       depends_on: [task-001]
       produces:
@@ -108,7 +108,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-003
-      status: 'pending'
+      status: 'done'
       title: 'Move row 54: stories-model to src/main/editor/model/stories-model.js'
       depends_on: [task-002]
       produces:
@@ -120,7 +120,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-004
-      status: 'pending'
+      status: 'done'
       title: 'Move row 49: styles to src/main/editor/model/styles.js'
       depends_on: [task-003]
       produces:
@@ -132,7 +132,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-005
-      status: 'pending'
+      status: 'done'
       title: 'Move row 47: comparison to src/main/editor/model/comparison.js'
       depends_on: [task-004]
       produces:
@@ -144,7 +144,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-006
-      status: 'pending'
+      status: 'done'
       title: 'Move row 46: kernel-bridge to src/main/editor/model/kernel-bridge.js'
       depends_on: [task-005]
       produces:
@@ -156,7 +156,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-007
-      status: 'pending'
+      status: 'done'
       title: 'Move row 33: form-validation to src/main/editor/model/form-validation.js'
       depends_on: [task-006]
       produces:
@@ -168,7 +168,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-008
-      status: 'pending'
+      status: 'done'
       title: 'Move row 31: save to src/main/editor/persistence/save.js'
       depends_on: [task-007]
       produces:
@@ -180,7 +180,7 @@ execution_graph:
       risk: 'medium'
       confidence: 88
     - id: task-009
-      status: 'pending'
+      status: 'done'
       title: 'Move row 29: record-lookup to src/main/editor/model/record-lookup.js'
       depends_on: [task-008]
       produces:
@@ -192,7 +192,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-010
-      status: 'pending'
+      status: 'done'
       title: 'Move row 25: escape-html to src/main/editor/core/escape-html.js'
       depends_on: [task-009]
       produces:
@@ -204,7 +204,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-011
-      status: 'pending'
+      status: 'done'
       title: 'Move row 23: folder-access to src/main/editor/persistence/folder-access.js'
       depends_on: [task-010]
       produces:
@@ -216,7 +216,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-012
-      status: 'pending'
+      status: 'done'
       title: 'Move row 22: workspace-loading to src/main/editor/persistence/workspace-loading.js'
       depends_on: [task-011]
       produces:
@@ -228,7 +228,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-013
-      status: 'pending'
+      status: 'done'
       title: 'Move row 21: read-schema to src/main/editor/core/read-schema.js'
       depends_on: [task-012]
       produces:
@@ -240,7 +240,7 @@ execution_graph:
       risk: 'medium'
       confidence: 90
     - id: task-014
-      status: 'pending'
+      status: 'done'
       title: 'Test commit (DEC-7): yaml-parts.test.js loses its parseYamlAsModel exception'
       depends_on: [task-013]
       produces:
@@ -646,7 +646,7 @@ task_catalog:
       escalation_triggers:
         - 'A check fails: log the command and its first line; the coverage floor is never lowered in this run.'
       delegation_tier: 'standard'
-      results: 'tier standard, effort medium, failed first check and the escalated retry (high); blocked by the implement workflow'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-003
       title: 'Move row 54: stories-model to src/main/editor/model/stories-model.js'
       source_requirements:
@@ -680,6 +680,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-004
       title: 'Move row 49: styles to src/main/editor/model/styles.js'
       source_requirements:
@@ -713,6 +714,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-005
       title: 'Move row 47: comparison to src/main/editor/model/comparison.js'
       source_requirements:
@@ -746,6 +748,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-006
       title: 'Move row 46: kernel-bridge to src/main/editor/model/kernel-bridge.js'
       source_requirements:
@@ -779,6 +782,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-007
       title: 'Move row 33: form-validation to src/main/editor/model/form-validation.js'
       source_requirements:
@@ -812,6 +816,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-008
       title: 'Move row 31: save to src/main/editor/persistence/save.js'
       source_requirements:
@@ -845,6 +850,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-009
       title: 'Move row 29: record-lookup to src/main/editor/model/record-lookup.js'
       source_requirements:
@@ -878,6 +884,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-010
       title: 'Move row 25: escape-html to src/main/editor/core/escape-html.js'
       source_requirements:
@@ -911,6 +918,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-011
       title: 'Move row 23: folder-access to src/main/editor/persistence/folder-access.js'
       source_requirements:
@@ -944,6 +952,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-012
       title: 'Move row 22: workspace-loading to src/main/editor/persistence/workspace-loading.js'
       source_requirements:
@@ -977,6 +986,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-013
       title: 'Move row 21: read-schema to src/main/editor/core/read-schema.js'
       source_requirements:
@@ -1010,6 +1020,7 @@ task_catalog:
         - 'Any check fails: restore the unsorted files and layers.json from HEAD and delete the new part file, each by path (no git stash, no checkout of the folder, no text edit to fit), log the failing command and its first line, stop the run.'
         - '--map differs from the range: the page changed since ASM-1, stop.'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-014
       title: 'Test commit (DEC-7): yaml-parts.test.js loses its parseYamlAsModel exception'
       source_requirements:
@@ -1032,6 +1043,7 @@ task_catalog:
       escalation_triggers:
         - 'The test cannot be made to pass without changing a decision of the TDD.'
       delegation_tier: 'standard'
+      results: 'tier standard, effort medium, failed first check and the escalated retry (high); blocked by the implement workflow'
     - id: task-015
       title: 'Test commit (DEC-5 a): the --cut real-page test reads the page of af1ed2d from git'
       source_requirements:
