@@ -35,6 +35,82 @@
     {
       "file": "unsorted/script.js",
       "layer": "unsorted"
+    },
+    {
+      "file": "core/read-schema.js",
+      "layer": "core"
+    },
+    {
+      "file": "persistence/workspace-loading.js",
+      "layer": "persistence"
+    },
+    {
+      "file": "persistence/folder-access.js",
+      "layer": "persistence"
+    },
+    {
+      "file": "unsorted/from-24.js",
+      "layer": "unsorted"
+    },
+    {
+      "file": "core/escape-html.js",
+      "layer": "core"
+    },
+    {
+      "file": "unsorted/from-26.js",
+      "layer": "unsorted"
+    },
+    {
+      "file": "model/record-lookup.js",
+      "layer": "model"
+    },
+    {
+      "file": "unsorted/from-30.js",
+      "layer": "unsorted"
+    },
+    {
+      "file": "persistence/save.js",
+      "layer": "persistence"
+    },
+    {
+      "file": "unsorted/from-32.js",
+      "layer": "unsorted"
+    },
+    {
+      "file": "model/form-validation.js",
+      "layer": "model"
+    },
+    {
+      "file": "unsorted/from-34.js",
+      "layer": "unsorted"
+    },
+    {
+      "file": "model/kernel-bridge.js",
+      "layer": "model"
+    },
+    {
+      "file": "model/comparison.js",
+      "layer": "model"
+    },
+    {
+      "file": "unsorted/from-48.js",
+      "layer": "unsorted"
+    },
+    {
+      "file": "model/styles.js",
+      "layer": "model"
+    },
+    {
+      "file": "unsorted/from-50.js",
+      "layer": "unsorted"
+    },
+    {
+      "file": "model/stories-model.js",
+      "layer": "model"
+    },
+    {
+      "file": "unsorted/from-55.js",
+      "layer": "unsorted"
     }
   ],
   "ratchet": {
