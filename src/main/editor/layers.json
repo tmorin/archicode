@@ -125,6 +125,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "presentation/pages-plateaus-files.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/diagram-state.js",
       "layer": "presentation"
     },
