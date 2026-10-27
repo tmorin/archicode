@@ -69,6 +69,10 @@
       "layer": "unsorted"
     },
     {
+      "file": "application/layer-writes.js",
+      "layer": "application"
+    },
+    {
       "file": "application/plateau-patches.js",
       "layer": "application"
     },
