@@ -90,7 +90,7 @@ wave_manifest:
       slug: bundle-codec
       phase: P2
       depends_on: []
-      run: null
+      run: 0191
       delegation: standard
       likely_paths:
         - 'src/main/editor/persistence/**'
