@@ -52,20 +52,32 @@ async function storedSample(page) {
 }
 
 async function openWorkspaceMenu(page) {
-  await page.locator('[data-action="toggle-workspace-menu"]').click();
+  const toggle = page.locator('[data-action="toggle-workspace-menu"]');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
 }
 
-// Edits the description of the shop on the Elements page and saves it.
+// Edits the description of Back office (a system both the baseline and the marketplace plateau have) on the Elements page and saves it.
 async function editShopDescription(page, description) {
   await openPage(page, 'Elements');
   await page
-    .locator('[data-action="select-element"]')
-    .filter({ hasText: /\bShop\b/ })
+    .locator('.tree-node-row[role="treeitem"]')
+    .filter({ hasText: /Back office/ })
     .first()
     .click();
   await page.locator('[data-action="toggle-element-edit"]').first().click();
   await page.locator('#edit-description-input').fill(description);
   await page.locator('[data-action="save-all-changes"]').click();
+  // the baseline is inherited by other plateaus: the page asks first, and the yes writes it
+  const confirm = page.getByRole('button', { name: /^Write in / });
+  const saved = page.getByText('Saved.');
+  await expect(confirm.or(saved).first()).toBeVisible();
+  if (await confirm.isVisible()) {
+    await confirm.click();
+    // the draft is in the page's model; one more click of the same button writes it
+    await page.locator('[data-action="save-all-changes"]').click();
+  }
   await expect(page.locator('body')).toContainText('Saved.');
 }
 
@@ -85,7 +97,8 @@ test('the link opens Brightcart, a change is kept, the same link reopens the one
   await expect(page.locator('body')).toContainText('Brightcart');
   await expect(page).toHaveURL(/#\/timeline\/applications/);
   await expect(page).toHaveURL(/plateau=marketplace/);
-  await expect(page).toHaveURL(/compare=past/);
+  // the address carries `compare=` only with a removed element; the comparison itself is the band's list
+  await expect(page.getByRole('combobox', { name: 'Compare with' })).toHaveValue('past');
   await expect(page).not.toHaveURL(/sample=/);
   expect(hosted.requests).toContain('/editor/samples/brightcart.yaml');
   expect((await storedSample(page)).rows).toBe(1);
@@ -119,7 +132,7 @@ test('the link opens Brightcart, a change is kept, the same link reopens the one
   await openWorkspaceMenu(page);
   await page.getByRole('button', { name: /Reset to the sample/ }).click();
   await expect(page.locator('body')).toContainText('Your changes in it are lost.');
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.locator('[data-action="workspace-cancel-question"]').click();
   expect((await storedSample(page)).bundle).toBe(reopened.bundle);
 
   // Reset with the yes restores the sample's text
@@ -154,7 +167,7 @@ test('a bundle file chosen in the file input is imported as a new workspace with
   expect(names).toEqual(['Brightcart', 'Brightcart 2']);
   await page.getByRole('button', { name: 'Close workspace' }).click();
   await expect(page.getByRole('button', { name: /Open .Brightcart 2./ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Open .Brightcart\./ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Open .Brightcart.$/ })).toBeVisible();
   expect((await storedSample(page)).bundle).toBe(sampleText);
 });
 
