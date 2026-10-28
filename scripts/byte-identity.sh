@@ -21,6 +21,9 @@
 #
 # Usage: scripts/byte-identity.sh [options]
 #   --exceptions FILE   the accepted sentences (default: scripts/byte-identity-exceptions.txt)
+#   --new-files FILE    the files whose difference is the feature (default: scripts/byte-identity-new-files.txt): one extended
+#                       regular expression per line on the path of a written file; a matching file is accepted when it exists in
+#                       both copies and differs; any other difference is reported as before
 #   --base-tag TAG      the tag of the base program (default: archicode-0.19.0)
 #   --base-dir DIR      where the base program is built and kept (default: ~/.cache/archicode-byte-identity/<tag>)
 #   --no-build          use target/quarkus-app as it is (else `./mvnw -o package -DskipTests -DskipITs` first)
@@ -34,6 +37,7 @@ set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXCEPTIONS="$ROOT/scripts/byte-identity-exceptions.txt"
+NEWFILES="$ROOT/scripts/byte-identity-new-files.txt"
 TAG="archicode-0.19.0"
 BASE_DIR=""
 BUILD=1
@@ -44,6 +48,7 @@ SELF_CHECK=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --exceptions) EXCEPTIONS="$2"; shift 2 ;;
+    --new-files) NEWFILES="$2"; shift 2 ;;
     --base-tag) TAG="$2"; shift 2 ;;
     --base-dir) BASE_DIR="$2"; shift 2 ;;
     --no-build) BUILD=0; shift ;;
@@ -116,6 +121,27 @@ lines_accepted() { # base_err new_err exceptions
   return 0
 }
 
+# the written files of a pair differ only in files the new-files list names (and each of them exists in both copies)
+files_accepted() { # base_ws new_ws list
+  local b="$1" n="$2" list="$3" line path pat ok
+  [ -s "$list" ] || return 1
+  diff -r -q "$b" "$n" >"$WORK/run/filediff" 2>&1
+  [ -s "$WORK/run/filediff" ] || return 1
+  while IFS= read -r line; do
+    case "$line" in
+      "Files "*" differ") path="${line#Files $b/}"; path="${path%% and *}" ;;
+      *) return 1 ;;
+    esac
+    ok=0
+    while IFS= read -r pat; do
+      case "$pat" in ''|'#'*) continue ;; esac
+      if printf '%s\n' "$path" | grep -Eq -- "$pat"; then ok=1; break; fi
+    done <"$list"
+    [ "$ok" = 1 ] || return 1
+  done <"$WORK/run/filediff"
+  return 0
+}
+
 compare() { # label src rules args...
   local label="$1" src="$2" rules="$3"; shift 3
   local b="$WORK/run/base" n="$WORK/run/new"
@@ -132,6 +158,11 @@ compare() { # label src rules args...
   cmp -s "$b/exit" "$n/exit" || exit_same=0
   if [ $files_same = 1 ] && [ $out_same = 1 ] && [ $err_same = 1 ] && [ $exit_same = 1 ]; then
     SAME=$((SAME + 1)); return 0
+  fi
+  if [ $files_same = 0 ] && [ $out_same = 1 ] && [ $exit_same = 1 ] && [ $err_same = 1 ] && files_accepted "$b/ws" "$n/ws" "${NEWLIST:-$NEWFILES}"; then
+    ACCEPTED=$((ACCEPTED + 1))
+    { echo "ACCEPTED  $label (files of the feature)"; cat "$WORK/run/filediff" | sed 's/^/    /'; } >>"$REPORT"
+    return 0
   fi
   if [ $files_same = 1 ] && [ $out_same = 1 ] && [ $exit_same = 1 ] && lines_accepted "$b/err.n" "$n/err.n" "$rules"; then
     ACCEPTED=$((ACCEPTED + 1))
@@ -207,6 +238,18 @@ if [ "$SELF_CHECK" = 1 ]; then
   before=$UNEXPECTED
   compare "self-check (rules)" "$SELF" "$EXCEPTIONS" query graph
   [ "$UNEXPECTED" -eq "$before" ] || SELF_FAIL=1
+fi
+
+# the list of new files has teeth too: a scratch workspace whose story differs between the programs only through a file the list
+# does not name must be found, and a listed one accepted (the scratch copies are made here, by hand, not by the programs)
+if [ "$SELF_CHECK" = 1 ]; then
+  NF="$WORK/nf"; rm -rf "$NF"; mkdir -p "$NF/a/views-stories/order_flow" "$NF/a/views-stories/other" "$NF/b/views-stories/order_flow" "$NF/b/views-stories/other"
+  echo one >"$NF/a/views-stories/order_flow/x.puml"; echo two >"$NF/b/views-stories/order_flow/x.puml"
+  echo one >"$NF/a/views-stories/other/y.puml"; echo two >"$NF/b/views-stories/other/y.puml"
+  mkdir -p "$WORK/run"
+  if files_accepted "$NF/a" "$NF/b" "$NEWFILES"; then echo "SELF-CHECK FAILED: a file the list does not name was accepted" >&2; SELF_FAIL=1; fi
+  rm -rf "$NF/a/views-stories/other" "$NF/b/views-stories/other"
+  if ! files_accepted "$NF/a" "$NF/b" "$NEWFILES"; then echo "SELF-CHECK FAILED: a listed file was not accepted" >&2; SELF_FAIL=1; fi
 fi
 
 echo

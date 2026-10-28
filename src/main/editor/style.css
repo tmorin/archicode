@@ -12,6 +12,8 @@
     --on-accent: #ffffff;
     --on-modified: #1a1a1a; /* text on the --modified badge: 4.8:1 (white on it is 3.6:1) */
     --header-h: 3rem;
+    --hl: #c2410c;
+    --hl-text: #c2410c;
     --chg-new: #00775a;
     --chg-changed: #a85d00;
     --chg-removed: #6b6b6b;
@@ -36,6 +38,8 @@
       --danger: #ff6b6b;
       --panel-bg: #262626;
       --modified: #f0c674;
+      --hl: #ff8a5c;
+      --hl-text: #ff9e78;
       --chg-new: #3ddc97;
       --chg-changed: #ffb454;
       --chg-removed: #a0a0a0;
@@ -60,6 +64,8 @@
     --danger: #ff6b6b;
     --panel-bg: #262626;
     --modified: #f0c674;
+    --hl: #ff8a5c;
+    --hl-text: #ff9e78;
     --chg-new: #3ddc97;
     --chg-changed: #ffb454;
     --chg-removed: #a0a0a0;
@@ -725,9 +731,16 @@
   .dg-struck { text-decoration: line-through; }
   .dg-glyph { font-weight: 700; }
   .dg-label .dg-glyph { font-size: 14px; }
+  .dg-edge.dg-hl { stroke: var(--hl); stroke-width: 4.5; }
+  .dg-edge.dg-calm { stroke-opacity: 0.55; stroke-width: 1; }
+  .dg-arrowhead.dg-hl { fill: var(--hl); }
+  .dg-arrowhead.dg-calm { fill-opacity: 0.55; }
+  .dg-label.dg-hl { fill: var(--hl-text); font-weight: 700; }
+  .dg-label.dg-calm { fill-opacity: 0.75; font-weight: 400; }
   .dg-edge.dg-chg-new { stroke: var(--chg-new); stroke-width: 3; stroke-dasharray: none; }
   .dg-edge.dg-chg-changed { stroke: var(--chg-changed); stroke-width: 2; stroke-dasharray: 2 3; }
   .dg-edge.dg-chg-removed { stroke: var(--chg-removed); stroke-width: 1.6; stroke-dasharray: 7 4; }
+  .dg-edge.dg-hl.dg-chg-new, .dg-edge.dg-hl.dg-chg-changed, .dg-edge.dg-hl.dg-chg-removed { stroke-width: 4.5; }
   .dg-arrowhead.dg-chg-new { fill: var(--chg-new); }
   .dg-arrowhead.dg-chg-changed { fill: var(--chg-changed); }
   .dg-arrowhead.dg-chg-removed { fill: var(--chg-removed); }

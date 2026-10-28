@@ -31,6 +31,8 @@ try {
     --on-accent: #ffffff;
     --on-modified: #1a1a1a; /* text on the --modified badge: 4.8:1 (white on it is 3.6:1) */
     --header-h: 3rem;
+    --hl: #c2410c;
+    --hl-text: #c2410c;
     --chg-new: #00775a;
     --chg-changed: #a85d00;
     --chg-removed: #6b6b6b;
@@ -55,6 +57,8 @@ try {
       --danger: #ff6b6b;
       --panel-bg: #262626;
       --modified: #f0c674;
+      --hl: #ff8a5c;
+      --hl-text: #ff9e78;
       --chg-new: #3ddc97;
       --chg-changed: #ffb454;
       --chg-removed: #a0a0a0;
@@ -79,6 +83,8 @@ try {
     --danger: #ff6b6b;
     --panel-bg: #262626;
     --modified: #f0c674;
+    --hl: #ff8a5c;
+    --hl-text: #ff9e78;
     --chg-new: #3ddc97;
     --chg-changed: #ffb454;
     --chg-removed: #a0a0a0;
@@ -744,9 +750,16 @@ try {
   .dg-struck { text-decoration: line-through; }
   .dg-glyph { font-weight: 700; }
   .dg-label .dg-glyph { font-size: 14px; }
+  .dg-edge.dg-hl { stroke: var(--hl); stroke-width: 4.5; }
+  .dg-edge.dg-calm { stroke-opacity: 0.55; stroke-width: 1; }
+  .dg-arrowhead.dg-hl { fill: var(--hl); }
+  .dg-arrowhead.dg-calm { fill-opacity: 0.55; }
+  .dg-label.dg-hl { fill: var(--hl-text); font-weight: 700; }
+  .dg-label.dg-calm { fill-opacity: 0.75; font-weight: 400; }
   .dg-edge.dg-chg-new { stroke: var(--chg-new); stroke-width: 3; stroke-dasharray: none; }
   .dg-edge.dg-chg-changed { stroke: var(--chg-changed); stroke-width: 2; stroke-dasharray: 2 3; }
   .dg-edge.dg-chg-removed { stroke: var(--chg-removed); stroke-width: 1.6; stroke-dasharray: 7 4; }
+  .dg-edge.dg-hl.dg-chg-new, .dg-edge.dg-hl.dg-chg-changed, .dg-edge.dg-hl.dg-chg-removed { stroke-width: 4.5; }
   .dg-arrowhead.dg-chg-new { fill: var(--chg-new); }
   .dg-arrowhead.dg-chg-changed { fill: var(--chg-changed); }
   .dg-arrowhead.dg-chg-removed { fill: var(--chg-removed); }
@@ -16160,11 +16173,7 @@ function scanMoveReferences(oldRef, layer) {
     if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
   for (const story of storiesList()) {
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
-      if (
-        isPlainObject(step) &&
-        !step.view &&
-        rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer)
-      )
+      if (isPlainObject(step) && rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer))
         result.views++;
     }
   }
@@ -22934,6 +22943,14 @@ function toggleMapLink(entry) {
     : mapLinks.concat([entry]);
 }
 
+/** Draws one relationship heavy, or not any more (the Highlight box of the panel of a link; view state, run 0200 DEC-5). */
+function toggleMapHighlight(entry) {
+  const key = linkEntryKey(entry);
+  mapHighlight = mapHighlight.some((e) => linkEntryKey(e) === key)
+    ? mapHighlight.filter((e) => linkEntryKey(e) !== key)
+    : mapHighlight.concat([entry]);
+}
+
 function mapLinkKeyFocus(key) {
   return (
     'input[data-action="map-link-toggle"][data-key="' + String(key).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]'
@@ -22980,20 +22997,30 @@ function mapLinkControlsApply(layer) {
   return mapIsShown() && mapLayer() === 'application' && (layer || 'application') === 'application';
 }
 
-/** The checkbox of one relationship in the panel of a link (empty when the choice is empty or the relationship cannot be found). */
+/** The boxes of one relationship in the panel of a link: Drawn (only while the choice is not empty) and Highlight (empty when the relationship cannot be found). */
 function renderMapLinkPanelCheckboxHtml(rel) {
-  if (!mapLinks.length) return '';
   const entry = mapLinkEntryOfRelationship(rel);
   if (!entry) return '';
   const key = linkEntryKey(entry);
+  const names = escapeHtml(rel.from + ' to ' + rel.destination);
+  const drawn = mapLinks.length
+    ? '<label class="map-link-panel-check"><input type="checkbox" data-action="map-link-toggle" data-key="' +
+      escapeHtml(key) +
+      '"' +
+      (mapLinks.some((e) => linkEntryKey(e) === key) ? ' checked' : '') +
+      ' aria-label="Draw ' +
+      names +
+      '"> Drawn</label>'
+    : '';
   return (
-    '<label class="map-link-panel-check"><input type="checkbox" data-action="map-link-toggle" data-key="' +
+    drawn +
+    '<label class="map-link-panel-check"><input type="checkbox" data-action="map-link-highlight" data-key="' +
     escapeHtml(key) +
     '"' +
-    (mapLinks.some((e) => linkEntryKey(e) === key) ? ' checked' : '') +
-    ' aria-label="Draw ' +
-    escapeHtml(rel.from + ' to ' + rel.destination) +
-    '"> Drawn</label>'
+    (mapHighlight.some((e) => linkEntryKey(e) === key) ? ' checked' : '') +
+    ' aria-label="Highlight ' +
+    names +
+    '"> Highlight</label>'
   );
 }
 
@@ -23010,6 +23037,16 @@ function renderMapLinksChipHtml() {
     '<span class="map-chip map-chip-links"><span>Relationships: ' +
     mapLinks.length +
     '</span><button type="button" data-action="map-links-clear" aria-label="Clear the ticked relationships" title="Show the whole map again">×</button></span>'
+  );
+}
+
+/** The chip over the diagram while relationships are drawn heavy. */
+function renderMapHighlightChipHtml() {
+  if (!mapHighlight.length || mapLayer() !== 'application') return '';
+  return (
+    '<span class="map-chip map-chip-highlight"><span>Highlight: ' +
+    mapHighlight.length +
+    '</span><button type="button" data-action="map-highlight-clear" aria-label="Clear the highlighted relationships" title="Draw every relationship calmly again">×</button></span>'
   );
 }
 
@@ -24821,6 +24858,8 @@ const DIAGRAM_LABEL_LINES = 4;
 const DIAGRAM_LABEL_LINE_HEIGHT = 13;
 const DIAGRAM_LABEL_PADDING = 10;
 
+const HIGHLIGHT_GLYPH = '▶';
+
 function diagramLabelLayout(link, wrap, markOnly) {
   const measure = (line) => diagramMeasureText(line, 11);
   const max = DIAGRAM_LABEL_MAX_WIDTH;
@@ -24840,7 +24879,8 @@ function diagramLabelLayout(link, wrap, markOnly) {
       })
       .join(' ');
   // a comparison: the glyph of the state of the link opens its caption (it stands alone when the captions are off: the glyph is how the state is told)
-  const mark = diagramLinkMark(link);
+  // a highlighted link also opens its caption with the glyph ▶
+  const mark = [diagramLinkMark(link), link.highlighted ? HIGHLIGHT_GLYPH : ''].filter(Boolean).join(' ');
   const worded = !markOnly && link.label && link.label.trim() ? fit(link.label) : '';
   const labelText = mark ? (worded ? mark + ' ' + worded : mark) : worded;
   const qualifiers = markOnly ? [] : Array.from(link.qualifiers || []);
@@ -24884,6 +24924,7 @@ function diagramLinkTitle(link, itemById, layer, source) {
         CHANGE_WORDS[link.change].word +
         (link.synthetic ? ' (as a group: see the relationships below)' : '')
     );
+  if (link.highlighted) lines.push(HIGHLIGHT_GLYPH + ' highlighted');
   const rels = link.relationships || [];
   if (link.synthetic && rels.length) {
     lines.push(rels.length + (rels.length === 1 ? ' relationship is' : ' relationships are') + ' grouped here:');
@@ -25376,6 +25417,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   let edges = '';
   let labels = '';
   const statesUsed = new Set(); // the states of the links drawn: an arrowhead in the colour of each is defined for them only
+  const highlighting = result.links.some((l) => l.highlighted); // a link is highlighted: the others are drawn calmer
   const markOnly = !!(options && options.show && options.show.labels === false); // the captions are off: a changed link still carries its glyph
   for (const edge of layout.edges || []) {
     const section = edge.sections && edge.sections[0];
@@ -25392,6 +25434,11 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const caption = diagramLinkText(link);
     const state = RELATIONSHIP_STATES.includes(link.change) ? link.change : null; // a comparison: the link says what happened to it
     if (state) statesUsed.add(state);
+    const emphasis = link.highlighted
+      ? ' dg-hl'
+      : highlighting && !state && !link.synthetic && !link.secondary
+        ? ' dg-calm'
+        : '';
     const select =
       ends +
       (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') +
@@ -25410,7 +25457,8 @@ function renderDiagramSvg(layout, result, focalReference, options) {
           ' to ' +
           pairs.get(pairKey).toEnd.title +
           (caption ? ': ' + caption : '') +
-          (state ? ', ' + CHANGE_WORDS[state].word : '')
+          (state ? ', ' + CHANGE_WORDS[state].word : '') +
+          (link.highlighted ? ', highlighted' : '')
       ) +
       '"><title>' +
       escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer, options && options.source)) +
@@ -25422,8 +25470,9 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       (link.synthetic ? ' dg-aggregated' : '') +
       (link.ghost ? ' dg-ghost-edge' : '') +
       (state ? ' dg-chg-' + state : '') +
+      emphasis +
       '" marker-end="url(#' +
-      (state ? 'dg-arrow-' + state : 'dg-arrow') +
+      (state ? 'dg-arrow-' + state : link.highlighted ? 'dg-arrow-hl' : emphasis ? 'dg-arrow-calm' : 'dg-arrow') +
       ')" d="' +
       d +
       '"/></g>';
@@ -25435,13 +25484,15 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       const cx = o.x + label.x + label.width / 2;
       const top = o.y + label.y + DIAGRAM_LABEL_LINE_HEIGHT - 1;
       // the glyph of a changed link opens its first line, in bold
-      const mark = diagramLinkMark(link);
+      const mark = [diagramLinkMark(link), link.highlighted ? HIGHLIGHT_GLYPH : ''].filter(Boolean).join(' ');
       const lineHtml = (line, first) =>
         mark && first && line.startsWith(mark)
           ? '<tspan class="dg-glyph">' + escapeHtml(mark) + '</tspan>' + escapeHtml(line.slice(mark.length))
           : escapeHtml(line);
       labels +=
-        '<text class="dg-label"' +
+        '<text class="dg-label' +
+        emphasis +
+        '"' +
         select +
         ' text-anchor="middle" x="' +
         cx +
@@ -25484,6 +25535,10 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     height +
     '">' +
     '<defs><marker id="dg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead" d="M0,0 L10,4 L0,8 z"/></marker>' +
+    (highlighting
+      ? '<marker id="dg-arrow-hl" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13" refX="15" refY="6.5" orient="auto"><path class="dg-arrowhead dg-hl" d="M0,0 L16,6.5 L0,13 z"/></marker>' +
+        '<marker id="dg-arrow-calm" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead dg-calm" d="M0,0 L10,4 L0,8 z"/></marker>'
+      : '') +
     RELATIONSHIP_STATES.filter((state) => statesUsed.has(state))
       .map(
         (state) =>
@@ -27950,7 +28005,7 @@ function handleNavKeydown(e) {
 /** The pinned and the hidden elements of the map, each removable. */
 function renderMapChipsHtml() {
   const map = mapStateOf();
-  const linksChip = renderMapLinksChipHtml();
+  const linksChip = renderMapLinksChipHtml() + renderMapHighlightChipHtml();
   if (!map.pinned.length && !map.hidden.length && !linksChip) return '';
   const chip = (reference, kind) => {
     const record = AppState.index[mapLayer()].get(reference);
@@ -27976,7 +28031,7 @@ function renderMapChipsHtml() {
     );
   };
   const clear =
-    map.pinned.length + map.hidden.length + (linksChip ? 1 : 0) > 2
+    map.pinned.length + map.hidden.length + (mapLinks.length ? 1 : 0) + (mapHighlight.length ? 1 : 0) > 2
       ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden, no relationship ticked">Clear all</button>'
       : '';
   return (
@@ -28608,37 +28663,56 @@ function storiesUsingView(viewId) {
   );
 }
 
-/** A recipe (a view, or a step that carries one) follows a renamed element. True when it changed. */
+/**
+ * The relationship entries a recipe names in `layer`, the one list that the rename (`rewriteRecipeReferences`) and its count (`recipeNamedReferences`, the preview of a Move) both
+ * read (wave 026, run 0200, DEC-7, F6). A recipe is a view, a step that carries its own view, or a step that names a view: such a step has only its own `highlight` key, which sits
+ * beside `view:` and not in `properties`. The entries of a Map of the application layer are its `links` and `highlight`; the step key is read for a step of that layer. The
+ * entries returned are the objects of the recipe, so a rewrite of them is a rewrite of the recipe.
+ */
+function recipeLinkEntries(recipe, layer) {
+  const entries = [];
+  if (layer !== 'application') return entries;
+  const take = (value, key) => {
+    if (Array.isArray(value)) entries.push(...linkEntriesOf(value, key).entries);
+  };
+  const properties = recipe.properties;
+  const onApplicationLayer = entryLayerOf(recipe.layer) === 'application'; // the layer of a view is read in any case (`model/layer-loader.js`, the same reading as `viewLayerOf`)
+  if (isPlainObject(properties) && recipe.viewpoint === 'map' && onApplicationLayer) {
+    take(properties.links, 'links');
+    take(properties.highlight, 'highlight');
+  }
+  const namesView = typeof recipe.view === 'string' && recipe.view !== '';
+  if (namesView || (recipe.viewpoint === 'map' && onApplicationLayer)) take(recipe.highlight, 'highlight');
+  return entries;
+}
+
+/** A recipe (a view, or a step that carries one or names one) follows a renamed element. True when it changed. */
 function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
   const properties = recipe.properties;
-  if (!isPlainObject(properties)) return false;
   let changed = false;
   const viewLayer = viewLayerOf(recipe);
-  if (recipe.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
-    const element = rewriteReferenceValue(properties.element, oldRef, newRef);
-    if (element !== properties.element) {
-      properties.element = element;
-      changed = true;
-    }
-  }
-  if (recipe.viewpoint === 'map' && viewLayer === layer) {
-    for (const key of ['pinned', 'hidden', 'opened']) {
-      if (!Array.isArray(properties[key])) continue;
-      const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
-      if (next.some((reference, i) => reference !== properties[key][i])) {
-        properties[key] = next;
+  if (isPlainObject(properties)) {
+    if (recipe.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
+      const element = rewriteReferenceValue(properties.element, oldRef, newRef);
+      if (element !== properties.element) {
+        properties.element = element;
         changed = true;
       }
     }
-    // the relationships a Map is narrowed to, and the ones it draws heavy, name their two ends (wave 026, run 0199, DEC-10); the label never changes
-    if (viewLayer === 'application') {
-      const rewrite = (reference) => rewriteReferenceValue(reference, oldRef, newRef);
-      for (const key of ['links', 'highlight']) {
-        if (Array.isArray(properties[key]) && rewriteLinkEntries(linkEntriesOf(properties[key], key).entries, rewrite))
+    if (recipe.viewpoint === 'map' && viewLayer === layer) {
+      for (const key of ['pinned', 'hidden', 'opened']) {
+        if (!Array.isArray(properties[key])) continue;
+        const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
+        if (next.some((reference, i) => reference !== properties[key][i])) {
+          properties[key] = next;
           changed = true;
+        }
       }
     }
   }
+  // the relationships a Map is narrowed to, and the ones it draws heavy, name their two ends (wave 026, runs 0199 and 0200, DEC-10); the label never changes
+  const rewrite = (reference) => rewriteReferenceValue(reference, oldRef, newRef);
+  if (rewriteLinkEntries(recipeLinkEntries(recipe, layer), rewrite)) changed = true;
   return changed;
 }
 
@@ -28657,8 +28731,7 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
   for (const story of storiesList()) {
     let storyChanged = false;
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
-      if (isPlainObject(step) && !step.view && rewriteRecipeReferences(step, oldRef, newRef, layer))
-        storyChanged = true;
+      if (isPlainObject(step) && rewriteRecipeReferences(step, oldRef, newRef, layer)) storyChanged = true;
     }
     if (storyChanged) {
       markEntryChanged(story);
@@ -28668,22 +28741,20 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
   return changed;
 }
 
-/** The references a recipe (a view, or a step that carries one) names in `layer`: the ones `rewriteRecipeReferences` rewrites. Keep the two in step. */
+/** The references a recipe (a view, or a step) names in `layer`: the ones `rewriteRecipeReferences` rewrites, the entries from the one helper `recipeLinkEntries`. */
 function recipeNamedReferences(recipe, layer) {
+  const named = [];
+  for (const link of recipeLinkEntries(recipe, layer)) named.push(link.source, link.destination);
   const properties = recipe.properties;
-  if (!isPlainObject(properties) || viewLayerOf(recipe) !== layer) return [];
+  if (!isPlainObject(properties) || viewLayerOf(recipe) !== layer) return named;
   if (recipe.viewpoint === 'map') {
-    const named = ['pinned', 'hidden', 'opened']
-      .reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), [])
-      .filter((reference) => typeof reference === 'string');
-    if (layer === 'application') {
-      for (const key of ['links', 'highlight']) {
-        for (const link of linkEntriesOf(properties[key], key).entries) named.push(link.source, link.destination);
-      }
-    }
-    return named;
+    return named.concat(
+      ['pinned', 'hidden', 'opened']
+        .reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), [])
+        .filter((reference) => typeof reference === 'string')
+    );
   }
-  return typeof properties.element === 'string' ? [properties.element] : [];
+  return typeof properties.element === 'string' ? named.concat([properties.element]) : named;
 }
 
 /**
@@ -28730,7 +28801,7 @@ function renameSiblingImpact(oldRef, newRef, layer) {
   const steps = [];
   for (const story of storiesList()) {
     (Array.isArray(story.steps) ? story.steps : []).forEach((step, i) => {
-      if (!isPlainObject(step) || step.view) return;
+      if (!isPlainObject(step)) return;
       const where = lost(step);
       if (where.length) steps.push({ story: story.id, label: storyLabel(story), number: i + 1, plateaus: where });
     });
@@ -29066,22 +29137,31 @@ function linkEntryOfKey(key) {
  * is already there, is refused. The `highlight` is never touched.
  */
 function setViewLink(view, entry, add) {
+  return setViewLinkList(view, 'links', entry, add);
+}
+
+/** The same for the `highlight` of the view (run 0200, DEC-5); the `links` are never touched. */
+function setViewHighlight(view, entry, add) {
+  return setViewLinkList(view, 'highlight', entry, add);
+}
+
+function setViewLinkList(view, name, entry, add) {
   if (view.viewpoint !== 'map' || viewLayerOf(view) !== 'application' || !entry) return false;
   const key = linkEntryKey(entry);
-  const items = Array.isArray(view.properties.links) ? view.properties.links : [];
+  const items = Array.isArray(view.properties[name]) ? view.properties[name] : [];
   const isThis = (item) => isLinkEntry(item) && linkEntryKey(item) === key;
   if (add) {
     if (!linkEntryExists(entry, AppState.index.application)) return false;
     if (items.some(isThis)) return false;
     const written = { source: entry.source, destination: entry.destination };
     if (normalLinkLabel(entry.label)) written.label = normalLinkLabel(entry.label);
-    putViewProperty(view.properties, 'links', items.concat([written]));
+    putViewProperty(view.properties, name, items.concat([written]));
     return true;
   }
   if (!items.some(isThis)) return false;
   const rest = items.filter((item) => !isThis(item));
-  if (rest.length) view.properties.links = rest;
-  else delete view.properties.links;
+  if (rest.length) view.properties[name] = rest;
+  else delete view.properties[name];
   return true;
 }
 
@@ -29126,6 +29206,20 @@ function handleViewFieldChange(control, immediate) {
       setViewLink(
         view,
         chosen.startsWith('#') ? viewLinkChoices(view.properties)[Number(chosen.slice(1))] : linkEntryOfKey(chosen),
+        true
+      )
+    );
+  }
+  if (control.getAttribute('data-view-highlight') === 'add') {
+    const chosen = control.value;
+    control.value = '';
+    pendingFocusSelector = '#view-edit-add-highlight';
+    return editSavedView((view) =>
+      setViewHighlight(
+        view,
+        chosen.startsWith('#')
+          ? viewLinkChoices(view.properties, 'highlight')[Number(chosen.slice(1))]
+          : linkEntryOfKey(chosen),
         true
       )
     );
@@ -29183,12 +29277,25 @@ document.addEventListener('pointercancel', notePointer, true);
 /** Delegated `change` listener: the form of a view on its page, the list of Settings. (The menu of the steps of a story is the player's, `handleStoryPlayerChange`.) */
 function handleAppChange(e) {
   if (handleMapLinksControl(e.target)) return; // the kind and "Ticked only" of the list of relationships
+  if (e.target.matches && e.target.matches('[data-story-step-highlight]')) {
+    const chosen = e.target.value;
+    e.target.value = '';
+    setStepHighlight(
+      e.target.getAttribute('data-story'),
+      Number(e.target.getAttribute('data-step')),
+      linkEntryOfKey(chosen),
+      true
+    );
+    return;
+  }
   if (e.target && e.target.matches && e.target.matches('[data-settings-current]')) {
     chooseCurrentPlateau(e.target);
     return;
   }
   const control =
-    e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list], [data-view-link]') : null;
+    e.target && e.target.closest
+      ? e.target.closest('[data-view-field], [data-view-list], [data-view-link], [data-view-highlight]')
+      : null;
   if (control) handleViewFieldChange(control);
 }
 
@@ -30008,6 +30115,41 @@ function setStepPlateau(storyId, index, key, value) {
   return true;
 }
 
+/** Step keys whose `highlight` was created by an add of `setStepHighlight`: taking the entry out again puts the step back as it was. */
+const stepHighlightsCreated = new WeakSet();
+
+/**
+ * Adds a relationship to the `highlight` key of a step, or takes one out (run 0200, DEC-5). An entry that names no relationship of the model, or is already there, is refused.
+ * Removing the last entry leaves `highlight: []` when the view the step names has a highlight to switch off, else deletes the key. Returns whether the step changed.
+ */
+function setStepHighlight(storyId, index, entry, add) {
+  const story = findStory(storyId);
+  const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
+  if (!isPlainObject(step) || !entry) return false;
+  const key = linkEntryKey(entry);
+  const items = Array.isArray(step.highlight) ? step.highlight : [];
+  const isThis = (item) => isLinkEntry(item) && linkEntryKey(item) === key;
+  if (add) {
+    if (!linkEntryExists(entry, AppState.index.application) || items.some(isThis)) return false;
+    const written = { source: entry.source, destination: entry.destination };
+    if (normalLinkLabel(entry.label)) written.label = normalLinkLabel(entry.label);
+    if (!Array.isArray(step.highlight)) stepHighlightsCreated.add(step);
+    step.highlight = items.concat([written]);
+  } else {
+    if (!items.some(isThis)) return false;
+    const rest = items.filter((item) => !isThis(item));
+    const view = stepView(step);
+    const viewSwitchedOff =
+      !!view && !!view.properties && Array.isArray(view.properties.highlight) && view.properties.highlight.length > 0;
+    if (rest.length || (viewSwitchedOff && !stepHighlightsCreated.has(step))) step.highlight = rest;
+    else delete step.highlight;
+  }
+  markEntryChanged(story);
+  pendingFocusSelector = '[data-story-step-highlight][data-story="' + story.id + '"][data-step="' + index + '"]';
+  requestRedraw();
+  return true;
+}
+
 /** A step whose view is gone points at another one. */
 function repairStoryStep(storyId, index, viewId) {
   const story = findStory(storyId);
@@ -30244,7 +30386,42 @@ function storyStepAnnouncement(story, index) {
   const steps = story ? storySteps(story) : [];
   if (!Number.isInteger(index) || index < 0 || index >= steps.length) return '';
   const view = stepView(steps[index]);
-  return 'Step ' + (index + 1) + ' of ' + steps.length + (view ? ', ' + viewLabel(view) : '');
+  return (
+    'Step ' +
+    (index + 1) +
+    ' of ' +
+    steps.length +
+    (view ? ', ' + viewLabel(view) : '') +
+    stepHighlightSentence(steps[index])
+  );
+}
+
+/**
+ * What a step highlights, said for a screen reader (wave 026, run 0200, DEC-9): ". Highlighted: <source> to <destination>, <label>." with the display names of the ends, entries joined
+ * with a semicolon. Only the entries whose relationship the model drawn has are told (the others are dropped from the kernel input too); a step that highlights nothing says nothing.
+ */
+function stepHighlightSentence(step) {
+  const view = stepViewForDrawing(step);
+  if (!view || !isPlainObject(view.properties) || viewLayerOf(view) !== 'application') return '';
+  const asked = linkEntriesOf(view.properties.highlight, 'highlight').entries;
+  if (!asked.length || !AppState.index) return '';
+  const index = AppState.index.application;
+  const shown = drawnLinkEntries(asked, [index, AppState.baseline && AppState.baseline.index.application]);
+  if (!shown.length) return '';
+  const nameOf = (reference) => {
+    const record = index.get(reference) || (AppState.baseline && AppState.baseline.index.application.get(reference));
+    return (record && record.name) || reference;
+  };
+  return (
+    '. Highlighted: ' +
+    shown
+      .map((entry) => {
+        const label = normalLinkLabel(entry.label);
+        return nameOf(entry.source) + ' to ' + nameOf(entry.destination) + (label ? ', ' + label : '');
+      })
+      .join('; ') +
+    '.'
+  );
 }
 
 /**
@@ -31357,6 +31534,7 @@ function renderStoryStepHtml(story, step, index, count) {
     '</span>' +
     '</div>' +
     renderStepPlateausHtml(story, step, index) +
+    renderStepHighlightHtml(story, step, index) +
     (problem ? '<div class="story-step-problem" role="status">' + escapeHtml(problem) + '</div>' : '') +
     (others.length
       ? '<select class="story-repair" data-story-repair data-story="' +
@@ -31449,8 +31627,8 @@ function linkEntryText(entry) {
 }
 
 /** The relationships of the application layer that a Map view does not have in its `links` yet, sorted by key: what the select of the Links field offers. */
-function viewLinkChoices(properties) {
-  const there = new Set(linkEntriesOf(properties.links).entries.map(linkEntryKey));
+function viewLinkChoices(properties, name) {
+  const there = new Set(linkEntriesOf(properties[name || 'links'], name || 'links').entries.map(linkEntryKey));
   const offered = [];
   for (const [reference, record] of AppState.index.application) {
     for (const relationship of record.relationships || []) {
@@ -31462,11 +31640,13 @@ function viewLinkChoices(properties) {
 }
 
 /** The Links field of the form of a Map view of the application layer: a pill for each entry (missing ones marked) and a select of the relationships not there yet, read by their names (issue #143). */
-function viewLinksFieldHtml(properties, field, option) {
-  const entries = linkEntriesOf(properties.links).entries;
+function viewLinksFieldHtml(properties, field, option, name) {
+  const key = name || 'links';
+  const heading = key === 'links' ? 'Links' : 'Highlight';
+  const entries = linkEntriesOf(properties[key], key).entries;
   const index = AppState.index.application;
   const nameOf = (reference) => (index.has(reference) ? index.get(reference).name || reference : reference);
-  const offered = viewLinkChoices(properties);
+  const offered = viewLinkChoices(properties, key);
   const pills = entries
     .map((entry) => {
       const exists = linkEntryExists(entry, index);
@@ -31478,20 +31658,32 @@ function viewLinksFieldHtml(properties, field, option) {
         (exists ? '' : ' title="This relationship does not exist any more"') +
         '>' +
         escapeHtml(text) +
-        '<button type="button" class="pill-remove" data-action="view-link-remove" data-key="' +
+        '<button type="button" class="pill-remove" data-action="view-' +
+        (key === 'links' ? 'link' : 'highlight') +
+        '-remove" data-key="' +
         escapeHtml(linkEntryKey(entry)) +
         '" aria-label="Remove ' +
         escapeHtml(text) +
-        ' from links" title="Remove">×</button></span>'
+        ' from ' +
+        key +
+        '" title="Remove">×</button></span>'
       );
     })
     .join('');
   return field(
-    'view-edit-add-links',
-    'Links',
-    '<div class="view-pills" role="list" aria-label="Links relationships">' +
+    'view-edit-add-' + (key === 'links' ? 'links' : 'highlight'),
+    heading,
+    '<div class="view-pills" role="list" aria-label="' +
+      heading +
+      ' relationships">' +
       pills +
-      '</div><select id="view-edit-add-links" data-view-link="add" title="The relationships the map is narrowed to">' +
+      '</div><select id="view-edit-add-' +
+      (key === 'links' ? 'links' : 'highlight') +
+      '" data-view-' +
+      (key === 'links' ? 'link' : 'highlight') +
+      '="add" title="' +
+      (key === 'links' ? 'The relationships the map is narrowed to' : 'The relationships drawn heavy') +
+      '">' +
       option('', 'Add a relationship…', true) +
       offered
         .map((entry, i) =>
@@ -31506,7 +31698,60 @@ function viewLinksFieldHtml(properties, field, option) {
         )
         .join('') +
       '</select>',
-    'links'
+    key
+  );
+}
+
+/** The Highlight field of a step in the story editor: the step's own `highlight` key, which replaces the highlight of the view it names (run 0200, DEC-5). */
+function renderStepHighlightHtml(story, step, index) {
+  const view = stepView(step);
+  if (!view || view.viewpoint !== 'map' || viewLayerOf(view) !== 'application') return '';
+  const entries = linkEntriesOf(step.highlight, 'highlight').entries;
+  const id = escapeHtml(story.id);
+  const index_ = AppState.index.application;
+  const pills = entries
+    .map((entry) => {
+      const text = linkEntryText(entry);
+      return (
+        '<span class="pill' +
+        (linkEntryExists(entry, index_) ? '' : ' pill-missing') +
+        '" role="listitem">' +
+        escapeHtml(text) +
+        '<button type="button" class="pill-remove" data-action="story-step-highlight-remove" data-story="' +
+        id +
+        '" data-step="' +
+        index +
+        '" data-key="' +
+        escapeHtml(linkEntryKey(entry)) +
+        '" aria-label="Remove ' +
+        escapeHtml(text) +
+        ' from the highlight of step ' +
+        (index + 1) +
+        '" title="Remove">×</button></span>'
+      );
+    })
+    .join('');
+  const offered = viewLinkChoices({ highlight: entries }, 'highlight');
+  return (
+    '<div class="story-step-highlight"><span class="story-step-highlight-label">Highlight</span>' +
+    '<div class="view-pills" role="list" aria-label="Highlighted relationships of step ' +
+    (index + 1) +
+    '">' +
+    pills +
+    '</div><select data-story-step-highlight="add" data-story="' +
+    id +
+    '" data-step="' +
+    index +
+    '" aria-label="Add a highlighted relationship to step ' +
+    (index + 1) +
+    '"><option value="" selected>Add a relationship…</option>' +
+    offered
+      .map(
+        (entry) =>
+          '<option value="' + escapeHtml(linkEntryKey(entry)) + '">' + escapeHtml(linkEntryText(entry)) + '</option>'
+      )
+      .join('') +
+    '</select><p class="muted story-step-highlight-note">This key replaces the highlight of the view; an empty list switches it off.</p></div>'
   );
 }
 
@@ -31636,7 +31881,10 @@ function renderViewFactsHtml(view) {
       'element'
     );
   }
-  if (isMap && layer === 'application') html += viewLinksFieldHtml(properties, field, option);
+  if (isMap && layer === 'application') {
+    html += viewLinksFieldHtml(properties, field, option);
+    html += viewLinksFieldHtml(properties, field, option, 'highlight');
+  }
   const facets = AppState.workspace.settings.facets.customs;
   const facetName = typeof properties.facet === 'string' ? properties.facet : '';
   if (facets.length || facetName) {
@@ -32672,6 +32920,39 @@ function handleAppClick(e) {
       render();
       break;
     }
+    case 'map-link-highlight': {
+      const entry = linkEntryOfKey(target.getAttribute('data-key'));
+      if (!entry) break;
+      pushDiagramHistory();
+      toggleMapHighlight(entry);
+      mapSelectionCheck = true;
+      pendingFocusSelector =
+        'input[data-action="map-link-highlight"][data-key="' +
+        String(linkEntryKey(entry)).replace(/\\/g, '\\\\').replace(/"/g, '\\"') +
+        '"]';
+      render();
+      break;
+    }
+    case 'map-highlight-clear':
+      pushDiagramHistory();
+      mapHighlight = [];
+      mapSelectionCheck = true;
+      render();
+      break;
+    case 'view-highlight-remove': {
+      const entry = linkEntryOfKey(target.getAttribute('data-key'));
+      pendingFocusSelector = '#view-edit-add-highlight';
+      editSavedView((view) => setViewHighlight(view, entry, false));
+      break;
+    }
+    case 'story-step-highlight-remove':
+      setStepHighlight(
+        target.getAttribute('data-story'),
+        Number(target.getAttribute('data-step')),
+        linkEntryOfKey(target.getAttribute('data-key')),
+        false
+      );
+      break;
     case 'map-link-only':
       pushDiagramHistory();
       chooseOnlyMapLink(AppState.selection);

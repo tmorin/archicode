@@ -229,6 +229,7 @@ function renderStoryStepHtml(story, step, index, count) {
     '</span>' +
     '</div>' +
     renderStepPlateausHtml(story, step, index) +
+    renderStepHighlightHtml(story, step, index) +
     (problem ? '<div class="story-step-problem" role="status">' + escapeHtml(problem) + '</div>' : '') +
     (others.length
       ? '<select class="story-repair" data-story-repair data-story="' +
@@ -321,8 +322,8 @@ function linkEntryText(entry) {
 }
 
 /** The relationships of the application layer that a Map view does not have in its `links` yet, sorted by key: what the select of the Links field offers. */
-function viewLinkChoices(properties) {
-  const there = new Set(linkEntriesOf(properties.links).entries.map(linkEntryKey));
+function viewLinkChoices(properties, name) {
+  const there = new Set(linkEntriesOf(properties[name || 'links'], name || 'links').entries.map(linkEntryKey));
   const offered = [];
   for (const [reference, record] of AppState.index.application) {
     for (const relationship of record.relationships || []) {
@@ -334,11 +335,13 @@ function viewLinkChoices(properties) {
 }
 
 /** The Links field of the form of a Map view of the application layer: a pill for each entry (missing ones marked) and a select of the relationships not there yet, read by their names (issue #143). */
-function viewLinksFieldHtml(properties, field, option) {
-  const entries = linkEntriesOf(properties.links).entries;
+function viewLinksFieldHtml(properties, field, option, name) {
+  const key = name || 'links';
+  const heading = key === 'links' ? 'Links' : 'Highlight';
+  const entries = linkEntriesOf(properties[key], key).entries;
   const index = AppState.index.application;
   const nameOf = (reference) => (index.has(reference) ? index.get(reference).name || reference : reference);
-  const offered = viewLinkChoices(properties);
+  const offered = viewLinkChoices(properties, key);
   const pills = entries
     .map((entry) => {
       const exists = linkEntryExists(entry, index);
@@ -350,20 +353,32 @@ function viewLinksFieldHtml(properties, field, option) {
         (exists ? '' : ' title="This relationship does not exist any more"') +
         '>' +
         escapeHtml(text) +
-        '<button type="button" class="pill-remove" data-action="view-link-remove" data-key="' +
+        '<button type="button" class="pill-remove" data-action="view-' +
+        (key === 'links' ? 'link' : 'highlight') +
+        '-remove" data-key="' +
         escapeHtml(linkEntryKey(entry)) +
         '" aria-label="Remove ' +
         escapeHtml(text) +
-        ' from links" title="Remove">×</button></span>'
+        ' from ' +
+        key +
+        '" title="Remove">×</button></span>'
       );
     })
     .join('');
   return field(
-    'view-edit-add-links',
-    'Links',
-    '<div class="view-pills" role="list" aria-label="Links relationships">' +
+    'view-edit-add-' + (key === 'links' ? 'links' : 'highlight'),
+    heading,
+    '<div class="view-pills" role="list" aria-label="' +
+      heading +
+      ' relationships">' +
       pills +
-      '</div><select id="view-edit-add-links" data-view-link="add" title="The relationships the map is narrowed to">' +
+      '</div><select id="view-edit-add-' +
+      (key === 'links' ? 'links' : 'highlight') +
+      '" data-view-' +
+      (key === 'links' ? 'link' : 'highlight') +
+      '="add" title="' +
+      (key === 'links' ? 'The relationships the map is narrowed to' : 'The relationships drawn heavy') +
+      '">' +
       option('', 'Add a relationship…', true) +
       offered
         .map((entry, i) =>
@@ -378,7 +393,60 @@ function viewLinksFieldHtml(properties, field, option) {
         )
         .join('') +
       '</select>',
-    'links'
+    key
+  );
+}
+
+/** The Highlight field of a step in the story editor: the step's own `highlight` key, which replaces the highlight of the view it names (run 0200, DEC-5). */
+function renderStepHighlightHtml(story, step, index) {
+  const view = stepView(step);
+  if (!view || view.viewpoint !== 'map' || viewLayerOf(view) !== 'application') return '';
+  const entries = linkEntriesOf(step.highlight, 'highlight').entries;
+  const id = escapeHtml(story.id);
+  const index_ = AppState.index.application;
+  const pills = entries
+    .map((entry) => {
+      const text = linkEntryText(entry);
+      return (
+        '<span class="pill' +
+        (linkEntryExists(entry, index_) ? '' : ' pill-missing') +
+        '" role="listitem">' +
+        escapeHtml(text) +
+        '<button type="button" class="pill-remove" data-action="story-step-highlight-remove" data-story="' +
+        id +
+        '" data-step="' +
+        index +
+        '" data-key="' +
+        escapeHtml(linkEntryKey(entry)) +
+        '" aria-label="Remove ' +
+        escapeHtml(text) +
+        ' from the highlight of step ' +
+        (index + 1) +
+        '" title="Remove">×</button></span>'
+      );
+    })
+    .join('');
+  const offered = viewLinkChoices({ highlight: entries }, 'highlight');
+  return (
+    '<div class="story-step-highlight"><span class="story-step-highlight-label">Highlight</span>' +
+    '<div class="view-pills" role="list" aria-label="Highlighted relationships of step ' +
+    (index + 1) +
+    '">' +
+    pills +
+    '</div><select data-story-step-highlight="add" data-story="' +
+    id +
+    '" data-step="' +
+    index +
+    '" aria-label="Add a highlighted relationship to step ' +
+    (index + 1) +
+    '"><option value="" selected>Add a relationship…</option>' +
+    offered
+      .map(
+        (entry) =>
+          '<option value="' + escapeHtml(linkEntryKey(entry)) + '">' + escapeHtml(linkEntryText(entry)) + '</option>'
+      )
+      .join('') +
+    '</select><p class="muted story-step-highlight-note">This key replaces the highlight of the view; an empty list switches it off.</p></div>'
   );
 }
 
@@ -508,7 +576,10 @@ function renderViewFactsHtml(view) {
       'element'
     );
   }
-  if (isMap && layer === 'application') html += viewLinksFieldHtml(properties, field, option);
+  if (isMap && layer === 'application') {
+    html += viewLinksFieldHtml(properties, field, option);
+    html += viewLinksFieldHtml(properties, field, option, 'highlight');
+  }
   const facets = AppState.workspace.settings.facets.customs;
   const facetName = typeof properties.facet === 'string' ? properties.facet : '';
   if (facets.length || facetName) {

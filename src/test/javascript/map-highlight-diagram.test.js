@@ -51,6 +51,11 @@ const link = (from, to, label, extra) =>
     extra || {}
   );
 function draw(sandbox, links, options) {
+  // the words of the states come from the kernel at load; a hand-built sandbox is told them
+  run(
+    sandbox,
+    "adoptKernelStates({ relationship: ['new', 'changed', 'removed'], identity: [], states: ['new', 'changed', 'removed'] })"
+  );
   const result = {
     items: ['a', 'b', 'c', 'd'].map((id) => ({ id, reference: id, parent: null })),
     links: plain(links)
@@ -218,8 +223,13 @@ test('a highlight that names a relationship the map does not draw marks nothing,
 
 test('with a comparison on, a new link that is highlighted keeps its state', async () => {
   const page = await openWorkspace(BOOKSHOP, 'baseline');
-  page.sandbox.drawPlateau('to-be', { compare: 'past' });
-  const view = addMapView(page, 'cmp', { opened: ['shop'], links: [PAYS, READS], highlight: [PAYS] });
+  await page.sandbox.drawPlateau('to-be', { compare: 'past' });
+  // in to-be the patch renames the label `reads` to `browses`
+  const view = addMapView(page, 'cmp', {
+    opened: ['shop'],
+    links: [PAYS, entry('shop.web', 'shop.catalog', 'browses')],
+    highlight: [PAYS]
+  });
   await openViewPage(page, view);
   const html = page.scene().html;
   const group = groupOf(html, 'shop.web', 'shop.payments');

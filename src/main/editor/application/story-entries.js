@@ -91,37 +91,56 @@ function storiesUsingView(viewId) {
   );
 }
 
-/** A recipe (a view, or a step that carries one) follows a renamed element. True when it changed. */
+/**
+ * The relationship entries a recipe names in `layer`, the one list that the rename (`rewriteRecipeReferences`) and its count (`recipeNamedReferences`, the preview of a Move) both
+ * read (wave 026, run 0200, DEC-7, F6). A recipe is a view, a step that carries its own view, or a step that names a view: such a step has only its own `highlight` key, which sits
+ * beside `view:` and not in `properties`. The entries of a Map of the application layer are its `links` and `highlight`; the step key is read for a step of that layer. The
+ * entries returned are the objects of the recipe, so a rewrite of them is a rewrite of the recipe.
+ */
+function recipeLinkEntries(recipe, layer) {
+  const entries = [];
+  if (layer !== 'application') return entries;
+  const take = (value, key) => {
+    if (Array.isArray(value)) entries.push(...linkEntriesOf(value, key).entries);
+  };
+  const properties = recipe.properties;
+  const onApplicationLayer = entryLayerOf(recipe.layer) === 'application'; // the layer of a view is read in any case (`model/layer-loader.js`, the same reading as `viewLayerOf`)
+  if (isPlainObject(properties) && recipe.viewpoint === 'map' && onApplicationLayer) {
+    take(properties.links, 'links');
+    take(properties.highlight, 'highlight');
+  }
+  const namesView = typeof recipe.view === 'string' && recipe.view !== '';
+  if (namesView || (recipe.viewpoint === 'map' && onApplicationLayer)) take(recipe.highlight, 'highlight');
+  return entries;
+}
+
+/** A recipe (a view, or a step that carries one or names one) follows a renamed element. True when it changed. */
 function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
   const properties = recipe.properties;
-  if (!isPlainObject(properties)) return false;
   let changed = false;
   const viewLayer = viewLayerOf(recipe);
-  if (recipe.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
-    const element = rewriteReferenceValue(properties.element, oldRef, newRef);
-    if (element !== properties.element) {
-      properties.element = element;
-      changed = true;
-    }
-  }
-  if (recipe.viewpoint === 'map' && viewLayer === layer) {
-    for (const key of ['pinned', 'hidden', 'opened']) {
-      if (!Array.isArray(properties[key])) continue;
-      const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
-      if (next.some((reference, i) => reference !== properties[key][i])) {
-        properties[key] = next;
+  if (isPlainObject(properties)) {
+    if (recipe.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
+      const element = rewriteReferenceValue(properties.element, oldRef, newRef);
+      if (element !== properties.element) {
+        properties.element = element;
         changed = true;
       }
     }
-    // the relationships a Map is narrowed to, and the ones it draws heavy, name their two ends (wave 026, run 0199, DEC-10); the label never changes
-    if (viewLayer === 'application') {
-      const rewrite = (reference) => rewriteReferenceValue(reference, oldRef, newRef);
-      for (const key of ['links', 'highlight']) {
-        if (Array.isArray(properties[key]) && rewriteLinkEntries(linkEntriesOf(properties[key], key).entries, rewrite))
+    if (recipe.viewpoint === 'map' && viewLayer === layer) {
+      for (const key of ['pinned', 'hidden', 'opened']) {
+        if (!Array.isArray(properties[key])) continue;
+        const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
+        if (next.some((reference, i) => reference !== properties[key][i])) {
+          properties[key] = next;
           changed = true;
+        }
       }
     }
   }
+  // the relationships a Map is narrowed to, and the ones it draws heavy, name their two ends (wave 026, runs 0199 and 0200, DEC-10); the label never changes
+  const rewrite = (reference) => rewriteReferenceValue(reference, oldRef, newRef);
+  if (rewriteLinkEntries(recipeLinkEntries(recipe, layer), rewrite)) changed = true;
   return changed;
 }
 
@@ -140,8 +159,7 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
   for (const story of storiesList()) {
     let storyChanged = false;
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
-      if (isPlainObject(step) && !step.view && rewriteRecipeReferences(step, oldRef, newRef, layer))
-        storyChanged = true;
+      if (isPlainObject(step) && rewriteRecipeReferences(step, oldRef, newRef, layer)) storyChanged = true;
     }
     if (storyChanged) {
       markEntryChanged(story);
@@ -151,22 +169,20 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
   return changed;
 }
 
-/** The references a recipe (a view, or a step that carries one) names in `layer`: the ones `rewriteRecipeReferences` rewrites. Keep the two in step. */
+/** The references a recipe (a view, or a step) names in `layer`: the ones `rewriteRecipeReferences` rewrites, the entries from the one helper `recipeLinkEntries`. */
 function recipeNamedReferences(recipe, layer) {
+  const named = [];
+  for (const link of recipeLinkEntries(recipe, layer)) named.push(link.source, link.destination);
   const properties = recipe.properties;
-  if (!isPlainObject(properties) || viewLayerOf(recipe) !== layer) return [];
+  if (!isPlainObject(properties) || viewLayerOf(recipe) !== layer) return named;
   if (recipe.viewpoint === 'map') {
-    const named = ['pinned', 'hidden', 'opened']
-      .reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), [])
-      .filter((reference) => typeof reference === 'string');
-    if (layer === 'application') {
-      for (const key of ['links', 'highlight']) {
-        for (const link of linkEntriesOf(properties[key], key).entries) named.push(link.source, link.destination);
-      }
-    }
-    return named;
+    return named.concat(
+      ['pinned', 'hidden', 'opened']
+        .reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), [])
+        .filter((reference) => typeof reference === 'string')
+    );
   }
-  return typeof properties.element === 'string' ? [properties.element] : [];
+  return typeof properties.element === 'string' ? named.concat([properties.element]) : named;
 }
 
 /**
@@ -213,7 +229,7 @@ function renameSiblingImpact(oldRef, newRef, layer) {
   const steps = [];
   for (const story of storiesList()) {
     (Array.isArray(story.steps) ? story.steps : []).forEach((step, i) => {
-      if (!isPlainObject(step) || step.view) return;
+      if (!isPlainObject(step)) return;
       const where = lost(step);
       if (where.length) steps.push({ story: story.id, label: storyLabel(story), number: i + 1, plateaus: where });
     });

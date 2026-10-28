@@ -63,7 +63,7 @@ content:
 `;
 
 async function open() {
-  return startPage({
+  const page = await startPage({
     mem: true,
     files: {
       'manifests/view.web_links.yaml': VIEW_FILE,
@@ -71,6 +71,8 @@ async function open() {
       'manifests/story.tour.yaml': STORY_FILE
     }
   });
+  run(page.sandbox, 'revealDiagramNode = function () {};'); // the marks of the fake canvas have no geometry to scroll to
+  return page;
 }
 const view = (page, id) => page.sandbox.findSavedView(id);
 const call = (page, code) => plain(run(page.sandbox, code));
@@ -298,7 +300,12 @@ test('a map without a highlight has an address with no hl=, as before', async ()
 test('the panel of a selected link has a Highlight box beside the relationship boxes, and a chip with a Clear', async () => {
   const page = await open();
   await page.go('map');
-  run(page.sandbox, 'mapLinks = ' + JSON.stringify([QUERIES, FRONTEND]) + ';');
+  run(
+    page.sandbox,
+    'mapStateOf("application").opened = new Set(["shop", "shop.web", "shop.catalog"]); mapLinks = ' +
+      JSON.stringify([QUERIES, FRONTEND]) +
+      ';'
+  );
   await page.show();
   click(page.sandbox, {
     'data-action': 'select-link',

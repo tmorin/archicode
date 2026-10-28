@@ -225,22 +225,31 @@ function linkEntryOfKey(key) {
  * is already there, is refused. The `highlight` is never touched.
  */
 function setViewLink(view, entry, add) {
+  return setViewLinkList(view, 'links', entry, add);
+}
+
+/** The same for the `highlight` of the view (run 0200, DEC-5); the `links` are never touched. */
+function setViewHighlight(view, entry, add) {
+  return setViewLinkList(view, 'highlight', entry, add);
+}
+
+function setViewLinkList(view, name, entry, add) {
   if (view.viewpoint !== 'map' || viewLayerOf(view) !== 'application' || !entry) return false;
   const key = linkEntryKey(entry);
-  const items = Array.isArray(view.properties.links) ? view.properties.links : [];
+  const items = Array.isArray(view.properties[name]) ? view.properties[name] : [];
   const isThis = (item) => isLinkEntry(item) && linkEntryKey(item) === key;
   if (add) {
     if (!linkEntryExists(entry, AppState.index.application)) return false;
     if (items.some(isThis)) return false;
     const written = { source: entry.source, destination: entry.destination };
     if (normalLinkLabel(entry.label)) written.label = normalLinkLabel(entry.label);
-    putViewProperty(view.properties, 'links', items.concat([written]));
+    putViewProperty(view.properties, name, items.concat([written]));
     return true;
   }
   if (!items.some(isThis)) return false;
   const rest = items.filter((item) => !isThis(item));
-  if (rest.length) view.properties.links = rest;
-  else delete view.properties.links;
+  if (rest.length) view.properties[name] = rest;
+  else delete view.properties[name];
   return true;
 }
 
@@ -285,6 +294,20 @@ function handleViewFieldChange(control, immediate) {
       setViewLink(
         view,
         chosen.startsWith('#') ? viewLinkChoices(view.properties)[Number(chosen.slice(1))] : linkEntryOfKey(chosen),
+        true
+      )
+    );
+  }
+  if (control.getAttribute('data-view-highlight') === 'add') {
+    const chosen = control.value;
+    control.value = '';
+    pendingFocusSelector = '#view-edit-add-highlight';
+    return editSavedView((view) =>
+      setViewHighlight(
+        view,
+        chosen.startsWith('#')
+          ? viewLinkChoices(view.properties, 'highlight')[Number(chosen.slice(1))]
+          : linkEntryOfKey(chosen),
         true
       )
     );
@@ -342,12 +365,25 @@ document.addEventListener('pointercancel', notePointer, true);
 /** Delegated `change` listener: the form of a view on its page, the list of Settings. (The menu of the steps of a story is the player's, `handleStoryPlayerChange`.) */
 function handleAppChange(e) {
   if (handleMapLinksControl(e.target)) return; // the kind and "Ticked only" of the list of relationships
+  if (e.target.matches && e.target.matches('[data-story-step-highlight]')) {
+    const chosen = e.target.value;
+    e.target.value = '';
+    setStepHighlight(
+      e.target.getAttribute('data-story'),
+      Number(e.target.getAttribute('data-step')),
+      linkEntryOfKey(chosen),
+      true
+    );
+    return;
+  }
   if (e.target && e.target.matches && e.target.matches('[data-settings-current]')) {
     chooseCurrentPlateau(e.target);
     return;
   }
   const control =
-    e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list], [data-view-link]') : null;
+    e.target && e.target.closest
+      ? e.target.closest('[data-view-field], [data-view-list], [data-view-link], [data-view-highlight]')
+      : null;
   if (control) handleViewFieldChange(control);
 }
 

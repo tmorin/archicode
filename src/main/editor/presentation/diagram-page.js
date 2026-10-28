@@ -1221,7 +1221,7 @@ function handleNavKeydown(e) {
 /** The pinned and the hidden elements of the map, each removable. */
 function renderMapChipsHtml() {
   const map = mapStateOf();
-  const linksChip = renderMapLinksChipHtml();
+  const linksChip = renderMapLinksChipHtml() + renderMapHighlightChipHtml();
   if (!map.pinned.length && !map.hidden.length && !linksChip) return '';
   const chip = (reference, kind) => {
     const record = AppState.index[mapLayer()].get(reference);
@@ -1247,7 +1247,7 @@ function renderMapChipsHtml() {
     );
   };
   const clear =
-    map.pinned.length + map.hidden.length + (linksChip ? 1 : 0) > 2
+    map.pinned.length + map.hidden.length + (mapLinks.length ? 1 : 0) + (mapHighlight.length ? 1 : 0) > 2
       ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden, no relationship ticked">Clear all</button>'
       : '';
   return (

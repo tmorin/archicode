@@ -938,7 +938,8 @@ test('a rename in baseline reaches what names the element in the plateaus above 
     'baseline/technology/staging.yaml',
     'inhouse/plateau.yaml',
     'marketplace/application/storefront.yaml',
-    'saas/plateau.yaml'
+    'saas/plateau.yaml',
+    'shared/story.order_flow.yaml'
   ]);
   assert.deepEqual(out.files['baseline/application/shop.yaml'].diff, {
     removed: ['      id: "web"'],
