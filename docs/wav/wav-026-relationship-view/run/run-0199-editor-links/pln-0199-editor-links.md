@@ -1,6 +1,6 @@
 ---
 title: Execution Plan — Pick the relationships of a Map in the editor
-status: pending
+status: done
 date: 2026-10-28
 related:
   - docs/wav/wav-026-relationship-view/run/run-0199-editor-links/tdd-0199-editor-links.md
@@ -19,7 +19,7 @@ Profile TDD+pln: there is no PRD, so REQ-1 to REQ-8 are the IDs the TDD labels (
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'The editor reads, draws, writes and follows the links property of a Map view of the application layer: an author ticks relationships in a list on the page Applications or keeps the relationships of a clicked link, the choice is kept in a saved view, a step recipe and the address, a rename or a move rewrites the entries in every view and step, and highlight is kept and rewritten but not drawn (REQ-1 to REQ-8).'
   technical_approach: 'Apply F1 to F9 to the TDD, write the node tests red first, add the pure model/map-links.js and register it, add the mapLinks view state and send links to the kernel input and the cache key, teach the saved view, the form, the story scene and the address, add the list, the chip and the panel buttons, make the rename and the move rewrite links and highlight, share an expected-boxes contract with a Java test, add one end-to-end spec, then say it in the manual and CLAUDE.md and run the gate checks. No Java, Rust or kernel change.'
   total_tasks: 12
@@ -180,7 +180,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-011
-      status: 'pending'
+      status: 'done'
       title: 'Run the gate checks'
       depends_on: [task-008, task-009, task-010]
       produces:
@@ -190,7 +190,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-012
-      status: 'pending'
+      status: 'done'
       title: 'Record the built behaviour, the sentences and the limits in the run document'
       depends_on: [task-011]
       produces:
@@ -527,6 +527,7 @@ task_catalog:
         - 'byte-identity reports a changed file'
         - 'a coverage floor would be lowered'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-012
       title: 'Record the built behaviour, the sentences and the limits in the run document'
       source_requirements:
@@ -545,6 +546,7 @@ task_catalog:
       escalation_triggers:
         - 'a sentence in the run document differs from the one the tests pin'
       delegation_tier: 'cheap'
+      results: "tier cheap, model haiku, effort high, profile low-cost, passed after escalation to effort medium, inline (leaf), independently verified"
 ```
 
 ## 5. Parallelization Plan
@@ -943,7 +945,7 @@ Escalate (record in the prg and stop the dependent tasks) when: a key, a kernel 
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed'
   autonomy_level: 'high'
   total_tasks: 12
@@ -958,5 +960,5 @@ execution_manifest:
   criteria:
     - 'Every criterion of the Executive Summary is true (re-checked at Stage 11 against the files and by running the commands; the run document records each result).'
     - 'The list, the panel buttons and the saved view were exercised in a real browser by map-links.spec.js in Chromium and Firefox.'
-  next_action: 'Run task-001 (apply F1 to F9 to the TDD), then the red tests of task-002.'
+  next_action: 'None: all 12 tasks done; Stage 11 re-checked every criterion on 2026-10-28 (see the run document, Verification).'
 ```
