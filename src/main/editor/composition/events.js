@@ -455,6 +455,12 @@ function handleAppClick(e) {
       editSavedView((view) => setViewListItem(view, list, reference, false));
       break;
     }
+    case 'view-link-remove': {
+      const entry = linkEntryOfKey(target.getAttribute('data-key'));
+      pendingFocusSelector = '#view-edit-add-links';
+      editSavedView((view) => setViewLink(view, entry, false));
+      break;
+    }
     case 'toggle-show': {
       const name = target.getAttribute('data-show');
       if (!DIAGRAM_SHOW_NAMES.includes(name)) break;
@@ -477,6 +483,36 @@ function handleAppClick(e) {
       pushDiagramHistory();
       mapStateOf().pinned = [];
       mapStateOf().hidden = [];
+      if (mapLayer() === 'application') mapLinks = [];
+      render();
+      break;
+    case 'map-link-toggle': {
+      // a relationship of the Map of the application layer: ticked in the list, or ticked and unticked in the panel of a link
+      const key = target.getAttribute('data-key');
+      let entry;
+      try {
+        const [source, destination, label] = JSON.parse(key);
+        entry = linkEntryOfParts(source, destination, label);
+      } catch {
+        break;
+      }
+      pushDiagramHistory();
+      toggleMapLink(entry);
+      mapSelectionCheck = true;
+      pendingFocusSelector = mapLinkKeyFocus(linkEntryKey(entry));
+      render();
+      break;
+    }
+    case 'map-link-only':
+      pushDiagramHistory();
+      chooseOnlyMapLink(AppState.selection);
+      mapSelectionCheck = true;
+      render();
+      break;
+    case 'map-links-clear':
+      pushDiagramHistory();
+      mapLinks = [];
+      mapSelectionCheck = true;
       render();
       break;
     case 'map-unhide':
@@ -1294,4 +1330,12 @@ function handleBrowserCardKeydown(e) {
 }
 
 document.addEventListener('input', handleBrowserCardInput);
+// the list of relationships remembers whether it is open (`toggle` does not bubble: heard in the capture phase)
+document.addEventListener(
+  'toggle',
+  (e) => {
+    if (e.target && e.target.matches && e.target.matches('[data-map-links-details]')) mapLinksListOpen = e.target.open;
+  },
+  true
+);
 document.addEventListener('keydown', handleBrowserCardKeydown);

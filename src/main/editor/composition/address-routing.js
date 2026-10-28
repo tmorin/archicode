@@ -62,6 +62,7 @@ function applyDiagramParamsFromHash() {
     const state = mapStateOf(layer);
     state.pinned = pin ? pin.split(',').filter((reference) => AppState.index[layer].has(reference)) : [];
     state.pinned.forEach((reference) => expandParentsOf(reference, layer));
+    if (layer === 'application') mapLinks = mapLinksFromParams(params);
   }
   const shown = {};
   for (const name of DIAGRAM_SHOW_NAMES)
@@ -296,6 +297,7 @@ function currentRouteHash() {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
     const pinned = mapStateOf().pinned;
     if (pinned.length) params.push('pin=' + pinned.map(encodeURIComponent).join(','));
+    if (mapLayer() === 'application') params.push(...mapLinkParams(mapLinks));
     pushShowParams(params, true);
     pushFrameParam(params);
   }

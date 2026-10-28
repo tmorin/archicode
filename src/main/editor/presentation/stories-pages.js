@@ -314,6 +314,74 @@ function entryFileLabel(entry) {
  * The view as a form: what it draws and where it is kept as facts, then a control for each attribute (TDD-0029 DEC-1). A control changes
  * the entry of the view (`editSavedView`) when it is committed: a select or a checkbox at once, a text by Enter or leaving it.
  */
+/** The text of an entry of `links`: "source → destination : label". */
+function linkEntryText(entry) {
+  const label = normalLinkLabel(entry.label);
+  return entry.source + ' → ' + entry.destination + (label ? ' : ' + label : '');
+}
+
+/** The relationships of the application layer that a Map view does not have in its `links` yet, sorted by key: what the select of the Links field offers. */
+function viewLinkChoices(properties) {
+  const there = new Set(linkEntriesOf(properties.links).entries.map(linkEntryKey));
+  const offered = [];
+  for (const [reference, record] of AppState.index.application) {
+    for (const relationship of record.relationships || []) {
+      const entry = linkEntryOf(relationship, reference);
+      if (!there.has(linkEntryKey(entry))) offered.push(entry);
+    }
+  }
+  return offered.sort((a, b) => (linkEntryKey(a) < linkEntryKey(b) ? -1 : 1));
+}
+
+/** The Links field of the form of a Map view of the application layer: a pill for each entry (missing ones marked) and a select of the relationships not there yet, read by their names (issue #143). */
+function viewLinksFieldHtml(properties, field, option) {
+  const entries = linkEntriesOf(properties.links).entries;
+  const index = AppState.index.application;
+  const nameOf = (reference) => (index.has(reference) ? index.get(reference).name || reference : reference);
+  const offered = viewLinkChoices(properties);
+  const pills = entries
+    .map((entry) => {
+      const exists = linkEntryExists(entry, index);
+      const text = linkEntryText(entry);
+      return (
+        '<span class="pill' +
+        (exists ? '' : ' pill-missing') +
+        '" role="listitem"' +
+        (exists ? '' : ' title="This relationship does not exist any more"') +
+        '>' +
+        escapeHtml(text) +
+        '<button type="button" class="pill-remove" data-action="view-link-remove" data-key="' +
+        escapeHtml(linkEntryKey(entry)) +
+        '" aria-label="Remove ' +
+        escapeHtml(text) +
+        ' from links" title="Remove">×</button></span>'
+      );
+    })
+    .join('');
+  return field(
+    'view-edit-add-links',
+    'Links',
+    '<div class="view-pills" role="list" aria-label="Links relationships">' +
+      pills +
+      '</div><select id="view-edit-add-links" data-view-link="add" title="The relationships the map is narrowed to">' +
+      option('', 'Add a relationship…', true) +
+      offered
+        .map((entry, i) =>
+          option(
+            '#' + i,
+            nameOf(entry.source) +
+              ' → ' +
+              nameOf(entry.destination) +
+              (normalLinkLabel(entry.label) ? ' : ' + normalLinkLabel(entry.label) : ''),
+            false
+          )
+        )
+        .join('') +
+      '</select>',
+    'links'
+  );
+}
+
 function renderViewFactsHtml(view) {
   const row = (name, content) => '<dt>' + name + '</dt><dd>' + content + '</dd>';
   const isMap = view.viewpoint === 'map';
@@ -440,6 +508,7 @@ function renderViewFactsHtml(view) {
       'element'
     );
   }
+  if (isMap && layer === 'application') html += viewLinksFieldHtml(properties, field, option);
   const facets = AppState.workspace.settings.facets.customs;
   const facetName = typeof properties.facet === 'string' ? properties.facet : '';
   if (facets.length || facetName) {

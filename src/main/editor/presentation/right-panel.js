@@ -321,7 +321,7 @@ function renderDeclaringElementHtml(reference, layer) {
 }
 
 /** One declared relationship: its label, who declares it (a button) and to whom, its qualifiers and its tags; `marked`: it belongs to the link that was clicked. */
-function renderRelationshipInspectionHtml(rel, layer, marked) {
+function renderRelationshipInspectionHtml(rel, layer, marked, control) {
   const label =
     rel.label !== undefined && rel.label !== null && String(rel.label).trim()
       ? escapeHtml(rel.label)
@@ -338,6 +338,7 @@ function renderRelationshipInspectionHtml(rel, layer, marked) {
     ' &rarr; ' +
     escapeHtml(rel.destination) +
     '</div>' +
+    (control || '') +
     renderRelationshipChangeHtml(rel, layer) +
     renderFieldRowHtml('Qualifiers', renderQualifierPillsHtml(rel.qualifiers)) +
     renderFieldRowHtml('Tags', renderTagListHtml(rel.tags)) +
@@ -399,11 +400,19 @@ function renderLinkInspectionHtml(sel) {
   } else if (rels.length > 1) {
     html += '<p class="inspection-note">' + rels.length + ' relationships are grouped in this link.</p>';
   }
-  html +=
-    '<h4 class="inspection-subhead">Relationships <span class="field-count">' +
-    rels.length +
-    '</span></h4>' +
-    rels.map((rel, i) => renderRelationshipInspectionHtml(rel, layer, told && marked[i])).join('');
+  html += '<h4 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h4>';
+  const linkControls = mapLinkControlsApply(layer); // the Map of the application layer: draw only this link, or take a relationship out
+  if (linkControls) html += renderMapLinkOnlyButtonHtml(rels);
+  html += rels
+    .map((rel, i) =>
+      renderRelationshipInspectionHtml(
+        rel,
+        layer,
+        told && marked[i],
+        linkControls ? renderMapLinkPanelCheckboxHtml(rel) : ''
+      )
+    )
+    .join('');
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   return html + '</div>';
 }

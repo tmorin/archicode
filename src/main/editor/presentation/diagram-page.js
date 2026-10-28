@@ -235,6 +235,8 @@ function diagramCacheKey(recipe, comparison, viewKey) {
     layer,
     reference,
     isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
+    // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
+    isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
     // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
     isMap && layer === 'technology'
       ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
@@ -375,14 +377,14 @@ function mapPartsOf(view) {
 /** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view and the model, and nothing else: an edit of the view is an edit of the entry. */
 function libraryDiagramRecipe(view) {
   if (!view || viewProblem(view)) return null;
-  return viewDiagramRecipe(view, AppState.index, 'library');
+  return viewDiagramRecipe(view, AppState.index, 'library', AppState.baseline ? AppState.baseline.index : null);
 }
 
 /**
  * The recipe of a view (or of a step that carries its own recipe) that can be drawn in the model `index`: the pins, the open and hidden boxes it names that the model has, the
  * facet, the texts and the parts of a map, as the view says them. `host` is the place that draws it (`library`, `story`). Reads the view, the settings and `index`, nothing else.
  */
-function viewDiagramRecipe(view, index, host) {
+function viewDiagramRecipe(view, index, host, baselineIndex) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const isMap = view.viewpoint === 'map';
   const layer = viewLayerOf(view);
@@ -412,6 +414,15 @@ function viewDiagramRecipe(view, index, host) {
       pinned: known(properties.pinned),
       hidden: known(properties.hidden)
     };
+    // issue #143: the relationships of a Map of the application layer that the model drawn has (the one compared with too)
+    if (layer === 'application') {
+      const asked = linkEntriesOf(properties.links).entries;
+      if (asked.length)
+        recipe.mapState.links = drawnLinkEntries(asked, [
+          index.application,
+          baselineIndex ? baselineIndex.application : null
+        ]);
+    }
   } else {
     recipe.reference = properties.element;
     recipe.record = index[layer].get(properties.element);
@@ -479,11 +490,26 @@ function mountDiagramIfNeeded() {
     facet ? facet.name : '',
     isMap ? mapState.pinned.join(',') : ''
   ]
-    .concat(isMap && recipe.layer === 'technology' ? ['technology'] : [], readonly ? ['view:' + recipe.view.id] : [])
+    .concat(
+      isMap && mapState.links && mapState.links.length ? [JSON.stringify(canonicalLinkEntries(mapState.links))] : [],
+      isMap && recipe.layer === 'technology' ? ['technology'] : [],
+      readonly ? ['view:' + recipe.view.id] : []
+    )
     .join('|');
   const comparison = comparisonState();
   const key = diagramCacheKey(recipe, comparison, viewKey);
-  const nothing = nothingDrawnScene(viewKey, comparison);
+  const nothing = nothingDrawnScene(
+    viewKey,
+    comparison,
+    // the page Applications: relationships ticked and none of them in the model drawn is not the whole map
+    isMap &&
+      recipe.host === 'main' &&
+      recipe.layer === 'application' &&
+      mapLinks.length &&
+      !(mapState.links || []).length
+      ? 'none of the relationships ticked is in this plateau.'
+      : ''
+  );
   if (nothing) {
     showDiagramScene(nothing);
     return;
@@ -501,6 +527,7 @@ function mountDiagramIfNeeded() {
           layer: recipe.layer,
           opened: mapState.opened,
           pinned: mapState.pinned,
+          links: mapState.links,
           applications: recipePartsOf(recipe).applications,
           relationships: recipePartsOf(recipe).relationships
         }
@@ -693,7 +720,7 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
  * The scene that says nothing is drawn, or null: a reference declared more than once (a model that has no single answer is not drawn from), or two plateaus that cannot be compared
  * (a reference twice in the baseline, a pair the kernel refuses). `comparison` is the comparison the drawing is made with. Both are mistakes of the workspace, not of the view.
  */
-function nothingDrawnScene(viewKey, comparison) {
+function nothingDrawnScene(viewKey, comparison, emptyChoice) {
   const duplicates = elementDuplicates();
   if (duplicates.length) {
     return buildDiagramScene(
@@ -724,6 +751,18 @@ function nothingDrawnScene(viewKey, comparison) {
             '</ul>'
           : '') +
         '</div>',
+      '',
+      '',
+      { width: 0, height: 0 },
+      null
+    );
+  }
+  if (emptyChoice) {
+    return buildDiagramScene(
+      viewKey,
+      '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
+        escapeHtml(emptyChoice) +
+        '</strong> <button type="button" data-action="map-links-clear">Clear</button></div>',
       '',
       '',
       { width: 0, height: 0 },
@@ -778,7 +817,7 @@ function renderMapPerspectiveHtml() {
   const sel = AppState.selection;
   const record = sel.kind === 'element' ? findElementRecord(sel.key, sel.layer) : null;
   return {
-    left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
+    left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml() + renderMapLinksListHtml()),
     center:
       '<div class="diagram-view">' +
       renderStoryBarHtml() +
@@ -1167,7 +1206,8 @@ function handleNavKeydown(e) {
 /** The pinned and the hidden elements of the map, each removable. */
 function renderMapChipsHtml() {
   const map = mapStateOf();
-  if (!map.pinned.length && !map.hidden.length) return '';
+  const linksChip = renderMapLinksChipHtml();
+  if (!map.pinned.length && !map.hidden.length && !linksChip) return '';
   const chip = (reference, kind) => {
     const record = AppState.index[mapLayer()].get(reference);
     if (!record) return '';
@@ -1192,13 +1232,14 @@ function renderMapChipsHtml() {
     );
   };
   const clear =
-    map.pinned.length + map.hidden.length > 2
-      ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden">Clear all</button>'
+    map.pinned.length + map.hidden.length + (linksChip ? 1 : 0) > 2
+      ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden, no relationship ticked">Clear all</button>'
       : '';
   return (
     '<div class="map-chips">' +
     map.pinned.map((r) => chip(r, 'pin')).join('') +
     map.hidden.map((r) => chip(r, 'hide')).join('') +
+    linksChip +
     clear +
     '</div>'
   );

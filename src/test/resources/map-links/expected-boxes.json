@@ -1,0 +1,314 @@
+{
+  "comment": "The boxes and the links that the command line draws, and that the editor must draw, for saved views of viewpoint `map` and layer `application` that carry `links` (wave 026, run 0199, DEC-8 and DEC-9 of the TDD, REQ-3). One file, read by map-links-shared.test.js (the page Applications, the page of a view and the story scene of a step, over the embedded kernel and a fake layout engine) and by MapLinksSharedTest.java (`views generate -i` on a temporary copy). The file was written from the command line, the reference: the packaged jar of this run ran `views generate -w <copy>/.archicode.yaml --plateau <plateau> [--against <against>] -i <view>` on a temporary copy of `workspace` to which the view of each case was added as a manifest in `folder` (no shipped file carries `links`, DEC-9), and the boxes and links are those read from the written file (`views-<plateau>`, `views-<plateau>-vs-<against>` or `views-<plateau>-<facet>`). A box is the id of its item, a link is `from -> to` between two boxes (a pair drawn twice is listed once); both lists are sorted. A case has `plateau`, `against` (the comparison, absent for none), `facet` (a facet of the settings, absent for none), `properties` (the properties of the view, written as given) and `drawn`: false means the command line draws nothing (it skips the view with the warning in `cli`). `cli` is what the command line said on its error output. The editor says in these cases that nothing is drawn (the page Applications: 'Nothing is drawn: none of the relationships ticked is in this plateau.'; the page of a view: 'None of the relationships it shows is in the plateau “p”.').",
+  "workspaces": [
+    {
+      "workspace": "src/doc/examples/domain_plateaus",
+      "folder": "plateaus",
+      "cases": {
+        "bookshop_one_link": {
+          "plateau": "baseline",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.catalog",
+                "label": "reads"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["shop", "shop.catalog", "shop.web"],
+          "links": ["shop.web -> shop.catalog"]
+        },
+        "bookshop_closed_ends": {
+          "plateau": "baseline",
+          "properties": {
+            "links": [
+              {
+                "source": "customer",
+                "destination": "shop.web",
+                "label": "orders on"
+              },
+              {
+                "source": "warehouse.picking",
+                "destination": "shop.inventory",
+                "label": "counts with"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["customer", "shop", "warehouse"],
+          "links": ["customer -> shop", "warehouse -> shop"]
+        },
+        "bookshop_pinned": {
+          "plateau": "baseline",
+          "properties": {
+            "opened": ["shop"],
+            "pinned": ["shop.mailer"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.mailer",
+                "label": "sends mails with"
+              },
+              {
+                "source": "shop.web",
+                "destination": "shop.catalog",
+                "label": "reads"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["shop", "shop.mailer", "shop.web"],
+          "links": ["shop.web -> shop.mailer"]
+        },
+        "bookshop_hidden": {
+          "plateau": "baseline",
+          "properties": {
+            "opened": ["shop"],
+            "hidden": ["shop.mailer"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.mailer",
+                "label": "sends mails with"
+              },
+              {
+                "source": "shop.web",
+                "destination": "shop.catalog",
+                "label": "reads"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["shop", "shop.catalog", "shop.web"],
+          "links": ["shop.web -> shop.catalog"]
+        },
+        "bookshop_untrimmed_label": {
+          "plateau": "baseline",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.catalog",
+                "label": "  reads "
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["shop", "shop.catalog", "shop.web"],
+          "links": ["shop.web -> shop.catalog"]
+        },
+        "bookshop_one_entry_lacks": {
+          "plateau": "to-be",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.mailer",
+                "label": "sends mails with"
+              },
+              {
+                "source": "shop.web",
+                "destination": "shop.payments",
+                "label": "pays with"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["shop", "shop.payments", "shop.web"],
+          "links": ["shop.web -> shop.payments"],
+          "cli": "warning: the view `bookshop_one_entry_lacks` is drawn without the link `shop.web -> shop.mailer`, which the plateau `to-be` does not have"
+        },
+        "bookshop_all_entries_lack": {
+          "plateau": "to-be",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.catalog",
+                "label": "reads"
+              }
+            ]
+          },
+          "drawn": false,
+          "boxes": [],
+          "links": [],
+          "cli": "warning: skip `bookshop_all_entries_lack`: none of its links is in the plateau `to-be`"
+        },
+        "bookshop_removed_relationship": {
+          "plateau": "to-be",
+          "against": "baseline",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.mailer",
+                "label": "sends mails with"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["shop", "shop.mailer", "shop.web"],
+          "links": ["shop.web -> shop.mailer"],
+          "cli": "warning: skip `bookshop_removed_relationship`: none of its links is in the plateau `to-be`"
+        },
+        "bookshop_changed_relationship": {
+          "plateau": "to-be",
+          "against": "baseline",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.catalog",
+                "label": "browses"
+              },
+              {
+                "source": "shop.web",
+                "destination": "shop.payments",
+                "label": "pays with"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["shop", "shop.catalog", "shop.payments", "shop.web"],
+          "links": ["shop.web -> shop.catalog", "shop.web -> shop.payments"]
+        },
+        "bookshop_removed_without_comparison": {
+          "plateau": "to-be",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "shop.web",
+                "destination": "shop.mailer",
+                "label": "sends mails with"
+              }
+            ]
+          },
+          "drawn": false,
+          "boxes": [],
+          "links": [],
+          "cli": "warning: skip `bookshop_removed_without_comparison`: none of its links is in the plateau `to-be`"
+        }
+      }
+    },
+    {
+      "workspace": "src/test/resources/brightcart/layered",
+      "folder": "shared",
+      "cases": {
+        "brightcart_open_box": {
+          "plateau": "baseline",
+          "properties": {
+            "opened": ["shop", "shop.app"],
+            "links": [
+              {
+                "source": "shop.app.checkout",
+                "destination": "shop.app.cart",
+                "label": "reads baskets from"
+              },
+              {
+                "source": "shop.app.checkout",
+                "destination": "shop.app.orders",
+                "label": "creates orders in"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": [
+            "shop",
+            "shop.app",
+            "shop.app.cart",
+            "shop.app.checkout",
+            "shop.app.orders"
+          ],
+          "links": [
+            "shop.app.checkout -> shop.app.cart",
+            "shop.app.checkout -> shop.app.orders"
+          ]
+        },
+        "brightcart_grouped": {
+          "plateau": "baseline",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "shop.app.payments",
+                "destination": "psp",
+                "label": "authorises payments with"
+              },
+              {
+                "source": "shop.app.notifications",
+                "destination": "mailer",
+                "label": "sends mails with"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["mailer", "psp", "shop", "shop.app"],
+          "links": ["shop.app -> mailer", "shop.app -> psp"]
+        },
+        "brightcart_one_side_open": {
+          "plateau": "baseline",
+          "properties": {
+            "links": [
+              {
+                "source": "shop.app.checkout",
+                "destination": "tax",
+                "label": "computes taxes with"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": ["shop", "tax"],
+          "links": ["shop -> tax"]
+        },
+        "brightcart_facet_journey": {
+          "plateau": "baseline",
+          "facet": "journey",
+          "properties": {
+            "opened": ["shop", "shop.app"],
+            "links": [
+              {
+                "source": "shop.app.checkout",
+                "destination": "shop.app.payments",
+                "label": "pays through"
+              }
+            ]
+          },
+          "drawn": true,
+          "boxes": [
+            "shop",
+            "shop.app",
+            "shop.app.checkout",
+            "shop.app.payments"
+          ],
+          "links": ["shop.app.checkout -> shop.app.payments"]
+        },
+        "brightcart_marketplace": {
+          "plateau": "marketplace",
+          "properties": {
+            "opened": ["shop"],
+            "links": [
+              {
+                "source": "customer",
+                "destination": "shop.web",
+                "label": "browses and buys with"
+              }
+            ]
+          },
+          "drawn": false,
+          "boxes": [],
+          "links": [],
+          "cli": "warning: the view `brightcart_marketplace` is drawn without `shop`, which the plateau `marketplace` does not have\nwarning: skip `brightcart_marketplace`: none of its links is in the plateau `marketplace`"
+        }
+      }
+    }
+  ]
+}

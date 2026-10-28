@@ -17,6 +17,12 @@ function mapLayer() {
 function mapStateOf(layer) {
   if ((layer || mapLayer()) === 'technology') return technologyMapState;
   return {
+    get links() {
+      return mapLinks;
+    },
+    set links(value) {
+      mapLinks = value;
+    },
     get pinned() {
       return mapPinned;
     },
@@ -108,7 +114,18 @@ function currentMapState() {
     Array.from(list).filter(
       (reference) => AppState.index[layer].has(reference) || comparisonHasElement(layer, reference)
     );
-  return { opened: knownToOpen(currentMapOpened()), pinned: known(state.pinned), hidden: known(state.hidden) };
+  const mapState = {
+    opened: knownToOpen(currentMapOpened()),
+    pinned: known(state.pinned),
+    hidden: known(state.hidden)
+  };
+  // the relationships ticked that the model drawn has (the plateau, and the one compared with); the technology layer has none
+  if (layer === 'application' && mapLinks.length)
+    mapState.links = drawnLinkEntries(mapLinks, [
+      AppState.index.application,
+      AppState.baseline && AppState.baseline.index.application
+    ]);
+  return mapState;
 }
 
 /** How many boxes the map would draw once `extra` more elements are open, children of open boxes being all drawn. */

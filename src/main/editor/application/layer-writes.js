@@ -106,6 +106,7 @@ function snapshotWriteState() {
     rawYamlEditDraft,
     mapPinned: mapPinned.slice(),
     mapHidden: mapHidden.slice(),
+    mapLinks: mapLinks.map((link) => Object.assign({}, link)),
     mapOpened: mapOpened ? new Set(mapOpened) : mapOpened,
     technologyMapState: {
       pinned: technologyMapState.pinned.slice(),
@@ -141,6 +142,7 @@ function restoreWriteState(snapshot) {
   rawYamlEditDraft = snapshot.rawYamlEditDraft;
   mapPinned = snapshot.mapPinned;
   mapHidden = snapshot.mapHidden;
+  mapLinks = snapshot.mapLinks;
   mapOpened = snapshot.mapOpened;
   technologyMapState = snapshot.technologyMapState;
   navActiveKey = snapshot.navActiveKey;

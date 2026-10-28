@@ -616,6 +616,8 @@ function rewriteUiReferences(oldPrefix, newPrefix, layer) {
     state.hidden = state.hidden.map(rewrite);
     if (state.opened) state.opened = rewriteSet(state.opened);
   }
+  // the relationships the Map of the application layer is narrowed to name two ends each (wave 026, run 0199)
+  if (!layer || layer === 'application') rewriteLinkEntries(mapLinks, rewrite);
   // a delete confirmation lists what the old reference would take with it: it is stale now
   pendingDeleteConfirmation = null;
 }

@@ -139,10 +139,12 @@ function stepProblem(step, plateau, number) {
   const at = plateau !== undefined ? plateau : stepPlateauKeys(step).at;
   if (typeof step.view === 'string' && step.view) {
     const view = findSavedView(step.view);
-    return view ? viewProblem(view, at) : 'The view “' + step.view + '” does not exist any more.';
+    return view
+      ? viewProblem(view, at, undefined, stepPlateauKeys(step).against)
+      : 'The view “' + step.view + '” does not exist any more.';
   }
   return typeof step.viewpoint === 'string' && step.viewpoint
-    ? viewProblem(step, at, 'step_' + String(number).padStart(2, '0'))
+    ? viewProblem(step, at, 'step_' + String(number).padStart(2, '0'), stepPlateauKeys(step).against)
     : 'This step has no view.';
 }
 

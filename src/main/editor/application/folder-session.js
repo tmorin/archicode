@@ -9,6 +9,11 @@ function resetUiState() {
   currentPerspective = DEFAULT_PERSPECTIVE;
   mapPinned = [];
   mapHidden = [];
+  mapLinks = [];
+  mapLinksListOpen = false;
+  mapLinksFilter = '';
+  mapLinksKind = '';
+  mapLinksTickedOnly = false;
   mapOpened = null;
   technologyMapState = { opened: null, pinned: [], hidden: [] };
   technologyMapParts = { applications: true, relationships: true };

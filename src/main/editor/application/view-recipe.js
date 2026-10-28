@@ -9,10 +9,15 @@ function canonicalViewProperties(properties) {
     const list = stringList(source[key]).slice().sort();
     if (list.length) out[key] = list;
   }
+  // wave 026 run 0199 (issue #143): the relationships a Map is narrowed to, sorted by key and without repeats, after `opened`
+  const links = canonicalLinkEntries(linkEntriesOf(source.links).entries);
+  if (links.length) out.links = links;
   if (typeof source.facet === 'string' && source.facet) out.facet = source.facet;
   if (source['hide-unlinked'] === true) out['hide-unlinked'] = true;
   for (const name of MAP_PARTS) if (source[name] === false) out[name] = false; // drawn is the default, so only `false` is a choice (issue #107)
   for (const name of DIAGRAM_SHOW_NAMES) if (typeof source[name] === 'boolean') out[name] = source[name];
+  // the editor does not draw a `highlight` yet: it is kept as written, last, so that no edit loses it (DEC-7)
+  if (Array.isArray(source.highlight) && source.highlight.length) out.highlight = source.highlight;
   return out;
 }
 
@@ -24,6 +29,12 @@ function canonicalViewDefinition(view) {
   for (const name of DIAGRAM_SHOW_NAMES) if (properties[name] === defaults[name]) delete properties[name];
   // only the Map of the technology layer draws the applications and the relationships of the model: the keys mean nothing anywhere else
   if (viewpoint !== 'map' || viewLayerOf(view) !== 'technology') for (const name of MAP_PARTS) delete properties[name];
+  // `links` and `highlight` are the Map of the application layer's alone
+  if (viewpoint !== 'map' || viewLayerOf(view) !== 'application') {
+    delete properties.links;
+    delete properties.highlight;
+  }
+  if (viewpoint === 'map') delete properties.element; // a Map is about its pins, not about one element
   return { viewpoint, layer: viewLayerOf(view), properties };
 }
 
@@ -40,6 +51,7 @@ function currentViewDefinition() {
           pinned: state.pinned,
           hidden: state.hidden,
           opened: state.opened,
+          links: mapLayer() === 'application' ? mapLinks : [],
           facet: facetName,
           'hide-unlinked': diagramHideUnlinked
         },
@@ -113,9 +125,9 @@ function indexOfPlateau(plateau) {
 
 /**
  * Why a saved view cannot be drawn now, or null when it can. `plateau` is the plateau it is looked at in (a step that is told at one, wave 015 run 0101): absent, the
- * plateau drawn. `name` is how the sentences call the view (default its id; a step with its own recipe is `step_NN`).
+ * plateau drawn. `against`: the plateau a step says it is compared with (null: none; absent: the comparison on screen when `plateau` is absent too). `name` is how the sentences call the view (default its id; a step with its own recipe is `step_NN`).
  */
-function viewProblem(view, plateau, name) {
+function viewProblem(view, plateau, name, against) {
   if (!isPlainObject(view)) return 'This view does not exist.';
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const index = indexOfPlateau(plateau);
@@ -123,6 +135,8 @@ function viewProblem(view, plateau, name) {
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = viewLayerOf(view);
+    const linksProblem = viewLinksProblem(properties, index, layer, viewName, plateau, against);
+    if (linksProblem) return linksProblem;
     if (!pinned.length || pinned.some((reference) => index[layer].has(reference))) return null;
     return viewLacksInPlateau(pinned, layer, plateau) || 'None of the elements it was pinned on exists any more.';
   }
@@ -137,6 +151,61 @@ function viewProblem(view, plateau, name) {
       'the view `' + viewName + '` names `' + properties.element + '`, which does not exist'
     );
   }
+  return null;
+}
+
+/**
+ * The sentence for the `links` of a Map view that cannot be drawn, or null (DEC-7 (f), the command line's words without the prefix `error:`). A workspace with no plateau and a view
+ * with no facet is told the mistakes of an entry; with plateaus or a facet an entry the model lacks is dropped, and only a choice none of whose entries is there is told.
+ */
+function viewLinksProblem(properties, index, layer, viewName, plateau, against) {
+  if (properties.links === undefined || properties.links === null) return null;
+  const prefix = 'the view `' + viewName + '`: ';
+  if (layer !== 'application') return prefix + 'links is read in the map of the application layer only';
+  const read = linkEntriesOf(properties.links);
+  if (read.problems.length) return prefix + read.problems[0];
+  if (!read.entries.length) return null;
+  const named = plateau === null || plateau === undefined ? writingPlateau() : plateau;
+  if (named === null && !properties.facet) {
+    for (let i = 0; i < read.entries.length; i++) {
+      const entry = read.entries[i];
+      for (const end of [entry.source, entry.destination])
+        if (!index.application.has(end)) return prefix + 'dangling reference: ' + end;
+      if (!linkEntryExists(entry, index.application)) {
+        const label = normalLinkLabel(entry.label);
+        return (
+          prefix +
+          '`links[' +
+          i +
+          ']` names a relationship from `' +
+          entry.source +
+          '` to `' +
+          entry.destination +
+          '` with ' +
+          (label ? 'the label `' + label + '`' : 'no label') +
+          ', which does not exist'
+        );
+      }
+    }
+    return null;
+  }
+  // a relationship the plateau compared with has can be ticked: the comparison on screen, or the plateau a step says it is compared with
+  const compared =
+    against !== undefined
+      ? against
+        ? layerModelOf(against, AppState.workspace.settings)
+        : null
+      : plateau === null || plateau === undefined
+        ? AppState.baseline
+        : null;
+  if (
+    named !== null &&
+    !read.entries.some(
+      (entry) =>
+        linkEntryExists(entry, index.application) || (compared && linkEntryExists(entry, compared.index.application))
+    )
+  )
+    return 'None of the relationships it shows is in the plateau “' + named + '”.';
   return null;
 }
 
@@ -181,6 +250,9 @@ function applySavedView(view) {
     map.pinned = known(properties.pinned);
     map.hidden = known(properties.hidden);
     map.opened = new Set(known(properties.opened));
+    // issue #143: the relationships the view is narrowed to (the application layer's Map alone); a view with none gives the whole map
+    if (layer === 'application')
+      mapLinks = linkEntriesOf(properties.links).entries.map((link) => Object.assign({}, link)); // as the view says them: the model drawn is looked at when it is drawn
     if (layer === 'technology') technologyMapParts = mapPartsOf(view); // the view says `false` for what it leaves out, else it is drawn
     map.pinned.forEach((reference) => expandParentsOf(reference, layer));
     mapSelectionCheck = true;
