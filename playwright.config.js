@@ -1,6 +1,6 @@
 // The end-to-end suite (wave 023, run 0175, T11): a real browser against `archicode editor serve` on the packaged
 // application. Run it with `npm run test:e2e`, after `./mvnw verify` (or `./mvnw package`) has built
-// target/quarkus-app/quarkus-run.jar; the browsers are installed once with `npx playwright install --with-deps chromium firefox`.
+// target/quarkus-app/quarkus-run.jar; the browsers are installed once with `npx playwright install --with-deps chromium firefox webkit`.
 // The specs and their harness are in src/test/e2e; the unit and integration suite (npm run test:unit) is apart.
 //
 // One worker, no retry, on purpose: a test starts a JVM and a browser, so parallel files make a busy machine time out
@@ -26,11 +26,15 @@ module.exports = defineConfig({
     // a click on something that never appears fails after 15 s naming the locator, not after the whole test's 60
     actionTimeout: 15000
   },
-  // WebKit is not a project: Playwright's WebKit is not Safari, the editor is written for Chromium's File System Access
-  // API (run 0174), and a contributor needs three more system libraries for it. It is one more entry here, and
-  // `webkit` in the install command, when the hosted editor (#162) needs it.
+  // WebKit runs four specs only (run 0194, DEC-2): the ones that open the editor and the hosted page, the folder in the
+  // browser, the sample and the hosted acceptance. Playwright's WebKit is not Safari, and it needs more system libraries.
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } }
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /(open-and-pages|browser-workspace|sample|hosted-acceptance)\.spec\.js$/
+    }
   ]
 });

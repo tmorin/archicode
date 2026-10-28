@@ -1632,7 +1632,7 @@ ArchiCode comes with an editor to browse, edit and draw a workspace without leav
 There are two ways to open it:
 
 - *Served by the command line.* `archicode editor serve` serves the editor and opens the folder of the `.archicode.yaml` in it, with nothing to pick. It works in any browser. See <<serve-the-editor>>.
-- *From the published page.* The page published next to this documentation, at `/editor/` of the same site, asks for a folder. That needs the File System Access API, which Chrome, Edge, Brave and Opera have and Firefox and Safari do not: with one of those, use the command above instead.
+- *From the published page.* The page published next to this documentation, at `/editor/` of the same site, works in Chrome, Edge, Brave, Opera, Firefox and Safari. With no folder to choose it keeps a workspace in the browser, and it still lets you pick a folder where the browser has the File System Access API (Chrome, Edge, Brave and Opera). To try it without a workspace of your own, open link:../editor/#/timeline/applications?plateau=marketplace&compare=past&sample=brightcart[the editor on the Brightcart sample]. See <<editor-browser-workspace>>.
 
 The folder to open is the one that holds the workspace file, `.archicode.yaml`. You pick the folder, not the file, so the hidden name is no obstacle in the dialog of the browser. A folder that has a `workspace.yaml` and no `.archicode.yaml` is not opened: the editor gives the reason beside the folder, with the sentence the command line prints (see <<upgrade-0-17>>).
 
@@ -1649,6 +1649,21 @@ In *Settings*, the paths of the manifests are one per line, and a path that ends
 The editor reads and writes YAML manifests (`.yaml` and `.yml`) only. The command line reads JSON and TOML manifests too (see <<manifest-formats>>): the editor reads neither, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in *Files* (which names the files) and above the trees of *Elements* (which counts them).
 
 A reference declared more than once is reported, not chosen: a red note above the trees of *Elements* and of *Files* gives the same message as the command line, each file that takes part is marked _duplicate_ in *Files* and says so when opened, and no diagram is drawn until each reference is declared once (a view or a story with a duplicated `id` is reported too, and does not stop the diagrams). Nothing else is blocked: the editor still edits and saves, so that the duplicate can be fixed in it.
+
+[[editor-browser-workspace]]
+=== A workspace kept in the browser
+
+Where the browser has no folder picker, or when you prefer not to give the page a folder, the editor keeps a workspace in the browser. The card _Open a workspace_ then offers *Open the Brightcart sample*, *New workspace in this browser* and *Import a workspace file*, next to *Open workspace folder* when the browser can pick one. The workspaces kept in the browser are listed under _In this browser_, each with *Rename*, *Export* and *Delete*; a name is 1 to 80 characters and is not used by another workspace.
+
+A browser workspace lives in the data of the site, on this device only: nothing is uploaded. Clearing the data of the site, a private window or a browser that frees space can remove it, so the editor asks the browser to keep it (once, at the first save) and the top bar says _In this browser_ and when the workspace was last exported. Nothing is stored until you click _Save all changes_. Keep a copy with *Export as a file*.
+
+*The sample.* *Open the Brightcart sample* opens a copy of the layered Brightcart workspace, as the same workspace every time: the second click opens the one you already have, with your changes. The address `#/timeline/applications?plateau=marketplace&compare=past&sample=brightcart` does the same, and it is what the button of the presentation page uses (link:../editor/#/timeline/applications?plateau=marketplace&compare=past&sample=brightcart[the editor on the Brightcart sample]). A workspace made from the sample has *Reset to the sample...* in its *Workspace* menu: it names the workspace and what is lost (your changes), and replaces the files with the sample's, in one step.
+
+*Export and import.* The *Workspace* menu of the top bar has *Export as a file*, which downloads one YAML file named after the workspace (`brightcart-bundle.yaml` for the sample): every YAML file of the workspace, each opened by a line `--- # file: <path>`. It waits while changes are not saved. A file the bundle cannot carry (a path that is absolute, hidden other than `.archicode.yaml`, leaves the folder or is not YAML, a file that is not UTF-8) is left out and listed. *Import a workspace file* on the card reads such a file and creates a new workspace from it, named after the file's `settings.name` or else the file; it never changes an existing workspace. It refuses a file over 10 MB, one that is not UTF-8 text, and a path with `..`, an absolute path, a hidden file other than `.archicode.yaml`, or a path given twice, and then creates nothing.
+
+Served by `archicode editor serve`, the page has the same *Workspace* menu, with *Open the Brightcart sample* and, once a browser workspace is open, *Back to the served folder*. Nothing in that menu writes to the served folder.
+
+*What is tested.* The flow above is tested end to end in Chromium, Firefox and WebKit as Playwright builds it. That WebKit is not Safari: the real Safari, Windows and macOS are not tested.
 
 [[editor-pages]]
 === The perspectives and their pages
