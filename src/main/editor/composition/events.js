@@ -483,7 +483,10 @@ function handleAppClick(e) {
       pushDiagramHistory();
       mapStateOf().pinned = [];
       mapStateOf().hidden = [];
-      if (mapLayer() === 'application') mapLinks = [];
+      if (mapLayer() === 'application') {
+        mapLinks = [];
+        mapHighlight = [];
+      }
       render();
       break;
     case 'map-link-toggle': {

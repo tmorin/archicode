@@ -269,11 +269,11 @@ function renderMapLinksChipHtml() {
   );
 }
 
-/** The ticked relationships from the address: `rel=` once for each, a JSON array [source, destination, label?]; the ones no model has are dropped. */
-function mapLinksFromParams(params) {
+/** The relationships of the address named `name` (`rel=` ticked, `hl=` heavy): once for each, a JSON array [source, destination, label?]; the ones no model has are dropped. */
+function mapEntriesFromParams(params, name) {
   const entries = [];
   const seen = new Set();
-  for (const value of params.getAll('rel')) {
+  for (const value of params.getAll(name)) {
     let parsed;
     try {
       parsed = JSON.parse(value);
@@ -291,21 +291,42 @@ function mapLinksFromParams(params) {
   return entries;
 }
 
+/** The ticked relationships from the address. */
+function mapLinksFromParams(params) {
+  return mapEntriesFromParams(params, 'rel');
+}
+
+/** The relationships drawn heavy, from the address (run 0200, DEC-1). */
+function mapHighlightFromParams(params) {
+  return mapEntriesFromParams(params, 'hl');
+}
+
 function linkEntryOfParts(source, destination, label) {
   const entry = { source, destination };
   if (normalLinkLabel(label)) entry.label = normalLinkLabel(label);
   return entry;
 }
 
-/** The `rel=` parameters of the address for the entries ticked. */
-function mapLinkParams(entries) {
+/** The parameters of the address named `name` for the entries. */
+function mapEntryParams(entries, name) {
   return entries.map((entry) => {
     const label = normalLinkLabel(entry.label);
     return (
-      'rel=' +
+      name +
+      '=' +
       encodeURIComponent(
         JSON.stringify(label ? [entry.source, entry.destination, label] : [entry.source, entry.destination])
       )
     );
   });
+}
+
+/** The `rel=` parameters of the address for the entries ticked. */
+function mapLinkParams(entries) {
+  return mapEntryParams(entries, 'rel');
+}
+
+/** The `hl=` parameters of the address for the relationships drawn heavy. */
+function mapHighlightParams(entries) {
+  return mapEntryParams(entries, 'hl');
 }

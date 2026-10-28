@@ -107,6 +107,7 @@ function snapshotWriteState() {
     mapPinned: mapPinned.slice(),
     mapHidden: mapHidden.slice(),
     mapLinks: mapLinks.map((link) => Object.assign({}, link)),
+    mapHighlight: mapHighlight.map((link) => Object.assign({}, link)),
     mapOpened: mapOpened ? new Set(mapOpened) : mapOpened,
     technologyMapState: {
       pinned: technologyMapState.pinned.slice(),
@@ -143,6 +144,7 @@ function restoreWriteState(snapshot) {
   mapPinned = snapshot.mapPinned;
   mapHidden = snapshot.mapHidden;
   mapLinks = snapshot.mapLinks;
+  mapHighlight = snapshot.mapHighlight;
   mapOpened = snapshot.mapOpened;
   technologyMapState = snapshot.technologyMapState;
   navActiveKey = snapshot.navActiveKey;

@@ -127,6 +127,19 @@ function stepView(step) {
 }
 
 /**
+ * What a step draws (wave 026, run 0200, issue #143, DEC-2): the view of `stepView`, and, when the step has a `highlight` key, a shallow copy of it whose `properties.highlight` is the
+ * step's list (an empty one switches the view's off); the saved view itself is never touched. The twin of the command line's `GenerateStoriesCommand.viewOf`.
+ */
+function stepViewForDrawing(step) {
+  const view = stepView(step);
+  if (!view || !Object.prototype.hasOwnProperty.call(step, 'highlight')) return view;
+  const properties = Object.assign({}, isPlainObject(view.properties) ? view.properties : {}, {
+    highlight: step.highlight
+  });
+  return Object.assign({}, view, { properties });
+}
+
+/**
  * Why a step cannot be drawn now, or null when it can. A step is drawn in the plateau it says (`at`, else the plateau drawn, which is what the page has when the step is
  * played) and compared with the one it names (`against`): the plateau that is not one, and one the editor cannot draw, are told before the view is looked at, and the
  * view is looked at in the plateau of the step, not in the one that happens to be drawn now. `plateau` (the scene of the story player, wave 021): the plateau the step is drawn
@@ -138,13 +151,18 @@ function stepProblem(step, plateau, number) {
   if (plateauProblem) return plateauProblem.problem;
   const at = plateau !== undefined ? plateau : stepPlateauKeys(step).at;
   if (typeof step.view === 'string' && step.view) {
-    const view = findSavedView(step.view);
+    const view = stepViewForDrawing(step);
     return view
       ? viewProblem(view, at, undefined, stepPlateauKeys(step).against)
       : 'The view “' + step.view + '” does not exist any more.';
   }
   return typeof step.viewpoint === 'string' && step.viewpoint
-    ? viewProblem(step, at, 'step_' + String(number).padStart(2, '0'), stepPlateauKeys(step).against)
+    ? viewProblem(
+        stepViewForDrawing(step),
+        at,
+        'step_' + String(number).padStart(2, '0'),
+        stepPlateauKeys(step).against
+      )
     : 'This step has no view.';
 }
 

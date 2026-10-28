@@ -8541,6 +8541,7 @@ function snapshotWriteState() {
     mapPinned: mapPinned.slice(),
     mapHidden: mapHidden.slice(),
     mapLinks: mapLinks.map((link) => Object.assign({}, link)),
+    mapHighlight: mapHighlight.map((link) => Object.assign({}, link)),
     mapOpened: mapOpened ? new Set(mapOpened) : mapOpened,
     technologyMapState: {
       pinned: technologyMapState.pinned.slice(),
@@ -8577,6 +8578,7 @@ function restoreWriteState(snapshot) {
   mapPinned = snapshot.mapPinned;
   mapHidden = snapshot.mapHidden;
   mapLinks = snapshot.mapLinks;
+  mapHighlight = snapshot.mapHighlight;
   mapOpened = snapshot.mapOpened;
   technologyMapState = snapshot.technologyMapState;
   navActiveKey = snapshot.navActiveKey;
@@ -12440,6 +12442,7 @@ function resetUiState() {
   mapPinned = [];
   mapHidden = [];
   mapLinks = [];
+  mapHighlight = [];
   mapLinksListOpen = false;
   mapLinksFilter = '';
   mapLinksKind = '';
@@ -13382,7 +13385,10 @@ function applyDiagramParamsFromHash() {
     const state = mapStateOf(layer);
     state.pinned = pin ? pin.split(',').filter((reference) => AppState.index[layer].has(reference)) : [];
     state.pinned.forEach((reference) => expandParentsOf(reference, layer));
-    if (layer === 'application') mapLinks = mapLinksFromParams(params);
+    if (layer === 'application') {
+      mapLinks = mapLinksFromParams(params);
+      mapHighlight = mapHighlightFromParams(params);
+    }
   }
   const shown = {};
   for (const name of DIAGRAM_SHOW_NAMES)
@@ -13617,7 +13623,7 @@ function currentRouteHash() {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
     const pinned = mapStateOf().pinned;
     if (pinned.length) params.push('pin=' + pinned.map(encodeURIComponent).join(','));
-    if (mapLayer() === 'application') params.push(...mapLinkParams(mapLinks));
+    if (mapLayer() === 'application') params.push(...mapLinkParams(mapLinks), ...mapHighlightParams(mapHighlight));
     pushShowParams(params, true);
     pushFrameParam(params);
   }
@@ -13925,6 +13931,8 @@ let mapHidden = [];
 
 /** The relationships the Map of the application layer is narrowed to, as entries `{ source, destination, label }` (none: the whole map; view state, wave 026 run 0199). */
 let mapLinks = [];
+/** The relationships a Map of the application layer draws heavy (wave 026, run 0200, issue #143, DEC-1): entries `{ source, destination, label }`, view state like `mapLinks`. */
+let mapHighlight = [];
 
 /** The controls of the list of relationships under the tree of the page Applications: whether it is open, its text filter, its kind select ('' is any kind) and "Ticked only" (view state, reset with the folder; wave 026 run 0199). */
 let mapLinksListOpen = false;
@@ -15308,7 +15316,10 @@ function rewriteUiReferences(oldPrefix, newPrefix, layer) {
     if (state.opened) state.opened = rewriteSet(state.opened);
   }
   // the relationships the Map of the application layer is narrowed to name two ends each (wave 026, run 0199)
-  if (!layer || layer === 'application') rewriteLinkEntries(mapLinks, rewrite);
+  if (!layer || layer === 'application') {
+    rewriteLinkEntries(mapLinks, rewrite);
+    rewriteLinkEntries(mapHighlight, rewrite);
+  }
   // a delete confirmation lists what the old reference would take with it: it is stale now
   pendingDeleteConfirmation = null;
 }
@@ -22585,6 +22596,12 @@ function mapStateOf(layer) {
     set links(value) {
       mapLinks = value;
     },
+    get highlight() {
+      return mapHighlight;
+    },
+    set highlight(value) {
+      mapHighlight = value;
+    },
     get pinned() {
       return mapPinned;
     },
@@ -22687,6 +22704,14 @@ function currentMapState() {
       AppState.index.application,
       AppState.baseline && AppState.baseline.index.application
     ]);
+  // the relationships drawn heavy that the model drawn has; the others are dropped, never told (DEC-3)
+  if (layer === 'application' && mapHighlight.length) {
+    const highlight = drawnLinkEntries(mapHighlight, [
+      AppState.index.application,
+      AppState.baseline && AppState.baseline.index.application
+    ]);
+    if (highlight.length) mapState.highlight = highlight;
+  }
   return mapState;
 }
 
@@ -22988,11 +23013,11 @@ function renderMapLinksChipHtml() {
   );
 }
 
-/** The ticked relationships from the address: `rel=` once for each, a JSON array [source, destination, label?]; the ones no model has are dropped. */
-function mapLinksFromParams(params) {
+/** The relationships of the address named `name` (`rel=` ticked, `hl=` heavy): once for each, a JSON array [source, destination, label?]; the ones no model has are dropped. */
+function mapEntriesFromParams(params, name) {
   const entries = [];
   const seen = new Set();
-  for (const value of params.getAll('rel')) {
+  for (const value of params.getAll(name)) {
     let parsed;
     try {
       parsed = JSON.parse(value);
@@ -23010,23 +23035,44 @@ function mapLinksFromParams(params) {
   return entries;
 }
 
+/** The ticked relationships from the address. */
+function mapLinksFromParams(params) {
+  return mapEntriesFromParams(params, 'rel');
+}
+
+/** The relationships drawn heavy, from the address (run 0200, DEC-1). */
+function mapHighlightFromParams(params) {
+  return mapEntriesFromParams(params, 'hl');
+}
+
 function linkEntryOfParts(source, destination, label) {
   const entry = { source, destination };
   if (normalLinkLabel(label)) entry.label = normalLinkLabel(label);
   return entry;
 }
 
-/** The `rel=` parameters of the address for the entries ticked. */
-function mapLinkParams(entries) {
+/** The parameters of the address named `name` for the entries. */
+function mapEntryParams(entries, name) {
   return entries.map((entry) => {
     const label = normalLinkLabel(entry.label);
     return (
-      'rel=' +
+      name +
+      '=' +
       encodeURIComponent(
         JSON.stringify(label ? [entry.source, entry.destination, label] : [entry.source, entry.destination])
       )
     );
   });
+}
+
+/** The `rel=` parameters of the address for the entries ticked. */
+function mapLinkParams(entries) {
+  return mapEntryParams(entries, 'rel');
+}
+
+/** The `hl=` parameters of the address for the relationships drawn heavy. */
+function mapHighlightParams(entries) {
+  return mapEntryParams(entries, 'hl');
 }
 /** The kernel, once the promise of `loadViewpointKernel` has settled: null before. */
 let loadedKernel = null;
@@ -23648,6 +23694,9 @@ function buildKernelInput(viewpoint, reference, options) {
     // the relationships the Map of the application layer is narrowed to; absent when none (the whole map)
     if (layer === 'application' && opts.links && opts.links.length)
       input.links = opts.links.map((link) => Object.assign({}, link));
+    // the relationships drawn heavy (wave 026, run 0200): absent when none, so an input without a highlight is the input of before
+    if (layer === 'application' && opts.highlight && opts.highlight.length)
+      input.highlight = opts.highlight.map((link) => Object.assign({}, link));
     // what the Map of the technology layer draws besides its elements: absent is drawn (the kernel's own default)
     if (layer === 'technology') for (const part of MAP_PARTS) if (opts[part] === false) input[part] = false;
   }
@@ -26917,6 +26966,10 @@ function diagramCacheKey(recipe, comparison, viewKey) {
     isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
     // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
     isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
+    // wave 026 run 0200: the relationships drawn heavy; a map without one keeps the key it had
+    isMap && mapState.highlight && mapState.highlight.length
+      ? 'highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))
+      : '',
     // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
     isMap && layer === 'technology'
       ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
@@ -27102,6 +27155,13 @@ function viewDiagramRecipe(view, index, host, baselineIndex) {
           index.application,
           baselineIndex ? baselineIndex.application : null
         ]);
+      // the highlight the model drawn has; one it lacks is dropped and never makes "nothing is drawn" (DEC-3)
+      const wanted = linkEntriesOf(properties.highlight, 'highlight').entries;
+      if (wanted.length)
+        recipe.mapState.highlight = drawnLinkEntries(wanted, [
+          index.application,
+          baselineIndex ? baselineIndex.application : null
+        ]);
     }
   } else {
     recipe.reference = properties.element;
@@ -27172,6 +27232,9 @@ function mountDiagramIfNeeded() {
   ]
     .concat(
       isMap && mapState.links && mapState.links.length ? [JSON.stringify(canonicalLinkEntries(mapState.links))] : [],
+      isMap && mapState.highlight && mapState.highlight.length
+        ? ['highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))]
+        : [],
       isMap && recipe.layer === 'technology' ? ['technology'] : [],
       readonly ? ['view:' + recipe.view.id] : []
     )
@@ -27208,6 +27271,7 @@ function mountDiagramIfNeeded() {
           opened: mapState.opened,
           pinned: mapState.pinned,
           links: mapState.links,
+          highlight: mapState.highlight,
           applications: recipePartsOf(recipe).applications,
           relationships: recipePartsOf(recipe).relationships
         }
@@ -28064,6 +28128,19 @@ function stepView(step) {
 }
 
 /**
+ * What a step draws (wave 026, run 0200, issue #143, DEC-2): the view of `stepView`, and, when the step has a `highlight` key, a shallow copy of it whose `properties.highlight` is the
+ * step's list (an empty one switches the view's off); the saved view itself is never touched. The twin of the command line's `GenerateStoriesCommand.viewOf`.
+ */
+function stepViewForDrawing(step) {
+  const view = stepView(step);
+  if (!view || !Object.prototype.hasOwnProperty.call(step, 'highlight')) return view;
+  const properties = Object.assign({}, isPlainObject(view.properties) ? view.properties : {}, {
+    highlight: step.highlight
+  });
+  return Object.assign({}, view, { properties });
+}
+
+/**
  * Why a step cannot be drawn now, or null when it can. A step is drawn in the plateau it says (`at`, else the plateau drawn, which is what the page has when the step is
  * played) and compared with the one it names (`against`): the plateau that is not one, and one the editor cannot draw, are told before the view is looked at, and the
  * view is looked at in the plateau of the step, not in the one that happens to be drawn now. `plateau` (the scene of the story player, wave 021): the plateau the step is drawn
@@ -28075,13 +28152,18 @@ function stepProblem(step, plateau, number) {
   if (plateauProblem) return plateauProblem.problem;
   const at = plateau !== undefined ? plateau : stepPlateauKeys(step).at;
   if (typeof step.view === 'string' && step.view) {
-    const view = findSavedView(step.view);
+    const view = stepViewForDrawing(step);
     return view
       ? viewProblem(view, at, undefined, stepPlateauKeys(step).against)
       : 'The view “' + step.view + '” does not exist any more.';
   }
   return typeof step.viewpoint === 'string' && step.viewpoint
-    ? viewProblem(step, at, 'step_' + String(number).padStart(2, '0'), stepPlateauKeys(step).against)
+    ? viewProblem(
+        stepViewForDrawing(step),
+        at,
+        'step_' + String(number).padStart(2, '0'),
+        stepPlateauKeys(step).against
+      )
     : 'This step has no view.';
 }
 
@@ -28164,12 +28246,13 @@ function canonicalViewProperties(properties) {
   // wave 026 run 0199 (issue #143): the relationships a Map is narrowed to, sorted by key and without repeats, after `opened`
   const links = canonicalLinkEntries(linkEntriesOf(source.links).entries);
   if (links.length) out.links = links;
+  // wave 026 run 0200 (issue #143, DEC-1): the relationships drawn heavy, written as `links` are
+  const highlight = canonicalLinkEntries(linkEntriesOf(source.highlight, 'highlight').entries);
+  if (highlight.length) out.highlight = highlight;
   if (typeof source.facet === 'string' && source.facet) out.facet = source.facet;
   if (source['hide-unlinked'] === true) out['hide-unlinked'] = true;
   for (const name of MAP_PARTS) if (source[name] === false) out[name] = false; // drawn is the default, so only `false` is a choice (issue #107)
   for (const name of DIAGRAM_SHOW_NAMES) if (typeof source[name] === 'boolean') out[name] = source[name];
-  // the editor does not draw a `highlight` yet: it is kept as written, last, so that no edit loses it (DEC-7)
-  if (Array.isArray(source.highlight) && source.highlight.length) out.highlight = source.highlight;
   return out;
 }
 
@@ -28204,6 +28287,7 @@ function currentViewDefinition() {
           hidden: state.hidden,
           opened: state.opened,
           links: mapLayer() === 'application' ? mapLinks : [],
+          highlight: mapLayer() === 'application' ? mapHighlight : [],
           facet: facetName,
           'hide-unlinked': diagramHideUnlinked
         },
@@ -28287,7 +28371,9 @@ function viewProblem(view, plateau, name, against) {
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = viewLayerOf(view);
-    const linksProblem = viewLinksProblem(properties, index, layer, viewName, plateau, against);
+    const linksProblem =
+      viewLinksProblem(properties, index, layer, viewName, plateau, against) ||
+      viewLinksProblem(properties, index, layer, viewName, plateau, against, 'highlight'); // run 0200 DEC-6: the same table
     if (linksProblem) return linksProblem;
     if (!pinned.length || pinned.some((reference) => index[layer].has(reference))) return null;
     return viewLacksInPlateau(pinned, layer, plateau) || 'None of the elements it was pinned on exists any more.';
@@ -28310,11 +28396,12 @@ function viewProblem(view, plateau, name, against) {
  * The sentence for the `links` of a Map view that cannot be drawn, or null (DEC-7 (f), the command line's words without the prefix `error:`). A workspace with no plateau and a view
  * with no facet is told the mistakes of an entry; with plateaus or a facet an entry the model lacks is dropped, and only a choice none of whose entries is there is told.
  */
-function viewLinksProblem(properties, index, layer, viewName, plateau, against) {
-  if (properties.links === undefined || properties.links === null) return null;
+function viewLinksProblem(properties, index, layer, viewName, plateau, against, key) {
+  const name = key || 'links';
+  if (properties[name] === undefined || properties[name] === null) return null;
   const prefix = 'the view `' + viewName + '`: ';
-  if (layer !== 'application') return prefix + 'links is read in the map of the application layer only';
-  const read = linkEntriesOf(properties.links);
+  if (layer !== 'application') return prefix + name + ' is read in the map of the application layer only';
+  const read = linkEntriesOf(properties[name], name);
   if (read.problems.length) return prefix + read.problems[0];
   if (!read.entries.length) return null;
   const named = plateau === null || plateau === undefined ? writingPlateau() : plateau;
@@ -28327,7 +28414,9 @@ function viewLinksProblem(properties, index, layer, viewName, plateau, against) 
         const label = normalLinkLabel(entry.label);
         return (
           prefix +
-          '`links[' +
+          '`' +
+          name +
+          '[' +
           i +
           ']` names a relationship from `' +
           entry.source +
@@ -28351,6 +28440,7 @@ function viewLinksProblem(properties, index, layer, viewName, plateau, against) 
         ? AppState.baseline
         : null;
   if (
+    name === 'links' &&
     named !== null &&
     !read.entries.some(
       (entry) =>
@@ -28405,6 +28495,8 @@ function applySavedView(view) {
     // issue #143: the relationships the view is narrowed to (the application layer's Map alone); a view with none gives the whole map
     if (layer === 'application')
       mapLinks = linkEntriesOf(properties.links).entries.map((link) => Object.assign({}, link)); // as the view says them: the model drawn is looked at when it is drawn
+    if (layer === 'application')
+      mapHighlight = linkEntriesOf(properties.highlight, 'highlight').entries.map((link) => Object.assign({}, link));
     if (layer === 'technology') technologyMapParts = mapPartsOf(view); // the view says `false` for what it leaves out, else it is drawn
     map.pinned.forEach((reference) => expandParentsOf(reference, layer));
     mapSelectionCheck = true;
@@ -29680,12 +29772,21 @@ function addCurrentViewToStoryChoice(choice) {
     return;
   }
   // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
-  const named = savedViews().find(
-    (view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition)
-  );
-  const step = named
-    ? { view: named.id }
-    : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
+  // the highlight is the step's own key (wave 026, run 0200, DEC-5): the view a step names is found without it, and the key says what the step draws heavy
+  const { highlight, ...properties } = definition.properties;
+  const withoutHighlight = JSON.stringify(Object.assign({}, definition, { properties }));
+  const stripped = (view) => {
+    const canonical = canonicalViewDefinition(view);
+    const { highlight: dropped, ...rest } = canonical.properties;
+    return { canonical, rest: JSON.stringify(Object.assign({}, canonical, { properties: rest })), dropped };
+  };
+  const views = savedViews().map((view) => ({ view, ...stripped(view) }));
+  const exact = views.find((entry) => JSON.stringify(entry.canonical) === JSON.stringify(definition));
+  const same = exact || views.find((entry) => entry.rest === withoutHighlight);
+  const named = same ? same.view : null;
+  const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties };
+  if (!exact && highlight && highlight.length) step.highlight = highlight;
+  else if (!exact && same && same.dropped && same.dropped.length) step.highlight = []; // the view has one to switch off
   const plateaus = choice.withPlateaus ? storyStepPlateaus() : null;
   const keeps = !!plateaus && !plateaus.blocked && !plateaus.problem;
   if (keeps) {
@@ -29781,7 +29882,7 @@ function goToStoryStep(storyId, index) {
   if (!story || index < 0 || index >= steps.length) return;
   selectedStoryId = storyId;
   drawPlateausOfStep(storyId, steps[index]);
-  const problem = stepProblem(steps[index], undefined, index + 1) || applySavedView(stepView(steps[index]));
+  const problem = stepProblem(steps[index], undefined, index + 1) || applySavedView(stepViewForDrawing(steps[index]));
   if (problem && !mapIsShown() && currentPerspective !== 'elements') {
     currentPerspective = 'map';
     useDiagramHost('main');
@@ -30315,7 +30416,7 @@ async function storyStepScene(storyId, index, options) {
       changesOnly: drawing.changesOnly
     };
     const recipe = viewDiagramRecipe(
-      stepView(step),
+      stepViewForDrawing(step),
       drawing.index,
       'story',
       drawing.baseline ? drawing.baseline.index : null
@@ -30331,6 +30432,7 @@ async function storyStepScene(storyId, index, options) {
             opened: mapState.opened,
             pinned: mapState.pinned,
             links: mapState.links,
+            highlight: mapState.highlight,
             applications: recipePartsOf(recipe).applications,
             relationships: recipePartsOf(recipe).relationships,
             source
@@ -32547,7 +32649,10 @@ function handleAppClick(e) {
       pushDiagramHistory();
       mapStateOf().pinned = [];
       mapStateOf().hidden = [];
-      if (mapLayer() === 'application') mapLinks = [];
+      if (mapLayer() === 'application') {
+        mapLinks = [];
+        mapHighlight = [];
+      }
       render();
       break;
     case 'map-link-toggle': {

@@ -355,6 +355,9 @@ function buildKernelInput(viewpoint, reference, options) {
     // the relationships the Map of the application layer is narrowed to; absent when none (the whole map)
     if (layer === 'application' && opts.links && opts.links.length)
       input.links = opts.links.map((link) => Object.assign({}, link));
+    // the relationships drawn heavy (wave 026, run 0200): absent when none, so an input without a highlight is the input of before
+    if (layer === 'application' && opts.highlight && opts.highlight.length)
+      input.highlight = opts.highlight.map((link) => Object.assign({}, link));
     // what the Map of the technology layer draws besides its elements: absent is drawn (the kernel's own default)
     if (layer === 'technology') for (const part of MAP_PARTS) if (opts[part] === false) input[part] = false;
   }

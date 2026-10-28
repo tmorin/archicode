@@ -93,6 +93,7 @@ test('a ticked row has its checkbox ticked and the summary counts the entries, w
   );
   assert.match(textOf(html.slice(html.indexOf('Relationships'))), /1 ticked/);
   assert.match(html, /aria-live="polite"[^>]*>[^<]*1 relationship(?:s)? ticked/);
+  assert.ok(html.includes('1 relationship ticked'), 'the live region says 1 relationship ticked');
   assert.match(html, /data-action="map-links-clear"/, 'Clear is in the summary');
 });
 

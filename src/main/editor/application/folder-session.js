@@ -10,6 +10,7 @@ function resetUiState() {
   mapPinned = [];
   mapHidden = [];
   mapLinks = [];
+  mapHighlight = [];
   mapLinksListOpen = false;
   mapLinksFilter = '';
   mapLinksKind = '';
