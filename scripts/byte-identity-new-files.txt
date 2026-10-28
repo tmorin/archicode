@@ -1,0 +1,7 @@
+# Files whose difference from the base program is the feature itself (one extended regular expression per line, matched on the
+# path of a written file, relative to the copy of the workspace; `#` starts a comment).
+# A file that matches is accepted when it exists in both copies and differs. Any other difference is reported as before.
+#
+# Wave 026, run 0200 (DEC-8, ASM-5): the story `order_flow` of the Brightcart fixture has steps with `properties.links` and a step
+# `highlight`, which the jar of archicode-0.19.0 ignores (it draws the whole map), so `stories generate` writes other diagrams for it.
+(^|/)views[^/]*-stories/order_flow/

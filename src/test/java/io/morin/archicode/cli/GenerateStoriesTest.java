@@ -319,7 +319,7 @@ class GenerateStoriesTest {
         val result = stories(workspace, "--plateau", "saas", "-s", "nope", "-s", "fork_tour");
         assertEquals(1, result.exit(), result.err());
         assertEquals(
-            "error: no story `nope` in the workspace (known: fork_tour, order_journey, seller_journey)\n",
+            "error: no story `nope` in the workspace (known: fork_tour, order_flow, order_journey, seller_journey)\n",
             result.err()
         );
         assertFalse(Files.exists(workspace.resolveSibling("views-stories")));

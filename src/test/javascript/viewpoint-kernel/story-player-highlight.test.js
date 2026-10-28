@@ -50,7 +50,7 @@ const STORY = [
   ''
 ].join('\n');
 const ID = 'flow_under_test';
-const NEWEST = ['customer>shop.web', 'shop.web>shop.app', 'shop.app>psp'];
+const NEWEST = ['customer>shop.web', 'shop.web>shop.app', 'shop.app.payments>psp'];
 const files = () => Object.assign({}, shippedFiles(LAYERED), { 'shared/story.flow_under_test.yaml': STORY });
 
 /** The links of a markup drawn heavy, as `from>to`. */
@@ -121,7 +121,7 @@ test('several entries are joined with a semicolon, an entry the plateau lacks is
     /Highlighted: .+, browses and buys with; .+, calls\.$/
   );
   page.sandbox.__none = { steps: [{ viewpoint: 'map', layer: 'application', properties: {}, highlight: [] }] };
-  assert.equal(run(page.sandbox, 'storyStepAnnouncement(__none, 0)'), 'Step 1 of 1');
+  assert.equal(run(page.sandbox, 'storyStepAnnouncement(__none, 0)'), 'Step 1 of 1, Map');
   const old = page.sandbox.storyStepAnnouncement(page.sandbox.findStory('order_journey'), 0);
   assert.doesNotMatch(old, /Highlighted/);
   assert.match(old, /^Step 1 of 3, /);

@@ -1,6 +1,6 @@
 'use strict';
 // Run 0193 (wave 025, W-5, task 002), TG-1, REQ-3, REQ-4 and DEC-10: the committed Brightcart sample is the bundle of the fixture folder made by the page's codec, the
-// files it holds are the 61 files of the fixture by hash, and the address the site links to draws the plateau `marketplace` compared with its past.
+// files it holds are the 62 files of the fixture by hash, and the address the site links to draws the plateau `marketplace` compared with its past.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,13 +27,13 @@ function filesOf(folder, relative, found) {
   return found;
 }
 
-test('the committed sample is the bundle of the fixture, and the bundle carries all 61 files and skips none', () => {
+test('the committed sample is the bundle of the fixture, and the bundle carries all 62 files and skips none', () => {
   const sandbox = createApp();
   const files = filesOf(FIXTURE, '', []);
-  assert.equal(files.length, 61);
+  assert.equal(files.length, 62);
   const bundle = sandbox.bundleWorkspaceFiles(files);
   assert.equal(bundle.skipped.length, 0);
-  assert.equal(bundle.carried.length, 61);
+  assert.equal(bundle.carried.length, 62);
   assert.deepEqual(Array.from(bundle.carried, (f) => f.path).sort(), files.map((f) => f.path).sort());
   assert.equal(
     sha(Buffer.from(bundle.text, 'utf8')),
@@ -48,7 +48,7 @@ test('the unbundled sample equals the files of the fixture, one by one, by hash'
   assert.deepEqual(Array.from(unbundled.problems), []);
   const expected = new Map(filesOf(FIXTURE, '', []).map((f) => [f.path, sha(f.bytes)]));
   const got = new Map(Array.from(unbundled.files, (f) => [f.path, sha(Buffer.from(f.bytes))]));
-  assert.equal(got.size, 61);
+  assert.equal(got.size, 62);
   assert.deepEqual(Array.from(got.keys()).sort(), Array.from(expected.keys()).sort());
   for (const [file, hash] of expected) assert.equal(got.get(file), hash, file);
 });

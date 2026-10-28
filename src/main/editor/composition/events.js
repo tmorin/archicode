@@ -506,6 +506,39 @@ function handleAppClick(e) {
       render();
       break;
     }
+    case 'map-link-highlight': {
+      const entry = linkEntryOfKey(target.getAttribute('data-key'));
+      if (!entry) break;
+      pushDiagramHistory();
+      toggleMapHighlight(entry);
+      mapSelectionCheck = true;
+      pendingFocusSelector =
+        'input[data-action="map-link-highlight"][data-key="' +
+        String(linkEntryKey(entry)).replace(/\\/g, '\\\\').replace(/"/g, '\\"') +
+        '"]';
+      render();
+      break;
+    }
+    case 'map-highlight-clear':
+      pushDiagramHistory();
+      mapHighlight = [];
+      mapSelectionCheck = true;
+      render();
+      break;
+    case 'view-highlight-remove': {
+      const entry = linkEntryOfKey(target.getAttribute('data-key'));
+      pendingFocusSelector = '#view-edit-add-highlight';
+      editSavedView((view) => setViewHighlight(view, entry, false));
+      break;
+    }
+    case 'story-step-highlight-remove':
+      setStepHighlight(
+        target.getAttribute('data-story'),
+        Number(target.getAttribute('data-step')),
+        linkEntryOfKey(target.getAttribute('data-key')),
+        false
+      );
+      break;
     case 'map-link-only':
       pushDiagramHistory();
       chooseOnlyMapLink(AppState.selection);

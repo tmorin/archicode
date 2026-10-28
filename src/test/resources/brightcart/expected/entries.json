@@ -521,6 +521,75 @@
           }
         }
       ]
+    },
+    {
+      "id": "order_flow",
+      "file": "shared/story.order_flow.yaml",
+      "steps": [
+        {
+          "number": 1,
+          "view": null,
+          "names": [
+            "shop",
+            "shop.app",
+            "customer",
+            "shop.web"
+          ],
+          "at": "baseline",
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 2,
+          "view": null,
+          "names": [
+            "shop",
+            "shop.app",
+            "customer",
+            "shop.web",
+            "shop.web",
+            "shop.app"
+          ],
+          "at": "baseline",
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 3,
+          "view": null,
+          "names": [
+            "shop",
+            "shop.app",
+            "customer",
+            "shop.web",
+            "shop.web",
+            "shop.app",
+            "shop.app.payments",
+            "psp"
+          ],
+          "at": "baseline",
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        }
+      ]
     }
   ]
 }

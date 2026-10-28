@@ -130,6 +130,66 @@ class MapLinksSharedTest {
         return List.copyOf(out);
     }
 
+    /** The links the file draws heavy: the highlight of the contract is the heaviest line of the view ({@code thickness=5}). */
+    private static List<String> highlightedOf(List<String> lines) {
+        val out = new TreeSet<String>();
+        for (val line : lines) {
+            val m = LINK.matcher(line);
+            if (m.matches() && line.contains("thickness=5")) {
+                out.add(m.group(1) + " -> " + m.group(2));
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    /** The manifest of a story of one step: the recipe of the case, told at its plateau, with the keys of the step. */
+    @SneakyThrows
+    private static String storyManifest(JsonNode spec) {
+        val step = MAPPER.createObjectNode();
+        step.put("viewpoint", "map");
+        step.put("layer", "application");
+        step.set("properties", spec.path("properties"));
+        step.put("at", spec.path("plateau").asText());
+        spec.path("step")
+            .properties()
+            .forEach(e -> step.set(e.getKey(), e.getValue()));
+        val content = MAPPER.createObjectNode();
+        content.put("id", "tour");
+        content.putArray("steps").add(step);
+        return "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent: %s\n".formatted(
+            MAPPER.writeValueAsString(content)
+        );
+    }
+
+    /** The lines of the one file {@code stories generate} wrote for the step. */
+    @SneakyThrows
+    private List<String> storyStep(Path root, String plateau) {
+        val result = CliHarness.run(
+            factory,
+            errorOutput,
+            "-w",
+            root.resolve(".archicode.yaml").toString(),
+            "stories",
+            "generate",
+            "--plateau",
+            plateau,
+            "--story",
+            "tour"
+        );
+        assertEquals(0, result.exit(), result.err());
+        assertEquals("", result.err(), "it says nothing");
+        try (val files = Files.walk(root)) {
+            val found = files
+                // the facets of the settings draw the step again beside it: the global drawing is the folder named for the view alone
+                .filter(
+                    p -> "step_01.puml".equals(p.getFileName().toString()) && p.toString().contains("/tour/01-map/")
+                )
+                .toList();
+            assertEquals(1, found.size(), "one file for the one step: " + found);
+            return Files.readAllLines(found.get(0));
+        }
+    }
+
     private static List<String> strings(JsonNode list) {
         val out = new ArrayList<String>();
         list.forEach(node -> out.add(node.asText()));
@@ -142,6 +202,7 @@ class MapLinksSharedTest {
         val contract = MAPPER.readTree(CONTRACT.toFile());
         var cases = 0;
         var skipped = 0;
+        var stepCases = 0;
         var n = 0;
         for (val entry : contract.path("workspaces")) {
             val source = Path.of(entry.path("workspace").asText());
@@ -168,11 +229,33 @@ class MapLinksSharedTest {
                     assertTrue(lines.isPresent(), name + ": the command line wrote nothing in " + folder);
                     assertEquals(strings(spec.path("boxes")), boxesOf(lines.get()), name + ": boxes");
                     assertEquals(strings(spec.path("links")), linksOf(lines.get()), name + ": links");
+                    if (!spec.has("step")) {
+                        assertEquals(
+                            strings(spec.path("highlighted")),
+                            highlightedOf(lines.get()),
+                            name + ": the heavy links"
+                        );
+                    }
                 } else {
                     assertTrue(lines.isEmpty(), name + ": the view is skipped, nothing is written");
                     assertEquals(List.of(), strings(spec.path("boxes")), name);
                     assertEquals(List.of(), strings(spec.path("links")), name);
                     skipped++;
+                }
+                if (spec.has("step") && spec.path("drawn").asBoolean()) {
+                    Files.writeString(
+                        root.resolve(entry.path("folder").asText()).resolve("story." + name + ".yaml"),
+                        storyManifest(spec)
+                    );
+                    val step = storyStep(root, plateau);
+                    assertEquals(strings(spec.path("boxes")), boxesOf(step), name + ": boxes of the step");
+                    assertEquals(strings(spec.path("links")), linksOf(step), name + ": links of the step");
+                    assertEquals(
+                        strings(spec.path("highlighted")),
+                        highlightedOf(step),
+                        name + ": the heavy links of the step"
+                    );
+                    stepCases++;
                 }
                 if (spec.has("cli")) {
                     assertEquals(spec.path("cli").asText().strip(), result.err().strip(), name + ": what it says");
@@ -184,6 +267,7 @@ class MapLinksSharedTest {
             assertEquals(before, snapshot(source), "the shipped workspace is left untouched");
         }
         assertTrue(cases >= 15, "cases: " + cases);
+        assertTrue(stepCases >= 4, "step cases: " + stepCases);
         assertTrue(skipped >= 1, "a view the command line skips");
     }
 

@@ -190,6 +190,14 @@ function toggleMapLink(entry) {
     : mapLinks.concat([entry]);
 }
 
+/** Draws one relationship heavy, or not any more (the Highlight box of the panel of a link; view state, run 0200 DEC-5). */
+function toggleMapHighlight(entry) {
+  const key = linkEntryKey(entry);
+  mapHighlight = mapHighlight.some((e) => linkEntryKey(e) === key)
+    ? mapHighlight.filter((e) => linkEntryKey(e) !== key)
+    : mapHighlight.concat([entry]);
+}
+
 function mapLinkKeyFocus(key) {
   return (
     'input[data-action="map-link-toggle"][data-key="' + String(key).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]'
@@ -236,20 +244,30 @@ function mapLinkControlsApply(layer) {
   return mapIsShown() && mapLayer() === 'application' && (layer || 'application') === 'application';
 }
 
-/** The checkbox of one relationship in the panel of a link (empty when the choice is empty or the relationship cannot be found). */
+/** The boxes of one relationship in the panel of a link: Drawn (only while the choice is not empty) and Highlight (empty when the relationship cannot be found). */
 function renderMapLinkPanelCheckboxHtml(rel) {
-  if (!mapLinks.length) return '';
   const entry = mapLinkEntryOfRelationship(rel);
   if (!entry) return '';
   const key = linkEntryKey(entry);
+  const names = escapeHtml(rel.from + ' to ' + rel.destination);
+  const drawn = mapLinks.length
+    ? '<label class="map-link-panel-check"><input type="checkbox" data-action="map-link-toggle" data-key="' +
+      escapeHtml(key) +
+      '"' +
+      (mapLinks.some((e) => linkEntryKey(e) === key) ? ' checked' : '') +
+      ' aria-label="Draw ' +
+      names +
+      '"> Drawn</label>'
+    : '';
   return (
-    '<label class="map-link-panel-check"><input type="checkbox" data-action="map-link-toggle" data-key="' +
+    drawn +
+    '<label class="map-link-panel-check"><input type="checkbox" data-action="map-link-highlight" data-key="' +
     escapeHtml(key) +
     '"' +
-    (mapLinks.some((e) => linkEntryKey(e) === key) ? ' checked' : '') +
-    ' aria-label="Draw ' +
-    escapeHtml(rel.from + ' to ' + rel.destination) +
-    '"> Drawn</label>'
+    (mapHighlight.some((e) => linkEntryKey(e) === key) ? ' checked' : '') +
+    ' aria-label="Highlight ' +
+    names +
+    '"> Highlight</label>'
   );
 }
 
@@ -266,6 +284,16 @@ function renderMapLinksChipHtml() {
     '<span class="map-chip map-chip-links"><span>Relationships: ' +
     mapLinks.length +
     '</span><button type="button" data-action="map-links-clear" aria-label="Clear the ticked relationships" title="Show the whole map again">×</button></span>'
+  );
+}
+
+/** The chip over the diagram while relationships are drawn heavy. */
+function renderMapHighlightChipHtml() {
+  if (!mapHighlight.length || mapLayer() !== 'application') return '';
+  return (
+    '<span class="map-chip map-chip-highlight"><span>Highlight: ' +
+    mapHighlight.length +
+    '</span><button type="button" data-action="map-highlight-clear" aria-label="Clear the highlighted relationships" title="Draw every relationship calmly again">×</button></span>'
   );
 }
 

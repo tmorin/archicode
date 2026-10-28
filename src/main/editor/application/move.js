@@ -281,11 +281,7 @@ function scanMoveReferences(oldRef, layer) {
     if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
   for (const story of storiesList()) {
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
-      if (
-        isPlainObject(step) &&
-        !step.view &&
-        rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer)
-      )
+      if (isPlainObject(step) && rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer))
         result.views++;
     }
   }

@@ -7,7 +7,42 @@ function storyStepAnnouncement(story, index) {
   const steps = story ? storySteps(story) : [];
   if (!Number.isInteger(index) || index < 0 || index >= steps.length) return '';
   const view = stepView(steps[index]);
-  return 'Step ' + (index + 1) + ' of ' + steps.length + (view ? ', ' + viewLabel(view) : '');
+  return (
+    'Step ' +
+    (index + 1) +
+    ' of ' +
+    steps.length +
+    (view ? ', ' + viewLabel(view) : '') +
+    stepHighlightSentence(steps[index])
+  );
+}
+
+/**
+ * What a step highlights, said for a screen reader (wave 026, run 0200, DEC-9): ". Highlighted: <source> to <destination>, <label>." with the display names of the ends, entries joined
+ * with a semicolon. Only the entries whose relationship the model drawn has are told (the others are dropped from the kernel input too); a step that highlights nothing says nothing.
+ */
+function stepHighlightSentence(step) {
+  const view = stepViewForDrawing(step);
+  if (!view || !isPlainObject(view.properties) || viewLayerOf(view) !== 'application') return '';
+  const asked = linkEntriesOf(view.properties.highlight, 'highlight').entries;
+  if (!asked.length || !AppState.index) return '';
+  const index = AppState.index.application;
+  const shown = drawnLinkEntries(asked, [index, AppState.baseline && AppState.baseline.index.application]);
+  if (!shown.length) return '';
+  const nameOf = (reference) => {
+    const record = index.get(reference) || (AppState.baseline && AppState.baseline.index.application.get(reference));
+    return (record && record.name) || reference;
+  };
+  return (
+    '. Highlighted: ' +
+    shown
+      .map((entry) => {
+        const label = normalLinkLabel(entry.label);
+        return nameOf(entry.source) + ' to ' + nameOf(entry.destination) + (label ? ', ' + label : '');
+      })
+      .join('; ') +
+    '.'
+  );
 }
 
 /**

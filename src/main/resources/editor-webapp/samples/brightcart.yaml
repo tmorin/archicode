@@ -1380,6 +1380,66 @@ content:
         element: "customer"
       text: "The shopper, in the plateau that is drawn, compared with the bought platform (there is nothing to compare when `saas` is the one drawn)."
       against: "saas"
+--- # file: shared/story.order_flow.yaml
+header:
+  kind: "archicode.morin.io/story"
+  version: "1"
+content:
+  id: "order_flow"
+  name: "An order, link by link"
+  description: "The path of an order through the shop, one relationship more at each step, the newest one highlighted."
+  steps:
+    - viewpoint: "map"
+      layer: "application"
+      properties:
+        opened: ["shop", "shop.app"]
+        links:
+          - source: "customer"
+            destination: "shop.web"
+            label: "browses and buys with"
+      text: "The shopper browses and buys with the web storefront."
+      at: "baseline"
+      highlight:
+        - source: "customer"
+          destination: "shop.web"
+          label: "browses and buys with"
+    - viewpoint: "map"
+      layer: "application"
+      properties:
+        opened: ["shop", "shop.app"]
+        links:
+          - source: "customer"
+            destination: "shop.web"
+            label: "browses and buys with"
+          - source: "shop.web"
+            destination: "shop.app"
+            label: "calls"
+      text: "The storefront calls the application."
+      at: "baseline"
+      highlight:
+        - source: "shop.web"
+          destination: "shop.app"
+          label: "calls"
+    - viewpoint: "map"
+      layer: "application"
+      properties:
+        opened: ["shop", "shop.app"]
+        links:
+          - source: "customer"
+            destination: "shop.web"
+            label: "browses and buys with"
+          - source: "shop.web"
+            destination: "shop.app"
+            label: "calls"
+          - source: "shop.app.payments"
+            destination: "psp"
+            label: "authorises payments with"
+      text: "And the payments component authorises the payment with the provider."
+      at: "baseline"
+      highlight:
+        - source: "shop.app.payments"
+          destination: "psp"
+          label: "authorises payments with"
 --- # file: shared/story.order_journey.yaml
 header:
   kind: "archicode.morin.io/story"

@@ -187,6 +187,8 @@ const DIAGRAM_LABEL_LINES = 4;
 const DIAGRAM_LABEL_LINE_HEIGHT = 13;
 const DIAGRAM_LABEL_PADDING = 10;
 
+const HIGHLIGHT_GLYPH = '▶';
+
 function diagramLabelLayout(link, wrap, markOnly) {
   const measure = (line) => diagramMeasureText(line, 11);
   const max = DIAGRAM_LABEL_MAX_WIDTH;
@@ -206,7 +208,8 @@ function diagramLabelLayout(link, wrap, markOnly) {
       })
       .join(' ');
   // a comparison: the glyph of the state of the link opens its caption (it stands alone when the captions are off: the glyph is how the state is told)
-  const mark = diagramLinkMark(link);
+  // a highlighted link also opens its caption with the glyph ▶
+  const mark = [diagramLinkMark(link), link.highlighted ? HIGHLIGHT_GLYPH : ''].filter(Boolean).join(' ');
   const worded = !markOnly && link.label && link.label.trim() ? fit(link.label) : '';
   const labelText = mark ? (worded ? mark + ' ' + worded : mark) : worded;
   const qualifiers = markOnly ? [] : Array.from(link.qualifiers || []);
@@ -250,6 +253,7 @@ function diagramLinkTitle(link, itemById, layer, source) {
         CHANGE_WORDS[link.change].word +
         (link.synthetic ? ' (as a group: see the relationships below)' : '')
     );
+  if (link.highlighted) lines.push(HIGHLIGHT_GLYPH + ' highlighted');
   const rels = link.relationships || [];
   if (link.synthetic && rels.length) {
     lines.push(rels.length + (rels.length === 1 ? ' relationship is' : ' relationships are') + ' grouped here:');
@@ -742,6 +746,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   let edges = '';
   let labels = '';
   const statesUsed = new Set(); // the states of the links drawn: an arrowhead in the colour of each is defined for them only
+  const highlighting = result.links.some((l) => l.highlighted); // a link is highlighted: the others are drawn calmer
   const markOnly = !!(options && options.show && options.show.labels === false); // the captions are off: a changed link still carries its glyph
   for (const edge of layout.edges || []) {
     const section = edge.sections && edge.sections[0];
@@ -758,6 +763,11 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const caption = diagramLinkText(link);
     const state = RELATIONSHIP_STATES.includes(link.change) ? link.change : null; // a comparison: the link says what happened to it
     if (state) statesUsed.add(state);
+    const emphasis = link.highlighted
+      ? ' dg-hl'
+      : highlighting && !state && !link.synthetic && !link.secondary
+        ? ' dg-calm'
+        : '';
     const select =
       ends +
       (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') +
@@ -776,7 +786,8 @@ function renderDiagramSvg(layout, result, focalReference, options) {
           ' to ' +
           pairs.get(pairKey).toEnd.title +
           (caption ? ': ' + caption : '') +
-          (state ? ', ' + CHANGE_WORDS[state].word : '')
+          (state ? ', ' + CHANGE_WORDS[state].word : '') +
+          (link.highlighted ? ', highlighted' : '')
       ) +
       '"><title>' +
       escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer, options && options.source)) +
@@ -788,8 +799,9 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       (link.synthetic ? ' dg-aggregated' : '') +
       (link.ghost ? ' dg-ghost-edge' : '') +
       (state ? ' dg-chg-' + state : '') +
+      emphasis +
       '" marker-end="url(#' +
-      (state ? 'dg-arrow-' + state : 'dg-arrow') +
+      (state ? 'dg-arrow-' + state : link.highlighted ? 'dg-arrow-hl' : emphasis ? 'dg-arrow-calm' : 'dg-arrow') +
       ')" d="' +
       d +
       '"/></g>';
@@ -801,13 +813,15 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       const cx = o.x + label.x + label.width / 2;
       const top = o.y + label.y + DIAGRAM_LABEL_LINE_HEIGHT - 1;
       // the glyph of a changed link opens its first line, in bold
-      const mark = diagramLinkMark(link);
+      const mark = [diagramLinkMark(link), link.highlighted ? HIGHLIGHT_GLYPH : ''].filter(Boolean).join(' ');
       const lineHtml = (line, first) =>
         mark && first && line.startsWith(mark)
           ? '<tspan class="dg-glyph">' + escapeHtml(mark) + '</tspan>' + escapeHtml(line.slice(mark.length))
           : escapeHtml(line);
       labels +=
-        '<text class="dg-label"' +
+        '<text class="dg-label' +
+        emphasis +
+        '"' +
         select +
         ' text-anchor="middle" x="' +
         cx +
@@ -850,6 +864,10 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     height +
     '">' +
     '<defs><marker id="dg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead" d="M0,0 L10,4 L0,8 z"/></marker>' +
+    (highlighting
+      ? '<marker id="dg-arrow-hl" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13" refX="15" refY="6.5" orient="auto"><path class="dg-arrowhead dg-hl" d="M0,0 L16,6.5 L0,13 z"/></marker>' +
+        '<marker id="dg-arrow-calm" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead dg-calm" d="M0,0 L10,4 L0,8 z"/></marker>'
+      : '') +
     RELATIONSHIP_STATES.filter((state) => statesUsed.has(state))
       .map(
         (state) =>

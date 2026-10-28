@@ -376,6 +376,41 @@ function setStepPlateau(storyId, index, key, value) {
   return true;
 }
 
+/** Step keys whose `highlight` was created by an add of `setStepHighlight`: taking the entry out again puts the step back as it was. */
+const stepHighlightsCreated = new WeakSet();
+
+/**
+ * Adds a relationship to the `highlight` key of a step, or takes one out (run 0200, DEC-5). An entry that names no relationship of the model, or is already there, is refused.
+ * Removing the last entry leaves `highlight: []` when the view the step names has a highlight to switch off, else deletes the key. Returns whether the step changed.
+ */
+function setStepHighlight(storyId, index, entry, add) {
+  const story = findStory(storyId);
+  const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
+  if (!isPlainObject(step) || !entry) return false;
+  const key = linkEntryKey(entry);
+  const items = Array.isArray(step.highlight) ? step.highlight : [];
+  const isThis = (item) => isLinkEntry(item) && linkEntryKey(item) === key;
+  if (add) {
+    if (!linkEntryExists(entry, AppState.index.application) || items.some(isThis)) return false;
+    const written = { source: entry.source, destination: entry.destination };
+    if (normalLinkLabel(entry.label)) written.label = normalLinkLabel(entry.label);
+    if (!Array.isArray(step.highlight)) stepHighlightsCreated.add(step);
+    step.highlight = items.concat([written]);
+  } else {
+    if (!items.some(isThis)) return false;
+    const rest = items.filter((item) => !isThis(item));
+    const view = stepView(step);
+    const viewSwitchedOff =
+      !!view && !!view.properties && Array.isArray(view.properties.highlight) && view.properties.highlight.length > 0;
+    if (rest.length || (viewSwitchedOff && !stepHighlightsCreated.has(step))) step.highlight = rest;
+    else delete step.highlight;
+  }
+  markEntryChanged(story);
+  pendingFocusSelector = '[data-story-step-highlight][data-story="' + story.id + '"][data-step="' + index + '"]';
+  requestRedraw();
+  return true;
+}
+
 /** A step whose view is gone points at another one. */
 function repairStoryStep(storyId, index, viewId) {
   const story = findStory(storyId);

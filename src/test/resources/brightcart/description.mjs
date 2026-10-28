@@ -844,6 +844,26 @@ const ownOverview = (element, text, o = {}) => ({
   text,
   ...o
 });
+const ORDER_FLOW_PATH = [
+  { source: 'customer', destination: 'shop.web', label: 'browses and buys with' },
+  { source: 'shop.web', destination: 'shop.app', label: 'calls' },
+  { source: 'shop.app.payments', destination: 'psp', label: 'authorises payments with' }
+];
+const ORDER_FLOW_TEXTS = [
+  'The shopper browses and buys with the web storefront.',
+  'The storefront calls the application.',
+  'And the payments component authorises the payment with the provider.'
+];
+function ORDER_FLOW_STEPS() {
+  return ORDER_FLOW_PATH.map((newest, i) => ({
+    viewpoint: 'map',
+    layer: 'application',
+    properties: { opened: ['shop', 'shop.app'], links: ORDER_FLOW_PATH.slice(0, i + 1) },
+    text: ORDER_FLOW_TEXTS[i],
+    at: 'baseline',
+    highlight: [newest]
+  }));
+}
 export const ENTRIES = [
   // The description of a view is the title of its diagram, so it says what is drawn and nothing about the plateaus: where each view can be drawn is in expected/entries.json.
   // `customer` is an element every plateau has: drawn everywhere.
@@ -955,6 +975,16 @@ export const ENTRIES = [
         against: 'inhouse'
       })
     ]
+  },
+  // A flow told one relationship at a time (wave 026, run 0200): every step is a Map of the application layer, told at the root, that shows the relationships of the shopper's path so far
+  // (`properties.links`) and highlights the newest (the step key `highlight`, the one place a step writes it). `shop` and `shop.app` are opened so that the last link, which starts at a component, is drawn.
+  {
+    kind: 'story',
+    id: 'order_flow',
+    name: 'An order, link by link',
+    description:
+      'The path of an order through the shop, one relationship more at each step, the newest one highlighted.',
+    steps: ORDER_FLOW_STEPS()
   }
 ];
 

@@ -527,7 +527,7 @@ const entryFile = (e) => `${ENTRY_FOLDER}/${e.kind}.${e.id}.yaml`;
 function entryContent(e) {
   const pickProps = (p) => {
     const out = {};
-    for (const k of ['element', 'pinned', 'opened', 'hidden']) if (p[k] !== undefined) out[k] = p[k];
+    for (const k of ['element', 'pinned', 'opened', 'hidden', 'links']) if (p[k] !== undefined) out[k] = p[k];
     return out;
   };
   const view = (v) => {
@@ -545,6 +545,7 @@ function entryContent(e) {
     out.text = st.text;
     if (st.at !== undefined) out.at = st.at;
     if (st.against !== undefined) out.against = st.against;
+    if (st.highlight !== undefined) out.highlight = st.highlight;
     return out;
   });
   return { id: e.id, name: e.name, description: e.description, steps };
@@ -555,7 +556,18 @@ function entryText(e) {
   const lines = ['header:', `  kind: "archicode.morin.io/${e.kind}"`, '  version: "1"', 'content:'];
   const properties = (p, pad) => {
     lines.push(pad + 'properties:');
-    for (const [k, v] of Object.entries(p)) lines.push(pad + '  ' + k + ': ' + (Array.isArray(v) ? flow(v) : q(v)));
+    for (const [k, v] of Object.entries(p)) {
+      if (k === 'links') linkList(k, v, pad + '  ');
+      else lines.push(pad + '  ' + k + ': ' + (Array.isArray(v) ? flow(v) : q(v)));
+    }
+  };
+  // a list of {source, destination, label}: one block item for each
+  const linkList = (name, list, pad) => {
+    lines.push(pad + name + ':');
+    for (const l of list) {
+      lines.push(pad + '  - source: ' + q(l.source), pad + '    destination: ' + q(l.destination));
+      if (l.label !== undefined) lines.push(pad + '    label: ' + q(l.label));
+    }
   };
   lines.push('  id: ' + q(c.id), '  name: ' + q(c.name), '  description: ' + q(c.description));
   if (e.kind === 'view') {
@@ -573,6 +585,7 @@ function entryText(e) {
       lines.push('      text: ' + q(st.text));
       if (st.at !== undefined) lines.push('      at: ' + q(st.at));
       if (st.against !== undefined) lines.push('      against: ' + q(st.against));
+      if (st.highlight !== undefined) linkList('highlight', st.highlight, '      ');
     }
   }
   return lines.join('\n') + '\n';
@@ -624,9 +637,13 @@ function viewIn(v, S, pid) {
 
 /** The references a view names, with their layer. */
 function viewNames(v) {
-  return ['element', 'pinned', 'opened', 'hidden'].flatMap((k) =>
-    Array.isArray(v.properties[k]) ? v.properties[k] : v.properties[k] === undefined ? [] : [v.properties[k]]
-  );
+  const ends = (v.properties.links || []).flatMap((l) => [l.source, l.destination]);
+  return [
+    ...['element', 'pinned', 'opened', 'hidden'].flatMap((k) =>
+      Array.isArray(v.properties[k]) ? v.properties[k] : v.properties[k] === undefined ? [] : [v.properties[k]]
+    ),
+    ...ends
+  ];
 }
 
 /**

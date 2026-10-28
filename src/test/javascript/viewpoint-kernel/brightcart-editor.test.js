@@ -3,7 +3,7 @@
 // src/test/resources/brightcart/layered/ (the plateaus are layers). Three things, each against the answers the generator wrote in expected/ and not against numbers typed here:
 //   - the editor draws each of the four plateaus and finds the sizes of the document;
 //   - the Changes panel of each comparison that a tool can say today (P1 to P5) shows the counts `archicode diff` prints (BrightcartLayeredDiffTest.java reads the same file);
-//   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every file of `layered/` (60 files, the views and the stories among them) is
+//   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every file of `layered/` (61 files, the views and the stories among them) is
 //     saved as it was when nothing changed, an edit of its name changes its name line and no other, an addition keeps every line it had; and the editor itself
 //     writes a rename in the manifests a plateau declares and writes it back to the bytes of the file on the disk.
 // brightcart-layered.test.js opens the same folder and says what the editor reads of it.
