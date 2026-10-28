@@ -7,6 +7,8 @@
     "lint": "node scripts/extract-editor-script.mjs && eslint --max-warnings 0 eslint.config.mjs playwright.config.js scripts src/test target/eslint-editor",
     "editor:build": "node scripts/build-editor.mjs",
     "editor:check": "node scripts/build-editor.mjs --check && node scripts/check-editor.mjs --layers",
+    "sample:build": "node scripts/build-sample.mjs",
+    "sample:check": "node scripts/build-sample.mjs --check",
     "pretest:unit": "node scripts/build-editor.mjs",
     "test:unit": "node --test \"src/test/javascript/**/*.test.js\"",
     "test:e2e": "playwright test",

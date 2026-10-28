@@ -19,6 +19,13 @@ function handleAppClick(e) {
   if (helpOpen && action !== 'toggle-help' && !(e.target.closest && e.target.closest('.help-menu'))) {
     setHelpOpen(false); // a click anywhere else closes the help — no redraw: the action of this click reads the fields as they are
   }
+  if (
+    workspaceMenuOpen &&
+    action !== 'toggle-workspace-menu' &&
+    !(e.target.closest && e.target.closest('.workspace-menu'))
+  ) {
+    setWorkspaceMenuOpen(false); // a click elsewhere closes the menu, and the question with it — no redraw
+  }
   if (headerMenuOpen && action !== 'toggle-header-menu') {
     // a click on an item of the "⋯" menu closes it and leaves the focus on the button (so a dialog the item opens gives it back there); a click elsewhere only closes it
     const inMenu = e.target.closest && e.target.closest('.header-overflow');
@@ -26,6 +33,8 @@ function handleAppClick(e) {
     else if (target) setHeaderMenuOpen(false, { focusButton: true });
   }
   if (!target) return;
+  if (bundleNotice !== null && !(action || '').startsWith('workspace-') && action !== 'toggle-workspace-menu')
+    bundleNotice = null; // the line of the last Export lasts until the next action
   // what an action said (a line over the story bar, the step that can be put back) lasts until the next one
   if (action !== 'dialog-submit' && action !== 'story-player-open') storyBarNotice = null; // Play changes nothing of the editor behind it (wave 021, run 0153)
   if (removedStep && action !== 'story-undo' && action !== 'story-step-remove' && action !== 'story-player-open')
@@ -97,6 +106,56 @@ function handleAppClick(e) {
       break;
     case 'cancel-browser-name':
       cancelBrowserNameDraft();
+      break;
+    // the sample, the bundle file and the Workspace menu (run 0193, IMP-8); the flows are application/bundle-flows.js
+    case 'open-sample':
+      openSample('brightcart');
+      break;
+    case 'import-bundle':
+      chooseBundleFile(); // the picker is asked in the turn of the click
+      break;
+    case 'export-browser-workspace':
+      exportBrowserWorkspace(target.getAttribute('data-workspace-id'));
+      break;
+    case 'export-browser-workspace-first':
+      exportBrowserWorkspace(target.getAttribute('data-workspace-id'), { first: true });
+      break;
+    case 'toggle-workspace-menu':
+      // e.detail is 0 for a click made with the keyboard (Enter, Space): then the focus goes along
+      setWorkspaceMenuOpen(
+        !workspaceMenuOpen,
+        workspaceMenuOpen ? { focusButton: e.detail === 0 } : { focusMenu: e.detail === 0 }
+      );
+      break;
+    case 'workspace-export':
+      setWorkspaceMenuOpen(false, { focusButton: e.detail === 0 });
+      if (workspaceExportIsPending()) {
+        bundleNotice = WORKSPACE_EXPORT_PENDING_SENTENCE;
+        requestRedraw();
+      } else {
+        exportOpenBrowserWorkspace();
+      }
+      break;
+    case 'workspace-open-sample':
+      setWorkspaceMenuOpen(false);
+      if (
+        workspaceExportIsPending() &&
+        !confirm('You have unsaved changes that will be lost. Open the Brightcart sample anyway?')
+      )
+        break;
+      openSample('brightcart');
+      break;
+    case 'workspace-ask-reset':
+      askToResetSample();
+      break;
+    case 'workspace-cancel-question':
+      cancelWorkspaceMenuQuestion();
+      break;
+    case 'workspace-confirm-reset':
+      confirmResetSample();
+      break;
+    case 'back-to-served-folder':
+      backToServedFolder();
       break;
     case 'set-perspective':
     case 'set-page': // the bar under the band (the pages below Timeline) and the top bar (a perspective) open a page the same way

@@ -97,6 +97,19 @@ class EditorServeIT {
 
             val refused = get(client, base);
             assertEquals(403, refused.statusCode(), "the page is not served without the token");
+
+            // the sample of the hosted editor is a resource of the jar and of the native image, served with the proof
+            val sample = Files.readString(Path.of("src/main/resources/editor-webapp/samples/brightcart.yaml"));
+            val served = get(client, base + "samples/brightcart.yaml", address.group(2));
+            assertEquals(200, served.statusCode(), () -> "the sample: " + served.body());
+            assertEquals(sample, served.body(), "the bytes of the committed sample");
+            assertEquals(
+                "text/yaml; charset=utf-8",
+                served.headers().firstValue("Content-Type").orElse(""),
+                "the sample is YAML text"
+            );
+            assertEquals(403, get(client, base + "samples/brightcart.yaml").statusCode(), "no proof, no sample");
+            assertEquals(404, get(client, base + "samples/other.yaml", address.group(2)).statusCode());
         } finally {
             process.destroy();
             if (!process.waitFor(STOP_TIMEOUT.toSeconds(), java.util.concurrent.TimeUnit.SECONDS)) {
@@ -142,6 +155,17 @@ class EditorServeIT {
     @SneakyThrows
     private static HttpResponse<String> get(HttpClient client, String url) {
         val request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30)).GET().build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
+    /** A GET that carries the token of the server in its header, as the page's own requests do. */
+    @SneakyThrows
+    private static HttpResponse<String> get(HttpClient client, String url, String token) {
+        val request = HttpRequest.newBuilder(URI.create(url))
+            .timeout(Duration.ofSeconds(30))
+            .header("X-ArchiCode-Token", token)
+            .GET()
+            .build();
         return client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
     }
 }

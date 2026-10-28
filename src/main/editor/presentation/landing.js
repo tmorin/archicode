@@ -68,11 +68,14 @@ function landingScreenConfig() {
     const folders = isFileSystemAccessSupported();
     const browser = browserStoreState === 'ready' && !isServedByArchiCode();
     const actions = [];
+    // the sample is the way in for a first visit: nothing kept in this browser and no remembered folder (DEC-11)
+    const firstVisit = browserWorkspaces.length === 0 && landingFolderRows().length === 0;
     if (browser) {
+      actions.push({ label: 'Open the Brightcart sample', action: 'open-sample', primary: firstVisit });
       actions.push({
         label: 'New workspace in this browser',
         action: 'new-browser-workspace',
-        primary: !folders,
+        primary: !firstVisit && !folders,
         icon: LANDING_ICON_FOLDER
       });
     }
@@ -84,6 +87,7 @@ function landingScreenConfig() {
         icon: LANDING_ICON_FOLDER
       });
     }
+    if (browser) actions.push({ label: 'Import a workspace file', action: 'import-bundle' });
     const notes = [];
     if (folders) notes.push('Choose the folder that contains .archicode.yaml. ' + LANDING_SAVE_NOTE);
     if (browser) notes.push(BROWSER_SAVE_NOTE);
@@ -146,6 +150,7 @@ function landingBrowserRows() {
     files: w.fileCount,
     changed: landingTimeText(w.changedAt),
     exported: w.lastExportAt ? landingTimeText(w.lastExportAt) : 'never',
+    sample: w.sample && Object.prototype.hasOwnProperty.call(BROWSER_SAMPLES, w.sample) ? w.sample : null,
     problem: w.problem || null
   }));
 }
@@ -199,8 +204,15 @@ function renderBrowserRowHtml(row) {
       '? It holds ' +
       landingFilesText(row.files) +
       (row.changed ? ', last changed ' + escapeHtml(row.changed) : '') +
+      '. Last exported: ' +
+      escapeHtml(row.exported) +
       '. This cannot be undone. Nothing on your disk is touched.</p>' +
       '<button type="button" data-action="cancel-browser-workspace-question">Cancel</button>' +
+      '<button type="button" data-action="export-browser-workspace-first" data-workspace-id="' +
+      id +
+      '" aria-label="' +
+      escapeHtml('Export ' + named + ' first') +
+      '">Export first</button>' +
       '<button type="button" class="landing-browser-delete" data-action="delete-browser-workspace" data-workspace-id="' +
       id +
       '" aria-label="' +
@@ -245,13 +257,18 @@ function renderBrowserRowHtml(row) {
     escapeHtml(row.title) +
     '</span>' +
     '<span class="landing-folder-dir"><span>' +
-    escapeHtml(landingFilesText(row.files) + (row.changed ? ' · changed ' + row.changed : '')) +
+    escapeHtml(
+      (row.sample ? BROWSER_SAMPLES[row.sample].name + ' sample · ' : '') +
+        landingFilesText(row.files) +
+        (row.changed ? ' · changed ' + row.changed : '')
+    ) +
     '</span></span>' +
     '<span class="landing-folder-dir"><span>Kept in this browser · Last exported: ' +
     escapeHtml(row.exported) +
     '</span></span>' +
     '</button>' +
     ghost('rename-browser-workspace', 'Rename', 'Rename') +
+    ghost('export-browser-workspace', 'Export', 'Export') +
     ghost('ask-delete-browser-workspace', 'Delete', 'Delete') +
     '</li>'
   );

@@ -106,6 +106,8 @@ test('a workspace kept in the browser is created, edited, saved, reopened, renam
   await expect(page.getByRole('button', { name: /Open .renamed./ })).toBeVisible();
   await page.getByRole('button', { name: /Delete .renamed./ }).click();
   await page.locator('[data-action="delete-browser-workspace"]').click();
+  // the row has no Open button while its question is up, so wait for the question to go: the card is drawn again after the delete is committed
+  await expect(page.locator('[data-action="delete-browser-workspace"]')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Open .renamed./ })).toHaveCount(0);
 
   // reload: the remaining one only

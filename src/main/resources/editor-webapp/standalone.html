@@ -238,6 +238,16 @@ try {
   .help-menu ul { padding: 0.1rem 0; }
   .help-menu li a { display: block; padding: 0.35rem 1rem; color: var(--accent); }
   .help-menu li a:hover, .help-menu li a:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); text-decoration: underline; outline: none; }
+  .workspace-wrap { position: relative; flex-shrink: 0; }
+  .top-panel .workspace-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .workspace-menu { position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; width: min(21rem, calc(100vw - 2rem)); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+  .workspace-menu .workspace-item { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; width: 100%; max-width: 100%; padding: 0.35rem 1rem; border: none; border-radius: 0; background: transparent; color: var(--accent); text-align: left; }
+  .workspace-menu .workspace-item:hover, .workspace-menu .workspace-item:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); outline: none; }
+  .workspace-menu .workspace-item[aria-disabled="true"] { color: var(--muted); cursor: not-allowed; }
+  .workspace-item-note { font-size: 0.8rem; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
+  .workspace-ask { margin: 0; padding: 0.4rem 1rem; font-size: 0.85rem; line-height: 1.4; overflow-wrap: anywhere; }
+  .workspace-ask-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.2rem 1rem 0.4rem; }
+  .workspace-ask-actions .workspace-reset { color: var(--danger); overflow-wrap: anywhere; }
   .help-note { margin: 0; padding: 0.4rem 1rem 0; font-size: 0.8rem; line-height: 1.4; color: var(--muted); border-top: 1px solid var(--border); }
   .help-note + .help-note { border-top: none; padding-top: 0.2rem; padding-bottom: 0.2rem; }
   .settings-help a, .landing-note a { color: var(--accent); text-decoration: underline; }
@@ -5748,6 +5758,14 @@ let landingNameDraft = null;
 // A line the landing card says once (a folder removed from the list, a permission refused); null otherwise.
 let landingNotice = null;
 
+// The Workspace menu of the top bar (run 0193, TDD DEC-9, CTR-5): whether its popup is open, the question it holds (null, or 'reset-sample': the
+// question that replaces its items), and the one-line result of the last Export, Import, Open sample or Reset that happened while a workspace is
+// open (the bar's status line; while none is open the card's `landingNotice` says it). View state only: no modelsChanged(); resetUiState() clears all three.
+/* exported bundleNotice -- read by the top bar's status line (run 0193, task 010) */
+let workspaceMenuOpen = false;
+let workspaceMenuQuestion = null;
+let bundleNotice = null;
+
 // The control the next landing card focuses (after a Remove: the next folder of the list); null: its primary button;
 // '': none (the card is drawn again under a focus that was not on it, which is left alone).
 let landingFocusSelector = null;
@@ -11244,6 +11262,15 @@ function isServedByArchiCode() {
   return !!serverToken();
 }
 
+/* exported workspaceIsServedFolder -- read by the top bar's close slot and the help's `where` sentence (run 0193, task 010) */
+/**
+ * Is the workspace that is open (or about to be) the folder the server serves? A page with a server can hold a browser workspace instead (the
+ * sample, run 0193 DEC-8): `isServedByArchiCode()` keeps meaning "this page has a server", this one answers "what is open is its folder".
+ */
+function workspaceIsServedFolder() {
+  return isServedByArchiCode() && !(AppState.folder && AppState.folder.browserWorkspace);
+}
+
 /**
  * The server asks for `?token=` on the first request only; the page carries the token in its <meta> from then on.
  * Take it out of the address bar (the hash stays) so it is not left in the history, a screenshot or a copied link.
@@ -11634,7 +11661,7 @@ async function forgetFolder(entry) {
 // The browser workspace store (wave 025, run 0192, TDD-0192 DEC-1 to DEC-3, DEC-6 to DEC-8, CTR-1, CTR-2): a third implementation of the
 // directory-handle interface the editor uses (the first is the browser's own, the second `serverDirectoryHandle`), backed by a second
 // IndexedDB database, `archicode-browser-workspaces`, version 1, one object store `records` with out-of-line string keys:
-//   'workspace:<id>'      -> { kind: 'workspace', id, name, createdAt, openedAt, lastExportAt: null | ms, origin }
+//   'workspace:<id>'      -> { kind: 'workspace', id, name, createdAt, openedAt, lastExportAt: null | ms, origin, sample? }  (sample: only for origin 'sample', the id of the sample)
 //   'file:<id>/<path>'    -> { kind: 'file', workspace: id, path, bytes: Uint8Array, modified: ms }
 //   'last'                -> { id, openedAt }   the workspace the browser reopens
 // The remembered folders' database (`archicode-standalone-editor`) is never opened here. Directories are implicit: one exists while a file
@@ -11935,6 +11962,7 @@ async function listBrowserWorkspaces() {
         openedAt: typeof value.openedAt === 'number' ? value.openedAt : 0,
         lastExportAt: typeof value.lastExportAt === 'number' ? value.lastExportAt : null,
         origin: typeof value.origin === 'string' ? value.origin : 'blank',
+        sample: typeof value.sample === 'string' ? value.sample : null,
         fileCount: seen.count,
         changedAt: seen.changedAt || (typeof value.createdAt === 'number' ? value.createdAt : 0)
       };
@@ -11949,7 +11977,7 @@ async function listBrowserWorkspaces() {
  * rule above, again inside the transaction against the names that are stored. Resolves the record.
  */
 async function createBrowserWorkspace(options) {
-  const { name, files, origin } = options || {};
+  const { name, files, origin, sample } = options || {};
   const early = browserNameError(name, []);
   if (early) throw early;
   const list = files || [];
@@ -11967,6 +11995,7 @@ async function createBrowserWorkspace(options) {
     lastExportAt: null,
     origin: typeof origin === 'string' ? origin : 'blank'
   };
+  if (record.origin === 'sample' && typeof sample === 'string') record.sample = sample; // which sample, to find it again by what it is (run 0193, DEC-6)
   const stored = list.map((file) => ({
     key: BROWSER_FILE_PREFIX + record.id + '/' + file.path,
     value: {
@@ -12298,6 +12327,78 @@ function browserFileHandle(workspaceId, path, name, ownerName) {
     }
   };
 }
+// =====================================================================
+// Reading and replacing every file of a browser workspace (wave 025, run 0193, TDD-0193 DEC-6, DEC-12, CTR-1, CON-8, CON-9): the two
+// operations of Export, Import's neighbours and Reset that need a snapshot or an atomic swap, which only one transaction gives.
+// Both go through withBrowserWorkspace (persistence/browser-store.js), so a workspace deleted in another tab is the sentence of W-4 DEC-6
+// and is never written to. Pure persistence: no DOM, no drawing, no page state. They use only what the fake of the harness has: the keys of
+// the store, `get`, `put` and `delete` (no range, no index, no cursor).
+// =====================================================================
+
+/* exported readBrowserWorkspaceFiles, replaceBrowserWorkspaceFiles --
+   the two entry points of this part: the flows of application/bundle-flows.js call them (run 0193, task 009). */
+
+/**
+ * A snapshot of the files of a workspace, in one read-only transaction: `[{ path, bytes, modified }]` sorted by code point, the bytes
+ * copied into arrays of the page's own. A workspace that is gone rejects with the sentence of W-4 DEC-6 (`ownerName` is the name in it,
+ * '' when unknown). Writes nothing.
+ */
+async function readBrowserWorkspaceFiles(workspaceId, ownerName) {
+  const prefix = BROWSER_FILE_PREFIX + workspaceId + '/';
+  const files = await withBrowserWorkspace('readonly', workspaceId, ownerName, (store, record, out, fail) => {
+    out.value = [];
+    store.getAllKeys().onsuccess = browserStep(fail, (event) => {
+      for (const key of event.target.result.filter((candidate) => candidate.startsWith(prefix))) {
+        store.get(key).onsuccess = browserStep(fail, (ev) => {
+          const value = ev.target.result;
+          if (!isBrowserFileRecord(value)) return; // a record of another kind under the prefix is not a file of the workspace
+          const filePath = key.slice(prefix.length);
+          if (!ArrayBuffer.isView(value.bytes)) {
+            throw browserError('NotReadableError', 'The file “' + filePath + '” could not be read from this browser.');
+          }
+          out.value.push({
+            path: filePath,
+            bytes: browserBytesOf(value.bytes),
+            modified: typeof value.modified === 'number' ? value.modified : 0
+          });
+        });
+      }
+    });
+  });
+  return files.sort((a, b) => bundleComparePaths(a.path, b.path));
+}
+
+/**
+ * Swaps every file of a workspace for `files` (`[{ path, bytes }]`) in one read-write transaction: the files that are stored are deleted,
+ * the new ones written with one `modified` for all, and the record gets a new `openedAt` and is otherwise left as it is. The paths are
+ * checked, with the sentence of the creation, before the transaction opens, and the bytes are copied before it, so nothing the caller
+ * keeps is stored. Any failure aborts the transaction and the old files stay. Resolves when the transaction has committed.
+ */
+async function replaceBrowserWorkspaceFiles(workspaceId, files, ownerName) {
+  const list = files || [];
+  for (const file of list) {
+    const problem = browserPathProblem(file && file.path);
+    if (problem) throw browserError('InvalidPathError', 'A workspace cannot hold this file: ' + problem + '.');
+  }
+  const now = Date.now();
+  const stored = list.map((file) => ({
+    key: BROWSER_FILE_PREFIX + workspaceId + '/' + file.path,
+    value: { kind: 'file', workspace: workspaceId, path: file.path, bytes: browserBytesOf(file.bytes), modified: now }
+  }));
+  const own = BROWSER_FILE_PREFIX + workspaceId + '/';
+  await withBrowserWorkspace('readwrite', workspaceId, ownerName, (store, record, out, fail) => {
+    store.getAllKeys().onsuccess = browserStep(fail, (event) => {
+      for (const key of event.target.result) {
+        if (key.startsWith(own)) store.delete(key);
+      }
+      for (const file of stored) store.put(file.value, file.key);
+      store.put(
+        Object.assign({}, record, { openedAt: Math.max(now, record.openedAt + 1) }),
+        BROWSER_WORKSPACE_PREFIX + workspaceId
+      );
+    });
+  });
+}
 /**
  * Forgets everything the page remembers about the folder it showed — the pins, the facet, what is open on the map, a
  * pending draft, the status of the last save, the hash of the URL — so the next folder starts clean and the old ref=,
@@ -12350,6 +12451,9 @@ function resetUiState() {
   pendingDeleteConfirmation = null;
   landingPendingDelete = null; // the question and the name field of the card of the browser workspaces (run 0192)
   landingNameDraft = null;
+  workspaceMenuOpen = false; // the Workspace menu, its question and its last result belong to the workspace that was open (run 0193)
+  workspaceMenuQuestion = null;
+  bundleNotice = null;
   rawYamlEditDraft = null;
   lastRenderedViewKey = null;
   scrollNavToSelection = false;
@@ -12369,12 +12473,12 @@ async function retryFolder() {
   await loadWorkspace(AppState.folder.handle);
 }
 
-/** Click handler for the top panel's close action (FR-3/FLOW-3). */
-async function closeFolder() {
-  if (hasUnsavedChanges() && !confirm('You have unsaved changes that will be lost. Close the folder anyway?')) {
-    return;
-  }
-  // the folder stays remembered; only the next load does not reopen it (TDD-0020 DEC-5)
+/**
+ * What leaving the open folder does, shared by *Close folder* and *Back to the served folder* (run 0193, DEC-8): the pointer that would reopen it goes
+ * (a browser workspace stays kept; a remembered folder stays remembered, only the next load does not reopen it, TDD-0020 DEC-5), and the page drops
+ * everything it held. Returns whether it was a browser workspace. Asks nothing and draws nothing.
+ */
+async function forgetOpenFolder() {
   const folder = AppState.folder;
   const wasBrowserWorkspace = !!(folder && folder.browserWorkspace);
   if (wasBrowserWorkspace) {
@@ -12403,6 +12507,15 @@ async function closeFolder() {
   AppState = createInitialAppState();
   resetUiState();
   landingNotice = null;
+  return wasBrowserWorkspace;
+}
+
+/** Click handler for the top panel's close action (FR-3/FLOW-3). */
+async function closeFolder() {
+  if (hasUnsavedChanges() && !confirm('You have unsaved changes that will be lost. Close the folder anyway?')) {
+    return;
+  }
+  const wasBrowserWorkspace = await forgetOpenFolder();
   requestRedraw();
   if (!wasBrowserWorkspace || isFileSystemAccessSupported()) await refreshRememberedFolders();
   if (wasBrowserWorkspace) await refreshBrowserWorkspaces();
@@ -12782,6 +12895,341 @@ async function confirmDeleteBrowserWorkspace(id) {
   requestRedraw();
 }
 // =====================================================================
+// The flows of Export, Import, Open sample, Reset and Back to the served folder (wave 025, run 0193, TDD-0193 DEC-4 to DEC-9, DEC-11, DEC-13, IMP-6,
+// CTR-5, FLOW-1 to FLOW-5, RISK-4, RISK-7, RISK-10; gap-001 decisions 1 to 5): what the page does with the bundle file, the sample and the Workspace menu,
+// over the browser store (persistence/browser-store.js, persistence/browser-transfer.js) and the edges of persistence/bundle-io.js. Like
+// application/browser-workspaces.js, these functions decide and set view state (landingNotice, bundleNotice, landingBusy, workspaceMenuQuestion), ask for a
+// redraw with requestRedraw() and never draw. They name no presentation or composition function and do not read the draft the visitor is typing: the menu item that
+// offers Export from the bar makes that test (DEC-4), and the DOM of the menu is patched by whoever registers with onWorkspaceMenuChange (DEC-9).
+// None of them writes to the served folder: opening, exporting and resetting the sample read the sample and the browser store only (DEC-8). Import only
+// creates a workspace; Reset fetches the sample before it replaces anything (DEC-5, DEC-6).
+// =====================================================================
+
+/* exported exportBrowserWorkspace, exportOpenBrowserWorkspace, chooseBundleFile, importBundleFile, openSample, askToResetSample,
+   cancelWorkspaceMenuQuestion, confirmResetSample, backToServedFolder, setWorkspaceMenuOpen, onWorkspaceMenuChange --
+   the entry points of the card, the Workspace menu and the bootstrap (composition/events.js and composition/bootstrap.js, run 0193, task 010). */
+
+const BUNDLE_NO_YAML_SENTENCE = 'Nothing to export: this workspace has no YAML file.';
+const BUNDLE_NO_ROOT_SENTENCE = 'The file holds no ' + WORKSPACE_FILE_NAME + ', so it is not a workspace.';
+const BUNDLE_RESET_QUESTION = 'reset-sample';
+
+// The sample flows in progress, by sample id: a second call while one runs waits for it, so one page never creates the workspace twice (the name
+// check of the store covers two tabs).
+const bundleSamplePending = new Map();
+
+// What redraws the Workspace menu without drawing the page (a redraw would lose what the visitor has typed): registered once by the part that draws it.
+let workspaceMenuListener = null;
+
+/** The id of the browser workspace the page has open, else null. */
+function openBrowserWorkspaceId() {
+  return AppState.folder && AppState.folder.browserWorkspace ? AppState.folder.browserWorkspace : null;
+}
+
+/** Says the result of an action where the visitor looks: the bar while a workspace is open, the card otherwise. */
+function bundleSay(sentence) {
+  if (AppState.folder && AppState.workspace) bundleNotice = sentence;
+  else landingNotice = sentence;
+}
+
+/** The part that draws the Workspace menu registers here to patch it when its state changes (open, closed, a question asked or dropped). */
+function onWorkspaceMenuChange(listener) {
+  workspaceMenuListener = typeof listener === 'function' ? listener : null;
+}
+
+function workspaceMenuChanged(options) {
+  if (workspaceMenuListener) workspaceMenuListener(options || {});
+}
+
+/** Opens or closes the menu (DEC-9); closing it drops its question, which is the safe direction. No redraw of the page. */
+function setWorkspaceMenuOpen(open, options = {}) {
+  workspaceMenuOpen = !!open;
+  if (!workspaceMenuOpen) workspaceMenuQuestion = null;
+  workspaceMenuChanged(options);
+}
+
+/** `base`, else `base 2`, `base 3`, … the first that no name of `taken` has (without regard to case), cut so that the name stays within the limit. */
+function uniqueBrowserWorkspaceName(base, taken) {
+  const used = new Set(taken.map((name) => String(name).trim().toLowerCase()));
+  let name = base;
+  for (let n = 2; used.has(name.toLowerCase()); n++) {
+    const suffix = ' ' + n;
+    name = base.slice(0, BROWSER_NAME_MAX - suffix.length).trim() + suffix;
+  }
+  return name;
+}
+
+/** The row of the workspace made from this sample, the most recently changed when there are several (the list is in that order), else undefined. */
+function sampleRowOf(sampleId) {
+  return browserWorkspaces.find((w) => w.sample === sampleId && !w.problem);
+}
+
+/**
+ * Creates a workspace from a bundle's files under `baseName`, made unique against the list (DEC-5, DEC-6). A name another tab took since the list was
+ * read is met once: the list is read again, and for a sample the workspace that is the sample is the answer (`{ existing }`); else the next free name
+ * is tried. Resolves `{ record }`, `{ existing }` or `{ error }`; never rejects.
+ */
+async function createBundleWorkspace(baseName, files, origin, sampleId) {
+  for (let attempt = 0; ; attempt++) {
+    const name = uniqueBrowserWorkspaceName(
+      baseName,
+      browserWorkspaces.map((w) => w.name)
+    );
+    try {
+      return { record: await createBrowserWorkspace({ name, files, origin, sample: sampleId || undefined }) };
+    } catch (e) {
+      if (!(e && e.name === 'InvalidNameError') || attempt > 0) return { error: e };
+      await refreshBrowserWorkspaces();
+      const existing = sampleId ? sampleRowOf(sampleId) : undefined;
+      if (existing) return { existing };
+    }
+  }
+}
+
+// ---- Export (FLOW-1, DEC-4) ----
+
+/**
+ * *Export* of a browser workspace: the bundle of its stored files is downloaded and the time is recorded once the download has started. The sentence
+ * says what happened. `options.first`: asked from the question of the delete (the control that keeps the focus is that one). The test of unsaved
+ * changes is the menu item's, not made here.
+ */
+async function exportBrowserWorkspace(id, options = {}) {
+  const known = browserWorkspaceById(id);
+  landingNotice = null;
+  bundleNotice = null;
+  const control = browserRowSelector(options.first ? 'export-browser-workspace-first' : 'export-browser-workspace', id);
+  const finish = (sentence) => {
+    bundleSay(sentence);
+    if (!(AppState.folder && AppState.workspace)) landingFocusSelector = control;
+    requestRedraw();
+  };
+  await refreshBrowserWorkspaces();
+  const row = browserWorkspaceById(id);
+  const title = browserWorkspaceTitle(row || known);
+  if (!row) {
+    finish('“' + title + '” is no longer in this browser.');
+    return;
+  }
+  if (row.problem) {
+    finish('“' + title + '” could not be read. Delete it from the list.');
+    return;
+  }
+  let files;
+  try {
+    files = await readBrowserWorkspaceFiles(id, row.name);
+  } catch (e) {
+    if (e && e.workspaceGone) {
+      finish('“' + title + '” is no longer in this browser.');
+    } else {
+      console.error('ArchiCode: a browser workspace could not be read for the export', e);
+      finish('The export failed: ' + browserFailureText(e));
+    }
+    return;
+  }
+  const bundle = bundleWorkspaceFiles(files);
+  const skipped = bundleSkippedSentence(bundle.skipped);
+  if (bundle.carried.length === 0) {
+    finish(BUNDLE_NO_YAML_SENTENCE + (skipped ? ' ' + skipped : ''));
+    return;
+  }
+  const fileName = bundleFileName(row.name);
+  if (!startBundleDownload(fileName, bundle.text)) {
+    finish('The download could not be started.');
+    return;
+  }
+  let sentence =
+    'Exported ' +
+    bundle.carried.length +
+    (bundle.carried.length === 1 ? ' file as ' : ' files as ') +
+    fileName +
+    '.' +
+    (skipped ? ' ' + skipped : '');
+  try {
+    await markBrowserExport(id); // the time the download was started: the page cannot know when the visitor saves the file
+  } catch (e) {
+    console.error('ArchiCode: the export time could not be saved', e);
+    sentence += ' The export time could not be saved.';
+  }
+  await refreshBrowserWorkspaces();
+  finish(sentence);
+}
+
+/** *Export as a file* of the Workspace menu: the browser workspace that is open. The menu item has made the test of unsaved changes and of a typed draft. */
+async function exportOpenBrowserWorkspace() {
+  const id = openBrowserWorkspaceId();
+  if (id) await exportBrowserWorkspace(id);
+}
+
+// ---- Import (FLOW-2, DEC-5) ----
+
+/** *Import a workspace file*: asks the picker at once, in the turn of the click (ASM-4); the file chosen is imported, a cancelled picker does nothing. */
+function chooseBundleFile() {
+  bundleFilePicker((file) => importBundleFile(file));
+}
+
+/** A bundle file the visitor chose becomes a NEW browser workspace, or is refused whole with one sentence; an existing workspace is never written to. */
+async function importBundleFile(file) {
+  landingNotice = null;
+  bundleNotice = null;
+  const refuse = (sentence) => {
+    bundleSay(sentence);
+    requestRedraw();
+  };
+  const read = await readBundleFile(file);
+  if (read.problem) {
+    refuse(read.problem);
+    return;
+  }
+  const unbundled = unbundleWorkspaceFiles(read.text);
+  if (unbundled.problems.length > 0) {
+    refuse(bundleProblemsSentence(unbundled.problems));
+    return;
+  }
+  if (!unbundled.files.some((f) => f.path === WORKSPACE_FILE_NAME)) {
+    refuse(BUNDLE_NO_ROOT_SENTENCE);
+    return;
+  }
+  await refreshBrowserWorkspaces();
+  const made = await createBundleWorkspace(
+    bundleImportName(unbundled.files, file.name),
+    unbundled.files,
+    'import',
+    null
+  );
+  if (made.error) {
+    console.error('ArchiCode: a workspace file could not be imported', made.error);
+    refuse('The workspace could not be created: ' + browserFailureText(made.error));
+    return;
+  }
+  await openBrowserWorkspace(made.record.id);
+}
+
+// ---- Open the sample (FLOW-3, DEC-6) ----
+
+/**
+ * *Open the Brightcart sample* (the card, the menu of a served page, `sample=` at load): the workspace that is the sample is opened as it is, with the
+ * changes in it, and nothing is fetched; when there is none the sample is fetched, unbundled and created. Two calls at once end with one workspace.
+ */
+async function openSample(id) {
+  if (!Object.prototype.hasOwnProperty.call(BROWSER_SAMPLES, id)) {
+    landingNotice = 'There is no sample “' + id + '”.';
+    requestRedraw();
+    return;
+  }
+  if (!bundleSamplePending.has(id)) {
+    bundleSamplePending.set(
+      id,
+      openSampleOnce(id).finally(() => bundleSamplePending.delete(id))
+    );
+  }
+  await bundleSamplePending.get(id);
+}
+
+async function openSampleOnce(id) {
+  const sample = BROWSER_SAMPLES[id];
+  landingNotice = null;
+  bundleNotice = null;
+  await refreshBrowserWorkspaces();
+  const row = sampleRowOf(id);
+  if (row) {
+    await openBrowserWorkspace(row.id);
+    return;
+  }
+  if (!AppState.workspace) {
+    landingBusy = 'Loading the ' + sample.name + ' sample…';
+    requestRedraw();
+  }
+  const fetched = await fetchSampleBundle(id); // never rejects: a failed fetch is its sentence, and nothing has been created
+  if (fetched.problem) {
+    landingBusy = null;
+    bundleSay(fetched.problem);
+    requestRedraw();
+    return;
+  }
+  const made = await createBundleWorkspace(sample.name, fetched.files, 'sample', id);
+  if (made.error) {
+    console.error('ArchiCode: the sample could not be created', made.error);
+    landingBusy = null;
+    bundleSay('The ' + sample.name + ' sample could not be kept in this browser: ' + browserFailureText(made.error));
+    requestRedraw();
+    return;
+  }
+  await openBrowserWorkspace(made.existing ? made.existing.id : made.record.id);
+}
+
+// ---- Reset to the sample (FLOW-4, DEC-6) ----
+
+/** *Reset to the sample…*: the menu turns into the question, for a workspace made from a sample; for any other it asks nothing. Writes nothing. */
+function askToResetSample() {
+  const row = browserWorkspaceById(openBrowserWorkspaceId());
+  if (!row || !row.sample) return;
+  bundleNotice = null;
+  workspaceMenuQuestion = BUNDLE_RESET_QUESTION;
+  workspaceMenuChanged({});
+}
+
+/** *Cancel* of the question (the menu's own close rules clear it too): the items are back and nothing changed. */
+function cancelWorkspaceMenuQuestion() {
+  if (workspaceMenuQuestion === null) return;
+  workspaceMenuQuestion = null;
+  workspaceMenuChanged({});
+}
+
+/**
+ * `Reset “name”`: the sample is fetched and unbundled first, and only when that succeeds are the files replaced, in one transaction; the record keeps its
+ * id, name, creation time, export time and origin. The page then starts again on the same workspace without what it held. A fetch that fails writes
+ * nothing and keeps the question; a store that fails keeps the old files.
+ */
+async function confirmResetSample() {
+  if (workspaceMenuQuestion !== BUNDLE_RESET_QUESTION) return;
+  const id = openBrowserWorkspaceId();
+  const row = browserWorkspaceById(id);
+  if (!row || !row.sample) {
+    workspaceMenuQuestion = null;
+    workspaceMenuChanged({});
+    return;
+  }
+  bundleNotice = null;
+  const fetched = await fetchSampleBundle(row.sample);
+  if (fetched.problem) {
+    bundleNotice = fetched.problem; // the question stays: the visitor can try again, or cancel
+    requestRedraw();
+    return;
+  }
+  try {
+    await replaceBrowserWorkspaceFiles(id, fetched.files, row.name);
+  } catch (e) {
+    console.error('ArchiCode: the sample workspace could not be reset', e);
+    workspaceMenuQuestion = null;
+    bundleNotice = e && e.workspaceGone ? browserFailureText(e) : 'The reset failed: ' + browserFailureText(e);
+    await refreshBrowserWorkspaces();
+    workspaceMenuChanged({});
+    requestRedraw();
+    return;
+  }
+  AppState = createInitialAppState();
+  resetUiState(); // the menu and its question go with it
+  await openBrowserWorkspace(id);
+  if (openBrowserWorkspaceId() === id) {
+    bundleNotice = '“' + row.name + '” was reset to the sample.';
+    requestRedraw();
+  }
+}
+
+// ---- Back to the served folder (FLOW-5, DEC-8) ----
+
+/** The close slot of a browser workspace opened in a served page: the same confirm as *Close folder* for unsaved changes, then the served folder again. */
+async function backToServedFolder() {
+  if (
+    hasUnsavedChanges() &&
+    !confirm('You have unsaved changes that will be lost. Go back to the served folder anyway?')
+  ) {
+    return;
+  }
+  await forgetOpenFolder();
+  requestRedraw();
+  await openServedFolder();
+}
+// =====================================================================
 // Real three-panel read-only UI (run-0008, task-002; PRD FR-8..FR-16,
 // NFR-2/NFR-4; TDD DEC-1/DEC-6/DEC-7/DEC-8/DEC-9/DEC-10/DEC-11,
 // IF-1..IF-3, FLOW-5). Replaces the former temporary diagnostic view.
@@ -12980,6 +13428,16 @@ function compareFromHash() {
   const queryIdx = location.hash.indexOf('?');
   if (queryIdx === -1) return null;
   return new URLSearchParams(location.hash.slice(queryIdx + 1)).get('compare');
+}
+
+/**
+ * The hash's `sample=` (the id of a sample the address asks to open, run 0193 DEC-7), or null. Read once, at load, before anything is drawn; the address the page
+ * writes from its state never has it, and a `hashchange` does not act on it. Whether the id is in the catalog is for the start of the page to say.
+ */
+function sampleFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  if (queryIdx === -1) return null;
+  return new URLSearchParams(location.hash.slice(queryIdx + 1)).get('sample');
 }
 
 /**
@@ -15180,6 +15638,185 @@ function unbundleWorkspaceFiles(text, options) {
   return { files, problems };
 }
 // =====================================================================
+// The edges of the bundle in the page (wave 025, run 0193, TDD-0193 DEC-4, DEC-5, DEC-6, DEC-13, CTR-2, IMP-5, CON-8): what Export, Import and
+// Open sample touch outside the codec of persistence/bundle.js. The network, the file input and the download are in four small top-level
+// functions (`fetchSampleBundle`, `bundleFilePicker`, `startBundleDownload`, `readBundleFile`) and nowhere else, so the flows of
+// application/bundle-flows.js can be tested by replacing them on the sandbox and the e2e spec runs the real ones. No page state, no drawing.
+// =====================================================================
+
+/* exported BROWSER_SAMPLES, fetchSampleBundle, bundleFilePicker, readBundleFile, startBundleDownload, bundleFileName,
+   bundleProblemsSentence, bundleImportName --
+   the entry points of this part: the flows of application/bundle-flows.js call them (run 0193, task 009). */
+
+/** The samples the page can open (DEC-6): the id, the name of the workspace made from it and its address, relative so that it works under `/editor/` and at `/`. */
+const BROWSER_SAMPLES = { brightcart: { name: 'Brightcart', url: 'samples/brightcart.yaml' } };
+
+const BUNDLE_NOT_UTF8 = 'The file is not UTF-8 text.';
+const BUNDLE_IMPORT_FALLBACK_NAME = 'Imported workspace';
+
+let bundleFileInput = null; // the file input of the picker in progress: held until its `change`, outside `#app`, so a redraw cannot take it away (ASM-4)
+
+/** DEC-4: `<slug>-bundle.yaml`; the slug is the name in lowercase, every run of characters outside a-z0-9 a dash, trimmed, at most 60 characters, `workspace` when none is left. */
+function bundleFileName(rawName) {
+  const slug = String(rawName === undefined || rawName === null ? '' : rawName)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+/, '')
+    .slice(0, 60)
+    .replace(/-+$/, '');
+  return (slug === '' ? 'workspace' : slug) + '-bundle.yaml';
+}
+
+/** The text of bytes that must be UTF-8 (DEC-5: `file.text()` would replace invalid bytes silently); a leading byte-order mark is dropped. Throws when they are not. */
+function bundleDecodeBytes(buffer) {
+  return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(buffer));
+}
+
+/** DEC-5: the text of a bundle file the visitor chose, `{ text, problem }`: `problem` is null, or `text` is '' and `problem` the sentence. A file over the limit is refused by its size, unread. */
+async function readBundleFile(file) {
+  if (file.size > BUNDLE_MAX_BYTES) {
+    return {
+      text: '',
+      problem:
+        'The file is ' + file.size + ' bytes, over the limit of ' + BUNDLE_MAX_BYTES + ' bytes for a workspace file.'
+    };
+  }
+  let buffer;
+  try {
+    buffer = await file.arrayBuffer();
+  } catch (e) {
+    return { text: '', problem: 'The file could not be read.' };
+  }
+  try {
+    return { text: bundleDecodeBytes(buffer), problem: null };
+  } catch (e) {
+    return { text: '', problem: BUNDLE_NOT_UTF8 };
+  }
+}
+
+/** The first sentences of the codec for a file it refuses (DEC-5): up to three, joined by `; `, then how many more. */
+function bundleProblemsSentence(problems) {
+  const list = Array.from(problems);
+  return (
+    'The file cannot be imported: ' +
+    list.slice(0, 3).join('; ') +
+    (list.length > 3 ? ' (and ' + (list.length - 3) + ' more)' : '')
+  );
+}
+
+/** Why the answer for a sample is no workspace: the reason as a phrase without its final dot, or null when `buffer` unbundles into a workspace; the files when it does. */
+function bundleSampleFromBytes(buffer) {
+  if (buffer.byteLength === 0) return { reason: 'the file is empty' };
+  let text;
+  try {
+    text = bundleDecodeBytes(buffer);
+  } catch (e) {
+    return { reason: 'the file is not UTF-8 text' };
+  }
+  const unbundled = unbundleWorkspaceFiles(text);
+  if (unbundled.problems.length > 0) return { reason: String(unbundled.problems[0]).replace(/\.$/, '') };
+  if (!unbundled.files.some((file) => file.path === WORKSPACE_FILE_NAME)) {
+    return { reason: 'it holds no ' + WORKSPACE_FILE_NAME + ', so it is not a workspace' };
+  }
+  return { files: unbundled.files };
+}
+
+/**
+ * DEC-6: the sample `id` unbundled, `{ files: [{ path, bytes }], problem }`; with no file, `problem` is the whole sentence
+ * `The <Name> sample could not be loaded: <reason>. Check your connection and try again.` It never rejects. The request is a GET of the
+ * relative address that skips the cache, with the token of the server in a page served by `archicode editor serve` and no header otherwise.
+ */
+async function fetchSampleBundle(id) {
+  const sample = Object.prototype.hasOwnProperty.call(BROWSER_SAMPLES, id) ? BROWSER_SAMPLES[id] : null;
+  if (sample === null) return { files: [], problem: 'There is no sample called “' + id + '”.' };
+  const refused = (reason) => ({
+    files: [],
+    problem: 'The ' + sample.name + ' sample could not be loaded: ' + reason + '. Check your connection and try again.'
+  });
+  try {
+    const headers = {};
+    if (isServedByArchiCode()) headers['X-ArchiCode-Token'] = serverToken();
+    const response = await fetch(sample.url, { method: 'GET', cache: 'no-cache', headers });
+    if (!response.ok) {
+      return refused('the server answered ' + response.status + (response.statusText ? ' ' + response.statusText : ''));
+    }
+    const read = bundleSampleFromBytes(await response.arrayBuffer());
+    return read.reason !== undefined ? refused(read.reason) : { files: read.files, problem: null };
+  } catch (e) {
+    return refused(String((e && e.message) || e).replace(/\.$/, ''));
+  }
+}
+
+/**
+ * DEC-5, ASM-4: opens the picker of a file and calls `onFile(file)` when the visitor has chosen one (never when they cancel). It must be called
+ * synchronously in the click that asks for it. The input is made outside `#app` and held in `bundleFileInput` until its `change`.
+ */
+function bundleFilePicker(onFile) {
+  if (bundleFileInput !== null) bundleFileInput.remove();
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.yaml,.yml,text/yaml,text/plain';
+  input.style.display = 'none';
+  const done = () => {
+    input.remove();
+    if (bundleFileInput === input) bundleFileInput = null;
+  };
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0];
+    done();
+    if (file) onFile(file);
+  });
+  input.addEventListener('cancel', done);
+  bundleFileInput = input;
+  document.body.appendChild(input);
+  input.click();
+}
+
+/** DEC-4: starts the download of `text` as `fileName` (UTF-8, no byte-order mark); true when it was started, false when the browser refused. */
+function startBundleDownload(fileName, text) {
+  try {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/yaml;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * DEC-5: the name an import proposes: `settings.name` of the root `.archicode.yaml` when it is a text that is a valid name; else the name of the
+ * file without its last extension when that is a valid name; else `Imported workspace`. A file `parseYaml` refuses is no refusal, it falls
+ * back. Making it unique against the names in the list is for the flow.
+ */
+function bundleImportName(files, fileName) {
+  const root = files.find((file) => file.path === WORKSPACE_FILE_NAME);
+  if (root) {
+    try {
+      const document = parseYaml(new TextDecoder().decode(root.bytes));
+      const settings = document && typeof document === 'object' ? document.settings : null;
+      const name = settings && typeof settings === 'object' ? settings.name : null;
+      if (
+        typeof name === 'string' &&
+        !plainNumberOf(settings, 'name') &&
+        browserWorkspaceNameProblem(name, []) === null
+      ) {
+        return name.trim();
+      }
+    } catch (e) {
+      /* an unreadable root file is the error card's to tell once the workspace is opened */
+    }
+  }
+  const base = typeof fileName === 'string' ? fileName.replace(/\.[^./\\]*$/, '').trim() : '';
+  return base !== '' && browserWorkspaceNameProblem(base, []) === null ? base : BUNDLE_IMPORT_FALLBACK_NAME;
+}
+// =====================================================================
 // Move an element under another parent, or to the top level (wave 009, run 0047; wave 015, run 0104). The element and everything inside it follow; its reference
 // changes (the parent's reference, then its id; its id alone at the top level), and every reference that pointed at it or inside it follows, by the
 // machinery of an id rename (`commitElementEdit` with `renamedTo`: `rewriteInboundReferences` and `rewriteUiReferences`).
@@ -16535,13 +17172,162 @@ function flushPendingDraft() {
   return true;
 }
 
-/** The notice of a browser workspace (run 0192, DEC-8): where the work lives, and, once the browser said no to persistent storage, what that risks. */
+/** The notice of a browser workspace (run 0192, DEC-8; run 0193, DEC-9): where the work lives, when it was last exported, and, once the browser said no to persistent storage, what that risks. */
 function browserWorkspaceNoticeHtml() {
+  const row = browserWorkspaceById(AppState.folder && AppState.folder.browserWorkspace);
   const title =
     "This workspace is kept in this browser on this device. Clearing the site's data removes it." +
-    (browserStoragePersisted === false ? ' The browser may remove it when the device is short of space.' : '');
+    (browserStoragePersisted === false ? ' The browser may remove it when the device is short of space.' : '') +
+    ' Last exported: ' +
+    (row && row.lastExportAt ? landingTimeText(row.lastExportAt) : 'never') +
+    '. Use Workspace › Export as a file to keep a copy.';
   return '<span class="browser-notice" title="' + escapeHtml(title) + '">In this browser</span>';
 }
+
+// ---- The Workspace menu (run 0193, DEC-9, IF-3, IF-4) ----
+
+const WORKSPACE_EXPORT_PENDING_SENTENCE = 'Save your changes first: the file holds what is saved.';
+const WORKSPACE_SERVED_SAMPLE_TITLE =
+  'A copy kept in this browser for this address (host and port). The served folder is not touched.';
+
+/** Changes not written, or text typed in a form and not applied: the file of an Export holds what is saved, so it waits (DEC-4). */
+function workspaceExportIsPending() {
+  return hasUnsavedChanges() || draftTyped;
+}
+
+/** What the menu is for: 'browser' (a workspace kept in this browser), 'served' (the folder of `archicode editor serve`, with a store to open the sample in), or null (no menu). */
+function workspaceMenuMode() {
+  if (!AppState.folder) return null;
+  if (AppState.folder.browserWorkspace) return 'browser';
+  if (workspaceIsServedFolder() && browserStoreState === 'ready') return 'served';
+  return null;
+}
+
+function workspaceMenuItemHtml(action, label, note, extra) {
+  return (
+    '<button type="button" class="workspace-item" data-action="' +
+    action +
+    '"' +
+    (extra || '') +
+    '><span class="workspace-item-label">' +
+    escapeHtml(label) +
+    '</span>' +
+    (note ? '<span class="workspace-item-note">' + escapeHtml(note) + '</span>' : '') +
+    '</button>'
+  );
+}
+
+/** The question of *Reset to the sample…* in the place of the items: the workspace named, the loss said, Cancel first (DEC-6, DEC-9). */
+function renderWorkspaceResetQuestionHtml(row) {
+  const named = '“' + row.name + '”';
+  const unsaved = countUnsavedChanges();
+  return (
+    '<p class="workspace-ask">Replace everything in ' +
+    escapeHtml(named) +
+    ' with the sample? Your changes in it are lost. Last exported: ' +
+    (row.lastExportAt ? escapeHtml(landingTimeText(row.lastExportAt)) : 'never') +
+    '.' +
+    (unsaved > 0
+      ? ' ' + unsaved + (unsaved === 1 ? ' unsaved change is' : ' unsaved changes are') + ' lost too.'
+      : '') +
+    '</p>' +
+    '<div class="workspace-ask-actions">' +
+    '<button type="button" data-action="workspace-cancel-question">Cancel</button>' +
+    '<button type="button" class="workspace-reset" data-action="workspace-confirm-reset" aria-label="' +
+    escapeHtml('Reset ' + named) +
+    '">Reset ' +
+    escapeHtml(named) +
+    '</button></div>'
+  );
+}
+
+function renderWorkspaceMenuHtml() {
+  const mode = workspaceMenuMode();
+  if (!workspaceMenuOpen || !mode) return '';
+  let body = '';
+  const row = mode === 'browser' ? browserWorkspaceById(AppState.folder.browserWorkspace) : null;
+  if (mode === 'browser' && row && row.sample && workspaceMenuQuestion === 'reset-sample') {
+    body = renderWorkspaceResetQuestionHtml(row);
+  } else if (mode === 'browser') {
+    const pending = workspaceExportIsPending();
+    body += workspaceMenuItemHtml(
+      'workspace-export',
+      'Export as a file',
+      pending
+        ? WORKSPACE_EXPORT_PENDING_SENTENCE
+        : 'Last exported: ' + (row && row.lastExportAt ? landingTimeText(row.lastExportAt) : 'never'),
+      pending ? ' aria-disabled="true"' : ''
+    );
+    if (row && row.sample) body += workspaceMenuItemHtml('workspace-ask-reset', 'Reset to the sample…', '');
+  } else {
+    body += workspaceMenuItemHtml(
+      'workspace-open-sample',
+      'Open the Brightcart sample',
+      '',
+      ' title="' + escapeHtml(WORKSPACE_SERVED_SAMPLE_TITLE) + '"'
+    );
+  }
+  return '<div class="workspace-menu" role="dialog" aria-label="Workspace">' + body + '</div>';
+}
+
+/** The *Workspace* button, with its menu right behind it when open; nothing for a folder of the disk. */
+function renderWorkspaceButtonHtml() {
+  if (!workspaceMenuMode()) return '';
+  return (
+    '<span class="workspace-wrap"><button type="button" class="workspace-button" data-action="toggle-workspace-menu" aria-haspopup="dialog" aria-expanded="' +
+    workspaceMenuOpen +
+    '">Workspace</button>' +
+    renderWorkspaceMenuHtml() +
+    '</span>'
+  );
+}
+
+/** The result of the last Export, Import, Open sample or Reset while a workspace is open: the bar's status line, until the next action. */
+function renderBundleNoticeHtml() {
+  if (!bundleNotice) return '';
+  return (
+    '<span class="save-status save-status-success bundle-notice" role="status" title="' +
+    escapeHtml(bundleNotice) +
+    '">' +
+    escapeHtml(bundleNotice) +
+    '</span>'
+  );
+}
+
+/**
+ * Patches the menu where it is, WITHOUT render() (a redraw rebuilds every field from the model and would lose what the visitor typed): the node and
+ * aria-expanded change. The flows call it through `onWorkspaceMenuChange`; `focusMenu`: the first item gets the focus; `focusButton`: the button gets it back.
+ */
+function patchWorkspaceMenu(options = {}) {
+  const button = document.querySelector('.workspace-button');
+  if (button && button.setAttribute) button.setAttribute('aria-expanded', String(workspaceMenuOpen));
+  const existing = document.querySelector('.workspace-menu');
+  if (existing && existing.remove) existing.remove();
+  if (workspaceMenuOpen) {
+    if (button && button.insertAdjacentHTML) button.insertAdjacentHTML('afterend', renderWorkspaceMenuHtml());
+    const target =
+      workspaceMenuQuestion !== null
+        ? '.workspace-menu [data-action="workspace-cancel-question"]'
+        : options.focusMenu
+          ? '.workspace-menu button'
+          : null;
+    const control = target ? document.querySelector(target) : null;
+    if (control && control.focus) control.focus();
+  } else if (options.focusButton && button && button.focus) {
+    button.focus();
+  }
+}
+onWorkspaceMenuChange(patchWorkspaceMenu);
+
+/** Escape closes the menu (and drops its question), and only that; registered in capture like the help's. */
+function handleWorkspaceMenuKeydown(e) {
+  if (!workspaceMenuOpen || e.key !== 'Escape') return;
+  if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+  else if (e.stopPropagation) e.stopPropagation();
+  if (e.preventDefault) e.preventDefault();
+  setWorkspaceMenuOpen(false, { focusButton: true });
+}
+document.addEventListener('keydown', handleWorkspaceMenuKeydown, true);
 
 function renderTopPanelHtml() {
   if (!AppState.folder) return '';
@@ -16570,13 +17356,17 @@ function renderTopPanelHtml() {
     '<span class="top-actions">' +
     (inBrowser ? browserWorkspaceNoticeHtml() : '') +
     renderSaveStatusHtml() +
+    renderBundleNoticeHtml() +
     saveAll +
+    renderWorkspaceButtonHtml() +
     renderHelpButtonHtml() +
-    (isServedByArchiCode()
+    (workspaceIsServedFolder()
       ? ''
-      : inBrowser
-        ? '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace and go back to the list: it stays in this browser.">Close workspace</button>'
-        : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and go back to the list of folders: it stays in the list.">Close folder</button>') +
+      : inBrowser && isServedByArchiCode()
+        ? '<button type="button" class="btn-ghost" data-action="back-to-served-folder" title="Leave this workspace and go back to the folder the server serves: it stays in this browser.">Back to the served folder</button>'
+        : inBrowser
+          ? '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace and go back to the list: it stays in this browser.">Close workspace</button>'
+          : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and go back to the list of folders: it stays in the list.">Close folder</button>') +
     '</span>' +
     '</header>'
   );
@@ -17309,7 +18099,7 @@ function renderHelpMenuHtml() {
   if (!helpOpen) return '';
   const link = (key, text) =>
     '<li><a href="' + docUrl(key) + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a></li>';
-  const where = isServedByArchiCode()
+  const where = workspaceIsServedFolder()
     ? 'The editor reads and writes the folder served by <code>archicode editor serve</code> on this machine.'
     : AppState.folder && AppState.folder.browserWorkspace
       ? "Files are read and written in this browser, which keeps them on this device; clearing the site's data removes them."
@@ -30532,6 +31322,13 @@ function handleAppClick(e) {
   if (helpOpen && action !== 'toggle-help' && !(e.target.closest && e.target.closest('.help-menu'))) {
     setHelpOpen(false); // a click anywhere else closes the help — no redraw: the action of this click reads the fields as they are
   }
+  if (
+    workspaceMenuOpen &&
+    action !== 'toggle-workspace-menu' &&
+    !(e.target.closest && e.target.closest('.workspace-menu'))
+  ) {
+    setWorkspaceMenuOpen(false); // a click elsewhere closes the menu, and the question with it — no redraw
+  }
   if (headerMenuOpen && action !== 'toggle-header-menu') {
     // a click on an item of the "⋯" menu closes it and leaves the focus on the button (so a dialog the item opens gives it back there); a click elsewhere only closes it
     const inMenu = e.target.closest && e.target.closest('.header-overflow');
@@ -30539,6 +31336,8 @@ function handleAppClick(e) {
     else if (target) setHeaderMenuOpen(false, { focusButton: true });
   }
   if (!target) return;
+  if (bundleNotice !== null && !(action || '').startsWith('workspace-') && action !== 'toggle-workspace-menu')
+    bundleNotice = null; // the line of the last Export lasts until the next action
   // what an action said (a line over the story bar, the step that can be put back) lasts until the next one
   if (action !== 'dialog-submit' && action !== 'story-player-open') storyBarNotice = null; // Play changes nothing of the editor behind it (wave 021, run 0153)
   if (removedStep && action !== 'story-undo' && action !== 'story-step-remove' && action !== 'story-player-open')
@@ -30610,6 +31409,56 @@ function handleAppClick(e) {
       break;
     case 'cancel-browser-name':
       cancelBrowserNameDraft();
+      break;
+    // the sample, the bundle file and the Workspace menu (run 0193, IMP-8); the flows are application/bundle-flows.js
+    case 'open-sample':
+      openSample('brightcart');
+      break;
+    case 'import-bundle':
+      chooseBundleFile(); // the picker is asked in the turn of the click
+      break;
+    case 'export-browser-workspace':
+      exportBrowserWorkspace(target.getAttribute('data-workspace-id'));
+      break;
+    case 'export-browser-workspace-first':
+      exportBrowserWorkspace(target.getAttribute('data-workspace-id'), { first: true });
+      break;
+    case 'toggle-workspace-menu':
+      // e.detail is 0 for a click made with the keyboard (Enter, Space): then the focus goes along
+      setWorkspaceMenuOpen(
+        !workspaceMenuOpen,
+        workspaceMenuOpen ? { focusButton: e.detail === 0 } : { focusMenu: e.detail === 0 }
+      );
+      break;
+    case 'workspace-export':
+      setWorkspaceMenuOpen(false, { focusButton: e.detail === 0 });
+      if (workspaceExportIsPending()) {
+        bundleNotice = WORKSPACE_EXPORT_PENDING_SENTENCE;
+        requestRedraw();
+      } else {
+        exportOpenBrowserWorkspace();
+      }
+      break;
+    case 'workspace-open-sample':
+      setWorkspaceMenuOpen(false);
+      if (
+        workspaceExportIsPending() &&
+        !confirm('You have unsaved changes that will be lost. Open the Brightcart sample anyway?')
+      )
+        break;
+      openSample('brightcart');
+      break;
+    case 'workspace-ask-reset':
+      askToResetSample();
+      break;
+    case 'workspace-cancel-question':
+      cancelWorkspaceMenuQuestion();
+      break;
+    case 'workspace-confirm-reset':
+      confirmResetSample();
+      break;
+    case 'back-to-served-folder':
+      backToServedFolder();
       break;
     case 'set-perspective':
     case 'set-page': // the bar under the band (the pages below Timeline) and the top bar (a perspective) open a page the same way
@@ -31819,11 +32668,14 @@ function landingScreenConfig() {
     const folders = isFileSystemAccessSupported();
     const browser = browserStoreState === 'ready' && !isServedByArchiCode();
     const actions = [];
+    // the sample is the way in for a first visit: nothing kept in this browser and no remembered folder (DEC-11)
+    const firstVisit = browserWorkspaces.length === 0 && landingFolderRows().length === 0;
     if (browser) {
+      actions.push({ label: 'Open the Brightcart sample', action: 'open-sample', primary: firstVisit });
       actions.push({
         label: 'New workspace in this browser',
         action: 'new-browser-workspace',
-        primary: !folders,
+        primary: !firstVisit && !folders,
         icon: LANDING_ICON_FOLDER
       });
     }
@@ -31835,6 +32687,7 @@ function landingScreenConfig() {
         icon: LANDING_ICON_FOLDER
       });
     }
+    if (browser) actions.push({ label: 'Import a workspace file', action: 'import-bundle' });
     const notes = [];
     if (folders) notes.push('Choose the folder that contains .archicode.yaml. ' + LANDING_SAVE_NOTE);
     if (browser) notes.push(BROWSER_SAVE_NOTE);
@@ -31897,6 +32750,7 @@ function landingBrowserRows() {
     files: w.fileCount,
     changed: landingTimeText(w.changedAt),
     exported: w.lastExportAt ? landingTimeText(w.lastExportAt) : 'never',
+    sample: w.sample && Object.prototype.hasOwnProperty.call(BROWSER_SAMPLES, w.sample) ? w.sample : null,
     problem: w.problem || null
   }));
 }
@@ -31950,8 +32804,15 @@ function renderBrowserRowHtml(row) {
       '? It holds ' +
       landingFilesText(row.files) +
       (row.changed ? ', last changed ' + escapeHtml(row.changed) : '') +
+      '. Last exported: ' +
+      escapeHtml(row.exported) +
       '. This cannot be undone. Nothing on your disk is touched.</p>' +
       '<button type="button" data-action="cancel-browser-workspace-question">Cancel</button>' +
+      '<button type="button" data-action="export-browser-workspace-first" data-workspace-id="' +
+      id +
+      '" aria-label="' +
+      escapeHtml('Export ' + named + ' first') +
+      '">Export first</button>' +
       '<button type="button" class="landing-browser-delete" data-action="delete-browser-workspace" data-workspace-id="' +
       id +
       '" aria-label="' +
@@ -31996,13 +32857,18 @@ function renderBrowserRowHtml(row) {
     escapeHtml(row.title) +
     '</span>' +
     '<span class="landing-folder-dir"><span>' +
-    escapeHtml(landingFilesText(row.files) + (row.changed ? ' · changed ' + row.changed : '')) +
+    escapeHtml(
+      (row.sample ? BROWSER_SAMPLES[row.sample].name + ' sample · ' : '') +
+        landingFilesText(row.files) +
+        (row.changed ? ' · changed ' + row.changed : '')
+    ) +
     '</span></span>' +
     '<span class="landing-folder-dir"><span>Kept in this browser · Last exported: ' +
     escapeHtml(row.exported) +
     '</span></span>' +
     '</button>' +
     ghost('rename-browser-workspace', 'Rename', 'Rename') +
+    ghost('export-browser-workspace', 'Export', 'Export') +
     ghost('ask-delete-browser-workspace', 'Delete', 'Delete') +
     '</li>'
   );
@@ -32362,28 +33228,40 @@ onRedraw(() => render()); // the parts below ask with requestRedraw(); the compo
 
 document.addEventListener('DOMContentLoaded', () => {
   syncPerspectiveFromHash(); // a bookmarked/shared "#/settings" etc. lands directly there
+  const sample = sampleFromHash(); // read before the first render, which writes the address back without it (DEC-7)
   if (isServedByArchiCode()) {
+    // the served folder opens first and the key is ignored; once it is open, the store is probed on the side (nothing waits for it) so that the Workspace menu can offer the sample (DEC-8)
     stripServerTokenFromUrl();
     landingBusy = 'Opening the workspace…';
     render();
-    openServedFolder();
+    openServedFolder().then(() => {
+      if (AppState.workspace) probeBrowserStore().then(requestRedraw, requestRedraw);
+    });
     return;
   }
   landingBusy = 'Looking for your last workspace…';
   render(); // no blank page while IndexedDB / the folder permission are checked
-  startPage();
+  startPage(sample);
 });
 
 /**
  * A page that is not served: ask once whether the browser can keep a workspace (DEC-4), then reopen what was open. A browser that can neither pick a folder
- * nor keep a workspace gets its card and stops.
+ * nor keep a workspace gets its card and stops. A sample the address asks for (`sample=`) wins over reopening the last workspace; an id that is not in the
+ * catalog is said on the card and the usual start follows (DEC-7).
  */
-async function startPage() {
+async function startPage(sample = null) {
   await probeBrowserStore();
   if (!canKeepWorkspace()) {
     landingBusy = null;
     render();
     return;
+  }
+  if (sample !== null && browserStoreState === 'ready') {
+    if (Object.prototype.hasOwnProperty.call(BROWSER_SAMPLES, sample)) {
+      await openSample(sample);
+      return;
+    }
+    landingNotice = 'There is no sample “' + sample + '”.';
   }
   await tryAutoReopen();
 }

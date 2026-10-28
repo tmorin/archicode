@@ -128,17 +128,29 @@ async function startServer(example, files = {}) {
   };
 }
 
-// The page as the hosted site serves it (wave 025, run 0192, DEC-11): a Node `http` server on 127.0.0.1 and a free port
-// that answers `GET /` with the committed standalone.html and 404 for everything else, with no JVM and so no
-// <meta name="archicode-server">. The page is read at each request, so a rebuilt page is what the next test gets.
-// Resolves with the URL and a stop function.
+// The page as the hosted site serves it (wave 025, run 0192, DEC-11; run 0193, IMP-12): a Node `http` server on
+// 127.0.0.1 and a free port, with no JVM and so no <meta name="archicode-server">, that answers the layout of the
+// website: `GET /editor/` with the committed standalone.html and `GET /editor/samples/brightcart.yaml` with the
+// committed sample, and 404 for everything else (`/` too). A relative fetch of `samples/brightcart.yaml` from the page
+// therefore reaches the file at the address it has on GitHub Pages, which is what proves the base path. Both files are
+// read at each request, so a rebuilt page or sample is what the next test gets. `requests` lists the paths asked, in
+// order. Resolves with the URL (`http://127.0.0.1:<port>/editor/`), the list and a stop function.
+const SAMPLE = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'samples', 'brightcart.yaml');
+const HOSTED_ROUTES = new Map([
+  ['/editor/', { file: PAGE, type: 'text/html; charset=utf-8' }],
+  ['/editor/samples/brightcart.yaml', { file: SAMPLE, type: 'text/yaml; charset=utf-8' }]
+]);
+
 async function startHostedPage() {
   const port = await freePort();
+  const requests = [];
   const server = http.createServer((request, response) => {
     const route = (request.url || '').split(/[?#]/)[0];
-    if (request.method === 'GET' && route === '/') {
-      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-      response.end(fs.readFileSync(PAGE));
+    requests.push(route);
+    const served = request.method === 'GET' ? HOSTED_ROUTES.get(route) : undefined;
+    if (served && fs.existsSync(served.file)) {
+      response.writeHead(200, { 'content-type': served.type, 'cache-control': 'no-store' });
+      response.end(fs.readFileSync(served.file));
     } else {
       response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       response.end('not found');
@@ -149,7 +161,8 @@ async function startHostedPage() {
     server.listen(port, '127.0.0.1', resolve);
   });
   return {
-    url: `http://127.0.0.1:${port}/`,
+    url: `http://127.0.0.1:${port}/editor/`,
+    requests,
     stop: () =>
       new Promise((resolve) => {
         server.close(() => resolve());

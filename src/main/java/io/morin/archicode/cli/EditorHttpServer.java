@@ -58,6 +58,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  *       {@code X-ArchiCode-Modified}), write (parents are created) or delete a {@code .yaml}, {@code .yml} or
  *       {@code .json} file of the folder. A file is UTF-8, as GET declares it; PUT refuses (400) a body that is not
  *       valid UTF-8, caps it at {@value #MAX_BODY_BYTES} bytes (413), and replaces the file atomically.</li>
+ *   <li>{@code GET /samples/brightcart.yaml} — the sample of the hosted editor, the bundle of Brightcart, a resource of
+ *       the application (UTF-8, {@code text/yaml}). The routes under {@code /samples/} are a table of one entry
+ *       ({@link #SAMPLES}): any other path there is 404, and a request never names a resource. It has the {@code Host}
+ *       check of the page and wants the token in the header or the session cookie, never in the query (403).</li>
  * </ul>
  * The API writes to the disk, and this server may listen on every address (that is what a Docker {@code -p} mapping
  * needs), so it does not trust the network: the page and every {@code /api} call must carry the token (a page of
@@ -83,6 +87,14 @@ public class EditorHttpServer {
     static final String WORKSPACE_FILE = ".archicode.yaml";
 
     private static final String API_PREFIX = "/api/fs/";
+    private static final String SAMPLES_PREFIX = "/samples/";
+
+    /**
+     * The samples the server gives, by the name after {@code /samples/}: the one table of the route. A request is looked up
+     * in it and never used to build a path, so it can name no other resource.
+     */
+    static final Map<String, String> SAMPLES = Map.of("brightcart.yaml", "/editor-webapp/samples/brightcart.yaml");
+
     private static final String WEBAPP_RESOURCE = "/editor-webapp/standalone.html";
     private static final String TOKEN_MARKER = "<head>";
     private static final String VERSION_MARKER = "<meta name=\"archicode-version\" content=\"dev\">";
@@ -136,6 +148,7 @@ public class EditorHttpServer {
         server.setExecutor(Executors.newFixedThreadPool(HANDLER_THREADS));
         server.createContext("/", exchange -> handleRoot(exchange, token, hosts));
         server.createContext(API_PREFIX, exchange -> handleApi(exchange, root, token, hosts, maxBodyBytes));
+        server.createContext(SAMPLES_PREFIX, exchange -> handleSample(exchange, token, hosts));
         server.start();
         if (log.isInfoEnabled()) {
             log.info("editor http server listening on {}:{}", host, server.getAddress().getPort());
@@ -213,6 +226,43 @@ public class EditorHttpServer {
                     headers.set("Set-Cookie", SESSION_COOKIE + "=" + token + "; HttpOnly; SameSite=Strict; Path=/");
                 }
                 write(exchange, 200, "text/html; charset=utf-8", served.getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (Exception e) {
+            fail(exchange, e);
+        }
+    }
+
+    /** {@code GET /samples/<name>}: a sample of {@link #SAMPLES}, for the page that holds the token or its cookie. */
+    @SneakyThrows
+    private void handleSample(HttpExchange exchange, String token, Set<String> hosts) {
+        try {
+            if (!hostAllowed(exchange, hosts)) {
+                text(exchange, 403, "this host name is not allowed: start the server with --allowed-host to serve it");
+                return;
+            }
+            val resource = SAMPLES.get(exchange.getRequestURI().getPath().substring(SAMPLES_PREFIX.length()));
+            if (resource == null) {
+                text(exchange, 404, "not found");
+                return;
+            }
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                text(exchange, 405, "method not allowed");
+                return;
+            }
+            val header = exchange.getRequestHeaders().getFirst(TOKEN_HEADER);
+            if (!tokenEquals(header, token) && !tokenEquals(sessionCookie(exchange), token)) {
+                text(exchange, 403, "missing or wrong token: reload the page served by this server");
+                return;
+            }
+            try (val stream = getClass().getResourceAsStream(resource)) {
+                if (stream == null) {
+                    text(exchange, 500, "the sample is missing from the classpath: " + resource);
+                    return;
+                }
+                val headers = exchange.getResponseHeaders();
+                headers.set("Cache-Control", "no-store");
+                headers.set("X-Content-Type-Options", "nosniff");
+                write(exchange, 200, "text/yaml; charset=utf-8", stream.readAllBytes());
             }
         } catch (Exception e) {
             fail(exchange, e);

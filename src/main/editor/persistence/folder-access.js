@@ -27,6 +27,15 @@ function isServedByArchiCode() {
   return !!serverToken();
 }
 
+/* exported workspaceIsServedFolder -- read by the top bar's close slot and the help's `where` sentence (run 0193, task 010) */
+/**
+ * Is the workspace that is open (or about to be) the folder the server serves? A page with a server can hold a browser workspace instead (the
+ * sample, run 0193 DEC-8): `isServedByArchiCode()` keeps meaning "this page has a server", this one answers "what is open is its folder".
+ */
+function workspaceIsServedFolder() {
+  return isServedByArchiCode() && !(AppState.folder && AppState.folder.browserWorkspace);
+}
+
 /**
  * The server asks for `?token=` on the first request only; the page carries the token in its <meta> from then on.
  * Take it out of the address bar (the hash stays) so it is not left in the history, a screenshot or a copied link.

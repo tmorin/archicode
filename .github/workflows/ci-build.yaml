@@ -114,6 +114,10 @@ jobs:
         # from src/main/editor, and the names, the load order and the ratchet of scripts/check-editor.mjs must hold.
         # Run `npm run editor:build` to write the page, `npm run editor:check` to see this check
         run: npm run editor:check
+      - name: "Check the Brightcart sample is the bundle of its fixture"
+        # The hosted editor's sample, src/main/resources/editor-webapp/samples/brightcart.yaml, is the bundle of
+        # src/test/resources/brightcart/layered made by the page's own codec; it must be what `npm run sample:build` writes
+        run: npm run sample:check
       - name: "Check the move commits"
         # A commit `refactor: move ...` must leave the assembled page byte for byte what its parent's was, a commit
         # `refactor: relocate ...` its declarations and comments; the other commits are not looked at. Pull request only.
@@ -373,6 +377,10 @@ jobs:
           cp -r target/generated-docs/. target/site/docs/
           sed "${stamp}" src/site/index.html > target/site/index.html
           sed "${stamp}" src/main/resources/editor-webapp/standalone.html > target/site/editor/index.html
+          mkdir -p target/site/editor/samples
+          cp -r src/main/resources/editor-webapp/samples/. target/site/editor/samples/
+          test -f target/site/editor/samples/brightcart.yaml
+          cmp src/main/resources/editor-webapp/samples/brightcart.yaml target/site/editor/samples/brightcart.yaml
           grep -q "content=\"${version}\"" target/site/index.html
           grep -q "content=\"${version}\"" target/site/editor/index.html
           test -f target/site/docs/index.html

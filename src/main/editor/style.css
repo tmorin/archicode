@@ -219,6 +219,16 @@
   .help-menu ul { padding: 0.1rem 0; }
   .help-menu li a { display: block; padding: 0.35rem 1rem; color: var(--accent); }
   .help-menu li a:hover, .help-menu li a:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); text-decoration: underline; outline: none; }
+  .workspace-wrap { position: relative; flex-shrink: 0; }
+  .top-panel .workspace-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .workspace-menu { position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; width: min(21rem, calc(100vw - 2rem)); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+  .workspace-menu .workspace-item { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; width: 100%; max-width: 100%; padding: 0.35rem 1rem; border: none; border-radius: 0; background: transparent; color: var(--accent); text-align: left; }
+  .workspace-menu .workspace-item:hover, .workspace-menu .workspace-item:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); outline: none; }
+  .workspace-menu .workspace-item[aria-disabled="true"] { color: var(--muted); cursor: not-allowed; }
+  .workspace-item-note { font-size: 0.8rem; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
+  .workspace-ask { margin: 0; padding: 0.4rem 1rem; font-size: 0.85rem; line-height: 1.4; overflow-wrap: anywhere; }
+  .workspace-ask-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.2rem 1rem 0.4rem; }
+  .workspace-ask-actions .workspace-reset { color: var(--danger); overflow-wrap: anywhere; }
   .help-note { margin: 0; padding: 0.4rem 1rem 0; font-size: 0.8rem; line-height: 1.4; color: var(--muted); border-top: 1px solid var(--border); }
   .help-note + .help-note { border-top: none; padding-top: 0.2rem; padding-bottom: 0.2rem; }
   .settings-help a, .landing-note a { color: var(--accent); text-decoration: underline; }

@@ -50,6 +50,9 @@ function resetUiState() {
   pendingDeleteConfirmation = null;
   landingPendingDelete = null; // the question and the name field of the card of the browser workspaces (run 0192)
   landingNameDraft = null;
+  workspaceMenuOpen = false; // the Workspace menu, its question and its last result belong to the workspace that was open (run 0193)
+  workspaceMenuQuestion = null;
+  bundleNotice = null;
   rawYamlEditDraft = null;
   lastRenderedViewKey = null;
   scrollNavToSelection = false;
@@ -69,12 +72,12 @@ async function retryFolder() {
   await loadWorkspace(AppState.folder.handle);
 }
 
-/** Click handler for the top panel's close action (FR-3/FLOW-3). */
-async function closeFolder() {
-  if (hasUnsavedChanges() && !confirm('You have unsaved changes that will be lost. Close the folder anyway?')) {
-    return;
-  }
-  // the folder stays remembered; only the next load does not reopen it (TDD-0020 DEC-5)
+/**
+ * What leaving the open folder does, shared by *Close folder* and *Back to the served folder* (run 0193, DEC-8): the pointer that would reopen it goes
+ * (a browser workspace stays kept; a remembered folder stays remembered, only the next load does not reopen it, TDD-0020 DEC-5), and the page drops
+ * everything it held. Returns whether it was a browser workspace. Asks nothing and draws nothing.
+ */
+async function forgetOpenFolder() {
   const folder = AppState.folder;
   const wasBrowserWorkspace = !!(folder && folder.browserWorkspace);
   if (wasBrowserWorkspace) {
@@ -103,6 +106,15 @@ async function closeFolder() {
   AppState = createInitialAppState();
   resetUiState();
   landingNotice = null;
+  return wasBrowserWorkspace;
+}
+
+/** Click handler for the top panel's close action (FR-3/FLOW-3). */
+async function closeFolder() {
+  if (hasUnsavedChanges() && !confirm('You have unsaved changes that will be lost. Close the folder anyway?')) {
+    return;
+  }
+  const wasBrowserWorkspace = await forgetOpenFolder();
   requestRedraw();
   if (!wasBrowserWorkspace || isFileSystemAccessSupported()) await refreshRememberedFolders();
   if (wasBrowserWorkspace) await refreshBrowserWorkspaces();
