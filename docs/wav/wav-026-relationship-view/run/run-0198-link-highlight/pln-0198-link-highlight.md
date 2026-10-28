@@ -1,6 +1,6 @@
 ---
 title: Execution Plan — Highlight of a relationship in a Map view and a story step
-status: draft
+status: done
 date: 2026-10-28
 related:
   - docs/wav/wav-026-relationship-view/run/run-0198-link-highlight/tdd-0198-link-highlight.md
@@ -19,7 +19,7 @@ Profile TDD+pln: there is no PRD, so REQ-1 to REQ-7 are the IDs the TDD labels (
 
 ```yaml
 summary:
-  status: 'in_progress'
+  status: 'done'
   product_goal: 'A Map view of the application layer takes a highlight property, and a story step a highlight key, both lists of {source, destination, label} entries; the kernel marks the links that stand for them, PlantUML draws a marked link heavier with a glyph and a bold label and the other links calmer, and every view and step written before the wave is drawn byte for byte as before (REQ-1 to REQ-7).'
   technical_approach: 'Apply the Stage 5 findings F-1 to F-4 to the TDD, write the Rust and Java tests red first, add the optional highlight input and highlighted output keys to the kernel map (contract number 5 unchanged), regenerate the wasm and the page block with embed.sh, generalise MapLinks and forward the key from KernelViewpointFactory, Story.Step, GenerateStoriesCommand and ViewInPlateau, add HighlightMarks to the PlantUML renderer, teach READ_SCHEMA the step key, then say it in the guide, its golden file, the manual and CLAUDE.md and run the gate checks including scripts/byte-identity.sh.'
   total_tasks: 12
@@ -167,7 +167,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-009
-      status: 'todo'
+      status: 'done'
       title: 'Say highlight in the guide and its golden file'
       depends_on: [task-007, task-008]
       produces:
@@ -179,7 +179,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-010
-      status: 'todo'
+      status: 'done'
       title: 'Say highlight in the manual and in CLAUDE.md'
       depends_on: [task-007, task-008]
       produces:
@@ -190,7 +190,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-011
-      status: 'todo'
+      status: 'done'
       title: 'Run the gate checks and render one file'
       depends_on: [task-009, task-010]
       produces:
@@ -200,7 +200,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-012
-      status: 'todo'
+      status: 'done'
       title: 'Record the sentences, the look and the limits as built in the run document'
       depends_on: [task-011]
       produces:
@@ -485,6 +485,7 @@ task_catalog:
         - 'grep -c "highlight" src/main/resources/guide/guide.md and src/test/resources/guide/golden.md both print at least 1.'
       risk: 'low'
       confidence: 85
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
       human_review: 'none'
       escalation_triggers:
         - 'the guide exceeds the 30 KB budget of GuideTest'
@@ -505,12 +506,14 @@ task_catalog:
         - 'grep -n "highlight" CLAUDE.md finds the new paragraph.'
       risk: 'low'
       confidence: 80
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
       human_review: 'none'
       escalation_triggers:
         - 'the paragraph needs a sentence that the built behaviour does not support'
       delegation_tier: 'standard'
     - id: task-011
       title: 'Run the gate checks and render one file'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
       source_requirements:
         prd:
           - 'REQ-2'
@@ -555,6 +558,7 @@ task_catalog:
       escalation_triggers:
         - 'a sentence in the run document differs from the one the tests pin'
       delegation_tier: 'cheap'
+      results: 'tier cheap, model haiku, effort high, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -949,3 +953,25 @@ agent_assignment_plan:
 ## 10. Escalation Rules
 
 Escalate (record in the prg and stop the dependent tasks) when: an existing map test, golden `.puml` file or golden view changes; `scripts/byte-identity.sh` reports a change; the kernel contract number would have to move; a check fails twice for a cause outside this run; a sentence in a document differs from the one a test pins. This run operates under the autonomy override of complete-run, so a `human_required` task would have been executed without a stop; there is none, and the reviews of task-003 and of the gate are independent agent verifications.
+
+## 11. Final Execution Manifest
+
+```yaml
+execution_manifest:
+  status: 'done'
+  recommendation: 'proceed'
+  autonomy_level: 'high'
+  total_tasks: 12
+  autonomous_tasks: 12
+  review_before_tasks: 0
+  review_after_tasks: 0
+  human_required_tasks: 0
+  blocked_tasks: 0
+  required_human_gates: []
+  highest_risk_tasks:
+    - task-003
+  criteria:
+    - 'Every criterion of the Executive Summary is true (re-checked at Stage 11 against the files and by running the commands; the run document, section Verification, records each result).'
+    - 'The PlantUML of one workspace of the guide was rendered to an image and shows the heavier link and the calmer rest (ASM-5).'
+  next_action: 'The author commits the working tree (tasks 009 to 012 and the documents) by path.'
+```

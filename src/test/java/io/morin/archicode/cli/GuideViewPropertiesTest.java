@@ -111,6 +111,19 @@ class GuideViewPropertiesTest {
     }
 
     @Test
+    void theHighlightOfAMapChangesTheDrawing() {
+        val opened = draw("application", "map", "opened: [shop]");
+        assertEquals(opened, draw("application", "map", "opened: [shop]\nhighlight: []"));
+        val one = draw(
+            "application",
+            "map",
+            "opened: [shop]\nhighlight:\n  - source: shop.web\n    destination: shop.catalog\n    label: reads"
+        );
+        assertNotEquals(opened, one);
+        assertTrue(text.contains("`highlight`"));
+    }
+
+    @Test
     void theKeyOfAnElementViewChangesTheDrawing() {
         assertNotEquals(
             draw("application", "overview", "element: shop", "probe"),
