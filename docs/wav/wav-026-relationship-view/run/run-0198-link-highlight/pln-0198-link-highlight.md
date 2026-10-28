@@ -156,7 +156,7 @@ execution_graph:
       risk: 'medium'
       confidence: 75
     - id: task-008
-      status: 'todo'
+      status: 'done'
       title: 'Teach the editor read schema the step key and regenerate the manifest schema golden'
       depends_on: [task-006]
       produces:
@@ -463,6 +463,7 @@ task_catalog:
         - 'git diff --stat shows src/test/resources/schemas/workspace.schema.json unchanged.'
       risk: 'medium'
       confidence: 80
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, done by the orchestrator: read-schema.js, the page and the manifest schema golden committed (8099eda) after the implementer finished; EditorReadSchemaTest, ManifestSchemaTest, GuideTest pass, test:unit 3080 pass 0 fail, editor:check exit 0'
       human_review: 'none'
       escalation_triggers:
         - 'a top-level name is added to the page (names.json would change)'
