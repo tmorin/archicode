@@ -17,6 +17,8 @@ wave: 026
 - 2026-10-28: implement workflow generated with cost profile low-cost. Overrides of declared tiers (4): stage-11 and final-check: the run holds a sensitive task, both take the elevated pair sonnet/high | task-003 declared standard: verifier raised to sonnet/high (risk high); executor kept at sonnet/medium; no human gate | task-004 declared standard: verifier raised to sonnet/high (risk high); executor kept at sonnet/medium; no human gate | task-008 declared standard: verifier raised to sonnet/high (risk high); executor kept at sonnet/medium; no human gate. Human gate required for: no task. Autonomy override: none.
 - 2026-10-28: task-001 applied the Stage 5 findings F1 to F9 to tdd-0200-links-in-stories.md: F1 one write place per step (Add to story writes the step key `highlight` with `properties.links`, Keep as named view writes `properties.highlight`, the step field edits the step key; DEC-1, DEC-5, FLOW-1), F2 a compared highlighted link keeps `dg-arrow-<state>` and `dg-arrow-hl` is added to the defs only when highlighting (DEC-4), F3 e2e uses `startHostedPage()` on the sample for the player and a spec-written `files` workspace for authoring (IMP-10, Verification), F4 paths and the 1,341 count (IMP-1, IMP-5, IMP-10), F5 no new part (IMP-5, component diagram, CON-1, the `none` edge deleted), F6 one shared helper (DEC-7, IMP-6, RISK-3), F7 leaving a story keeps the live `mapHighlight`/`mapLinks` (DEC-1), F8 the three baseline relationships named and `shop`/`shop.app` opened (ASM-4, DEC-8), F9 REQ-8 split into REQ-8a and REQ-8b (IMP-8 to REQ-8b, IMP-9 to REQ-8a); no decision changed; pinned fixture counts listed below.
 - 2026-10-28: implement workflow stopped, state blocked: task not verified ["task-003: failed twice (Criterion 'the model and saved-view tests pass' is not met. map-highlight-saved-view.test.js has 9 failing tests of 29, for example 'the page of a view with a highlight draws that link heavy and the other one calm', 'the form of a Map view has a Highlight field', 'the save writes the highlight and keeps the comments' (the add control id view-edit-add-highlight does not exist yet) and 'the story editor has a field for the key of a step' (no /step-highlight/ in the step HTML). All depend on rendering (task-004) or controls (task-005). The plan's stated verification for task-003 is therefore internally inconsistent with the task split. The task's own state and model code is correct (map-highlight-model.test.js 11 of 11, ratchet 99 of 99, editor:check exit 0). check-editor-statements '--statements HEAD passes' also fails, but only because nothing is committed.)"]
+- 2026-10-28: implement workflow generated with cost profile low-cost. Overrides of declared tiers (3): stage-11 and final-check: the run holds a sensitive task, both take the elevated pair sonnet/high | task-004 declared standard: verifier raised to sonnet/high (risk high); executor kept at sonnet/medium; no human gate | task-008 declared standard: verifier raised to sonnet/high (risk high); executor kept at sonnet/medium; no human gate. Human gate required for: no task. Autonomy override: none.
+- 2026-10-29: implement workflow stopped, state awaiting-commit: task-012 wait for a commit this workflow does not make. Commit the files by path, then regenerate (the tasks are still pending, the next generation resumes them and reruns the check) [{"task":"task-012","title":"Run the gate checks","files":["docs/wav/wav-026-relationship-view/run/run-0200-links-in-stories/prg-0200-links-in-stories.md","src/test/resources/brightcart/description.mjs","src/test/javascript/viewpoint-kernel/editor-writes-layers.test.js","src/test/java/io/morin/archicode/cli/MapLinksSharedTest.java","src/test/java/io/morin/archicode/cli/GenerateStoriesTest.java"],"check":"The `--statements HEAD` test in `src/test/javascript/editor-build/check-editor-statements.test.js` fails because the working tree differs from `HEAD` and nobody commits in this workflow. It can only be green after the operator commits the run."}]
 
 ## Findings
 
@@ -52,6 +54,25 @@ List of every pinned count. The story `order_flow` adds `layered/shared/story.or
 - `src/test/java/io/morin/archicode/doc/ManifestSchemaCorpusTest.java`: floor `>= 400` manifests; `ManifestCorpus` discovers the new manifest by itself.
 - `src/test/javascript/viewpoint-kernel/brightcart-views-and-stories.test.js` (line 72: `shared.length === views + stories` of `ENTRIES`, derived), `shipped-files.test.js`, `story-steps-not-empty.test.js`, `story-player-scene.test.js` (list of shipped stories, lines 46 to 52), `BrightcartViewsAndStoriesTest`, `BrightcartSampleTest`: derived from `ENTRIES` or the folder; the scene test lists stories by name and may gain `order_flow`.
 - `CLAUDE.md`: the Bundle I/O paragraph ("the 61 files", "421 manifests", "1,190 mutated workspaces" of the sweep) moves; owned by the documents task.
+
+## Gate checks (task-012)
+
+| Command | Result |
+| ------- | ------ |
+| `npm run editor:build` | exit 0 (77 parts) |
+| `npm run editor:check` | exit 0 (upward pairs 99, max 99) |
+| `node scripts/check-editor.mjs --list` | exit 0, ratchet 99, not above 99 |
+| `npm run lint` | exit 0 |
+| `npm run format:check` | first run exit 1 on `src/test/resources/brightcart/description.mjs` (one long `description` line); `prettier --write`, then exit 0 |
+| `npm run sample:check` | exit 0 |
+| `npm run test:coverage` | the suite had two failures. (1) `editor-writes-layers.test.js` "a rename in baseline reaches...": the rename now also rewrites `shared/story.order_flow.yaml`, so the expected file list gained it (test fixed, 52 pass). (2) `check-editor-statements.test.js` "the real page: --statements HEAD passes": compares the page with `HEAD`, so it cannot pass while the run's page changes are uncommitted; it passes once the run is committed (not a floor, not a code defect). Figure 93.06 % of lines, 96.24 % of functions; `--reuse` says the figure holds the floor; the floor file is unchanged, no floor lowered. |
+| `npm run test:timing` | exit 0 |
+| `./mvnw test-compile pmd:check` | first run 1 finding (`LiteralsFirstInComparisons`, `MapLinksSharedTest` line 185), fixed; then exit 0 |
+| `./mvnw verify -DskipITs=false` | first run 1 failure (`GenerateStoriesTest.anUnknownStoryIsOneErrorLineAndNothingIsWritten` pinned the story list, now `fork_tour, order_flow, order_journey, seller_journey`), fixed; then BUILD SUCCESS, 1587 unit tests (2 skipped), 39 integration tests, coverage checks met |
+| `npx playwright test` (chromium, firefox) | exit 0, 62 passed, including `story-flow.spec.js` |
+| `scripts/byte-identity.sh` | exit 0: 332 commands compared, 326 identical, 5 accepted by the exceptions, 0 unexpected, self-check ok |
+
+Open item for the operator: the `--statements HEAD` test needs the run committed before it can be green. Untracked `jacoco-quarkus.exec` is a build artefact.
 
 ## Lessons Learnt
 

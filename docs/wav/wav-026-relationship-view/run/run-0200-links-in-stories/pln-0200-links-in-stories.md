@@ -107,7 +107,7 @@ execution_graph:
       risk: 'high'
       confidence: 70
     - id: task-004
-      status: 'pending'
+      status: 'done'
       title: 'Draw the highlight: dg-hl, dg-calm, the marker and the glyph'
       depends_on: [task-003]
       produces:
@@ -117,7 +117,7 @@ execution_graph:
       risk: 'high'
       confidence: 70
     - id: task-005
-      status: 'pending'
+      status: 'done'
       title: 'Add the authoring controls'
       depends_on: [task-003]
       produces:
@@ -127,7 +127,7 @@ execution_graph:
       risk: 'medium'
       confidence: 70
     - id: task-006
-      status: 'pending'
+      status: 'done'
       title: 'Rewrite the step highlight on a rename and a move'
       depends_on: [task-003]
       produces:
@@ -137,7 +137,7 @@ execution_graph:
       risk: 'medium'
       confidence: 75
     - id: task-007
-      status: 'pending'
+      status: 'done'
       title: 'Announce the highlight and play it in the story player'
       depends_on: [task-003]
       produces:
@@ -147,7 +147,7 @@ execution_graph:
       risk: 'medium'
       confidence: 75
     - id: task-008
-      status: 'pending'
+      status: 'done'
       title: 'Ship the story order_flow, update the pinned counts and the byte-identity list'
       depends_on: [task-003]
       produces:
@@ -160,7 +160,7 @@ execution_graph:
       risk: 'high'
       confidence: 65
     - id: task-009
-      status: 'pending'
+      status: 'done'
       title: 'Extend MapLinksSharedTest, the command line side of the contract'
       depends_on: [task-004, task-008]
       produces:
@@ -170,7 +170,7 @@ execution_graph:
       risk: 'medium'
       confidence: 75
     - id: task-010
-      status: 'pending'
+      status: 'done'
       title: 'Write the end-to-end spec story-flow.spec.js'
       depends_on: [task-005, task-006, task-007, task-008]
       produces:
@@ -180,7 +180,7 @@ execution_graph:
       risk: 'medium'
       confidence: 65
     - id: task-011
-      status: 'pending'
+      status: 'done'
       title: 'Say the highlight in the manual, the guide and CLAUDE.md'
       depends_on: [task-005, task-007, task-008]
       produces:
@@ -190,7 +190,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-012
-      status: 'pending'
+      status: 'done'
       title: 'Run the gate checks'
       depends_on: [task-009, task-010, task-011]
       produces:
@@ -397,6 +397,7 @@ task_catalog:
         - 'the SVG of a Map with no highlight changes by one byte'
         - 'the calm and the heavy links fail the contrast check in one theme'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed after escalation to effort high, inline (leaf), independently verified'
     - id: task-005
       title: 'Add the authoring controls'
       source_requirements:
@@ -420,6 +421,7 @@ task_catalog:
         - 'a control needs render() in a part below composition/'
         - 'the panel box changes the markup of a Map with no highlight'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed after escalation to effort high, inline (leaf), independently verified'
     - id: task-006
       title: 'Rewrite the step highlight on a rename and a move'
       source_requirements:
@@ -439,6 +441,7 @@ task_catalog:
       escalation_triggers:
         - 'a rename writes a file of a plateau it did not write before'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-007
       title: 'Announce the highlight and play it in the story player'
       source_requirements:
@@ -458,6 +461,7 @@ task_catalog:
       escalation_triggers:
         - 'the editor differs by one byte after the player closes'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-008
       title: 'Ship the story order_flow, update the pinned counts and the byte-identity list'
       source_requirements:
@@ -483,6 +487,7 @@ task_catalog:
         - 'the 0.19.0 jar fails on the new story instead of ignoring the keys'
         - 'a count is pinned in a place task-001 did not list'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-009
       title: 'Extend MapLinksSharedTest, the command line side of the contract'
       source_requirements:
@@ -501,6 +506,7 @@ task_catalog:
       escalation_triggers:
         - 'the editor and the command line disagree on a link of the contract file'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-010
       title: 'Write the end-to-end spec story-flow.spec.js'
       source_requirements:
@@ -520,6 +526,7 @@ task_catalog:
       escalation_triggers:
         - 'the spec is flaky in two runs; drop the flow with its reason, never retry'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-011
       title: 'Say the highlight in the manual, the guide and CLAUDE.md'
       source_requirements:
@@ -542,6 +549,7 @@ task_catalog:
       escalation_triggers:
         - 'the golden file differs by more than the new paragraph'
       delegation_tier: 'cheap'
+      results: 'tier cheap, model haiku, effort high, profile low-cost, passed after escalation to effort medium, inline (leaf), independently verified'
     - id: task-012
       title: 'Run the gate checks'
       source_requirements:
@@ -561,6 +569,7 @@ task_catalog:
         - 'npm run test:e2e passes in Chromium and Firefox; scripts/byte-identity.sh shows no unexpected difference.'
       risk: 'medium'
       confidence: 80
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, done by the orchestrator after the commit 6dead76: lint, format:check, editor:check (ratchet 99 of 99) and sample:check exit 0, npm run test:unit 3223 tests, 3222 pass, 0 fail, 1 skipped by design; the heavy runs (verify, coverage, e2e, byte-identity) belong to the gate P3 agent'
       human_review: 'none'
       escalation_triggers:
         - 'a floor must be lowered to pass'
