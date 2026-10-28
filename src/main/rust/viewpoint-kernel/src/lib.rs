@@ -100,6 +100,10 @@
 //! those relationships (the ones the element `source` declares, same destination, same label after trimming, none matching only no label), the boxes of their ends,
 //! the pinned elements with what is open inside them, and what encloses these, and no other element. An entry that matches nothing is an `error`; an unknown end is
 //! `dangling reference: x` (and joins `dangling`); the technology layer refuses the key. Absent, null or empty: the map as it was.
+//! `highlight` (wave 026, run 0198, issue #143; additive, the version stays 5): a map of the application layer may list `{source, destination, label?}` as `links` does,
+//! checked the same way, after `links`. It changes nothing that is drawn; a link that stands for one of those relationships (a grouped link when any of its relationships is,
+//! a merged link as one) says `highlighted: true`, a key absent otherwise. `only_changes` drops the mark with the link. Read for `viewpoint: map` only. The technology layer
+//! refuses the key; an unknown end is `dangling reference: x` and joins `dangling`.
 //!
 //! What changed (version 5, wave 014, issues #70 and #34). It is breaking for a host of `compare`, and for it only:
 //!   - `compare` takes `on_one_chain`, whether one of the two plateaus is the past of the other (an ancestor in the tree of plateaus, which only the host
@@ -426,6 +430,10 @@ struct Input {
     /// before the shape of an entry is looked at (see `map_links`).
     #[serde(default, deserialize_with = "null_as_default")]
     links: Vec<serde_json::Value>,
+    /// map of the application layer (wave 026, run 0198, #143): relationships to mark, each `{source, destination, label?}` as in `links`. They change nothing that is drawn:
+    /// the link that stands for one says `highlighted: true`. Absent, null or empty: nothing is marked. Kept as JSON for the same reason as `links` (see `map_highlight`).
+    #[serde(default, deserialize_with = "null_as_default")]
+    highlight: Vec<serde_json::Value>,
     /// map of the technology layer, with `app_elements`: draw the applications deployed on the nodes that are open, as boxes inside them (absent or null: true; false:
     /// the nodes only). Without `app_elements`, or in the map of the application layer, it changes nothing.
     #[serde(default)]
@@ -470,14 +478,28 @@ fn normal_label(label: Option<&str>) -> Option<String> {
 
 /// The entries of `links`, read; none when the input names none. Refused in the technology layer, then checked for shape.
 fn map_links(input: &Input) -> Result<Vec<LinkRef>, String> {
-    if input.links.is_empty() {
+    read_link_refs("links", &input.links, input)
+}
+
+/// The entries of `highlight`, read as those of `links` are.
+fn map_highlight(input: &Input) -> Result<Vec<LinkRef>, String> {
+    read_link_refs("highlight", &input.highlight, input)
+}
+
+fn read_link_refs(
+    key: &str,
+    entries: &[serde_json::Value],
+    input: &Input,
+) -> Result<Vec<LinkRef>, String> {
+    if entries.is_empty() {
         return Ok(Vec::new());
     }
     if input.layer == "technology" {
-        return Err("links is read in the map of the application layer only".to_string());
+        return Err(format!(
+            "{key} is read in the map of the application layer only"
+        ));
     }
-    input
-        .links
+    entries
         .iter()
         .map(|entry| {
             serde_json::from_value::<LinkRef>(entry.clone())
@@ -544,6 +566,9 @@ struct OutLink {
     /// comparison only: what the relationships the link stands for add up to (see `aggregate`)
     #[serde(skip_serializing_if = "Option::is_none")]
     change: Option<Change>,
+    /// map with `highlight`: some relationship the link stands for is one the author named. Last, and set once the links are merged, so that it breaks no tie of the order.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    highlighted: bool,
 }
 
 /// One box of the diagram. `id` is what links refer to; `reference` is the element behind it (they differ for the
@@ -1029,6 +1054,7 @@ fn emit_links(
                 secondary: false,
                 relationships: g.synthetic_src.clone(),
                 change: None,
+                highlighted: false,
             });
         } else {
             for r in &g.natural {
@@ -1052,6 +1078,7 @@ fn emit_links(
                         .cloned()
                         .collect(),
                     change: None,
+                    highlighted: false,
                 });
             }
         }
@@ -1124,6 +1151,7 @@ fn overview(input: &Input, shared: &Shared, focal: &str) -> Result<Content, Stri
 fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
     let known = &shared.known;
     let link_refs = map_links(input)?;
+    let highlight_refs = map_highlight(input)?;
     for reference in input
         .pinned
         .iter()
@@ -1132,7 +1160,7 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
     {
         require(known, reference)?;
     }
-    for link in &link_refs {
+    for link in link_refs.iter().chain(highlight_refs.iter()) {
         require(known, &link.source)?;
         require(known, &link.destination)?;
     }
@@ -1141,27 +1169,8 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
         .iter()
         .map(|l| (l.source.as_str(), l.destination.as_str(), l.label()))
         .collect();
-    for (n, link) in link_refs.iter().enumerate() {
-        let matches = input
-            .elements
-            .iter()
-            .filter(|e| e.reference == link.source)
-            .flat_map(|e| e.relationships.iter())
-            .any(|r| {
-                r.destination == link.destination
-                    && normal_label(r.label.as_deref()) == link.label()
-            });
-        if !matches {
-            let label = match link.label() {
-                Some(l) => format!("the label `{l}`"),
-                None => "no label".to_string(),
-            };
-            return Err(format!(
-                "`links[{n}]` names a relationship from `{}` to `{}` with {label}, which does not exist",
-                link.source, link.destination
-            ));
-        }
-    }
+    check_entries_match("links", &link_refs, input)?;
+    check_entries_match("highlight", &highlight_refs, input)?;
     let selecting = !link_refs.is_empty();
     let opened: HashSet<&str> = input.opened.iter().map(String::as_str).collect();
     let within = |x: &str, roots: &[String]| roots.iter().any(|r| x == r || is_descendant_of(x, r));
@@ -1333,6 +1342,57 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
     Ok((items, links))
 }
 
+/// Every entry of `key` must name a relationship that an element of the layer declares (decided on the model, before any filter).
+fn check_entries_match(key: &str, entries: &[LinkRef], input: &Input) -> Result<(), String> {
+    for (n, link) in entries.iter().enumerate() {
+        let matches = input
+            .elements
+            .iter()
+            .filter(|e| e.reference == link.source)
+            .flat_map(|e| e.relationships.iter())
+            .any(|r| {
+                r.destination == link.destination
+                    && normal_label(r.label.as_deref()) == link.label()
+            });
+        if !matches {
+            let label = match link.label() {
+                Some(l) => format!("the label `{l}`"),
+                None => "no label".to_string(),
+            };
+            return Err(format!(
+                "`{key}[{n}]` names a relationship from `{}` to `{}` with {label}, which does not exist",
+                link.source, link.destination
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Marks the links that stand for a relationship `highlight` names: the relationship is declared by `source`, towards `destination`, with the label (none: no label).
+/// Run on the links as drawn (merged, folded), so that a grouped link is marked when any relationship it stands for is.
+fn mark_highlighted(links: &mut [OutLink], input: &Input) {
+    if input.viewpoint != "map" || input.highlight.is_empty() {
+        return;
+    }
+    let named: HashSet<(String, String, Option<String>)> = map_highlight(input)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|h| {
+            let label = h.label();
+            (h.source, h.destination, label)
+        })
+        .collect();
+    for link in links.iter_mut() {
+        link.highlighted = link.relationships.iter().any(|r| {
+            named.contains(&(
+                r.from.clone(),
+                r.destination.clone(),
+                normal_label(r.label.as_deref()),
+            ))
+        });
+    }
+}
+
 /// The map of the technology layer draws the applications deployed on its nodes: it was given the application layer, and `applications` is not false.
 fn applies_applications(input: &Input) -> bool {
     input.viewpoint == "map"
@@ -1429,6 +1489,7 @@ fn deep(input: &Input, shared: &Shared) -> Result<(Content, Vec<String>), String
             secondary: false,
             relationships: BTreeSet::from([OutRel::of(&m.from, &m.rel)]),
             change: None,
+            highlighted: false,
         });
     }
     let item_refs = with_ancestors(refs);
@@ -1718,6 +1779,7 @@ fn deep_technology(input: &Input, shared: &Shared) -> Result<Content, String> {
                             secondary: !input.application_links,
                             relationships: BTreeSet::from([OutRel::of_application(source, rel)]),
                             change: None,
+                            highlighted: false,
                         });
                     }
                 }
@@ -1741,6 +1803,7 @@ fn deep_technology(input: &Input, shared: &Shared) -> Result<Content, String> {
             secondary: false,
             relationships: BTreeSet::from([OutRel::of_application(d.source, d.rel)]),
             change: None,
+            highlighted: false,
         });
     }
     Ok((items, links))
@@ -1881,6 +1944,7 @@ fn collapse(
             secondary: group.iter().all(|(l, _)| l.secondary),
             relationships,
             change: None,
+            highlighted: false,
         });
     }
     (kept, merge_links(out))
@@ -2058,7 +2122,8 @@ fn build_in(input: &Input, shared: &Shared) -> Result<(Vec<OutItem>, Vec<OutLink
         } else {
             (items, links)
         };
-    let (items, links) = collapse(items, merge_links(links), input);
+    let (items, mut links) = collapse(items, merge_links(links), input);
+    mark_highlighted(&mut links, input);
     Ok(annotate(items, links, input, shared))
 }
 
@@ -2275,6 +2340,7 @@ fn dangling_in_lists(input: &Input) -> Vec<String> {
     let ends: Vec<String> = map_links(input)
         .unwrap_or_default()
         .into_iter()
+        .chain(map_highlight(input).unwrap_or_default())
         .flat_map(|l| [l.source, l.destination])
         .collect();
     input
