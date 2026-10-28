@@ -102,6 +102,83 @@ class GenerateStoriesTest {
                 - {source: "partner", destination: "shop.web", label: "pushes"}
     """;
 
+    /** A story whose steps name a saved Map with a highlight, or carry their own recipe, and say their own {@code highlight}. */
+    private static final String HIGHLIGHT_STORY = """
+      header:
+        kind: "archicode.morin.io/story"
+        version: "1"
+      content:
+        id: "hl_story"
+        steps:
+          - view: "hl_view"
+          - view: "hl_view"
+            highlight:
+              - {source: "shop.api", destination: "shop.billing", label: "bills"}
+          - view: "hl_view"
+            highlight: []
+          - viewpoint: "map"
+            layer: "application"
+            properties:
+              opened: ["shop"]
+              highlight:
+                - {source: "shop.web", destination: "shop.api", label: "calls"}
+            highlight:
+              - {source: "shop.api", destination: "shop.billing", label: "bills"}
+          - viewpoint: "map"
+            layer: "application"
+            properties:
+              opened: ["shop"]
+            highlight:
+              - {source: "shop.web", destination: "shop.api", label: "calls"}
+          - viewpoint: "map"
+            layer: "application"
+            properties:
+              opened: ["shop"]
+    """;
+
+    /** A story whose step highlights a relationship that does not exist. */
+    private static final String BAD_HIGHLIGHT_STORY = """
+      header:
+        kind: "archicode.morin.io/story"
+        version: "1"
+      content:
+        id: "bad_story"
+        steps:
+          - viewpoint: "map"
+            layer: "application"
+            properties:
+              opened: ["shop"]
+            highlight:
+              - {source: "shop.web", destination: "shop.api", label: "reads"}
+    """;
+
+    /** A story told at {@code baseline}, which has no partner, and whose steps highlight the partner. */
+    private static final String PLATEAU_HIGHLIGHT_STORY = """
+      header:
+        kind: "archicode.morin.io/story"
+        version: "1"
+      content:
+        id: "plateau_hl"
+        steps:
+          - viewpoint: "map"
+            layer: "application"
+            at: "baseline"
+            properties:
+              opened: ["shop"]
+            highlight:
+              - {source: "shop.web", destination: "shop.api", label: "calls"}
+              - {source: "partner", destination: "shop.web", label: "pushes"}
+          - viewpoint: "map"
+            layer: "application"
+            at: "baseline"
+            properties:
+              opened: ["shop"]
+              links:
+                - {source: "partner", destination: "shop.web", label: "pushes"}
+            highlight:
+              - {source: "partner", destination: "shop.web", label: "pushes"}
+    """;
+
     @Inject
     CommandLine.IFactory factory;
 
@@ -398,6 +475,104 @@ class GenerateStoriesTest {
             puml(workspace, "links_story", "03-map", "application/step_03.puml").contains("Partner"),
             "step 3 is drawn without the partner"
         );
+    }
+
+    @Test
+    @SneakyThrows
+    void aStepHighlightReplacesTheHighlightOfTheViewItDrawsAndNeverWritesTheView() {
+        val workspace = MapLinksTest.plain(
+            dir.resolve("hl"),
+            MapLinksTest.mapView(
+                "hl_view",
+                """
+                opened: ["shop"]
+                highlight:
+                  - {source: "shop.web", destination: "shop.api", label: "calls"}
+                """
+            )
+        );
+        write(workspace, "manifests/story.yaml", HIGHLIGHT_STORY);
+        val savedView = Files.readString(workspace.resolveSibling("manifests/view.yaml"));
+        val result = stories(workspace, "--story", "hl_story");
+        assertEquals(0, result.exit(), result.err());
+        val calls = "**<U+25B6>** **calls**";
+        val bills = "**<U+25B6>** **bills**";
+        // 1: no key on the step, the highlight of the view
+        val first = puml(workspace, "hl_story", "01-hl_view", "application/hl_view.puml");
+        assertTrue(first.contains(calls) && !first.contains(bills), first);
+        // 2: the key on the step replaces it
+        val second = puml(workspace, "hl_story", "02-hl_view", "application/hl_view.puml");
+        assertTrue(second.contains(bills) && !second.contains(calls), second);
+        // 3: an empty list switches it off, and nothing is calm either
+        val third = puml(workspace, "hl_story", "03-hl_view", "application/hl_view.puml");
+        assertFalse(third.contains("D55E00") || third.contains("A6A6A6"), third);
+        // 4: a step with its own recipe, and the key twice: the key of the step wins
+        val fourth = puml(workspace, "hl_story", "04-map", "application/step_04.puml");
+        assertTrue(fourth.contains(bills) && !fourth.contains(calls), fourth);
+        // 5: the key of the step alone
+        assertTrue(puml(workspace, "hl_story", "05-map", "application/step_05.puml").contains(calls));
+        // 6: no highlight anywhere, a map as it always was
+        val sixth = puml(workspace, "hl_story", "06-map", "application/step_06.puml");
+        assertFalse(sixth.contains("D55E00") || sixth.contains("A6A6A6"), sixth);
+        // the saved view is what it was, and drawn by `views generate` it still highlights the call
+        assertEquals(savedView, Files.readString(workspace.resolveSibling("manifests/view.yaml")));
+        val views = CliHarness.run(
+            factory,
+            errorOutput,
+            "--workspace",
+            workspace.toString(),
+            "views",
+            "generate",
+            "-i",
+            "hl_view"
+        );
+        assertEquals(0, views.exit(), views.err());
+        val drawn = Files.readString(workspace.resolveSibling("views/plantuml/application/hl_view.puml"));
+        assertTrue(drawn.contains(calls) && !drawn.contains(bills), drawn);
+    }
+
+    @Test
+    @SneakyThrows
+    void aStepHighlightThatNamesNoRelationshipIsOneErrorLine() {
+        val workspace = MapLinksTest.plain(dir.resolve("bad"), null);
+        write(workspace, "manifests/story.yaml", BAD_HIGHLIGHT_STORY);
+        val result = stories(workspace, "--story", "bad_story");
+        assertEquals(1, result.exit(), result.err());
+        assertTrue(
+            result
+                .err()
+                .contains(
+                    "`highlight[0]` names a relationship from `shop.web` to `shop.api` with the label `reads`, which does not exist"
+                ),
+            result.err()
+        );
+        assertTrue(result.err().startsWith("error: "), result.err());
+        assertEquals(1, result.err().split("\n").length, result.err());
+    }
+
+    @Test
+    @SneakyThrows
+    void aStepHighlightThePlateauLacksIsAWarningAndTheStepIsDrawnWithoutItOrSkipped() {
+        val workspace = MapLinksTest.layered(dir.resolve("plateau"), PLATEAU_HIGHLIGHT_STORY);
+        val result = stories(workspace, "--plateau", "to-be", "--story", "plateau_hl");
+        assertEquals(0, result.exit(), result.err());
+        assertTrue(
+            result
+                .err()
+                .contains(
+                    "warning: the step plateau_hl/1 is drawn without the highlight `partner -> shop.web`, which the plateau `baseline` does not have\n"
+                ),
+            result.err()
+        );
+        val first = puml(workspace, "plateau_hl", "01-map", "application/step_01.puml");
+        assertTrue(first.contains("**<U+25B6>** **calls**"), first);
+        assertFalse(first.contains("Partner"), first);
+        // the second step's links all lack the plateau: skipped, as before the highlight
+        assertTrue(
+            result.err().contains("warning: skip plateau_hl/2: none of its links is in the plateau `baseline`\n"),
+            result.err()
+        );
+        assertFalse(Files.exists(workspace.resolveSibling("views-stories/plateau_hl/02-map")));
     }
 
     @SneakyThrows

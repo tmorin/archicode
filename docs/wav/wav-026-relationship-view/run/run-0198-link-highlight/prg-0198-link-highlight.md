@@ -1,0 +1,24 @@
+---
+type: prg
+status: active
+run: 0198
+wave: 026
+---
+
+# Progress Log: Run 0198
+
+## Log
+
+- 2026-10-28: Stage 4 drafted tdd-0198-link-highlight.md (profile TDD+pln, no PRD): `highlight` list of the `links` entry on a view and a step, kernel `highlighted` on the link (contract 5 unchanged), PlantUML heavier highlighted and calmer other links, editor only learns the step key in READ_SCHEMA; no question left open as a blocker (Q-1 deferred to W-6).
+- 2026-10-28: Stage 5 KDML review of tdd-0198-link-highlight.md done inline by the stage agent (a different agent from the Stage 4 drafter, so the review is independent), against the code of run 0197 as referent: overall Acceptable (KISS 4, DRY 4, MECE 3, LEAN 4, LUCID 4, C 3), 0 S3, 4 S2 (F-1 DEC-7 and IMP-8 give the wrong path of the case table, it is `src/test/javascript/viewpoint-kernel/map-links-cases.json`, which run 0197 created; F-2 nothing says what `highlight` does on a view or step whose viewpoint is not a map, `KernelViewpointFactory` forwards `links` for `map` only; F-3 DEC-5 does not say what the bold label covers when a link has qualifiers and does not name where the 'view is highlighting' test is computed; F-4 DEC-3 says the marking runs after the links are emitted but not that it is after `merge_links` and outside its key, which IMP-1 and RISK-1 each leave as a check to do), 4 S1; findings returned to the main agent, not applied (Stage 5 leaves applying to it); no question left open as a blocker (Q-1 stays deferred to W-6).
+- 2026-10-28: Stage 8 drafted pln-0198-link-highlight.md (profile TDD+pln): 12 tasks, three parallel groups, task-001 applies Stage 5 findings F-1 to F-4 to the TDD, Rust then wasm then Java then PlantUML then guide/manual then gate; block-style YAML, complete_wave.py run --stage implement exits 0, run status set to planned; no blocker.
+- 2026-10-28: Stage 9 PRD/TDD/pln consistency check done inline (no PRD: TDD and repository only): every source_requirements ID (REQ-1 to REQ-7, DEC, IMP, CTR, CON, RISK, ASM) exists in the TDD and no task invents scope; repository spot-check found the case table, lib_tests.rs, MapLinks, Story, GenerateStoriesCommand, ViewInPlateau, LinkRenderer, read-schema.js and the goldens in place, and corrected the pln where it named files wrongly (MapLinksTest and TechnologyMapTest are in io.morin.archicode.cli, there is no ViewInPlateauTest so its cases go in MapLinksTest, Link.java is in viewpoint/ not viewpoint/kernel/, HighlightMarksTest is new); added gap-005 (the wave plan's W-4 paths omit src/main/editor, DEC-8 edits read-schema.js, bounded by task-008's triggers and recorded by task-012); the TDD still awaits F-1 to F-4, which task-001 applies, so it is a carried item and not a blocker; blocking_gaps is empty, nothing carried to Stage 10; the generator check (complete_wave.py run --stage implement) exits 0 after the edit; no blocker.
+- 2026-10-28: implement workflow generated with cost profile low-cost. Overrides of declared tiers (2): stage-11 and final-check: the run holds a sensitive task, both take the elevated pair sonnet/high | task-003 declared standard: verifier raised to sonnet/high (risk high); executor kept at sonnet/medium; no human gate. Human gate required for: no task. Autonomy override: none.
+- 2026-10-28: implement workflow stopped, state awaiting-commit: task-004 wait for a commit this workflow does not make. Commit the files by path, then regenerate (the tasks are still pending, the next generation resumes them and reruns the check) [{"task":"task-004","title":"Regenerate the wasm and the page block","files":["/home/tibo/git-perso/archicode/src/main/wasm/viewpoint_kernel.wasm","/home/tibo/git-perso/archicode/src/main/resources/editor-webapp/standalone.html"],"check":"test:unit has one failure, check-editor-statements \"--statements HEAD passes\". It compares the page with HEAD, and the new kernel block at line 33306 is uncommitted by design. It needs the wasm and page committed, which this task cannot do."}]
+
+## Findings
+
+## Lessons Learnt
+
+- Nothing yet.
+- 2026-10-28: Stage 6 resolved the TDD's one open question inline: Q-1 (grouped highlighted link in the editor and player) decided as the whole link drawn highlighted, as the kernel's per-link flag says, no finer rule; recorded in the TDD Open Questions and DEF-1; no question left open as a blocker.

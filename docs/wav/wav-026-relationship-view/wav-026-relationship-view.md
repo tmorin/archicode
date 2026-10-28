@@ -122,7 +122,7 @@ wave_manifest:
       slug: link-highlight
       phase: P2
       depends_on: [W-3]
-      run: null
+      run: 0198
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
