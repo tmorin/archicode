@@ -1,12 +1,16 @@
 package io.morin.archicode.cli;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchemaGenerator;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.manifest.ManifestSchema;
+import io.morin.archicode.resource.story.Story;
 import io.morin.archicode.resource.workspace.Workspace;
 import jakarta.inject.Inject;
 import java.util.Locale;
@@ -87,10 +91,28 @@ public class GetSchemasQuery implements Runnable {
      */
     @SneakyThrows
     public Object generateSchema(SchemaType type, ObjectWriter mapper) {
-        val schemaGen = new JsonSchemaGenerator(mapper);
         return switch (type) {
-            case WORKSPACE -> schemaGen.generateSchema(Workspace.class);
+            case WORKSPACE -> new JsonSchemaGenerator(withoutStepHighlight()).generateSchema(Workspace.class);
             case MANIFEST -> ManifestSchema.generate(mapperFactory.create(MapperFormat.JSON), mapper);
         };
+    }
+
+    /**
+     * The mapper the schema of the workspace is generated with: it does not see the {@code highlight} of a story step (wave 026,
+     * run 0198), because that schema is the one of the last release, byte for byte (wave 022, T1); the schema of the manifests
+     * lists the key.
+     */
+    private ObjectMapper withoutStepHighlight() {
+        return mapperFactory
+            .create(MapperFormat.JSON)
+            .copy()
+            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+            .addMixIn(Story.Step.class, StepWithoutHighlight.class);
+    }
+
+    /** The mix-in that hides the {@code highlight} of a step from the schema of the workspace. */
+    private interface StepWithoutHighlight {
+        @JsonIgnore
+        JsonNode getHighlight();
     }
 }

@@ -46,6 +46,13 @@ public class Link implements Comparable<Link> {
     @Builder.Default
     Change change = Change.NONE;
 
+    /**
+     * Whether the link stands for a relationship that a Map view names in its {@code highlight} (wave 026, run 0198): the kernel
+     * says so, the renderer draws it. It is derived from the relationships, so it is no part of the order.
+     */
+    @Builder.Default
+    boolean highlighted = false;
+
     private static final String SEPARATOR = "\0";
 
     /**

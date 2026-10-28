@@ -61,7 +61,7 @@ class HighlightMarksTest {
         val viewpoint = Mockito.mock(Viewpoint.class);
         Mockito.when(viewpoint.getWorkspace()).thenReturn(workspace);
         Mockito.when(viewpoint.isCompared()).thenReturn(compared);
-        val links = new java.util.LinkedHashSet<Link>();
+        val links = new LinkedHashSet<Link>();
         links.add(link);
         links.addAll(List.of(others));
         Mockito.when(viewpoint.getLinks()).thenReturn(links);

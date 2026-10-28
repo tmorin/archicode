@@ -41,6 +41,9 @@ public class GenerateViewsCommand implements Runnable {
 
     // Picocli sets the options on fields, so the services are injected into fields too (the command has no constructor)
 
+    /** The comparison of a run that names its views, which the plateau pass reads to tell what a {@code highlight} lacks. */
+    private Comparison namedComparison;
+
     @CommandLine.ParentCommand
     ViewsGroup viewsGroup;
 
@@ -170,6 +173,7 @@ public class GenerateViewsCommand implements Runnable {
         if (named && againstId != null) {
             base = workspaceFactory.create(workspacePath, viewsDirPath, againstId);
             comparison = new PlateauComparer(mapperFactory.createLazy(MapperFormat.JSON)).compare(base, workspace);
+            namedComparison = comparison;
             union = unionOf(workspace, base, comparison, againstId);
             unionFacets = facetWorkspaces(union, comparison);
         }
@@ -352,7 +356,8 @@ public class GenerateViewsCommand implements Runnable {
             view,
             "`" + view.getId() + "`",
             "the view `" + view.getId() + "`",
-            () -> comparison
+            () -> comparison,
+            () -> comparison != null ? comparison : namedComparison
         );
     }
 

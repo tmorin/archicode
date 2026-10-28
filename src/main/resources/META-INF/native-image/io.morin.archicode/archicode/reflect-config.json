@@ -2052,6 +2052,24 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.rendering.plantuml.HighlightMarks",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.cli.GetSchemasQuery$StepWithoutHighlight",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.rendering.plantuml.ChangeMarks$1",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,

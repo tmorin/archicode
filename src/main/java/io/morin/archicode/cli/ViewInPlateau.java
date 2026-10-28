@@ -51,6 +51,23 @@ class ViewInPlateau {
         String subject,
         Supplier<Comparison> comparison
     ) {
+        return canBeDrawn(warnings, workspace, view, named, subject, comparison, comparison);
+    }
+
+    /**
+     * As above; {@code highlighted} is the comparison that decides which {@code highlight} entries the plateau lacks, which is
+     * the comparison of the run even when the plateau alone is drawn (a relationship that the plateau removed is not missing from a
+     * run that compares it, wave 026 run 0198).
+     */
+    static boolean canBeDrawn(
+        Warnings warnings,
+        Workspace workspace,
+        View view,
+        String named,
+        String subject,
+        Supplier<Comparison> comparison,
+        Supplier<Comparison> highlighted
+    ) {
         if (workspace.getPlateau() == null) {
             return true;
         }
@@ -82,7 +99,7 @@ class ViewInPlateau {
             }
         }
         if (missing.isEmpty()) {
-            return linksCanBeDrawn(warnings, index, view, named, subject, plateau, comparison);
+            return partsCanBeDrawn(warnings, index, view, named, subject, plateau, comparison, highlighted);
         }
         val names = String.join(
             ", ",
@@ -107,7 +124,42 @@ class ViewInPlateau {
             return false;
         }
         warnings.warn("%s is drawn without %s, which the plateau `%s` does not have", subject, names, plateau);
-        return linksCanBeDrawn(warnings, index, view, named, subject, plateau, comparison);
+        return partsCanBeDrawn(warnings, index, view, named, subject, plateau, comparison, highlighted);
+    }
+
+    /** The {@code links} decide whether the map is drawn; the {@code highlight} only says what it lacks (wave 026, run 0198). */
+    private static boolean partsCanBeDrawn(
+        Warnings warnings,
+        ElementIndex index,
+        View view,
+        String named,
+        String subject,
+        String plateau,
+        Supplier<Comparison> comparison,
+        Supplier<Comparison> highlighted
+    ) {
+        if (!linksCanBeDrawn(warnings, index, view, named, subject, plateau, comparison)) {
+            return false;
+        }
+        val entries = MapLinks.wellFormed(view.getProperties(), MapLinks.HIGHLIGHT);
+        if (entries.isEmpty() || view.getLayer() == View.Layer.TECHNOLOGY) {
+            return true;
+        }
+        val compared = highlighted.get();
+        entries
+            .stream()
+            .filter(entry -> !MapLinks.exists(index, entry))
+            .filter(entry -> compared == null || !MapLinks.existsInUnion(compared, entry))
+            .forEach(entry ->
+                warnings.warn(
+                    "%s is drawn without the highlight `%s -> %s`, which the plateau `%s` does not have",
+                    subject,
+                    entry.get("source").asText(),
+                    entry.get("destination").asText(),
+                    plateau
+                )
+            );
+        return true;
     }
 
     /**
