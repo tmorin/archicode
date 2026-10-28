@@ -131,12 +131,14 @@ async function startServer(example, files = {}) {
 // The page as the hosted site serves it (wave 025, run 0192, DEC-11; run 0193, IMP-12): a Node `http` server on
 // 127.0.0.1 and a free port, with no JVM and so no <meta name="archicode-server">, that answers the layout of the
 // website: `GET /editor/` with the committed standalone.html and `GET /editor/samples/brightcart.yaml` with the
-// committed sample, and 404 for everything else (`/` too). A relative fetch of `samples/brightcart.yaml` from the page
+// committed sample, `GET /` with the presentation page of the website (src/site/index.html, W-5 of run 0194), and 404 for everything else. A relative fetch of `samples/brightcart.yaml` from the page
 // therefore reaches the file at the address it has on GitHub Pages, which is what proves the base path. Both files are
 // read at each request, so a rebuilt page or sample is what the next test gets. `requests` lists the paths asked, in
-// order. Resolves with the URL (`http://127.0.0.1:<port>/editor/`), the list and a stop function.
+// order. Resolves with the URL (`http://127.0.0.1:<port>/editor/`), `siteUrl` (`http://127.0.0.1:<port>/`), the list and a stop function.
 const SAMPLE = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'samples', 'brightcart.yaml');
+const SITE = path.join(ROOT, 'src', 'site', 'index.html');
 const HOSTED_ROUTES = new Map([
+  ['/', { file: SITE, type: 'text/html; charset=utf-8' }],
   ['/editor/', { file: PAGE, type: 'text/html; charset=utf-8' }],
   ['/editor/samples/brightcart.yaml', { file: SAMPLE, type: 'text/yaml; charset=utf-8' }]
 ]);
@@ -162,6 +164,7 @@ async function startHostedPage() {
   });
   return {
     url: `http://127.0.0.1:${port}/editor/`,
+    siteUrl: `http://127.0.0.1:${port}/`,
     requests,
     stop: () =>
       new Promise((resolve) => {

@@ -240,18 +240,18 @@ jobs:
         id: playwright
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
       - name: "Cache the Playwright browsers"
-        # the browsers of one Playwright version are fixed builds (Chromium, Firefox: about 1 GB); a new version of the
+        # the browsers of one Playwright version are fixed builds (Chromium, Firefox, WebKit); a new version of the
         # library is a new key
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}-chromium-firefox
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}-chromium-firefox-webkit
       - name: "Install the browsers of the end-to-end tests"
         # the browsers of the pinned version (nothing is downloaded when the cache hit) and the system libraries they
         # need (apt, always); no server of ours, no token
-        run: npx playwright install --with-deps chromium firefox
+        run: npx playwright install --with-deps chromium firefox webkit
       - name: "Run the end-to-end tests"
-        # `npm run test:e2e`: a real browser (Chromium, then Firefox) against `archicode editor serve` on the jar built
+        # `npm run test:e2e`: a real browser (Chromium, Firefox, then WebKit for four specs) against `archicode editor serve` on the jar built
         # above (target/quarkus-app), on a copy of a shipped example per test; one worker and no retry
         # (playwright.config.js). Run the same command to see them; src/test/e2e
         id: e2e
