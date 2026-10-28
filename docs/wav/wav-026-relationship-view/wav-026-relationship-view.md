@@ -80,7 +80,7 @@ wave_manifest:
       slug: landing-name-field
       phase: P1
       depends_on: []
-      run: null
+      run: 0195
       delegation: standard
       likely_paths:
         - 'src/main/editor/style.css'
@@ -93,7 +93,7 @@ wave_manifest:
       slug: fold-recipe-repair
       phase: P1
       depends_on: []
-      run: null
+      run: 0196
       delegation: standard
       profile: TDD+pln
       likely_paths:
