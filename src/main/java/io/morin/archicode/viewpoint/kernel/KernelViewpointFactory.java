@@ -214,6 +214,26 @@ public class KernelViewpointFactory implements ViewpointFactory {
     }
 
     /**
+     * The relationships the map marks ({@code highlight}, issue #143, wave 026 run 0198): given to the kernel only when entries
+     * remain. In a workspace of a plateau or of a facet an entry whose relationship is not there is dropped (the command line warns,
+     * see {@code ViewInPlateau}); in a comparison a relationship that only the plateau compared with had is there.
+     */
+    private void mapHighlight(ObjectNode input, View view, Workspace workspace, ElementIndex mainIndex) {
+        val filtered = workspace.isFaceted() || workspace.getPlateau() != null;
+        val kept = objectMapper.createArrayNode();
+        for (val entry : MapLinks.entries(view.getProperties(), view.getId(), MapLinks.HIGHLIGHT)) {
+            val there =
+                MapLinks.exists(mainIndex, entry) || (comparison != null && MapLinks.existsInUnion(comparison, entry));
+            if (!filtered || there) {
+                kept.add(entry);
+            }
+        }
+        if (!kept.isEmpty()) {
+            input.set(MapLinks.HIGHLIGHT, kept);
+        }
+    }
+
+    /**
      * What the map of the technology layer draws besides its elements: the applications deployed on the nodes ({@code applications}) and the links ({@code relationships}).
      * Both are drawn unless the properties of the view say {@code false} (a value that is not the boolean {@code false} is no choice, as in the editor).
      */
@@ -277,6 +297,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
         if (map) {
             mapLists(input, view, workspace, mainIndex);
             mapLinks(input, view, workspace, mainIndex);
+            mapHighlight(input, view, workspace, mainIndex);
         }
         if (technology) {
             // the application layer: the applications deployed on the nodes, which the viewpoints of an element draw inside them and derive links from, and which the map
@@ -500,6 +521,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
                     )
                     .relationships(relationships)
                     .change(changeOf(node))
+                    .highlighted(node.path("highlighted").asBoolean(false))
                     .build()
             );
         }

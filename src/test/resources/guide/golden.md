@@ -143,6 +143,7 @@ Value types: `element-id`: The identifier of the element: one level of its refer
 - `steps`: array of objects
   - `against`: plateau-id
   - `at`: plateau-id
+  - `highlight`: any
   - `layer`: one of application, technology
   - `name`: string
   - `properties`: any

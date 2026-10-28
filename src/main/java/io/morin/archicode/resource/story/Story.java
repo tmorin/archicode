@@ -108,5 +108,12 @@ public class Story {
          */
         @Reference(Reference.To.PLATEAU)
         String against;
+
+        /**
+         * The relationships the step highlights (wave 026, run 0198, issue #143): entries of {@code source}, {@code destination}
+         * and optionally {@code label}, as the {@code highlight} of a Map view. Present, it replaces the highlight of the view the
+         * step draws (an empty list switches it off); absent, the view keeps its own.
+         */
+        com.fasterxml.jackson.databind.JsonNode highlight;
     }
 }

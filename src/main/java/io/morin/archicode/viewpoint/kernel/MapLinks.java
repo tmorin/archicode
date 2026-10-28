@@ -23,6 +23,9 @@ public class MapLinks {
     /** The key of the property, in the properties of a view and in the input of the kernel. */
     public static final String KEY = "links";
 
+    /** The key of the highlight (wave 026, run 0198, issue #143): entries of the same shape, which mark links and add none. */
+    public static final String HIGHLIGHT = "highlight";
+
     private static final Set<String> KEYS = Set.of("source", "destination", "label");
 
     /**
@@ -34,17 +37,27 @@ public class MapLinks {
      * @throws ArchiCodeException for an entry that is not a mapping with {@code source}, {@code destination} and optionally {@code label}
      */
     public static List<JsonNode> entries(JsonNode properties, String viewId) {
+        return entries(properties, viewId, KEY);
+    }
+
+    /**
+     * The entries of the list under {@code key} ({@code links} or {@code highlight}), each checked for its shape.
+     *
+     * @param key the key whose list is read, which the error sentence names
+     */
+    public static List<JsonNode> entries(JsonNode properties, String viewId, String key) {
         val entries = new ArrayList<JsonNode>();
         if (properties == null) {
             return entries;
         }
-        val list = properties.path(KEY);
+        val list = properties.path(key);
         for (var i = 0; i < list.size(); i++) {
             val entry = list.get(i);
             if (!hasShape(entry)) {
                 throw new ArchiCodeException(
-                    "the view %s: `links[%d]` is a mapping with `source`, `destination` and optionally `label`, and %s is not one",
+                    "the view %s: `%s[%d]` is a mapping with `source`, `destination` and optionally `label`, and %s is not one",
                     viewId,
+                    key,
                     i,
                     entry
                 );
@@ -59,9 +72,14 @@ public class MapLinks {
      * left to {@link #entries} to refuse.
      */
     public static List<JsonNode> wellFormed(JsonNode properties) {
+        return wellFormed(properties, KEY);
+    }
+
+    /** As above, for the list under {@code key}. */
+    public static List<JsonNode> wellFormed(JsonNode properties, String key) {
         val entries = new ArrayList<JsonNode>();
         if (properties != null) {
-            properties.path(KEY).forEach(entry -> {
+            properties.path(key).forEach(entry -> {
                 if (hasShape(entry)) {
                     entries.add(entry);
                 }

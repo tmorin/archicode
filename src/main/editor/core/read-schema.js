@@ -75,6 +75,7 @@ const READ_SCHEMA = {
       fields: {
         against: 'text',
         at: 'text',
+        highlight: 'any',
         layer: 'enum:APPLICATION,TECHNOLOGY',
         name: 'text',
         properties: 'any',

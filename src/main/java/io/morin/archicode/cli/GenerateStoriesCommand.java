@@ -1,5 +1,7 @@
 package io.morin.archicode.cli;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -11,6 +13,7 @@ import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.KernelViewpointFactory;
+import io.morin.archicode.viewpoint.kernel.MapLinks;
 import io.morin.archicode.viewpoint.kernel.PlateauComparer;
 import io.morin.archicode.workspace.Removal;
 import io.morin.archicode.workspace.StateTags;
@@ -302,19 +305,34 @@ public class GenerateStoriesCommand implements Runnable {
             if (found.isEmpty()) {
                 warnings.warn("skip %s: the view `%s` is not declared", label, step.getView());
             }
-            return found.orElse(null);
+            return found.map(view -> withHighlight(view, step)).orElse(null);
         }
         if (step.getViewpoint() == null || step.getViewpoint().isBlank()) {
             warnings.warn("skip %s: it names no view and carries no viewpoint", label);
             return null;
         }
-        return View.builder()
+        val carried = View.builder()
             .id("step_%02d".formatted(number))
             .viewpoint(step.getViewpoint())
             .layer(step.getLayer() == null ? View.Layer.APPLICATION : step.getLayer())
             .name(step.getName())
             .properties(step.getProperties())
             .build();
+        return withHighlight(carried, step);
+    }
+
+    /** The view with the {@code highlight} of the step in place of its own, when the step says one; the view is not written. */
+    private static View withHighlight(View view, Story.Step step) {
+        val highlight = step.getHighlight();
+        if (highlight == null || highlight.isNull()) {
+            return view;
+        }
+        val properties =
+            view.getProperties() instanceof ObjectNode object
+                ? object.deepCopy()
+                : JsonNodeFactory.instance.objectNode();
+        properties.set(MapLinks.HIGHLIGHT, highlight);
+        return view.toBuilder().properties(properties).build();
     }
 
     private static String idOf(Workspace workspace) {

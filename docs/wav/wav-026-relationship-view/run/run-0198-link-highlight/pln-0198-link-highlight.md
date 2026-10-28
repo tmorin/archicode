@@ -134,7 +134,7 @@ execution_graph:
       risk: 'medium'
       confidence: 75
     - id: task-006
-      status: 'todo'
+      status: 'done'
       title: 'Forward highlight through MapLinks, KernelViewpointFactory, Link, Story.Step and ViewInPlateau'
       depends_on: [task-004, task-005]
       produces:
@@ -145,7 +145,7 @@ execution_graph:
       risk: 'medium'
       confidence: 75
     - id: task-007
-      status: 'todo'
+      status: 'done'
       title: 'Draw the highlight in PlantUML (HighlightMarks, LinkRenderer)'
       depends_on: [task-006]
       produces:
@@ -394,6 +394,7 @@ task_catalog:
       delegation_tier: 'standard'
     - id: task-006
       title: 'Forward highlight through MapLinks, KernelViewpointFactory, Link, Story.Step and ViewInPlateau'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed after escalation to effort high, inline (leaf), independently verified'
       source_requirements:
         prd:
           - 'REQ-1'
@@ -424,6 +425,7 @@ task_catalog:
       delegation_tier: 'standard'
     - id: task-007
       title: 'Draw the highlight in PlantUML (HighlightMarks, LinkRenderer)'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed after escalation to effort high, inline (leaf), independently verified'
       source_requirements:
         prd:
           - 'REQ-2'
