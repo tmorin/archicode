@@ -99,6 +99,18 @@ class GuideViewPropertiesTest {
     }
 
     @Test
+    void theLinksOfAMapChangeTheDrawing() {
+        val opened = draw("application", "map", "opened: [shop]");
+        assertEquals(opened, draw("application", "map", "opened: [shop]\nlinks: []"));
+        val one = draw(
+            "application",
+            "map",
+            "opened: [shop]\nlinks:\n  - source: shop.web\n    destination: shop.catalog\n    label: reads"
+        );
+        assertNotEquals(opened, one);
+    }
+
+    @Test
     void theKeyOfAnElementViewChangesTheDrawing() {
         assertNotEquals(
             draw("application", "overview", "element: shop", "probe"),

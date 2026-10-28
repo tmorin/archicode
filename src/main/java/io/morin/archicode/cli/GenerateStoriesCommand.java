@@ -188,7 +188,11 @@ public class GenerateStoriesCommand implements Runnable {
             return;
         }
         val workspace = plateau(at);
-        if (!ViewInPlateau.canBeDrawn(warnings, workspace, view, label, "the step " + label)) {
+        if (
+            !ViewInPlateau.canBeDrawn(warnings, workspace, view, label, "the step " + label, () ->
+                against == null ? null : compare(at, against).comparison()
+            )
+        ) {
             return;
         }
         var from = workspace;

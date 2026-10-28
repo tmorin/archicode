@@ -195,6 +195,25 @@ public class KernelViewpointFactory implements ViewpointFactory {
     }
 
     /**
+     * The relationships the map draws ({@code links}, issue #143): the key is given to the kernel only when entries remain, so
+     * that a map without it is drawn as it always was. In a workspace of a plateau or of a facet, an entry whose relationship
+     * the index lacks is dropped (the rule of {@link #mapLists} for {@code pinned}; the command line warns, see
+     * {@code ViewInPlateau}); in any other the kernel refuses it.
+     */
+    private void mapLinks(ObjectNode input, View view, Workspace workspace, ElementIndex mainIndex) {
+        val filtered = comparison == null && (workspace.isFaceted() || workspace.getPlateau() != null);
+        val kept = objectMapper.createArrayNode();
+        for (val entry : MapLinks.entries(view.getProperties(), view.getId())) {
+            if (!filtered || MapLinks.exists(mainIndex, entry)) {
+                kept.add(entry);
+            }
+        }
+        if (!kept.isEmpty()) {
+            input.set(MapLinks.KEY, kept);
+        }
+    }
+
+    /**
      * What the map of the technology layer draws besides its elements: the applications deployed on the nodes ({@code applications}) and the links ({@code relationships}).
      * Both are drawn unless the properties of the view say {@code false} (a value that is not the boolean {@code false} is no choice, as in the editor).
      */
@@ -257,6 +276,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
         }
         if (map) {
             mapLists(input, view, workspace, mainIndex);
+            mapLinks(input, view, workspace, mainIndex);
         }
         if (technology) {
             // the application layer: the applications deployed on the nodes, which the viewpoints of an element draw inside them and derive links from, and which the map
