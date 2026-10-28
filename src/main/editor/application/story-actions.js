@@ -140,12 +140,21 @@ function addCurrentViewToStoryChoice(choice) {
     return;
   }
   // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
-  const named = savedViews().find(
-    (view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition)
-  );
-  const step = named
-    ? { view: named.id }
-    : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
+  // the highlight is the step's own key (wave 026, run 0200, DEC-5): the view a step names is found without it, and the key says what the step draws heavy
+  const { highlight, ...properties } = definition.properties;
+  const withoutHighlight = JSON.stringify(Object.assign({}, definition, { properties }));
+  const stripped = (view) => {
+    const canonical = canonicalViewDefinition(view);
+    const { highlight: dropped, ...rest } = canonical.properties;
+    return { canonical, rest: JSON.stringify(Object.assign({}, canonical, { properties: rest })), dropped };
+  };
+  const views = savedViews().map((view) => ({ view, ...stripped(view) }));
+  const exact = views.find((entry) => JSON.stringify(entry.canonical) === JSON.stringify(definition));
+  const same = exact || views.find((entry) => entry.rest === withoutHighlight);
+  const named = same ? same.view : null;
+  const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties };
+  if (!exact && highlight && highlight.length) step.highlight = highlight;
+  else if (!exact && same && same.dropped && same.dropped.length) step.highlight = []; // the view has one to switch off
   const plateaus = choice.withPlateaus ? storyStepPlateaus() : null;
   const keeps = !!plateaus && !plateaus.blocked && !plateaus.problem;
   if (keeps) {
@@ -241,7 +250,7 @@ function goToStoryStep(storyId, index) {
   if (!story || index < 0 || index >= steps.length) return;
   selectedStoryId = storyId;
   drawPlateausOfStep(storyId, steps[index]);
-  const problem = stepProblem(steps[index], undefined, index + 1) || applySavedView(stepView(steps[index]));
+  const problem = stepProblem(steps[index], undefined, index + 1) || applySavedView(stepViewForDrawing(steps[index]));
   if (problem && !mapIsShown() && currentPerspective !== 'elements') {
     currentPerspective = 'map';
     useDiagramHost('main');

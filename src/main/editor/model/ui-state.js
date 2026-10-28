@@ -215,6 +215,8 @@ let mapHidden = [];
 
 /** The relationships the Map of the application layer is narrowed to, as entries `{ source, destination, label }` (none: the whole map; view state, wave 026 run 0199). */
 let mapLinks = [];
+/** The relationships a Map of the application layer draws heavy (wave 026, run 0200, issue #143, DEC-1): entries `{ source, destination, label }`, view state like `mapLinks`. */
+let mapHighlight = [];
 
 /** The controls of the list of relationships under the tree of the page Applications: whether it is open, its text filter, its kind select ('' is any kind) and "Ticked only" (view state, reset with the folder; wave 026 run 0199). */
 let mapLinksListOpen = false;

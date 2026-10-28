@@ -23,6 +23,12 @@ function mapStateOf(layer) {
     set links(value) {
       mapLinks = value;
     },
+    get highlight() {
+      return mapHighlight;
+    },
+    set highlight(value) {
+      mapHighlight = value;
+    },
     get pinned() {
       return mapPinned;
     },
@@ -125,6 +131,14 @@ function currentMapState() {
       AppState.index.application,
       AppState.baseline && AppState.baseline.index.application
     ]);
+  // the relationships drawn heavy that the model drawn has; the others are dropped, never told (DEC-3)
+  if (layer === 'application' && mapHighlight.length) {
+    const highlight = drawnLinkEntries(mapHighlight, [
+      AppState.index.application,
+      AppState.baseline && AppState.baseline.index.application
+    ]);
+    if (highlight.length) mapState.highlight = highlight;
+  }
   return mapState;
 }
 

@@ -237,6 +237,10 @@ function diagramCacheKey(recipe, comparison, viewKey) {
     isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
     // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
     isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
+    // wave 026 run 0200: the relationships drawn heavy; a map without one keeps the key it had
+    isMap && mapState.highlight && mapState.highlight.length
+      ? 'highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))
+      : '',
     // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
     isMap && layer === 'technology'
       ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
@@ -422,6 +426,13 @@ function viewDiagramRecipe(view, index, host, baselineIndex) {
           index.application,
           baselineIndex ? baselineIndex.application : null
         ]);
+      // the highlight the model drawn has; one it lacks is dropped and never makes "nothing is drawn" (DEC-3)
+      const wanted = linkEntriesOf(properties.highlight, 'highlight').entries;
+      if (wanted.length)
+        recipe.mapState.highlight = drawnLinkEntries(wanted, [
+          index.application,
+          baselineIndex ? baselineIndex.application : null
+        ]);
     }
   } else {
     recipe.reference = properties.element;
@@ -492,6 +503,9 @@ function mountDiagramIfNeeded() {
   ]
     .concat(
       isMap && mapState.links && mapState.links.length ? [JSON.stringify(canonicalLinkEntries(mapState.links))] : [],
+      isMap && mapState.highlight && mapState.highlight.length
+        ? ['highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))]
+        : [],
       isMap && recipe.layer === 'technology' ? ['technology'] : [],
       readonly ? ['view:' + recipe.view.id] : []
     )
@@ -528,6 +542,7 @@ function mountDiagramIfNeeded() {
           opened: mapState.opened,
           pinned: mapState.pinned,
           links: mapState.links,
+          highlight: mapState.highlight,
           applications: recipePartsOf(recipe).applications,
           relationships: recipePartsOf(recipe).relationships
         }

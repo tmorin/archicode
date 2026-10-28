@@ -179,7 +179,7 @@ async function storyStepScene(storyId, index, options) {
       changesOnly: drawing.changesOnly
     };
     const recipe = viewDiagramRecipe(
-      stepView(step),
+      stepViewForDrawing(step),
       drawing.index,
       'story',
       drawing.baseline ? drawing.baseline.index : null
@@ -195,6 +195,7 @@ async function storyStepScene(storyId, index, options) {
             opened: mapState.opened,
             pinned: mapState.pinned,
             links: mapState.links,
+            highlight: mapState.highlight,
             applications: recipePartsOf(recipe).applications,
             relationships: recipePartsOf(recipe).relationships,
             source

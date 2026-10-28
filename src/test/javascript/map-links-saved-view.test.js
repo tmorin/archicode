@@ -114,9 +114,8 @@ test('Apply on the page Applications sets the choice, and the screen is the view
     linkPairsOf(page.scene().html),
     ['customer -> shop.web.frontend', 'shop.web.api -> shop.catalog.service'].sort()
   );
-  const plainView = view(page, 'web_links');
-  delete plainView.properties.highlight;
-  assert.equal(page.sandbox.viewMatchesScreen(plainView), true);
+  // run 0200: the highlight is live state now, so the screen is the view with it
+  assert.equal(page.sandbox.viewMatchesScreen(view(page, 'web_links')), true);
 });
 
 test('a view whose layer is technology does not read links, and a Map of the application layer with an empty list is the whole map', async () => {
@@ -250,10 +249,14 @@ test('Keep as named view writes the links of the screen, and finds the view agai
   assert.equal(again.id, kept.id, 'one view, not two');
 });
 
-test('a view that has a highlight is not the screen, since the screen does not draw it: Keep as named view makes a second view without it', async () => {
+test('a view that has a highlight is the screen once applied (run 0200): Keep as named view finds it again; without the highlight the screen is another view', async () => {
   const page = await open();
   assert.equal(page.sandbox.applySavedView(view(page, 'web_links')), null);
   await page.show();
+  assert.equal(page.sandbox.viewMatchesScreen(view(page, 'web_links')), true);
+  const same = plain(run(page.sandbox, "viewForDefinition(currentViewDefinition(), 'Same')"));
+  assert.equal(same.id, 'web_links', 'one view, not two');
+  run(page.sandbox, 'mapHighlight = [];');
   assert.equal(page.sandbox.viewMatchesScreen(view(page, 'web_links')), false);
   const kept = plain(run(page.sandbox, "viewForDefinition(currentViewDefinition(), 'Without')"));
   assert.notEqual(kept.id, 'web_links');

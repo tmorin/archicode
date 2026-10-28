@@ -4,6 +4,8 @@
 // which each case adds its saved view). This test opens each workspace in the editor, draws each case on the page of a view, on the page Applications once the view is applied and in the
 // story scene of a step that carries the same recipe (the real `render()` over the embedded kernel and a fake layout engine), and asserts the file; `MapLinksSharedTest.java` asserts the
 // command line, so either side drifting fails a test. A case the command line skips (`drawn: false`) is a view the editor says cannot be drawn in this plateau.
+// Run 0200 (TDD DEC-9, REQ-7) adds `highlighted` to every case: the links the command line draws heavy (`thickness=5` in the .puml), which the editor draws with `dg-hl`; and `step` to the
+// cases that are a story step (`{ view, ...step }`, drawn by `stories generate`): the page of the view and the page Applications draw the view alone, the story scene draws the step.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,6 +40,13 @@ async function openCase(c) {
   return { page, view };
 }
 
+/** The links drawn heavy in a markup, as the contract lists them. */
+const highlightedOf = (html) =>
+  Array.from(html.matchAll(/<g class="dg-link"[^>]*data-from="([^"]*)" data-to="([^"]*)"[^>]*>[\s\S]*?<\/g>/g))
+    .filter((m) => /class="dg-edge[^"]*\bdg-hl\b/.test(m[0]))
+    .map((m) => m[1] + ' -> ' + m[2])
+    .sort();
+
 const NONE = /None of the relationships it shows is in the plateau “[^”]+”\./;
 
 test('the contract names the cases the command line was run on, and every one has a view, boxes and links to compare', () => {
@@ -54,7 +63,33 @@ test('the contract names the cases the command line was run on, and every one ha
     cases.some((c) => !c.drawn),
     'a view the command line skips'
   );
+  assert.ok(
+    cases.some((c) => c.highlighted.length > 0 && !c.step),
+    'a view that highlights'
+  );
+  assert.ok(
+    cases.some((c) => c.step && c.step.highlight.length === 0),
+    'a step key that switches the highlight of the view off'
+  );
+  assert.ok(
+    cases.some((c) => c.step && c.step.highlight.length > 0),
+    'a step key'
+  );
+  assert.ok(
+    cases.some((c) => c.drawn && (c.properties.highlight || []).length > 0 && c.highlighted.length === 0),
+    'a highlight that marks nothing'
+  );
+  assert.ok(
+    cases.some((c) => c.against && c.highlighted.length > 0),
+    'a compared plateau'
+  );
   for (const c of cases) {
+    assert.ok(Array.isArray(c.highlighted), c.name + ': highlighted is listed');
+    assert.deepEqual(c.highlighted, c.highlighted.slice().sort(), c.name + ': sorted');
+    assert.ok(
+      c.highlighted.every((l) => c.links.includes(l)),
+      c.name + ': a highlighted link is a link drawn'
+    );
     assert.ok(Array.isArray(c.properties.links) && c.properties.links.length > 0, c.name + ': a view with links');
     assert.deepEqual(c.boxes, c.boxes.slice().sort(), c.name + ': sorted');
     assert.deepEqual(c.links, c.links.slice().sort(), c.name + ': sorted');
@@ -79,12 +114,13 @@ test('the page of a view draws the boxes and the links the command line draws, f
     const html = page.scene().html;
     assert.deepEqual(boxIdsOf(html), c.boxes, c.name + ': boxes');
     assert.deepEqual(linkPairsOf(html), c.links, c.name + ': links');
+    if (!c.step) assert.deepEqual(highlightedOf(html), c.highlighted, c.name + ': the heavy links');
     drawn++;
   }
   assert.equal(drawn, cases.filter((c) => c.drawn).length);
 });
 
-test('the page Applications draws them too once the view is applied, and the screen is the view (the highlight apart)', async () => {
+test('the page Applications draws them too once the view is applied, and the screen is the view', async () => {
   for (const c of cases) {
     const { page, view } = await openCase(c);
     const problem = page.sandbox.applySavedView(page.sandbox.findSavedView(view.id));
@@ -98,6 +134,7 @@ test('the page Applications draws them too once the view is applied, and the scr
     const html = page.scene().html;
     assert.deepEqual(boxIdsOf(html), c.boxes, c.name + ' on the page Applications: boxes');
     assert.deepEqual(linkPairsOf(html), c.links, c.name + ' on the page Applications: links');
+    if (!c.step) assert.deepEqual(highlightedOf(html), c.highlighted, c.name + ' on the page Applications: heavy');
     assert.equal(
       run(page.sandbox, 'viewMatchesScreen(findSavedView(' + JSON.stringify(view.id) + '))'),
       true,
@@ -109,7 +146,10 @@ test('the page Applications draws them too once the view is applied, and the scr
 test('the story scene of a step that carries the recipe draws them, told at the plateau and compared with the other one', async () => {
   for (const c of cases) {
     const page = await openWorkspace(c.dir, 'baseline');
-    const step = { viewpoint: 'map', layer: 'application', properties: propertiesOf(c), at: c.plateau };
+    const step = Object.assign(
+      { viewpoint: 'map', layer: 'application', properties: propertiesOf(c), at: c.plateau },
+      c.step || {}
+    );
     if (c.against) step.against = c.against;
     page.sandbox.createManifestEntry('story', { id: 'tour', name: 'Tour', steps: [step] });
     const home = plain(run(page.sandbox, 'storyHomeNow()'));
@@ -121,7 +161,26 @@ test('the story scene of a step that carries the recipe draws them, told at the 
     assert.equal(scene.problem, null, c.name);
     assert.deepEqual(boxIdsOf(scene.diagram.html), c.boxes, c.name + ' in the story: boxes');
     assert.deepEqual(linkPairsOf(scene.diagram.html), c.links, c.name + ' in the story: links');
+    assert.deepEqual(highlightedOf(scene.diagram.html), c.highlighted, c.name + ' in the story: the heavy links');
   }
+});
+
+test('a step that names the view and carries the key draws the same as the step with its own recipe', async () => {
+  let checked = 0;
+  for (const c of cases.filter((candidate) => candidate.drawn && candidate.step)) {
+    const page = await openWorkspace(c.dir, 'baseline');
+    const view = addMapView(page, c.name, propertiesOf(c));
+    const step = Object.assign({ view: view.id, at: c.plateau }, c.step);
+    if (c.against) step.against = c.against;
+    page.sandbox.createManifestEntry('story', { id: 'tour', name: 'Tour', steps: [step] });
+    const home = plain(run(page.sandbox, 'storyHomeNow()'));
+    const scene = await page.sandbox.storyStepScene('tour', 0, { home });
+    assert.equal(scene.problem, null, c.name);
+    assert.deepEqual(linkPairsOf(scene.diagram.html), c.links, c.name + ': links');
+    assert.deepEqual(highlightedOf(scene.diagram.html), c.highlighted, c.name + ': the key replaces the view’s');
+    checked++;
+  }
+  assert.ok(checked >= 4, 'step cases: ' + checked);
 });
 
 test('an editor draws a Map without links as it did: the cases of the contract with their links taken out draw the whole map', async () => {
