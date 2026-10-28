@@ -149,7 +149,7 @@ wave_manifest:
       slug: hosted-editor-tests-and-docs
       phase: P2
       depends_on: [W-5]
-      run: null
+      run: 0194
       delegation: standard
       likely_paths:
         - 'src/test/e2e/**'
