@@ -126,7 +126,7 @@ wave_manifest:
       slug: import-export-and-sample
       phase: P2
       depends_on: [W-3, W-4]
-      run: null
+      run: 0193
       delegation: hard_judgment
       delegation_reason: 'changes the published pipeline and site (website assembly in ci-build.yaml, the jar and native resources, the presentation page) - live capability'
       likely_paths:

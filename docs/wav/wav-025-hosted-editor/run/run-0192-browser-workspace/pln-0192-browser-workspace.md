@@ -23,7 +23,7 @@ Standing rules for every task: `src/main/resources/editor-webapp/standalone.html
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'A visitor in Chrome, Firefox or Safari opens the hosted editor and works in a workspace the browser keeps for them, without choosing a folder: create, open, rename, delete, reopen after a reload, told plainly that the work lives in this browser (#162 proposal 2, wave 025 W-4).'
   technical_approach: 'Apply the Stage 5 decisions to the TDD, then write the tests first (harness option, store and equivalence tests, flows and landing tests, a hosted-page e2e spec), then a third directory handle backed by a second IndexedDB database (persistence/browser-store.js), the flows (application/browser-workspaces.js, folder-session, save hook, state), the card, bar, events and bootstrap, the Chromium-only pass with its guard test, the e2e run in Chromium and Firefox, and the gates with three mutation checks.'
   total_tasks: 11
@@ -181,7 +181,7 @@ execution_graph:
       risk: 'medium'
       confidence: 70
     - id: task-009
-      status: 'pending'
+      status: 'done'
       title: 'Do the Chromium-only pass and write browser-apis.test.js'
       depends_on: [task-008]
       produces:
@@ -192,7 +192,7 @@ execution_graph:
       risk: 'medium'
       confidence: 72
     - id: task-010
-      status: 'pending'
+      status: 'done'
       title: 'Run the e2e spec in Chromium and Firefox and fix what it finds'
       depends_on: [task-005, task-009]
       produces:
@@ -202,7 +202,7 @@ execution_graph:
       risk: 'medium'
       confidence: 65
     - id: task-011
-      status: 'pending'
+      status: 'done'
       title: 'Write the CLAUDE.md paragraph, run every gate, show the three mutations fail, record in the run document'
       depends_on: [task-010]
       produces:
@@ -464,6 +464,7 @@ task_catalog:
         - 'a feature blocks Firefox or Safari and the fix changes an existing behaviour of the page: log it as a finding and fix it in the smallest way'
         - 'MDN data cannot be reached: keep only names known to be after the floor, mark the rest C-UNCHECKED, continue'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-010
       title: 'Run the e2e spec in Chromium and Firefox and fix what it finds'
       source_requirements:
@@ -484,6 +485,7 @@ task_catalog:
         - 'a failure appears only in Firefox: find the cause, never add a retry or a wait to hide it'
         - 'the spec needs the answer of navigator.storage.persist'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-011
       title: 'Write the CLAUDE.md paragraph, run every gate, show the three mutations fail, record in the run document'
       source_requirements:
@@ -508,6 +510,7 @@ task_catalog:
         - 'a coverage floor would have to be lowered: add cases, never lower a floor'
         - 'a mutation does not make its test fail: the test is too weak, strengthen it and log it'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -1026,7 +1029,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 11
@@ -1057,7 +1060,7 @@ execution_manifest:
     - task-005
     - task-010
     - task-007
-  next_action: 'Run task-001: write the eighteen decisions of gap-001 into tdd-0192-browser-workspace.md, then task-002.'
+  next_action: 'None: every task is done and Stage 11 verified every criterion; the wave gate runs ./mvnw verify and scripts/byte-identity.sh.'
   criteria:
     - 'src/main/editor/persistence/browser-store.js and src/main/editor/application/browser-workspaces.js exist, are in layers.json, and their names are in names.json; ratchet.max is at most 99; no part is over 3000 lines'
     - 'the five new node test files pass and the existing folder, 360 px, structure, faithful-saves and odds-and-ends tests pass unchanged'
