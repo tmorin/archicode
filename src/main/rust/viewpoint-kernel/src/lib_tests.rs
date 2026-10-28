@@ -2814,3 +2814,166 @@ fn every_case_of_the_map_links_table_has_a_test_and_the_other_way_round() {
     tested.sort_unstable();
     assert_eq!(in_table, tested);
 }
+
+// ---- the `highlight` of a map: mark the links that stand for the relationships an author names (wave 026, run 0198, #143) ----
+
+fn map_highlight_case(name: &str) -> Value {
+    map_links_table()["highlight_cases"]
+        .as_array()
+        .expect("highlight_cases is a list")
+        .iter()
+        .find(|c| c["name"] == name)
+        .unwrap_or_else(|| panic!("no case {name} in highlight_cases of map-links-cases.json"))
+        .clone()
+}
+
+/// The input of the case; `highlight` is left out when `with_highlight` is false.
+fn map_highlight_input(case: &Value, with_highlight: bool) -> Value {
+    let table = map_links_table();
+    let mut input = json!({
+        "viewpoint": "map", "layer": "application",
+        "elements": table["workspaces"][case["workspace"].as_str().unwrap()].clone()
+    });
+    for (key, value) in case["input"].as_object().unwrap() {
+        if with_highlight || key != "highlight" {
+            input[key] = value.clone();
+        }
+    }
+    input
+}
+
+/// `from>to:label` of the links that say `highlighted: true`, sorted.
+fn highlighted_links(out: &Value) -> Vec<String> {
+    let mut all: Vec<String> = out["links"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no links in {out}"))
+        .iter()
+        .filter(|l| l["highlighted"] == true)
+        .map(|l| {
+            let (from, to) = (l["from"].as_str().unwrap(), l["to"].as_str().unwrap());
+            match l["label"].as_str() {
+                Some(label) => format!("{from}>{to}:{label}"),
+                None => format!("{from}>{to}"),
+            }
+        })
+        .collect();
+    all.sort();
+    all
+}
+
+/// The output with every `highlighted` key taken out of its links.
+fn without_marks(out: &Value) -> Value {
+    let mut out = out.clone();
+    for link in out["links"].as_array_mut().unwrap() {
+        link.as_object_mut().unwrap().remove("highlighted");
+    }
+    out
+}
+
+fn check_map_highlight_case(name: &str) {
+    let case = map_highlight_case(name);
+    let out = compute(map_highlight_input(&case, true));
+    let expect = &case["expect"];
+    if expect["same_as_without_highlight"] == true {
+        let without = compute(map_highlight_input(&case, false));
+        assert_eq!(
+            out, without,
+            "{name}: the map is drawn as without highlight"
+        );
+    } else if expect["same_boxes_and_links_as_without_highlight"] == true {
+        let without = compute(map_highlight_input(&case, false));
+        assert_eq!(
+            without_marks(&out),
+            without,
+            "{name}: highlight draws no box and no link"
+        );
+        assert!(
+            !highlighted_links(&out).is_empty(),
+            "{name}: the key is read: {out}"
+        );
+    } else if expect["no_highlighted_key"] == true {
+        assert!(out.get("error").is_none(), "{name}: {out}");
+        assert!(
+            !out.to_string().contains("highlighted"),
+            "{name}: no link says highlighted: {out}"
+        );
+    } else if let Some(sentence) = expect["error"].as_str() {
+        assert_eq!(error(&out), sentence, "{name}: {out}");
+    } else if let Some(prefix) = expect["error_prefix"].as_str() {
+        assert!(error(&out).starts_with(prefix), "{name}: {out}");
+    } else {
+        assert!(out.get("error").is_none(), "{name}: {out}");
+        let (_, links) = map_links_drawn(&out);
+        assert_eq!(
+            links,
+            strings(&expect["links"]),
+            "{name}: the links of {out}"
+        );
+        assert_eq!(
+            highlighted_links(&out),
+            strings(&expect["highlighted"]),
+            "{name}: the highlighted links of {out}"
+        );
+    }
+    if expect.get("error").is_some() || expect.get("error_prefix").is_some() {
+        match expect.get("dangling") {
+            Some(dangling) => assert_eq!(&out["dangling"], dangling, "{name}: {out}"),
+            None => assert!(out.get("dangling").is_none(), "{name}: {out}"),
+        }
+    }
+}
+
+macro_rules! map_highlight_cases {
+    ($($name:ident),* $(,)?) => {
+        $(
+            #[test]
+            fn $name() {
+                check_map_highlight_case(stringify!($name));
+            }
+        )*
+        const MAP_HIGHLIGHT_CASE_NAMES: &[&str] = &[$(stringify!($name)),*];
+    };
+}
+
+map_highlight_cases!(
+    one_relationship_is_highlighted,
+    a_grouped_link_is_highlighted_when_a_relationship_it_stands_for_is,
+    a_merged_link_is_highlighted_as_one,
+    two_entries_mark_two_links,
+    highlight_with_links_marks_inside_the_chosen_links,
+    a_highlight_outside_the_chosen_links_marks_nothing,
+    a_hidden_end_marks_nothing_and_is_no_error,
+    both_ends_in_one_closed_box_mark_nothing_and_are_no_error,
+    only_changes_drops_the_mark_with_the_link,
+    a_removed_relationship_of_a_union_can_be_highlighted,
+    no_label_matches_the_relationship_with_no_label_for_a_highlight,
+    a_repeated_highlight_entry_is_harmless,
+    an_absent_highlight_adds_no_key,
+    highlight_empty_is_highlight_absent,
+    highlight_null_is_highlight_absent,
+    highlight_does_not_change_the_boxes_or_the_links,
+    an_unknown_highlight_end,
+    no_highlight_match,
+    no_highlight_match_without_a_label,
+    the_technology_layer_refuses_highlight,
+    the_technology_refusal_comes_before_the_shape_of_highlight,
+    an_entry_of_highlight_that_is_not_a_mapping,
+    an_entry_of_highlight_with_an_unknown_key,
+    the_links_come_before_the_highlight,
+    the_ends_of_highlight_join_the_dangling_ends_of_the_lists,
+);
+
+#[test]
+fn every_case_of_the_highlight_table_has_a_test_and_the_other_way_round() {
+    let table = map_links_table();
+    let mut in_table: Vec<&str> = table["highlight_cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["name"].as_str().unwrap())
+        .collect();
+    let mut tested: Vec<&str> = MAP_HIGHLIGHT_CASE_NAMES.to_vec();
+    in_table.sort_unstable();
+    tested.sort_unstable();
+    assert_eq!(in_table, tested);
+}

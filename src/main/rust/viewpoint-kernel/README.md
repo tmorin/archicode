@@ -18,6 +18,10 @@ matches no relationship is an `error` (``links[n] names a relationship from `a` 
 (listed in `dangling` after the three lists), an entry that is not `{source, destination, label?}` is `invalid input`, and the technology layer refuses the key. Absent, null or
 empty `links` draws the map as before.
 
+`highlight` (wave 026, run 0198, issue #143; optional, additive: the contract stays 5) lists relationships to mark, with the entries and the match of `links`, checked after it
+(same sentences with `highlight[n]`, the technology layer refuses the key, an unknown end joins `dangling`). It changes no box and no link: a link that stands for one of them
+(a grouped link when any of its relationships does) says `highlighted: true`, a key absent otherwise, and `only_changes` drops the mark with the link. Read for `viewpoint: map` only.
+
 The map of the **technology** layer also draws the applications and the dependencies between environments (wave 016, run 0114, issue #107; additive, the contract stays 5). Given the
 application layer (`app_elements`), a node that hosts applications can be opened, and the applications deployed on it are boxes inside it, as the viewpoints of an element draw them
 (same ids); the dependencies of the applications of an environment on those of the environments it `uses` are links, between the boxes of the applications when both are drawn and
