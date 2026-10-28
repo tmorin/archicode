@@ -1971,6 +1971,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.viewpoint.kernel.MapLinks",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.viewpoint.kernel.PlateauComparer",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,

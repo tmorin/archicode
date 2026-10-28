@@ -864,7 +864,33 @@ include::examples/domain_technology_map/.archicode.yaml[]
 archicode views generate --view datacentre-map-open
 ----
 
-writes `views/plantuml/technology/datacentre-map-open.puml`. The command line does not read what the editor keeps in a map besides the three lists and the two booleans (`facet`, `hide-unlinked` and the texts of the diagram). A list that names an element that does not exist is one `error:` line that names the view (`error: the view datacentre-map-database: dangling reference: datacentre.rack.dbx`); in the views of a facet, where the facet may have removed the element, the entry is dropped. A comparison of two plateaus gives a map the states of its boxes, as it does for the other viewpoints.
+writes `views/plantuml/technology/datacentre-map-open.puml`. The command line does not read what the editor keeps in a map besides the three lists, the two booleans and `links` (`facet`, `hide-unlinked` and the texts of the diagram; see <<map-links>> for `links`). A list that names an element that does not exist is one `error:` line that names the view (`error: the view datacentre-map-database: dangling reference: datacentre.rack.dbx`); in the views of a facet, where the facet may have removed the element, the entry is dropped. A comparison of two plateaus gives a map the states of its boxes, as it does for the other viewpoints.
+
+[[map-links]]
+*Choosing the relationships a map draws.* A map of the application layer can name the relationships it draws, with a fourth property, `links`. Each entry is a mapping with a `source`, a `destination` and, optionally, a `label`:
+
+[source,yaml]
+----
+properties:
+  links:
+    - source: customer
+      destination: shop.web
+      label: uses
+    - source: shop.web
+      destination: shop.catalog
+----
+
+The map then draws these relationships, the boxes of their two ends and what encloses them, and nothing else of the layer. `pinned`, `hidden` and `opened` keep their meaning: `hidden` still leaves out a relationship of or towards a hidden element, `pinned` still keeps the relationships that touch a pinned element (the pinned elements are boxes too), and an end inside a closed box lands on that box. A `links` that is absent, empty or has nothing after it draws the whole map, as before.
+
+An entry names a relationship by what the `source` element declares: the `destination` and the `label` must be equal to the ones declared (the references are exact, an entry does not select what is inside the `source`). An entry with no `label` names the relationships that have no label; it is not a wildcard. Relationships that have the same `source`, `destination` and `label` and differ only by their qualifiers or tags cannot be told apart by an entry, so one entry draws them all. An entry of another shape (not a mapping, no text `source` or `destination`, a `label` that is not text, another key) is one `error:` line that says where it is, and so is an entry that names no relationship, with nothing written for the view:
+
+----
+error: the view orders_map: `links[1]` names a relationship from `shop.web` to `shop.catalog` with the label `reads`, which does not exist
+----
+
+(`with no label` when the entry has none; an unknown `source` or `destination` is `dangling reference` as for `pinned`.) The map of the technology layer reads no `links` and refuses them. The command line reads `links`; the editor does not read them yet.
+
+In a workspace of plateaus, the entry is left out when the plateau drawn does not have the relationship, with `warning: the view `m` is drawn without the link `a -> b`, which the plateau `p` does not have`, and the view is skipped, with `warning: skip `m`: none of its links is in the plateau `p``, when none of its entries is there (see <<plateau-views-lacking>>). A typo in an entry is therefore only a warning in a workspace of plateaus, where it is an error in a workspace without. A relationship that only the plateau compared with has can be named in a comparison: it is drawn as removed.
 
 [[map-technology]]
 *What a map of the technology layer draws.* Besides the nodes and the environments, it draws the applications deployed on the nodes and the relationships:
@@ -875,7 +901,7 @@ writes `views/plantuml/technology/datacentre-map-open.puml`. The command line do
 A saved map of the technology layer that says neither property draws both, so that a saved map of the technology layer draws more than it did in 0.14.0, where it drew neither the applications nor the dependencies between the environments. The properties are `applications` and `relationships`, `false` to leave one out; any other value is no choice, in both tools. They mean nothing in a map of the application layer. A comparison of two plateaus gives the states to the applications as it gives them to the other boxes.
 
 [[plateau-views-lacking]]
-*A view in a workspace of plateaus.* A view is read against one plateau at a time. A name that the plateau drawn does not have, and another plateau has, is not a mistake of the view, and the two tools say the same: an entry of `pinned`, `opened` or `hidden` is left out of the map (`warning: the view `m` is drawn without `x`, which the plateau `p` does not have`), and a view that cannot be drawn without the name (the `element` of an overview, a map none of whose `pinned` elements is there) cannot be drawn in that plateau. `archicode views generate --view <id>` skips such a view with a warning, and does not fail, since asking for a view in every plateau of a loop is legitimate:
+*A view in a workspace of plateaus.* A view is read against one plateau at a time. A name that the plateau drawn does not have, and another plateau has, is not a mistake of the view, and the two tools say the same: an entry of `pinned`, `opened` or `hidden` is left out of the map (`warning: the view `m` is drawn without `x`, which the plateau `p` does not have`), and a view that cannot be drawn without the name (the `element` of an overview, a map none of whose `pinned` elements is there, or none of whose `links` is there: see <<map-links>>) cannot be drawn in that plateau. `archicode views generate --view <id>` skips such a view with a warning, and does not fail, since asking for a view in every plateau of a loop is legitimate:
 
 ----
 warning: skip `x`: it names `shop.mailer`, which the plateau `to-be` does not have
@@ -3500,7 +3526,7 @@ Its format should match the variable name in Java or Javascript.
 
 |properties
 |any
-|A custom object containing properties to drive the execution of the viewpoint and/or renderer service. The `map` viewpoint reads `pinned`, `hidden` and `opened` and, on the technology layer, the booleans `applications` and `relationships` (see <<map-viewpoint>>).
+|A custom object containing properties to drive the execution of the viewpoint and/or renderer service. The `map` viewpoint reads `pinned`, `hidden` and `opened` on the application layer, `links`, the relationships to draw (see <<map-links>>), and, on the technology layer, the booleans `applications` and `relationships` (see <<map-viewpoint>>).
 
 |===
 

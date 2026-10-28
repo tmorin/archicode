@@ -324,7 +324,7 @@ public class GenerateViewsCommand implements Runnable {
                     );
                     return;
                 }
-                if (!canBeDrawnInPlateau(plateauWorkspace, view)) {
+                if (!canBeDrawnInPlateau(plateauWorkspace, view, comparison)) {
                     return;
                 }
                 log.info("render {}", viewId);
@@ -345,13 +345,14 @@ public class GenerateViewsCommand implements Runnable {
      *
      * @return whether the view is to be drawn
      */
-    private boolean canBeDrawnInPlateau(Workspace workspace, View view) {
+    private boolean canBeDrawnInPlateau(Workspace workspace, View view, Comparison comparison) {
         return ViewInPlateau.canBeDrawn(
             warnings,
             workspace,
             view,
             "`" + view.getId() + "`",
-            "the view `" + view.getId() + "`"
+            "the view `" + view.getId() + "`",
+            () -> comparison
         );
     }
 

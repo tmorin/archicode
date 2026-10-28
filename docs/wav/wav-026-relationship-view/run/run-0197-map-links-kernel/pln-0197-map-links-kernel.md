@@ -1,6 +1,6 @@
 ---
 title: Execution Plan — Map links in the kernel and the command line
-status: draft
+status: done
 date: 2026-10-28
 related:
   - docs/wav/wav-026-relationship-view/run/run-0197-map-links-kernel/tdd-0197-map-links-kernel.md
@@ -19,7 +19,7 @@ Profile TDD+pln: there is no PRD, so the requirement IDs REQ-1 to REQ-7 are the 
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'A Map view of the application layer takes a links property, a list of {source, destination, label} entries; the command line draws only those relationships, their ends and what encloses them, an entry that names nothing is one error line (exit 1) in a one-plateau workspace and a warning or a skip in a workspace with plateaus, and every Map and view written before the wave is drawn byte for byte as before (REQ-1 to REQ-7).'
   technical_approach: 'Apply the Stage 5 findings to the TDD, write the Rust and Java tests red first, add the optional links key to the kernel map (contract number 5 unchanged), regenerate the wasm and the page block with embed.sh, forward the key from KernelViewpointFactory and ViewInPlateau, then say it in the guide, its golden file, the manual and CLAUDE.md and run the gate P2 checks including scripts/byte-identity.sh.'
   total_tasks: 10
@@ -135,7 +135,7 @@ execution_graph:
       risk: 'medium'
       confidence: 75
     - id: task-006
-      status: 'pending'
+      status: 'done'
       title: 'Forward links in KernelViewpointFactory and ViewInPlateau'
       depends_on: [task-004, task-005]
       produces:
@@ -146,7 +146,7 @@ execution_graph:
       risk: 'medium'
       confidence: 75
     - id: task-007
-      status: 'pending'
+      status: 'done'
       title: 'Say links in the guide and its golden file'
       depends_on: [task-006]
       produces:
@@ -158,7 +158,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-008
-      status: 'pending'
+      status: 'done'
       title: 'Say links in the manual and in CLAUDE.md'
       depends_on: [task-006]
       produces:
@@ -169,7 +169,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-009
-      status: 'pending'
+      status: 'done'
       title: 'Run the gate P2 checks'
       depends_on: [task-007, task-008]
       produces:
@@ -179,7 +179,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-010
-      status: 'pending'
+      status: 'done'
       title: 'Record the sentences and exit codes as built in the run document'
       depends_on: [task-009]
       produces:
@@ -360,6 +360,7 @@ task_catalog:
         - 'grep -rn "NOPMD\|SuppressWarnings(\"PMD" src/main/java/io/morin/archicode/viewpoint/kernel/KernelViewpointFactory.java src/main/java/io/morin/archicode/cli/ViewInPlateau.java prints nothing.'
       risk: 'medium'
       confidence: 75
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
       human_review: 'none'
       escalation_triggers:
         - 'an existing golden view file changes'
@@ -367,6 +368,7 @@ task_catalog:
       delegation_tier: 'standard'
     - id: task-007
       title: 'Say links in the guide and its golden file'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
       source_requirements:
         prd:
           - 'REQ-2'
@@ -389,6 +391,7 @@ task_catalog:
       delegation_tier: 'standard'
     - id: task-008
       title: 'Say links in the manual and in CLAUDE.md'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
       source_requirements:
         prd:
           - 'REQ-6'
@@ -409,6 +412,7 @@ task_catalog:
       delegation_tier: 'standard'
     - id: task-009
       title: 'Run the gate P2 checks'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
       source_requirements:
         prd:
           - 'REQ-5'
@@ -446,6 +450,7 @@ task_catalog:
         - 'Each sentence quoted in the run document appears word for word in src/test/java/io/morin/archicode/viewpoint/kernel/MapLinksTest.java (grep -F).'
       risk: 'low'
       confidence: 90
+      results: 'tier cheap, model haiku, effort high, profile low-cost, passed first time, inline (leaf), independently verified'
       human_review: 'none'
       escalation_triggers:
         - 'a sentence in the run document differs from the one the tests pin'
@@ -869,7 +874,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed'
   autonomy_level: 'high'
   total_tasks: 10
