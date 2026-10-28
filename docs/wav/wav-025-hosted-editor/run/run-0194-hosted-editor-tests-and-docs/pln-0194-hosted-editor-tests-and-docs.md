@@ -94,7 +94,7 @@ consistency_assessment:
 execution_graph:
   nodes:
     - id: task-001
-      status: 'pending'
+      status: 'done'
       title: 'Install WebKit, check it starts, build the jar and run the baseline of the existing hosted specs'
       depends_on: []
       produces:
@@ -105,7 +105,7 @@ execution_graph:
       risk: 'low'
       confidence: 78
     - id: task-002
-      status: 'pending'
+      status: 'done'
       title: 'Add the site route and siteUrl to the hosted server and move the helpers of sample.spec.js'
       depends_on: [task-001]
       produces:
@@ -118,7 +118,7 @@ execution_graph:
       risk: 'medium'
       confidence: 82
     - id: task-003
-      status: 'pending'
+      status: 'done'
       title: 'Write hosted-acceptance.spec.js (visitor without a picker, visitor with a counting stub, the click on the site)'
       depends_on: [task-002]
       produces:
@@ -128,7 +128,7 @@ execution_graph:
       risk: 'medium'
       confidence: 72
     - id: task-004
-      status: 'pending'
+      status: 'done'
       title: 'Add the webkit project to playwright.config.js and the install and cache key to ci-build.yaml'
       depends_on: [task-001]
       produces:
@@ -139,7 +139,7 @@ execution_graph:
       risk: 'medium'
       confidence: 85
     - id: task-005
-      status: 'pending'
+      status: 'done'
       title: 'Run the three projects, triage every failure by the DEC-4 order, prove the spec can fail, record the timings'
       depends_on: [task-003, task-004]
       produces:
@@ -150,7 +150,7 @@ execution_graph:
       risk: 'high'
       confidence: 60
     - id: task-006
-      status: 'pending'
+      status: 'done'
       title: 'Rewrite editor-open, add editor-browser-workspace to the manual and read the presentation page against it'
       depends_on: [task-005]
       produces:
@@ -161,7 +161,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-007
-      status: 'pending'
+      status: 'done'
       title: 'Edit the end-to-end and CI paragraphs of CLAUDE.md'
       depends_on: [task-005]
       produces:
@@ -171,7 +171,7 @@ execution_graph:
       risk: 'low'
       confidence: 84
     - id: task-008
-      status: 'pending'
+      status: 'done'
       title: 'Run the gates, check the project lists, record what was proved and what was not'
       depends_on: [task-006, task-007]
       produces:
@@ -240,6 +240,7 @@ task_catalog:
         - 'the webkit install is refused, needs sudo or a password, or the launch fails for a missing system library'
         - 'the baseline specs are red before any change of this run'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-002
       title: 'Add the site route and siteUrl to the hosted server and move the helpers of sample.spec.js'
       source_requirements:
@@ -269,6 +270,7 @@ task_catalog:
         - 'moving a helper changes the order or the wait of a step of sample.spec.js'
         - 'src/site/index.html loads a script or a stylesheet from outside, which would log a console error (RISK-3)'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-003
       title: 'Write hosted-acceptance.spec.js (visitor without a picker, visitor with a counting stub, the click on the site)'
       source_requirements:
@@ -304,6 +306,7 @@ task_catalog:
         - 'the second click on the site creates a second row or loses the edit, which is a defect of the page (DEC-4), not of the test'
         - 'a console error from a blocked external request fails the pageErrors fixture and a route stub to 204 does not remove it'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-004
       title: 'Add the webkit project to playwright.config.js and the install and cache key to ci-build.yaml'
       source_requirements:
@@ -331,6 +334,7 @@ task_catalog:
         - 'a testMatch regular expression also matches a spec that must not run in webkit'
         - 'the workflow edit would change a job other than E2E'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed after escalation to effort high, inline (leaf), independently verified'
     - id: task-005
       title: 'Run the three projects, triage every failure by the DEC-4 order, prove the spec can fail, record the timings'
       source_requirements:
@@ -367,6 +371,7 @@ task_catalog:
         - 'a mutation does not turn the spec red, which means the spec cannot fail on that point'
         - 'a coverage floor or the ratchet would have to move'
       delegation_tier: 'hard_judgment'
+      results: 'tier hard_judgment, model sonnet, effort high, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-006
       title: 'Rewrite editor-open, add editor-browser-workspace to the manual and read the presentation page against it'
       source_requirements:
@@ -393,6 +398,7 @@ task_catalog:
       risk: 'low'
       confidence: 80
       human_review: 'none'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
       escalation_triggers:
         - 'a sentence of the manual cannot be confirmed in the sources of the editor'
         - 'the Asciidoctor build fails or warns on the new cross-references'
@@ -419,6 +425,7 @@ task_catalog:
       risk: 'low'
       confidence: 84
       human_review: 'none'
+      results: 'tier cheap, model haiku, effort high, profile low-cost, passed first time, inline (leaf), independently verified'
       escalation_triggers:
         - 'an Edit cannot find its target text because run 0193 changed the paragraph'
       delegation_tier: 'cheap'
@@ -445,6 +452,7 @@ task_catalog:
         - 'a gate fails for a reason outside this run (a red test of an earlier run)'
         - 'byte-identity.sh shows a difference, which no change of this run should produce'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -867,7 +875,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 8
