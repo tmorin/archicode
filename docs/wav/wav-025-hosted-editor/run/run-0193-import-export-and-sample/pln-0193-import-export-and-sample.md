@@ -216,7 +216,7 @@ execution_graph:
       risk: 'high'
       confidence: 68
     - id: task-010
-      status: 'pending'
+      status: 'done'
       title: 'Write the card, the Workspace menu, the events, the bootstrap and the sample address'
       depends_on: [task-009]
       produces:
@@ -245,7 +245,7 @@ execution_graph:
       risk: 'medium'
       confidence: 84
     - id: task-012
-      status: 'pending'
+      status: 'done'
       title: 'Run the e2e spec in Chromium and Firefox and fix what it finds'
       depends_on: [task-003, task-007, task-010, task-011]
       produces:
@@ -256,7 +256,7 @@ execution_graph:
       risk: 'medium'
       confidence: 62
     - id: task-013
-      status: 'pending'
+      status: 'done'
       title: 'Write the CLAUDE.md paragraph, run every gate, show the five mutations fail, record in the run document'
       depends_on: [task-004, task-012]
       produces:
@@ -530,6 +530,7 @@ task_catalog:
         - 'an existing landing or server-mode test needs editing: stop, the served branch of the bootstrap stays first'
         - 'a redraw would lose what the visitor typed in the menu: open and close without a redraw, as setHelpOpen does'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-011
       title: 'Add the button and the true sentences to the presentation page and pin the link'
       source_requirements:
@@ -575,6 +576,7 @@ task_catalog:
         - 'a failure appears only in Firefox: find the cause, never add a retry or a fixed wait to hide it'
         - 'the download cannot start in a browser: the TDD says the export then reports could not start the download and records no time, test that instead of weakening the spec'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
     - id: task-013
       title: 'Write the CLAUDE.md paragraph, run every gate, show the five mutations fail, record in the run document'
       source_requirements:
@@ -600,6 +602,7 @@ task_catalog:
         - 'a restoration diff is not empty: restore from the copy and log it'
         - './mvnw verify fails in a test unrelated to this run: record it, do not fix it here'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -1239,7 +1242,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 13
@@ -1271,7 +1274,7 @@ execution_manifest:
     - task-012
     - task-010
     - task-009
-  next_action: 'Run the implement workflow; it starts with task-001 (apply the Stage 5 decisions to the TDD), then the test-writing group.'
+  next_action: 'None: Stage 11 verified every criterion; the tag run, the Native job and WebKit are the open proofs (see the run document).'
   criteria:
     - 'npm run sample:check exits 0 on the tree and 1 on a copy with one byte of the sample changed, both recorded, and the unbundled sample equals the fixture and is loaded by the editor (node) and by views generate (Java)'
     - 'EditorHttpServer serves the sample with the token or the cookie, EditorServeIT asserts it on the jar, native resources unchanged'
