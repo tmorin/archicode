@@ -113,7 +113,7 @@ execution_graph:
       risk: 'high'
       confidence: 70
     - id: task-004
-      status: 'pending'
+      status: 'done'
       title: 'Regenerate the wasm and the page block'
       depends_on: [task-003]
       produces:
@@ -309,6 +309,7 @@ task_catalog:
         - 'npm run test:unit exits 0 (the editor suite with the new wasm; the boxes of src/test/resources/technology-map/expected-boxes.json are unchanged).'
       risk: 'medium'
       confidence: 80
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, done by the orchestrator: the wasm and the page block were committed (3793c38) after the implementer finished; embed.sh --check exit 0, cargo test 299 pass, npm run test:unit 3080 pass 0 fail, editor:check, lint and format:check exit 0'
       human_review: 'none'
       escalation_triggers:
         - 'embed.sh changes any line of the page outside the viewpoint-kernel-wasm block'
