@@ -414,6 +414,337 @@ class MapLinksTest {
         assertFalse(puml.contains("Customer"), puml);
     }
 
+    /** The saved Map of the highlight tests: the shop opened, so that its three relationships are drawn. */
+    private static final String OPENED = "opened: [\"shop\"]\n";
+
+    private static final String HEAVY = "-[thickness=5,#D55E00]->";
+    private static final String CALM = "-[#A6A6A6]->";
+
+    private static long arrows(String puml) {
+        return puml
+            .lines()
+            .filter(line -> line.contains("->"))
+            .count();
+    }
+
+    @Test
+    void shouldDrawTheHighlightedLinkHeavyAndTheOthersCalm() {
+        val workspace = plain(
+            dir,
+            mapView(
+                "hl_view",
+                OPENED +
+                    """
+                    highlight:
+                      - {source: "shop.web", destination: "shop.api", label: "calls"}
+                    """
+            )
+        );
+        val result = generate(workspace, "-i", "hl_view");
+        assertEquals(0, result.exit(), result.err());
+        val puml = drawn(dir.resolve("views"), "hl_view");
+        assertTrue(puml.contains(HEAVY), puml);
+        assertTrue(puml.contains("**<U+25B6>** **calls**"), puml);
+        assertTrue(puml.contains(CALM), puml);
+        assertTrue(puml.contains("<color:#7F7F7F>bills</color>"), puml);
+        assertFalse(puml.contains("**<U+25B6>** **bills**"), puml);
+        // the highlight adds no box and no link
+        val plainView = plain(dir.resolve("plain"), mapView("hl_view", OPENED));
+        assertEquals(0, generate(plainView, "-i", "hl_view").exit());
+        val without = drawn(dir.resolve("plain/views"), "hl_view");
+        assertEquals(arrows(without), arrows(puml));
+        assertFalse(without.contains("D55E00") || without.contains("A6A6A6"), without);
+    }
+
+    @Test
+    void shouldDrawTheSameFileForAnEmptyHighlightAsForNoKey() {
+        val without = plain(dir.resolve("without"), mapView("v", OPENED));
+        val empty = plain(dir.resolve("empty"), mapView("v", OPENED + "highlight: []"));
+        val nothing = plain(dir.resolve("nothing"), mapView("v", OPENED + "highlight:"));
+        assertEquals(0, generate(without, "-i", "v").exit());
+        assertEquals(0, generate(empty, "-i", "v").exit());
+        assertEquals(0, generate(nothing, "-i", "v").exit());
+        val expected = drawn(dir.resolve("without/views"), "v");
+        assertEquals(expected, drawn(dir.resolve("empty/views"), "v"));
+        assertEquals(expected, drawn(dir.resolve("nothing/views"), "v"));
+        assertFalse(expected.contains("D55E00") || expected.contains("A6A6A6"), expected);
+    }
+
+    @Test
+    void shouldDrawAViewWhoseHighlightNamesALinkThatIsNotDrawnAsWithoutHighlight() {
+        // the customer is not on the map: the relationship exists, is not drawn, and marks nothing (DEC-4)
+        val hidden = plain(
+            dir.resolve("hidden"),
+            mapView(
+                "v",
+                OPENED +
+                    """
+                    hidden: ["customer"]
+                    highlight:
+                      - {source: "customer", destination: "shop.web", label: "uses"}
+                    """
+            )
+        );
+        val without = plain(dir.resolve("without"), mapView("v", OPENED + "hidden: [\"customer\"]"));
+        val result = generate(hidden, "-i", "v");
+        assertEquals(0, result.exit(), result.err());
+        assertEquals(0, generate(without, "-i", "v").exit());
+        assertEquals(drawn(dir.resolve("without/views"), "v"), drawn(dir.resolve("hidden/views"), "v"));
+    }
+
+    @Test
+    void shouldReadHighlightNextToLinksAndMarkInsideTheChosenLinks() {
+        val workspace = plain(
+            dir,
+            mapView(
+                "hl_view",
+                OPENED +
+                    """
+                    links:
+                      - {source: "shop.web", destination: "shop.api", label: "calls"}
+                      - {source: "shop.api", destination: "shop.billing", label: "bills"}
+                    highlight:
+                      - {source: "shop.api", destination: "shop.billing", label: "bills"}
+                    """
+            )
+        );
+        val result = generate(workspace, "-i", "hl_view");
+        assertEquals(0, result.exit(), result.err());
+        val puml = drawn(dir.resolve("views"), "hl_view");
+        assertTrue(puml.contains("**<U+25B6>** **bills**"), puml);
+        assertTrue(puml.contains("<color:#7F7F7F>calls</color>"), puml);
+        assertFalse(puml.contains("Customer"), puml);
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldSayTheShapeOfAHighlightEntryAsOneErrorLine() {
+        val workspace = plain(
+            dir,
+            mapView("hl_view", "highlight:\n  - {source: \"shop.web\", destination: \"shop.api\", lable: \"calls\"}")
+        );
+        val result = generate(workspace, "-i", "hl_view");
+        assertEquals(1, result.exit(), result.err());
+        assertTrue(
+            result
+                .err()
+                .startsWith(
+                    "error: the view hl_view: `highlight[0]` is a mapping with `source`, `destination` and optionally `label`, and "
+                ),
+            result.err()
+        );
+        assertTrue(result.err().endsWith(" is not one\n"), result.err());
+        assertEquals(1, result.err().split("\n").length, result.err());
+        assertFalse(Files.exists(dir.resolve("views")));
+    }
+
+    @Test
+    void shouldSayAHighlightThatNamesNoRelationshipAsOneErrorLine() {
+        val workspace = plain(
+            dir,
+            mapView(
+                "hl_view",
+                """
+                highlight:
+                  - {source: "shop.web", destination: "shop.api", label: "calls"}
+                  - {source: "shop.web", destination: "shop.api", label: "reads"}
+                """
+            )
+        );
+        val result = generate(workspace, "-i", "hl_view");
+        assertEquals(1, result.exit(), result.err());
+        assertEquals(
+            "error: the view hl_view: `highlight[1]` names a relationship from `shop.web` to `shop.api` with the label `reads`, which does not exist\n",
+            result.err()
+        );
+        assertFalse(Files.exists(dir.resolve("views")));
+    }
+
+    @Test
+    void shouldSayAHighlightWithNoLabelThatNamesNoRelationshipWithoutALabel() {
+        val workspace = plain(
+            dir,
+            mapView("hl_view", "highlight:\n  - {source: \"customer\", destination: \"shop.web\"}")
+        );
+        val result = generate(workspace, "-i", "hl_view");
+        assertEquals(1, result.exit(), result.err());
+        assertEquals(
+            "error: the view hl_view: `highlight[0]` names a relationship from `customer` to `shop.web` with no label, which does not exist\n",
+            result.err()
+        );
+    }
+
+    @Test
+    void shouldSayAnUnknownEndOfHighlightLikeAPinnedElementThatIsNotThere() {
+        val workspace = plain(
+            dir,
+            mapView("hl_view", "highlight:\n  - {source: \"shop.web\", destination: \"nowhere\", label: \"calls\"}")
+        );
+        val result = generate(workspace, "-i", "hl_view");
+        assertEquals(1, result.exit(), result.err());
+        assertEquals("error: the view hl_view: dangling reference: nowhere\n", result.err());
+    }
+
+    @Test
+    void shouldRefuseHighlightInTheMapOfTheTechnologyLayer() {
+        val workspace = plain(
+            dir,
+            mapView(
+                "hl_view",
+                "highlight:\n  - {source: \"shop.web\", destination: \"shop.api\", label: \"calls\"}"
+            ).replace("layer: \"application\"", "layer: \"technology\"")
+        );
+        val result = generate(workspace, "-i", "hl_view");
+        assertEquals(1, result.exit(), result.err());
+        assertEquals(
+            "error: the view hl_view: highlight is read in the map of the application layer only\n",
+            result.err()
+        );
+    }
+
+    @Test
+    void shouldCheckTheLinksBeforeTheHighlight() {
+        val workspace = plain(
+            dir,
+            mapView(
+                "hl_view",
+                """
+                links:
+                  - {source: "shop.web", destination: "shop.api", label: "reads"}
+                highlight:
+                  - {source: "shop.web", destination: "shop.api", label: "also"}
+                """
+            )
+        );
+        val result = generate(workspace, "-i", "hl_view");
+        assertEquals(1, result.exit(), result.err());
+        assertTrue(result.err().contains("`links[0]` names a relationship"), result.err());
+        assertFalse(result.err().contains("highlight"), result.err());
+    }
+
+    @Test
+    void shouldIgnoreHighlightInAViewpointThatIsNotAMap() {
+        val withHighlight = plain(
+            dir.resolve("with"),
+            mapView("v", "element: \"shop\"\nhighlight:\n  - {source: \"nope\", destination: \"x\"}").replace(
+                "viewpoint: \"map\"",
+                "viewpoint: \"overview\""
+            )
+        );
+        val without = plain(
+            dir.resolve("without"),
+            mapView("v", "element: \"shop\"").replace("viewpoint: \"map\"", "viewpoint: \"overview\"")
+        );
+        val result = generate(withHighlight, "-i", "v");
+        assertEquals(0, result.exit(), result.err());
+        assertEquals(0, generate(without, "-i", "v").exit());
+        assertEquals(drawn(dir.resolve("without/views"), "v"), drawn(dir.resolve("with/views"), "v"));
+        assertEquals("", result.err());
+    }
+
+    @Test
+    void shouldWarnOfAHighlightThePlateauLacksAndDrawTheViewWithoutIt() {
+        val workspace = layered(
+            dir,
+            mapView(
+                "hl_view",
+                OPENED +
+                    """
+                    highlight:
+                      - {source: "shop.web", destination: "shop.api", label: "calls"}
+                      - {source: "partner", destination: "shop.web", label: "pushes"}
+                    """
+            )
+        );
+        val result = generate(workspace, "--plateau", "baseline", "-i", "hl_view");
+        assertEquals(0, result.exit(), result.err());
+        assertTrue(
+            result
+                .err()
+                .contains(
+                    "warning: the view `hl_view` is drawn without the highlight `partner -> shop.web`, which the plateau `baseline` does not have\n"
+                ),
+            result.err()
+        );
+        val puml = drawn(dir.resolve("views-baseline"), "hl_view");
+        assertTrue(puml.contains("**<U+25B6>** **calls**"), puml);
+        assertFalse(puml.contains("Partner"), puml);
+        // the plateau that has the relationship marks both
+        val to = generate(workspace, "--plateau", "to-be", "-i", "hl_view");
+        assertEquals(0, to.exit(), to.err());
+        assertFalse(to.err().contains("highlight"), to.err());
+        assertTrue(drawn(dir.resolve("views-to-be"), "hl_view").contains("**<U+25B6>** **pushes**"));
+    }
+
+    @Test
+    void shouldDrawAViewWhoseHighlightIsAllLackingInThePlateauAndNotSkipIt() {
+        val workspace = layered(
+            dir,
+            mapView(
+                "hl_view",
+                OPENED + "highlight:\n  - {source: \"partner\", destination: \"shop.web\", label: \"pushes\"}"
+            )
+        );
+        val result = generate(workspace, "--plateau", "baseline", "-i", "hl_view");
+        assertEquals(0, result.exit(), result.err());
+        assertTrue(
+            result
+                .err()
+                .contains(
+                    "warning: the view `hl_view` is drawn without the highlight `partner -> shop.web`, which the plateau `baseline` does not have\n"
+                ),
+            result.err()
+        );
+        assertFalse(result.err().contains("skip"), result.err());
+        val puml = drawn(dir.resolve("views-baseline"), "hl_view");
+        assertFalse(puml.contains("D55E00") || puml.contains("A6A6A6"), puml);
+    }
+
+    @Test
+    void shouldStillSkipAViewWhoseLinksAreAllLackingWhateverItsHighlight() {
+        val workspace = layered(
+            dir,
+            mapView(
+                "hl_view",
+                """
+                links:
+                  - {source: "partner", destination: "shop.web", label: "pushes"}
+                highlight:
+                  - {source: "partner", destination: "shop.web", label: "pushes"}
+                """
+            )
+        );
+        val result = generate(workspace, "--plateau", "baseline", "-i", "hl_view");
+        assertEquals(0, result.exit(), result.err());
+        assertTrue(
+            result.err().contains("warning: skip `hl_view`: none of its links is in the plateau `baseline`\n"),
+            result.err()
+        );
+        assertFalse(Files.exists(dir.resolve("views-baseline/plantuml")));
+    }
+
+    @Test
+    void shouldHighlightARemovedRelationshipInAComparison() {
+        val workspace = layered(
+            dir,
+            mapView(
+                "hl_view",
+                OPENED +
+                    """
+                    highlight:
+                      - {source: "shop.api", destination: "shop.billing", label: "bills"}
+                    """
+            )
+        );
+        val result = generate(workspace, "--plateau", "to-be", "--against", "baseline", "-i", "hl_view");
+        assertEquals(0, result.exit(), result.err());
+        assertFalse(result.err().contains("highlight"), result.err());
+        val puml = drawn(dir.resolve("views-to-be-vs-baseline"), "hl_view");
+        // the state keeps its dash and its grey, the highlight its weight and its glyph after the state's
+        assertTrue(puml.contains("-[dashed,thickness=5,#7F7F7F]->"), puml);
+        assertTrue(puml.contains("**<U+2212>** **<U+25B6>** **bills**"), puml);
+    }
+
     static Stream<JsonNode> theCases() throws Exception {
         val table = new ObjectMapper().readTree(Files.readString(CASES));
         val cases = new ArrayList<JsonNode>();
