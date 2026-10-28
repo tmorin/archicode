@@ -256,7 +256,8 @@ test('--cut evaluates a table on a synthetic page', () => {
 
 test('--cut on the page of af1ed2d gives the 311, 162 and 100 of run 0182', async () => {
   const { cutCounts } = await loadModule();
-  const html = execFileSync('git', ['show', `af1ed2d:${PAGE_PATH}`], {
+  // the blob, not the commit: a commit hash is rewritten when a branch is merged by rebase (af1ed2d is 4890814 on main), the blob is not
+  const html = execFileSync('git', ['show', '7e3569b685b2d9de8bcc63ebf6c0c1054f59f4fe'], {
     cwd: REPO,
     encoding: 'utf8',
     maxBuffer: 256 * 1024 * 1024
