@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 025
-status: proposed
+status: completed
 date: 2026-10-27
 related:
   - docs/wav/wav-024-fixes-and-editor-modules/wav-024-fixes-and-editor-modules.md
