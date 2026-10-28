@@ -92,7 +92,7 @@ function renderHelpMenuHtml() {
   if (!helpOpen) return '';
   const link = (key, text) =>
     '<li><a href="' + docUrl(key) + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a></li>';
-  const where = isServedByArchiCode()
+  const where = workspaceIsServedFolder()
     ? 'The editor reads and writes the folder served by <code>archicode editor serve</code> on this machine.'
     : AppState.folder && AppState.folder.browserWorkspace
       ? "Files are read and written in this browser, which keeps them on this device; clearing the site's data removes them."

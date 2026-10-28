@@ -102,6 +102,14 @@ let landingNameDraft = null;
 // A line the landing card says once (a folder removed from the list, a permission refused); null otherwise.
 let landingNotice = null;
 
+// The Workspace menu of the top bar (run 0193, TDD DEC-9, CTR-5): whether its popup is open, the question it holds (null, or 'reset-sample': the
+// question that replaces its items), and the one-line result of the last Export, Import, Open sample or Reset that happened while a workspace is
+// open (the bar's status line; while none is open the card's `landingNotice` says it). View state only: no modelsChanged(); resetUiState() clears all three.
+/* exported bundleNotice -- read by the top bar's status line (run 0193, task 010) */
+let workspaceMenuOpen = false;
+let workspaceMenuQuestion = null;
+let bundleNotice = null;
+
 // The control the next landing card focuses (after a Remove: the next folder of the list); null: its primary button;
 // '': none (the card is drawn again under a focus that was not on it, which is left alone).
 let landingFocusSelector = null;

@@ -88,3 +88,28 @@ test('the links to docs/ and editor/ are the folders that the CI assembles', () 
     assert.ok(workflow.includes(target), 'the "Assemble website" step has no ' + target);
   }
 });
+
+/** The href of the button that opens the sample, as written in the page (the `&amp;` of the markup read as `&`). */
+function sampleHrefs() {
+  return [...PAGE.matchAll(/href="(editor\/#[^"]*)"/g)].map((match) => match[1].replace(/&amp;/g, '&'));
+}
+
+test('the sample button opens the editor on a sample of the catalog, in the hero and in the editor block', () => {
+  const hrefs = sampleHrefs();
+  assert.equal(hrefs.length, 2);
+  const source = fs.readFileSync(path.resolve(__dirname, '../../main/editor/persistence/bundle-io.js'), 'utf8');
+  const ids = Object.keys(
+    vm.runInNewContext(source.match(/const BROWSER_SAMPLES = (\{.*\});/)[1].replace(/^/, '(') + ')')
+  );
+  for (const href of hrefs) {
+    assert.ok(href.startsWith('editor/#'), href);
+    const sample = new URLSearchParams(href.slice(href.indexOf('?') + 1)).get('sample');
+    assert.ok(ids.includes(sample), href);
+  }
+  assert.equal(new Set(hrefs).size, 1);
+});
+
+test('the hint no longer promises Chromium only', () => {
+  assert.ok(!PAGE.includes('Chrome, Edge, Brave or Opera'));
+  assert.ok(PAGE.includes('open the sample, create a workspace, or pick a folder where your browser allows it'));
+});

@@ -145,6 +145,16 @@ function compareFromHash() {
 }
 
 /**
+ * The hash's `sample=` (the id of a sample the address asks to open, run 0193 DEC-7), or null. Read once, at load, before anything is drawn; the address the page
+ * writes from its state never has it, and a `hashchange` does not act on it. Whether the id is in the catalog is for the start of the page to say.
+ */
+function sampleFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  if (queryIdx === -1) return null;
+  return new URLSearchParams(location.hash.slice(queryIdx + 1)).get('sample');
+}
+
+/**
  * The removed element the hash names (`removed=` with the reference of an element only the other plateau has, `removed-layer=technology` for one of that
  * layer), or null. It is a selection that exists only with a comparison, so the address carries `compare=` with it (see `currentRouteHash`).
  */

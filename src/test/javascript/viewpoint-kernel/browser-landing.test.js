@@ -183,8 +183,12 @@ test('without a picker and with the store ready, the card is first-launch, says 
   assert.doesNotMatch(card.note, /written to disk/);
   assert.deepEqual(
     plain(card.actions.map((a) => [a.label, a.action])),
-    [['New workspace in this browser', 'new-browser-workspace']],
-    'no way to pick a folder where the browser cannot'
+    [
+      ['Open the Brightcart sample', 'open-sample'],
+      ['New workspace in this browser', 'new-browser-workspace'],
+      ['Import a workspace file', 'import-bundle']
+    ],
+    'the sample, the new workspace and the import (DEC-11 of run 0193), and no way to pick a folder where the browser cannot'
   );
   assert.equal(
     sandbox.isFolderAccessAvailable(),
@@ -194,13 +198,15 @@ test('without a picker and with the store ready, the card is first-launch, says 
   assert.equal(sandbox.canKeepWorkspace(), true);
 });
 
-test('with a picker, the card offers the new workspace first and the folder after, and says both notes', async () => {
+test('with a picker, the card offers the sample, the new workspace, the folder and the import, and says both notes', async () => {
   const sandbox = await ready(fakeIndexedDB(), { picker: true });
   const card = sandbox.landingScreenConfig();
   assert.equal(card.kind, 'first-launch');
   assert.deepEqual(plain(card.actions.map((a) => [a.label, a.action])), [
+    ['Open the Brightcart sample', 'open-sample'],
     ['New workspace in this browser', 'new-browser-workspace'],
-    ['Open workspace folder', 'open-folder']
+    ['Open workspace folder', 'open-folder'],
+    ['Import a workspace file', 'import-bundle']
   ]);
   assert.ok(
     card.text.startsWith(

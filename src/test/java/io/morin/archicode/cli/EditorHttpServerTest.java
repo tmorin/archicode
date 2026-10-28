@@ -1,5 +1,6 @@
 package io.morin.archicode.cli;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -443,5 +444,133 @@ class EditorHttpServerTest {
         } finally {
             locked.toFile().setReadable(true, false);
         }
+    }
+
+    private static final Path SAMPLE = Path.of("src/main/resources/editor-webapp/samples/brightcart.yaml");
+
+    @SneakyThrows
+    private HttpResponse<byte[]> sample(String path, String token) {
+        val builder = HttpRequest.newBuilder(URI.create(base() + path));
+        if (token != null) builder.header(EditorHttpServer.TOKEN_HEADER, token);
+        return client.send(builder.GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+    }
+
+    /** The body of a raw response: what follows the blank line after its headers. */
+    private static String bodyOf(String rawResponse) {
+        return rawResponse.substring(rawResponse.indexOf("\r\n\r\n") + 4);
+    }
+
+    @SneakyThrows
+    @Test
+    void servesTheSampleWithTheTokenHeader() {
+        val response = sample("/samples/brightcart.yaml", running.token());
+        assertEquals(200, response.statusCode());
+        assertArrayEquals(Files.readAllBytes(SAMPLE), response.body(), "the bytes of the resource, as committed");
+        assertEquals("text/yaml; charset=utf-8", response.headers().firstValue("Content-Type").orElse(""));
+        assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
+        assertEquals("nosniff", response.headers().firstValue("X-Content-Type-Options").orElse(""));
+        assertFalse(response.headers().firstValue("Set-Cookie").isPresent(), "only the page sets the session");
+    }
+
+    @SneakyThrows
+    @Test
+    void servesTheSampleWithTheSessionCookie() {
+        val cookie = "Cookie: " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
+        val raw = rawGet("/samples/brightcart.yaml", "127.0.0.1", cookie);
+        assertEquals(200, status(raw));
+        assertEquals(Files.readString(SAMPLE, StandardCharsets.UTF_8), bodyOf(raw));
+        assertFalse(raw.toLowerCase(Locale.ROOT).contains("set-cookie"), "the cookie is not set again");
+    }
+
+    @Test
+    void doesNotServeTheSampleWithoutAProof() {
+        assertEquals(403, sample("/samples/brightcart.yaml", null).statusCode(), "no header, no cookie");
+        assertEquals(403, sample("/samples/brightcart.yaml", "wrong").statusCode());
+        assertEquals(403, sample("/samples/brightcart.yaml", "").statusCode());
+        assertEquals(
+            403,
+            status(rawGet("/samples/brightcart.yaml?token=" + running.token(), "127.0.0.1")),
+            "the query token is the page's first request only"
+        );
+        assertEquals(
+            403,
+            status(
+                rawGet(
+                    "/samples/brightcart.yaml",
+                    "127.0.0.1",
+                    "Cookie: " + EditorHttpServer.SESSION_COOKIE + "=wrong\r\n"
+                )
+            )
+        );
+        assertEquals(
+            403,
+            status(rawGet("/samples/brightcart.yaml", "127.0.0.1", "Cookie: other=" + running.token() + "\r\n"))
+        );
+        val refused = new String(sample("/samples/brightcart.yaml", null).body(), StandardCharsets.UTF_8);
+        assertFalse(refused.contains("--- # file:"), "a refusal says nothing of the sample");
+    }
+
+    @Test
+    void doesNotServeTheSampleToAHostThatIsNotAllowed() {
+        val header = EditorHttpServer.TOKEN_HEADER + ": " + running.token() + "\r\n";
+        val cookie = "Cookie: " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
+        assertEquals(403, status(rawGet("/samples/brightcart.yaml", "attacker.example", header)));
+        assertEquals(403, status(rawGet("/samples/brightcart.yaml", "attacker.example:48080", cookie)));
+        assertEquals(200, status(rawGet("/samples/brightcart.yaml", "localhost:48080", header)));
+        assertEquals(200, status(rawGet("/samples/brightcart.yaml", "[::1]:48080", header)));
+    }
+
+    @Test
+    void takesOnlyGetOnTheSample() {
+        for (val method : new String[] { "POST", "PUT", "DELETE" }) {
+            val builder = HttpRequest.newBuilder(URI.create(base() + "/samples/brightcart.yaml"))
+                .header(EditorHttpServer.TOKEN_HEADER, running.token())
+                .method(method, HttpRequest.BodyPublishers.ofString("x"));
+            val response = send(builder.build());
+            assertEquals(405, response.statusCode(), method);
+            assertEquals("method not allowed", response.body(), method);
+        }
+        assertTrue(Files.exists(SAMPLE), "nothing was written over the resource");
+    }
+
+    @SneakyThrows
+    private HttpResponse<String> send(HttpRequest request) {
+        return client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void answers404ForAnyOtherPathUnderSamples() {
+        val header = EditorHttpServer.TOKEN_HEADER + ": " + running.token() + "\r\n";
+        for (val path : new String[] {
+            "/samples/other.yaml",
+            "/samples/",
+            "/samples",
+            "/samples/brightcart.yaml/",
+            "/samples/brightcart.yml",
+            "/samples/Brightcart.yaml",
+            "/samples/notes.txt",
+            "/samples/.archicode.yaml",
+            "/samples/manifests/app.yaml",
+            "/samples/../application.properties",
+            "/samples/%2e%2e/application.properties",
+            "/samples/..%2fapplication.properties",
+            "/samples/brightcart.yaml/../../application.properties",
+            "/samples/%00brightcart.yaml"
+        }) {
+            val status = status(rawGet(path, "127.0.0.1", header));
+            assertTrue(status == 404, path + " answered " + status);
+        }
+        assertEquals(404, call("GET", "/samples/other.yaml", null, running.token(), null).statusCode());
+        assertEquals("not found", call("GET", "/samples/other.yaml", null, running.token(), null).body());
+    }
+
+    @Test
+    void leavesThePageAndTheApiAsTheyWere() {
+        assertEquals(404, call("GET", "/samples", null, null, null).statusCode(), "the root still knows no such page");
+        assertEquals(
+            404,
+            call("GET", "/api/fs/samples/brightcart.yaml", null, running.token(), null).statusCode(),
+            "the API has no sample route"
+        );
     }
 }

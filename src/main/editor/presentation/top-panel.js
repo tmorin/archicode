@@ -185,13 +185,162 @@ function flushPendingDraft() {
   return true;
 }
 
-/** The notice of a browser workspace (run 0192, DEC-8): where the work lives, and, once the browser said no to persistent storage, what that risks. */
+/** The notice of a browser workspace (run 0192, DEC-8; run 0193, DEC-9): where the work lives, when it was last exported, and, once the browser said no to persistent storage, what that risks. */
 function browserWorkspaceNoticeHtml() {
+  const row = browserWorkspaceById(AppState.folder && AppState.folder.browserWorkspace);
   const title =
     "This workspace is kept in this browser on this device. Clearing the site's data removes it." +
-    (browserStoragePersisted === false ? ' The browser may remove it when the device is short of space.' : '');
+    (browserStoragePersisted === false ? ' The browser may remove it when the device is short of space.' : '') +
+    ' Last exported: ' +
+    (row && row.lastExportAt ? landingTimeText(row.lastExportAt) : 'never') +
+    '. Use Workspace › Export as a file to keep a copy.';
   return '<span class="browser-notice" title="' + escapeHtml(title) + '">In this browser</span>';
 }
+
+// ---- The Workspace menu (run 0193, DEC-9, IF-3, IF-4) ----
+
+const WORKSPACE_EXPORT_PENDING_SENTENCE = 'Save your changes first: the file holds what is saved.';
+const WORKSPACE_SERVED_SAMPLE_TITLE =
+  'A copy kept in this browser for this address (host and port). The served folder is not touched.';
+
+/** Changes not written, or text typed in a form and not applied: the file of an Export holds what is saved, so it waits (DEC-4). */
+function workspaceExportIsPending() {
+  return hasUnsavedChanges() || draftTyped;
+}
+
+/** What the menu is for: 'browser' (a workspace kept in this browser), 'served' (the folder of `archicode editor serve`, with a store to open the sample in), or null (no menu). */
+function workspaceMenuMode() {
+  if (!AppState.folder) return null;
+  if (AppState.folder.browserWorkspace) return 'browser';
+  if (workspaceIsServedFolder() && browserStoreState === 'ready') return 'served';
+  return null;
+}
+
+function workspaceMenuItemHtml(action, label, note, extra) {
+  return (
+    '<button type="button" class="workspace-item" data-action="' +
+    action +
+    '"' +
+    (extra || '') +
+    '><span class="workspace-item-label">' +
+    escapeHtml(label) +
+    '</span>' +
+    (note ? '<span class="workspace-item-note">' + escapeHtml(note) + '</span>' : '') +
+    '</button>'
+  );
+}
+
+/** The question of *Reset to the sample…* in the place of the items: the workspace named, the loss said, Cancel first (DEC-6, DEC-9). */
+function renderWorkspaceResetQuestionHtml(row) {
+  const named = '“' + row.name + '”';
+  const unsaved = countUnsavedChanges();
+  return (
+    '<p class="workspace-ask">Replace everything in ' +
+    escapeHtml(named) +
+    ' with the sample? Your changes in it are lost. Last exported: ' +
+    (row.lastExportAt ? escapeHtml(landingTimeText(row.lastExportAt)) : 'never') +
+    '.' +
+    (unsaved > 0
+      ? ' ' + unsaved + (unsaved === 1 ? ' unsaved change is' : ' unsaved changes are') + ' lost too.'
+      : '') +
+    '</p>' +
+    '<div class="workspace-ask-actions">' +
+    '<button type="button" data-action="workspace-cancel-question">Cancel</button>' +
+    '<button type="button" class="workspace-reset" data-action="workspace-confirm-reset" aria-label="' +
+    escapeHtml('Reset ' + named) +
+    '">Reset ' +
+    escapeHtml(named) +
+    '</button></div>'
+  );
+}
+
+function renderWorkspaceMenuHtml() {
+  const mode = workspaceMenuMode();
+  if (!workspaceMenuOpen || !mode) return '';
+  let body = '';
+  const row = mode === 'browser' ? browserWorkspaceById(AppState.folder.browserWorkspace) : null;
+  if (mode === 'browser' && row && row.sample && workspaceMenuQuestion === 'reset-sample') {
+    body = renderWorkspaceResetQuestionHtml(row);
+  } else if (mode === 'browser') {
+    const pending = workspaceExportIsPending();
+    body += workspaceMenuItemHtml(
+      'workspace-export',
+      'Export as a file',
+      pending
+        ? WORKSPACE_EXPORT_PENDING_SENTENCE
+        : 'Last exported: ' + (row && row.lastExportAt ? landingTimeText(row.lastExportAt) : 'never'),
+      pending ? ' aria-disabled="true"' : ''
+    );
+    if (row && row.sample) body += workspaceMenuItemHtml('workspace-ask-reset', 'Reset to the sample…', '');
+  } else {
+    body += workspaceMenuItemHtml(
+      'workspace-open-sample',
+      'Open the Brightcart sample',
+      '',
+      ' title="' + escapeHtml(WORKSPACE_SERVED_SAMPLE_TITLE) + '"'
+    );
+  }
+  return '<div class="workspace-menu" role="dialog" aria-label="Workspace">' + body + '</div>';
+}
+
+/** The *Workspace* button, with its menu right behind it when open; nothing for a folder of the disk. */
+function renderWorkspaceButtonHtml() {
+  if (!workspaceMenuMode()) return '';
+  return (
+    '<span class="workspace-wrap"><button type="button" class="workspace-button" data-action="toggle-workspace-menu" aria-haspopup="dialog" aria-expanded="' +
+    workspaceMenuOpen +
+    '">Workspace</button>' +
+    renderWorkspaceMenuHtml() +
+    '</span>'
+  );
+}
+
+/** The result of the last Export, Import, Open sample or Reset while a workspace is open: the bar's status line, until the next action. */
+function renderBundleNoticeHtml() {
+  if (!bundleNotice) return '';
+  return (
+    '<span class="save-status save-status-success bundle-notice" role="status" title="' +
+    escapeHtml(bundleNotice) +
+    '">' +
+    escapeHtml(bundleNotice) +
+    '</span>'
+  );
+}
+
+/**
+ * Patches the menu where it is, WITHOUT render() (a redraw rebuilds every field from the model and would lose what the visitor typed): the node and
+ * aria-expanded change. The flows call it through `onWorkspaceMenuChange`; `focusMenu`: the first item gets the focus; `focusButton`: the button gets it back.
+ */
+function patchWorkspaceMenu(options = {}) {
+  const button = document.querySelector('.workspace-button');
+  if (button && button.setAttribute) button.setAttribute('aria-expanded', String(workspaceMenuOpen));
+  const existing = document.querySelector('.workspace-menu');
+  if (existing && existing.remove) existing.remove();
+  if (workspaceMenuOpen) {
+    if (button && button.insertAdjacentHTML) button.insertAdjacentHTML('afterend', renderWorkspaceMenuHtml());
+    const target =
+      workspaceMenuQuestion !== null
+        ? '.workspace-menu [data-action="workspace-cancel-question"]'
+        : options.focusMenu
+          ? '.workspace-menu button'
+          : null;
+    const control = target ? document.querySelector(target) : null;
+    if (control && control.focus) control.focus();
+  } else if (options.focusButton && button && button.focus) {
+    button.focus();
+  }
+}
+onWorkspaceMenuChange(patchWorkspaceMenu);
+
+/** Escape closes the menu (and drops its question), and only that; registered in capture like the help's. */
+function handleWorkspaceMenuKeydown(e) {
+  if (!workspaceMenuOpen || e.key !== 'Escape') return;
+  if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+  else if (e.stopPropagation) e.stopPropagation();
+  if (e.preventDefault) e.preventDefault();
+  setWorkspaceMenuOpen(false, { focusButton: true });
+}
+document.addEventListener('keydown', handleWorkspaceMenuKeydown, true);
 
 function renderTopPanelHtml() {
   if (!AppState.folder) return '';
@@ -220,13 +369,17 @@ function renderTopPanelHtml() {
     '<span class="top-actions">' +
     (inBrowser ? browserWorkspaceNoticeHtml() : '') +
     renderSaveStatusHtml() +
+    renderBundleNoticeHtml() +
     saveAll +
+    renderWorkspaceButtonHtml() +
     renderHelpButtonHtml() +
-    (isServedByArchiCode()
+    (workspaceIsServedFolder()
       ? ''
-      : inBrowser
-        ? '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace and go back to the list: it stays in this browser.">Close workspace</button>'
-        : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and go back to the list of folders: it stays in the list.">Close folder</button>') +
+      : inBrowser && isServedByArchiCode()
+        ? '<button type="button" class="btn-ghost" data-action="back-to-served-folder" title="Leave this workspace and go back to the folder the server serves: it stays in this browser.">Back to the served folder</button>'
+        : inBrowser
+          ? '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace and go back to the list: it stays in this browser.">Close workspace</button>'
+          : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and go back to the list of folders: it stays in the list.">Close folder</button>') +
     '</span>' +
     '</header>'
   );

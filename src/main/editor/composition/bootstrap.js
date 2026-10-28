@@ -4,28 +4,40 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   syncPerspectiveFromHash(); // a bookmarked/shared "#/settings" etc. lands directly there
+  const sample = sampleFromHash(); // read before the first render, which writes the address back without it (DEC-7)
   if (isServedByArchiCode()) {
+    // the served folder opens first and the key is ignored; once it is open, the store is probed on the side (nothing waits for it) so that the Workspace menu can offer the sample (DEC-8)
     stripServerTokenFromUrl();
     landingBusy = 'Opening the workspace…';
     render();
-    openServedFolder();
+    openServedFolder().then(() => {
+      if (AppState.workspace) probeBrowserStore().then(requestRedraw, requestRedraw);
+    });
     return;
   }
   landingBusy = 'Looking for your last workspace…';
   render(); // no blank page while IndexedDB / the folder permission are checked
-  startPage();
+  startPage(sample);
 });
 
 /**
  * A page that is not served: ask once whether the browser can keep a workspace (DEC-4), then reopen what was open. A browser that can neither pick a folder
- * nor keep a workspace gets its card and stops.
+ * nor keep a workspace gets its card and stops. A sample the address asks for (`sample=`) wins over reopening the last workspace; an id that is not in the
+ * catalog is said on the card and the usual start follows (DEC-7).
  */
-async function startPage() {
+async function startPage(sample = null) {
   await probeBrowserStore();
   if (!canKeepWorkspace()) {
     landingBusy = null;
     render();
     return;
+  }
+  if (sample !== null && browserStoreState === 'ready') {
+    if (Object.prototype.hasOwnProperty.call(BROWSER_SAMPLES, sample)) {
+      await openSample(sample);
+      return;
+    }
+    landingNotice = 'There is no sample “' + sample + '”.';
   }
   await tryAutoReopen();
 }

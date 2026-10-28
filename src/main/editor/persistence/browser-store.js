@@ -2,7 +2,7 @@
 // The browser workspace store (wave 025, run 0192, TDD-0192 DEC-1 to DEC-3, DEC-6 to DEC-8, CTR-1, CTR-2): a third implementation of the
 // directory-handle interface the editor uses (the first is the browser's own, the second `serverDirectoryHandle`), backed by a second
 // IndexedDB database, `archicode-browser-workspaces`, version 1, one object store `records` with out-of-line string keys:
-//   'workspace:<id>'      -> { kind: 'workspace', id, name, createdAt, openedAt, lastExportAt: null | ms, origin }
+//   'workspace:<id>'      -> { kind: 'workspace', id, name, createdAt, openedAt, lastExportAt: null | ms, origin, sample? }  (sample: only for origin 'sample', the id of the sample)
 //   'file:<id>/<path>'    -> { kind: 'file', workspace: id, path, bytes: Uint8Array, modified: ms }
 //   'last'                -> { id, openedAt }   the workspace the browser reopens
 // The remembered folders' database (`archicode-standalone-editor`) is never opened here. Directories are implicit: one exists while a file
@@ -303,6 +303,7 @@ async function listBrowserWorkspaces() {
         openedAt: typeof value.openedAt === 'number' ? value.openedAt : 0,
         lastExportAt: typeof value.lastExportAt === 'number' ? value.lastExportAt : null,
         origin: typeof value.origin === 'string' ? value.origin : 'blank',
+        sample: typeof value.sample === 'string' ? value.sample : null,
         fileCount: seen.count,
         changedAt: seen.changedAt || (typeof value.createdAt === 'number' ? value.createdAt : 0)
       };
@@ -317,7 +318,7 @@ async function listBrowserWorkspaces() {
  * rule above, again inside the transaction against the names that are stored. Resolves the record.
  */
 async function createBrowserWorkspace(options) {
-  const { name, files, origin } = options || {};
+  const { name, files, origin, sample } = options || {};
   const early = browserNameError(name, []);
   if (early) throw early;
   const list = files || [];
@@ -335,6 +336,7 @@ async function createBrowserWorkspace(options) {
     lastExportAt: null,
     origin: typeof origin === 'string' ? origin : 'blank'
   };
+  if (record.origin === 'sample' && typeof sample === 'string') record.sample = sample; // which sample, to find it again by what it is (run 0193, DEC-6)
   const stored = list.map((file) => ({
     key: BROWSER_FILE_PREFIX + record.id + '/' + file.path,
     value: {
