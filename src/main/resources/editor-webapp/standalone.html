@@ -509,6 +509,28 @@ try {
   /* no hover on a touch screen: the buttons stay, after the name */
   @media (hover: none) { .map-scope-row .map-scope-actions { position: static; transform: none; background: none; opacity: 1; pointer-events: auto; padding-left: 0; } }
   /* floats over the top left of the map, as the tools float over its bottom: no band, no height taken from the drawing */
+  /* the list of relationships under the tree of the page Applications (wave 026, run 0199) */
+  .map-links > summary { cursor: pointer; padding: 0.3rem 1rem; font-weight: 600; font-size: 0.85rem; }
+  .map-links-count { font-weight: 400; color: var(--accent); margin-left: 0.3rem; }
+  .map-links-clear { margin: 0 1rem 0.3rem; font-size: 0.8rem; }
+  .map-links-hint { font-size: 0.8rem; padding: 0 1rem 0.4rem; }
+  .map-links-controls { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0 1rem 0.4rem; }
+  .map-links-controls input[type="search"] { flex: 1 1 100%; min-width: 0; box-sizing: border-box; }
+  .map-links-controls select { flex: 1 1 auto; min-width: 0; max-width: 100%; }
+  .map-links-only { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; }
+  .map-link-rows { list-style: none; margin: 0; padding: 0; }
+  .map-link-row label { display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.25rem 1rem; font-size: 0.82rem; cursor: pointer; }
+  .map-link-row label:hover { background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg)); }
+  .map-link-row input { margin-top: 0.2rem; flex: none; min-width: 1rem; min-height: 1rem; }
+  .map-link-text { min-width: 0; overflow-wrap: anywhere; }
+  .map-link-label { font-style: italic; }
+  .map-link-kinds, .map-link-note { font-size: 0.72rem; }
+  .map-link-missing .map-link-ends { text-decoration: line-through; opacity: 0.6; }
+  .map-links-none, .map-links-more { padding: 0.2rem 1rem; font-size: 0.8rem; }
+  .map-links-live { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .map-chip-links { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg)); }
+  .map-link-only { margin: 0.3rem 0; }
+  .map-link-panel-check { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; }
   .map-chips { position: absolute; top: 0.6rem; left: 0.75rem; right: 0.75rem; z-index: 2; display: flex; flex-wrap: wrap; gap: 0.4rem; pointer-events: none; }
   .map-chips > * { pointer-events: auto; }
   .map-chips-clear { height: 1.7rem; padding: 0 0.7rem !important; border-radius: 999px !important; font-size: 0.82rem; color: var(--muted); background: color-mix(in srgb, var(--panel-bg) 92%, transparent) !important; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
@@ -987,6 +1009,10 @@ try {
     /* The references and the paths that *Confirm delete* lists are one word each: the longest went to x 541 (a reference of four segments, the path of its manifest). They break
        where they must. */
     .delete-confirmation li { overflow-wrap: anywhere; }
+    /* the list of relationships (run 0199): rows and fields a finger can hit */
+    .map-link-row label { padding: 0.5rem 0.75rem; }
+    .map-link-row input { min-width: 1.25rem; min-height: 1.25rem; }
+    .map-links-controls input[type="search"], .map-links-controls select { min-height: 2.25rem; }
   }
 </style>
 </head>
@@ -8514,6 +8540,7 @@ function snapshotWriteState() {
     rawYamlEditDraft,
     mapPinned: mapPinned.slice(),
     mapHidden: mapHidden.slice(),
+    mapLinks: mapLinks.map((link) => Object.assign({}, link)),
     mapOpened: mapOpened ? new Set(mapOpened) : mapOpened,
     technologyMapState: {
       pinned: technologyMapState.pinned.slice(),
@@ -8549,6 +8576,7 @@ function restoreWriteState(snapshot) {
   rawYamlEditDraft = snapshot.rawYamlEditDraft;
   mapPinned = snapshot.mapPinned;
   mapHidden = snapshot.mapHidden;
+  mapLinks = snapshot.mapLinks;
   mapOpened = snapshot.mapOpened;
   technologyMapState = snapshot.technologyMapState;
   navActiveKey = snapshot.navActiveKey;
@@ -12411,6 +12439,11 @@ function resetUiState() {
   currentPerspective = DEFAULT_PERSPECTIVE;
   mapPinned = [];
   mapHidden = [];
+  mapLinks = [];
+  mapLinksListOpen = false;
+  mapLinksFilter = '';
+  mapLinksKind = '';
+  mapLinksTickedOnly = false;
   mapOpened = null;
   technologyMapState = { opened: null, pinned: [], hidden: [] };
   technologyMapParts = { applications: true, relationships: true };
@@ -13349,6 +13382,7 @@ function applyDiagramParamsFromHash() {
     const state = mapStateOf(layer);
     state.pinned = pin ? pin.split(',').filter((reference) => AppState.index[layer].has(reference)) : [];
     state.pinned.forEach((reference) => expandParentsOf(reference, layer));
+    if (layer === 'application') mapLinks = mapLinksFromParams(params);
   }
   const shown = {};
   for (const name of DIAGRAM_SHOW_NAMES)
@@ -13583,6 +13617,7 @@ function currentRouteHash() {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
     const pinned = mapStateOf().pinned;
     if (pinned.length) params.push('pin=' + pinned.map(encodeURIComponent).join(','));
+    if (mapLayer() === 'application') params.push(...mapLinkParams(mapLinks));
     pushShowParams(params, true);
     pushFrameParam(params);
   }
@@ -13887,6 +13922,18 @@ let mapOpened = null;
 let mapPinned = [];
 
 let mapHidden = [];
+
+/** The relationships the Map of the application layer is narrowed to, as entries `{ source, destination, label }` (none: the whole map; view state, wave 026 run 0199). */
+let mapLinks = [];
+
+/** The controls of the list of relationships under the tree of the page Applications: whether it is open, its text filter, its kind select ('' is any kind) and "Ticked only" (view state, reset with the folder; wave 026 run 0199). */
+let mapLinksListOpen = false;
+
+let mapLinksFilter = '';
+
+let mapLinksKind = '';
+
+let mapLinksTickedOnly = false;
 
 /** The same three, for the map of the technology layer (the page Environments). */
 let technologyMapState = { opened: null, pinned: [], hidden: [] };
@@ -15260,6 +15307,8 @@ function rewriteUiReferences(oldPrefix, newPrefix, layer) {
     state.hidden = state.hidden.map(rewrite);
     if (state.opened) state.opened = rewriteSet(state.opened);
   }
+  // the relationships the Map of the application layer is narrowed to name two ends each (wave 026, run 0199)
+  if (!layer || layer === 'application') rewriteLinkEntries(mapLinks, rewrite);
   // a delete confirmation lists what the old reference would take with it: it is stale now
   pendingDeleteConfirmation = null;
 }
@@ -19250,6 +19299,7 @@ function autosizeAllTextareas() {
 
 /** Delegated `input` listener (DEC — mirrors the existing click/pointerdown/dblclick delegation on #app): resizes as the user types. */
 function handleAppInput(e) {
+  if (handleMapLinksControl(e.target)) return; // the filter of the list of relationships: the rows are drawn again in place
   if (e.target.matches && e.target.matches('[data-settings-current]')) return; // the list of Settings writes on `change`; choosing in it is no typed draft (run 0111, #111)
   if (e.target.matches && e.target.matches('input[name="theme-choice"]')) {
     // a preference of the browser, not a change of the workspace
@@ -21997,7 +22047,7 @@ function renderDeclaringElementHtml(reference, layer) {
 }
 
 /** One declared relationship: its label, who declares it (a button) and to whom, its qualifiers and its tags; `marked`: it belongs to the link that was clicked. */
-function renderRelationshipInspectionHtml(rel, layer, marked) {
+function renderRelationshipInspectionHtml(rel, layer, marked, control) {
   const label =
     rel.label !== undefined && rel.label !== null && String(rel.label).trim()
       ? escapeHtml(rel.label)
@@ -22014,6 +22064,7 @@ function renderRelationshipInspectionHtml(rel, layer, marked) {
     ' &rarr; ' +
     escapeHtml(rel.destination) +
     '</div>' +
+    (control || '') +
     renderRelationshipChangeHtml(rel, layer) +
     renderFieldRowHtml('Qualifiers', renderQualifierPillsHtml(rel.qualifiers)) +
     renderFieldRowHtml('Tags', renderTagListHtml(rel.tags)) +
@@ -22075,11 +22126,19 @@ function renderLinkInspectionHtml(sel) {
   } else if (rels.length > 1) {
     html += '<p class="inspection-note">' + rels.length + ' relationships are grouped in this link.</p>';
   }
-  html +=
-    '<h4 class="inspection-subhead">Relationships <span class="field-count">' +
-    rels.length +
-    '</span></h4>' +
-    rels.map((rel, i) => renderRelationshipInspectionHtml(rel, layer, told && marked[i])).join('');
+  html += '<h4 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h4>';
+  const linkControls = mapLinkControlsApply(layer); // the Map of the application layer: draw only this link, or take a relationship out
+  if (linkControls) html += renderMapLinkOnlyButtonHtml(rels);
+  html += rels
+    .map((rel, i) =>
+      renderRelationshipInspectionHtml(
+        rel,
+        layer,
+        told && marked[i],
+        linkControls ? renderMapLinkPanelCheckboxHtml(rel) : ''
+      )
+    )
+    .join('');
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   return html + '</div>';
 }
@@ -22520,6 +22579,12 @@ function mapLayer() {
 function mapStateOf(layer) {
   if ((layer || mapLayer()) === 'technology') return technologyMapState;
   return {
+    get links() {
+      return mapLinks;
+    },
+    set links(value) {
+      mapLinks = value;
+    },
     get pinned() {
       return mapPinned;
     },
@@ -22611,7 +22676,18 @@ function currentMapState() {
     Array.from(list).filter(
       (reference) => AppState.index[layer].has(reference) || comparisonHasElement(layer, reference)
     );
-  return { opened: knownToOpen(currentMapOpened()), pinned: known(state.pinned), hidden: known(state.hidden) };
+  const mapState = {
+    opened: knownToOpen(currentMapOpened()),
+    pinned: known(state.pinned),
+    hidden: known(state.hidden)
+  };
+  // the relationships ticked that the model drawn has (the plateau, and the one compared with); the technology layer has none
+  if (layer === 'application' && mapLinks.length)
+    mapState.links = drawnLinkEntries(mapLinks, [
+      AppState.index.application,
+      AppState.baseline && AppState.baseline.index.application
+    ]);
+  return mapState;
 }
 
 /** How many boxes the map would draw once `extra` more elements are open, children of open boxes being all drawn. */
@@ -22640,6 +22716,317 @@ function closeOnMap(reference) {
   const opened = currentMapOpened();
   for (const open of Array.from(opened))
     if (open === reference || open.startsWith(reference + '.')) opened.delete(open);
+}
+/**
+ * The relationships of the Map in the page (wave 026, run 0199, issue #143, TDD DEC-3, DEC-4, DEC-5): the list under the tree of the page Applications, the controls of the
+ * panel of a selected link and the chip over the diagram. What is ticked is `mapLinks`, view state (no `modelsChanged()`); the redraw is asked by the events, in composition.
+ */
+
+/** The most rows of the list drawn at once; the filter reaches the others. */
+const MAP_LINKS_ROW_CAP = 200;
+
+/** The models the list reads: the plateau drawn, and the one compared with (a removed relationship can be ticked). */
+function mapLinkModels() {
+  return [AppState.index.application, AppState.baseline && AppState.baseline.index.application].filter(Boolean);
+}
+
+function mapLinkKindOf(reference) {
+  for (const index of mapLinkModels()) {
+    const record = index.get(reference);
+    if (record) return String(record.kind || '');
+  }
+  return '';
+}
+
+/** Every relationship of the models, once each, then the ticked entries the models lack (`missing`); sorted by source, destination and label. */
+function mapLinkRows() {
+  const rows = new Map();
+  for (const index of mapLinkModels()) {
+    for (const record of index.values()) {
+      for (const relationship of record.relationships || []) {
+        const entry = linkEntryOf(relationship, record.reference);
+        const key = linkEntryKey(entry);
+        if (rows.has(key)) continue;
+        rows.set(key, {
+          entry,
+          key,
+          missing: false,
+          sourceKind: String(record.kind || ''),
+          destinationKind: mapLinkKindOf(relationship.destination)
+        });
+      }
+    }
+  }
+  for (const entry of mapLinks) {
+    const key = linkEntryKey(entry);
+    if (!rows.has(key)) rows.set(key, { entry, key, missing: true, sourceKind: '', destinationKind: '' });
+  }
+  return Array.from(rows.values()).sort(
+    (a, b) =>
+      compareUnits(a.entry.source, b.entry.source) ||
+      compareUnits(a.entry.destination, b.entry.destination) ||
+      compareUnits(normalLinkLabel(a.entry.label), normalLinkLabel(b.entry.label))
+  );
+}
+
+function mapLinkRowText(row) {
+  return row.entry.source + ' → ' + row.entry.destination + ' ' + normalLinkLabel(row.entry.label);
+}
+
+/** The rows the controls keep (the typed text reads the kind of the source; the select of kinds reads either end):  a ticked entry the plateau lacks is always kept, it is a mistake to see. */
+function mapLinkRowsShown(rows, ticked) {
+  const text = mapLinksFilter.trim().toLowerCase();
+  return rows.filter((row) => {
+    if (row.missing) return true;
+    if (mapLinksTickedOnly && !ticked.has(row.key)) return false;
+    if (mapLinksKind && row.sourceKind !== mapLinksKind && row.destinationKind !== mapLinksKind) return false;
+    if (!text) return true;
+    return (mapLinkRowText(row) + ' ' + row.sourceKind).toLowerCase().includes(text);
+  });
+}
+
+function renderMapLinkRowHtml(row, ticked) {
+  const label = normalLinkLabel(row.entry.label);
+  const on = ticked.has(row.key);
+  const name =
+    row.entry.source +
+    ' to ' +
+    row.entry.destination +
+    (label ? ', ' + label : '') +
+    (row.missing ? ', not in this plateau' : '');
+  const kinds = [row.sourceKind, row.destinationKind].filter(Boolean).join(' → ');
+  return (
+    '<li class="map-link-row' +
+    (row.missing ? ' map-link-missing' : '') +
+    '"><label><input type="checkbox" data-action="map-link-toggle" data-key="' +
+    escapeHtml(row.key) +
+    '"' +
+    (on ? ' checked' : '') +
+    ' aria-label="' +
+    escapeHtml(name) +
+    '"><span class="map-link-text"><span class="map-link-ends">' +
+    escapeHtml(row.entry.source) +
+    ' → ' +
+    escapeHtml(row.entry.destination) +
+    '</span>' +
+    (label ? ' <span class="map-link-label">' + escapeHtml(label) + '</span>' : '') +
+    (kinds ? ' <span class="muted map-link-kinds">' + escapeHtml(kinds) + '</span>' : '') +
+    (row.missing ? ' <span class="muted map-link-note">not in this plateau</span>' : '') +
+    '</span></label></li>'
+  );
+}
+
+/** The rows and what is said about them: the part of the list that a typed filter draws again alone. */
+function renderMapLinkRowsHtml(rows, ticked) {
+  const shown = mapLinkRowsShown(rows, ticked);
+  if (!shown.length) return '<p class="muted map-links-none">No relationship matches.</p>';
+  const drawn = shown.slice(0, MAP_LINKS_ROW_CAP);
+  return (
+    '<ul class="map-link-rows" role="list">' +
+    drawn.map((row) => renderMapLinkRowHtml(row, ticked)).join('') +
+    '</ul>' +
+    (shown.length > drawn.length
+      ? '<p class="muted map-links-more">' + drawn.length + ' of ' + shown.length + ' shown: type to narrow</p>'
+      : '')
+  );
+}
+
+function mapLinkTickedText() {
+  return mapLinks.length === 1 ? '1 relationship ticked' : mapLinks.length + ' relationships ticked';
+}
+
+/** The section Relationships under the tree of the page Applications. */
+function renderMapLinksListHtml() {
+  if (mapLayer() !== 'application') return '';
+  const rows = mapLinkRows();
+  const ticked = new Set(mapLinks.map(linkEntryKey));
+  const kinds = Array.from(new Set(rows.flatMap((row) => [row.sourceKind, row.destinationKind]).filter(Boolean))).sort(
+    compareUnits
+  );
+  return (
+    '<details class="nav-section map-links"' +
+    (mapLinksListOpen ? ' open' : '') +
+    ' data-map-links-details><summary>Relationships' +
+    (mapLinks.length ? ' <span class="map-links-count">' + mapLinks.length + ' ticked</span>' : '') +
+    '</summary>' +
+    (mapLinks.length
+      ? '<button type="button" class="map-links-clear" data-action="map-links-clear" title="Show the whole map again: no relationship ticked">Clear</button>'
+      : '') +
+    '<div class="map-links-hint muted" id="map-links-hint">Tick relationships to draw only them, with the boxes at their ends.</div>' +
+    '<div class="map-links-controls">' +
+    '<input type="search" id="map-links-filter" data-map-links-filter aria-label="Filter the relationships by source, destination, kind or text" placeholder="Filter" value="' +
+    escapeHtml(mapLinksFilter) +
+    '" autocomplete="off">' +
+    '<select id="map-links-kind" data-map-links-kind aria-label="Show the relationships of a kind"><option value="">Any kind</option>' +
+    kinds
+      .map(
+        (kind) =>
+          '<option value="' +
+          escapeHtml(kind) +
+          '"' +
+          (kind === mapLinksKind ? ' selected' : '') +
+          '>' +
+          escapeHtml(kind) +
+          '</option>'
+      )
+      .join('') +
+    '</select>' +
+    '<label class="map-links-only"><input type="checkbox" data-map-links-ticked-only' +
+    (mapLinksTickedOnly ? ' checked' : '') +
+    '> Ticked only</label></div>' +
+    '<div id="map-links-rows">' +
+    renderMapLinkRowsHtml(rows, ticked) +
+    '</div>' +
+    '<div class="map-links-live" role="status" aria-live="polite">' +
+    mapLinkTickedText() +
+    '</div></details>'
+  );
+}
+
+/** A typed filter, a kind, "Ticked only": the rows are drawn again in place, the page is not, so the focus stays where it was. */
+function refreshMapLinkRows() {
+  const holder = typeof document !== 'undefined' ? document.getElementById('map-links-rows') : null;
+  if (!holder) return;
+  holder.innerHTML = renderMapLinkRowsHtml(mapLinkRows(), new Set(mapLinks.map(linkEntryKey)));
+}
+
+/** Reads one of the controls of the list when it is the target; true when it was one. */
+function handleMapLinksControl(target) {
+  if (!target || !target.matches) return false;
+  if (target.matches('[data-map-links-filter]')) mapLinksFilter = target.value;
+  else if (target.matches('[data-map-links-kind]')) mapLinksKind = target.value;
+  else if (target.matches('[data-map-links-ticked-only]')) mapLinksTickedOnly = !!target.checked;
+  else return false;
+  refreshMapLinkRows();
+  return true;
+}
+
+/** Ticks or unticks one entry (the click on a row, or on a relationship of the panel of a link). */
+function toggleMapLink(entry) {
+  const key = linkEntryKey(entry);
+  mapLinks = mapLinks.some((e) => linkEntryKey(e) === key)
+    ? mapLinks.filter((e) => linkEntryKey(e) !== key)
+    : mapLinks.concat([entry]);
+}
+
+function mapLinkKeyFocus(key) {
+  return (
+    'input[data-action="map-link-toggle"][data-key="' + String(key).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]'
+  );
+}
+
+/** The entry of a relationship of a link of the drawing, found again in the models (null: a ghost, a relationship no model declares). */
+function mapLinkEntryOfRelationship(rel) {
+  const wanted = normalLinkLabel(rel.label);
+  for (const index of mapLinkModels()) {
+    const record = index.get(rel.from);
+    if (!record) continue;
+    for (const relationship of record.relationships || []) {
+      if (relationship.destination !== rel.destination) continue;
+      if (normalLinkLabel(relationship.rawLabel) === wanted || normalLinkLabel(relationship.label) === wanted)
+        return linkEntryOf(relationship, record.reference);
+    }
+  }
+  return null;
+}
+
+/** The entries of the relationships a link stands for, once each. */
+function mapLinkEntriesOfRelationships(rels) {
+  const byKey = new Map();
+  for (const rel of rels) {
+    const entry = mapLinkEntryOfRelationship(rel);
+    if (entry) byKey.set(linkEntryKey(entry), entry);
+  }
+  return Array.from(byKey.values());
+}
+
+/** Draw only this link: the choice becomes the relationships of the selected link (the Map of the application layer, nothing ticked yet). */
+function chooseOnlyMapLink(sel) {
+  const pair = inspectionLinkFor(sel);
+  if (!pair) return false;
+  const entries = mapLinkEntriesOfRelationships(relationshipsOfPair(pair));
+  if (!entries.length) return false;
+  mapLinks = entries;
+  return true;
+}
+
+/** True where the panel of a link may change the choice: the Map of the application layer. */
+function mapLinkControlsApply(layer) {
+  return mapIsShown() && mapLayer() === 'application' && (layer || 'application') === 'application';
+}
+
+/** The checkbox of one relationship in the panel of a link (empty when the choice is empty or the relationship cannot be found). */
+function renderMapLinkPanelCheckboxHtml(rel) {
+  if (!mapLinks.length) return '';
+  const entry = mapLinkEntryOfRelationship(rel);
+  if (!entry) return '';
+  const key = linkEntryKey(entry);
+  return (
+    '<label class="map-link-panel-check"><input type="checkbox" data-action="map-link-toggle" data-key="' +
+    escapeHtml(key) +
+    '"' +
+    (mapLinks.some((e) => linkEntryKey(e) === key) ? ' checked' : '') +
+    ' aria-label="Draw ' +
+    escapeHtml(rel.from + ' to ' + rel.destination) +
+    '"> Drawn</label>'
+  );
+}
+
+/** The button of the panel of a link: Draw only this link, while nothing is ticked. */
+function renderMapLinkOnlyButtonHtml(rels) {
+  if (mapLinks.length || !mapLinkEntriesOfRelationships(rels).length) return '';
+  return '<p class="map-link-only"><button type="button" data-action="map-link-only" title="Draw only the relationships of this link and the boxes at their ends">Draw only this link</button></p>';
+}
+
+/** The chip over the diagram while relationships are ticked. */
+function renderMapLinksChipHtml() {
+  if (!mapLinks.length || mapLayer() !== 'application') return '';
+  return (
+    '<span class="map-chip map-chip-links"><span>Relationships: ' +
+    mapLinks.length +
+    '</span><button type="button" data-action="map-links-clear" aria-label="Clear the ticked relationships" title="Show the whole map again">×</button></span>'
+  );
+}
+
+/** The ticked relationships from the address: `rel=` once for each, a JSON array [source, destination, label?]; the ones no model has are dropped. */
+function mapLinksFromParams(params) {
+  const entries = [];
+  const seen = new Set();
+  for (const value of params.getAll('rel')) {
+    let parsed;
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(parsed) || parsed.length < 2 || parsed.length > 3 || !parsed.every((p) => typeof p === 'string'))
+      continue;
+    const entry = linkEntryOfParts(parsed[0], parsed[1], parsed[2]);
+    const key = linkEntryKey(entry);
+    if (seen.has(key) || !mapLinkModels().some((index) => linkEntryExists(entry, index))) continue;
+    seen.add(key);
+    entries.push(entry);
+  }
+  return entries;
+}
+
+function linkEntryOfParts(source, destination, label) {
+  const entry = { source, destination };
+  if (normalLinkLabel(label)) entry.label = normalLinkLabel(label);
+  return entry;
+}
+
+/** The `rel=` parameters of the address for the entries ticked. */
+function mapLinkParams(entries) {
+  return entries.map((entry) => {
+    const label = normalLinkLabel(entry.label);
+    return (
+      'rel=' +
+      encodeURIComponent(
+        JSON.stringify(label ? [entry.source, entry.destination, label] : [entry.source, entry.destination])
+      )
+    );
+  });
 }
 /** The kernel, once the promise of `loadViewpointKernel` has settled: null before. */
 let loadedKernel = null;
@@ -22793,6 +23180,116 @@ function toKernelElements(map, withProperties) {
     elements.push(element);
   }
   return { elements, dangling };
+}
+/**
+ * The entry model of the `links` and `highlight` of a Map view (wave 026, run 0199, issue #143, DEC-2). An entry names one
+ * relationship by the element that declares it, its destination and its label; the label rule is the command line's and the
+ * kernel's (`RelationshipLabel.normalize`: trimmed, and a blank label is no label).
+ */
+
+/** The label of an entry as the rule reads it: trimmed, the empty text for none. */
+function normalLinkLabel(label) {
+  return typeof label === 'string' ? label.trim() : '';
+}
+
+/** The entry of a relationship of a record: the label as declared, trimmed, left out when there is none (the display fallback is no label). */
+function linkEntryOf(relationship, sourceReference) {
+  const entry = { source: sourceReference, destination: relationship.destination };
+  const label = normalLinkLabel(relationship.rawLabel);
+  if (label) entry.label = label;
+  return entry;
+}
+
+/** The key of an entry: its source, its destination and its trimmed label. */
+function linkEntryKey(entry) {
+  return JSON.stringify([entry.source, entry.destination, normalLinkLabel(entry.label)]);
+}
+
+function isLinkEntry(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  for (const key of Object.keys(value)) {
+    if (key !== 'source' && key !== 'destination' && key !== 'label') return false;
+  }
+  if (typeof value.source !== 'string' || value.source === '') return false;
+  if (typeof value.destination !== 'string' || value.destination === '') return false;
+  return value.label === undefined || typeof value.label === 'string';
+}
+
+/** Reads a `links` or `highlight` value as the kernel does: the entries, and one sentence for the first item that is not one. */
+function linkEntriesOf(value, key) {
+  const name = key || 'links';
+  const entries = [];
+  const problems = [];
+  if (value === undefined || value === null) return { entries, problems };
+  if (!Array.isArray(value)) {
+    problems.push('`' + name + '` is a list of mappings with `source`, `destination` and optionally `label`');
+    return { entries, problems };
+  }
+  value.forEach((item, index) => {
+    if (isLinkEntry(item)) entries.push(item);
+    else if (problems.length === 0) {
+      problems.push(
+        '`' +
+          name +
+          '[' +
+          index +
+          ']` is a mapping with `source`, `destination` and optionally `label`, and ' +
+          JSON.stringify(item) +
+          ' is not one'
+      );
+    }
+  });
+  return { entries, problems };
+}
+
+/** True when the source declares a relationship to the destination with the same normal label, in the model (reference -> record). */
+function linkEntryExists(entry, index) {
+  const record = index.get(entry.source);
+  if (!record) return false;
+  const label = normalLinkLabel(entry.label);
+  return (record.relationships || []).some(
+    (relationship) => relationship.destination === entry.destination && normalLinkLabel(relationship.rawLabel) === label
+  );
+}
+
+/** Rewrites the source and the destination of the entries with `rewrite` (a reference -> reference function); true when anything changed. */
+function rewriteLinkEntries(entries, rewrite) {
+  let changed = false;
+  for (const entry of entries) {
+    const source = rewrite(entry.source);
+    if (source !== entry.source) {
+      entry.source = source;
+      changed = true;
+    }
+    const destination = rewrite(entry.destination);
+    if (destination !== entry.destination) {
+      entry.destination = destination;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/** The written form: one entry per key, sorted by key, a label trimmed and a blank one not written. */
+function canonicalLinkEntries(entries) {
+  const byKey = new Map();
+  for (const entry of entries) {
+    const key = linkEntryKey(entry);
+    if (byKey.has(key)) continue;
+    const written = { source: entry.source, destination: entry.destination };
+    const label = normalLinkLabel(entry.label);
+    if (label) written.label = label;
+    byKey.set(key, written);
+  }
+  return Array.from(byKey.keys())
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+    .map((key) => byKey.get(key));
+}
+
+/** The entries whose relationship exists in one of the models drawn (the plateau, and the one compared with: a removed relationship can be ticked); the others are left out of the kernel input. */
+function drawnLinkEntries(entries, indexes) {
+  const models = indexes.filter(Boolean);
+  return entries.filter((entry) => models.some((index) => linkEntryExists(entry, index)));
 }
 // ---- The comparison of two plateaus (run 0039) ----
 
@@ -23148,6 +23645,9 @@ function buildKernelInput(viewpoint, reference, options) {
     input.opened = Array.from(opts.opened || []);
     input.pinned = Array.from(opts.pinned || []);
     input.hidden = Array.from(opts.hidden || []);
+    // the relationships the Map of the application layer is narrowed to; absent when none (the whole map)
+    if (layer === 'application' && opts.links && opts.links.length)
+      input.links = opts.links.map((link) => Object.assign({}, link));
     // what the Map of the technology layer draws besides its elements: absent is drawn (the kernel's own default)
     if (layer === 'technology') for (const part of MAP_PARTS) if (opts[part] === false) input[part] = false;
   }
@@ -26415,6 +26915,8 @@ function diagramCacheKey(recipe, comparison, viewKey) {
     layer,
     reference,
     isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
+    // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
+    isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
     // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
     isMap && layer === 'technology'
       ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
@@ -26555,14 +27057,14 @@ function mapPartsOf(view) {
 /** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view and the model, and nothing else: an edit of the view is an edit of the entry. */
 function libraryDiagramRecipe(view) {
   if (!view || viewProblem(view)) return null;
-  return viewDiagramRecipe(view, AppState.index, 'library');
+  return viewDiagramRecipe(view, AppState.index, 'library', AppState.baseline ? AppState.baseline.index : null);
 }
 
 /**
  * The recipe of a view (or of a step that carries its own recipe) that can be drawn in the model `index`: the pins, the open and hidden boxes it names that the model has, the
  * facet, the texts and the parts of a map, as the view says them. `host` is the place that draws it (`library`, `story`). Reads the view, the settings and `index`, nothing else.
  */
-function viewDiagramRecipe(view, index, host) {
+function viewDiagramRecipe(view, index, host, baselineIndex) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const isMap = view.viewpoint === 'map';
   const layer = viewLayerOf(view);
@@ -26592,6 +27094,15 @@ function viewDiagramRecipe(view, index, host) {
       pinned: known(properties.pinned),
       hidden: known(properties.hidden)
     };
+    // issue #143: the relationships of a Map of the application layer that the model drawn has (the one compared with too)
+    if (layer === 'application') {
+      const asked = linkEntriesOf(properties.links).entries;
+      if (asked.length)
+        recipe.mapState.links = drawnLinkEntries(asked, [
+          index.application,
+          baselineIndex ? baselineIndex.application : null
+        ]);
+    }
   } else {
     recipe.reference = properties.element;
     recipe.record = index[layer].get(properties.element);
@@ -26659,11 +27170,26 @@ function mountDiagramIfNeeded() {
     facet ? facet.name : '',
     isMap ? mapState.pinned.join(',') : ''
   ]
-    .concat(isMap && recipe.layer === 'technology' ? ['technology'] : [], readonly ? ['view:' + recipe.view.id] : [])
+    .concat(
+      isMap && mapState.links && mapState.links.length ? [JSON.stringify(canonicalLinkEntries(mapState.links))] : [],
+      isMap && recipe.layer === 'technology' ? ['technology'] : [],
+      readonly ? ['view:' + recipe.view.id] : []
+    )
     .join('|');
   const comparison = comparisonState();
   const key = diagramCacheKey(recipe, comparison, viewKey);
-  const nothing = nothingDrawnScene(viewKey, comparison);
+  const nothing = nothingDrawnScene(
+    viewKey,
+    comparison,
+    // the page Applications: relationships ticked and none of them in the model drawn is not the whole map
+    isMap &&
+      recipe.host === 'main' &&
+      recipe.layer === 'application' &&
+      mapLinks.length &&
+      !(mapState.links || []).length
+      ? 'none of the relationships ticked is in this plateau.'
+      : ''
+  );
   if (nothing) {
     showDiagramScene(nothing);
     return;
@@ -26681,6 +27207,7 @@ function mountDiagramIfNeeded() {
           layer: recipe.layer,
           opened: mapState.opened,
           pinned: mapState.pinned,
+          links: mapState.links,
           applications: recipePartsOf(recipe).applications,
           relationships: recipePartsOf(recipe).relationships
         }
@@ -26873,7 +27400,7 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
  * The scene that says nothing is drawn, or null: a reference declared more than once (a model that has no single answer is not drawn from), or two plateaus that cannot be compared
  * (a reference twice in the baseline, a pair the kernel refuses). `comparison` is the comparison the drawing is made with. Both are mistakes of the workspace, not of the view.
  */
-function nothingDrawnScene(viewKey, comparison) {
+function nothingDrawnScene(viewKey, comparison, emptyChoice) {
   const duplicates = elementDuplicates();
   if (duplicates.length) {
     return buildDiagramScene(
@@ -26904,6 +27431,18 @@ function nothingDrawnScene(viewKey, comparison) {
             '</ul>'
           : '') +
         '</div>',
+      '',
+      '',
+      { width: 0, height: 0 },
+      null
+    );
+  }
+  if (emptyChoice) {
+    return buildDiagramScene(
+      viewKey,
+      '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
+        escapeHtml(emptyChoice) +
+        '</strong> <button type="button" data-action="map-links-clear">Clear</button></div>',
       '',
       '',
       { width: 0, height: 0 },
@@ -26958,7 +27497,7 @@ function renderMapPerspectiveHtml() {
   const sel = AppState.selection;
   const record = sel.kind === 'element' ? findElementRecord(sel.key, sel.layer) : null;
   return {
-    left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
+    left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml() + renderMapLinksListHtml()),
     center:
       '<div class="diagram-view">' +
       renderStoryBarHtml() +
@@ -27347,7 +27886,8 @@ function handleNavKeydown(e) {
 /** The pinned and the hidden elements of the map, each removable. */
 function renderMapChipsHtml() {
   const map = mapStateOf();
-  if (!map.pinned.length && !map.hidden.length) return '';
+  const linksChip = renderMapLinksChipHtml();
+  if (!map.pinned.length && !map.hidden.length && !linksChip) return '';
   const chip = (reference, kind) => {
     const record = AppState.index[mapLayer()].get(reference);
     if (!record) return '';
@@ -27372,13 +27912,14 @@ function renderMapChipsHtml() {
     );
   };
   const clear =
-    map.pinned.length + map.hidden.length > 2
-      ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden">Clear all</button>'
+    map.pinned.length + map.hidden.length + (linksChip ? 1 : 0) > 2
+      ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden, no relationship ticked">Clear all</button>'
       : '';
   return (
     '<div class="map-chips">' +
     map.pinned.map((r) => chip(r, 'pin')).join('') +
     map.hidden.map((r) => chip(r, 'hide')).join('') +
+    linksChip +
     clear +
     '</div>'
   );
@@ -27535,10 +28076,12 @@ function stepProblem(step, plateau, number) {
   const at = plateau !== undefined ? plateau : stepPlateauKeys(step).at;
   if (typeof step.view === 'string' && step.view) {
     const view = findSavedView(step.view);
-    return view ? viewProblem(view, at) : 'The view “' + step.view + '” does not exist any more.';
+    return view
+      ? viewProblem(view, at, undefined, stepPlateauKeys(step).against)
+      : 'The view “' + step.view + '” does not exist any more.';
   }
   return typeof step.viewpoint === 'string' && step.viewpoint
-    ? viewProblem(step, at, 'step_' + String(number).padStart(2, '0'))
+    ? viewProblem(step, at, 'step_' + String(number).padStart(2, '0'), stepPlateauKeys(step).against)
     : 'This step has no view.';
 }
 
@@ -27618,10 +28161,15 @@ function canonicalViewProperties(properties) {
     const list = stringList(source[key]).slice().sort();
     if (list.length) out[key] = list;
   }
+  // wave 026 run 0199 (issue #143): the relationships a Map is narrowed to, sorted by key and without repeats, after `opened`
+  const links = canonicalLinkEntries(linkEntriesOf(source.links).entries);
+  if (links.length) out.links = links;
   if (typeof source.facet === 'string' && source.facet) out.facet = source.facet;
   if (source['hide-unlinked'] === true) out['hide-unlinked'] = true;
   for (const name of MAP_PARTS) if (source[name] === false) out[name] = false; // drawn is the default, so only `false` is a choice (issue #107)
   for (const name of DIAGRAM_SHOW_NAMES) if (typeof source[name] === 'boolean') out[name] = source[name];
+  // the editor does not draw a `highlight` yet: it is kept as written, last, so that no edit loses it (DEC-7)
+  if (Array.isArray(source.highlight) && source.highlight.length) out.highlight = source.highlight;
   return out;
 }
 
@@ -27633,6 +28181,12 @@ function canonicalViewDefinition(view) {
   for (const name of DIAGRAM_SHOW_NAMES) if (properties[name] === defaults[name]) delete properties[name];
   // only the Map of the technology layer draws the applications and the relationships of the model: the keys mean nothing anywhere else
   if (viewpoint !== 'map' || viewLayerOf(view) !== 'technology') for (const name of MAP_PARTS) delete properties[name];
+  // `links` and `highlight` are the Map of the application layer's alone
+  if (viewpoint !== 'map' || viewLayerOf(view) !== 'application') {
+    delete properties.links;
+    delete properties.highlight;
+  }
+  if (viewpoint === 'map') delete properties.element; // a Map is about its pins, not about one element
   return { viewpoint, layer: viewLayerOf(view), properties };
 }
 
@@ -27649,6 +28203,7 @@ function currentViewDefinition() {
           pinned: state.pinned,
           hidden: state.hidden,
           opened: state.opened,
+          links: mapLayer() === 'application' ? mapLinks : [],
           facet: facetName,
           'hide-unlinked': diagramHideUnlinked
         },
@@ -27722,9 +28277,9 @@ function indexOfPlateau(plateau) {
 
 /**
  * Why a saved view cannot be drawn now, or null when it can. `plateau` is the plateau it is looked at in (a step that is told at one, wave 015 run 0101): absent, the
- * plateau drawn. `name` is how the sentences call the view (default its id; a step with its own recipe is `step_NN`).
+ * plateau drawn. `against`: the plateau a step says it is compared with (null: none; absent: the comparison on screen when `plateau` is absent too). `name` is how the sentences call the view (default its id; a step with its own recipe is `step_NN`).
  */
-function viewProblem(view, plateau, name) {
+function viewProblem(view, plateau, name, against) {
   if (!isPlainObject(view)) return 'This view does not exist.';
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const index = indexOfPlateau(plateau);
@@ -27732,6 +28287,8 @@ function viewProblem(view, plateau, name) {
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = viewLayerOf(view);
+    const linksProblem = viewLinksProblem(properties, index, layer, viewName, plateau, against);
+    if (linksProblem) return linksProblem;
     if (!pinned.length || pinned.some((reference) => index[layer].has(reference))) return null;
     return viewLacksInPlateau(pinned, layer, plateau) || 'None of the elements it was pinned on exists any more.';
   }
@@ -27746,6 +28303,61 @@ function viewProblem(view, plateau, name) {
       'the view `' + viewName + '` names `' + properties.element + '`, which does not exist'
     );
   }
+  return null;
+}
+
+/**
+ * The sentence for the `links` of a Map view that cannot be drawn, or null (DEC-7 (f), the command line's words without the prefix `error:`). A workspace with no plateau and a view
+ * with no facet is told the mistakes of an entry; with plateaus or a facet an entry the model lacks is dropped, and only a choice none of whose entries is there is told.
+ */
+function viewLinksProblem(properties, index, layer, viewName, plateau, against) {
+  if (properties.links === undefined || properties.links === null) return null;
+  const prefix = 'the view `' + viewName + '`: ';
+  if (layer !== 'application') return prefix + 'links is read in the map of the application layer only';
+  const read = linkEntriesOf(properties.links);
+  if (read.problems.length) return prefix + read.problems[0];
+  if (!read.entries.length) return null;
+  const named = plateau === null || plateau === undefined ? writingPlateau() : plateau;
+  if (named === null && !properties.facet) {
+    for (let i = 0; i < read.entries.length; i++) {
+      const entry = read.entries[i];
+      for (const end of [entry.source, entry.destination])
+        if (!index.application.has(end)) return prefix + 'dangling reference: ' + end;
+      if (!linkEntryExists(entry, index.application)) {
+        const label = normalLinkLabel(entry.label);
+        return (
+          prefix +
+          '`links[' +
+          i +
+          ']` names a relationship from `' +
+          entry.source +
+          '` to `' +
+          entry.destination +
+          '` with ' +
+          (label ? 'the label `' + label + '`' : 'no label') +
+          ', which does not exist'
+        );
+      }
+    }
+    return null;
+  }
+  // a relationship the plateau compared with has can be ticked: the comparison on screen, or the plateau a step says it is compared with
+  const compared =
+    against !== undefined
+      ? against
+        ? layerModelOf(against, AppState.workspace.settings)
+        : null
+      : plateau === null || plateau === undefined
+        ? AppState.baseline
+        : null;
+  if (
+    named !== null &&
+    !read.entries.some(
+      (entry) =>
+        linkEntryExists(entry, index.application) || (compared && linkEntryExists(entry, compared.index.application))
+    )
+  )
+    return 'None of the relationships it shows is in the plateau “' + named + '”.';
   return null;
 }
 
@@ -27790,6 +28402,9 @@ function applySavedView(view) {
     map.pinned = known(properties.pinned);
     map.hidden = known(properties.hidden);
     map.opened = new Set(known(properties.opened));
+    // issue #143: the relationships the view is narrowed to (the application layer's Map alone); a view with none gives the whole map
+    if (layer === 'application')
+      mapLinks = linkEntriesOf(properties.links).entries.map((link) => Object.assign({}, link)); // as the view says them: the model drawn is looked at when it is drawn
     if (layer === 'technology') technologyMapParts = mapPartsOf(view); // the view says `false` for what it leaves out, else it is drawn
     map.pinned.forEach((reference) => expandParentsOf(reference, layer));
     mapSelectionCheck = true;
@@ -27923,6 +28538,14 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
         changed = true;
       }
     }
+    // the relationships a Map is narrowed to, and the ones it draws heavy, name their two ends (wave 026, run 0199, DEC-10); the label never changes
+    if (viewLayer === 'application') {
+      const rewrite = (reference) => rewriteReferenceValue(reference, oldRef, newRef);
+      for (const key of ['links', 'highlight']) {
+        if (Array.isArray(properties[key]) && rewriteLinkEntries(linkEntriesOf(properties[key], key).entries, rewrite))
+          changed = true;
+      }
+    }
   }
   return changed;
 }
@@ -27957,10 +28580,17 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
 function recipeNamedReferences(recipe, layer) {
   const properties = recipe.properties;
   if (!isPlainObject(properties) || viewLayerOf(recipe) !== layer) return [];
-  if (recipe.viewpoint === 'map')
-    return ['pinned', 'hidden', 'opened']
+  if (recipe.viewpoint === 'map') {
+    const named = ['pinned', 'hidden', 'opened']
       .reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), [])
       .filter((reference) => typeof reference === 'string');
+    if (layer === 'application') {
+      for (const key of ['links', 'highlight']) {
+        for (const link of linkEntriesOf(properties[key], key).entries) named.push(link.source, link.destination);
+      }
+    }
+    return named;
+  }
   return typeof properties.element === 'string' ? [properties.element] : [];
 }
 
@@ -28181,7 +28811,7 @@ function shownTextsOf(view) {
 }
 
 /** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
-const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'facet', 'hide-unlinked'].concat(
+const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'links', 'facet', 'hide-unlinked'].concat(
   MAP_PARTS,
   DIAGRAM_SHOW_NAMES
 );
@@ -28288,6 +28918,10 @@ function setViewLayer(view, layer) {
       if (kept.length) view.properties[list] = kept;
       else delete view.properties[list];
     }
+    if (layer === 'technology') {
+      delete view.properties.links; // the relationships a Map is narrowed to are the application layer's alone (issue #143)
+      delete view.properties.highlight;
+    }
     if (layer !== 'technology') for (const part of MAP_PARTS) delete view.properties[part]; // only the Map of the technology layer draws the applications and the relationships of the model (issue #107)
   } else if (typeof view.properties.element !== 'string' || !AppState.index[layer].has(view.properties.element))
     delete view.properties.element;
@@ -28311,7 +28945,7 @@ function setViewViewpoint(view, viewpoint) {
     if (pinned.length) putViewProperty(properties, 'pinned', pinned);
   } else if (viewpoint !== 'map' && view.viewpoint === 'map') {
     const first = stringList(properties.pinned).find((reference) => AppState.index[viewLayerOf(view)].has(reference)); // the first pin that is still an element, in the order of the file
-    for (const key of ['pinned', 'hidden', 'opened'].concat(MAP_PARTS)) delete properties[key]; // the Map's own keys go with it
+    for (const key of ['pinned', 'hidden', 'opened', 'links', 'highlight'].concat(MAP_PARTS)) delete properties[key]; // the Map's own keys go with it
     if (first) putViewProperty(properties, 'element', first);
     else delete properties.element;
   }
@@ -28321,6 +28955,43 @@ function setViewViewpoint(view, viewpoint) {
 }
 
 const VIEW_LISTS = ['pinned', 'hidden', 'opened'];
+
+/** The entry of a key made by `linkEntryKey`, or null. */
+function linkEntryOfKey(key) {
+  try {
+    const parts = JSON.parse(String(key));
+    if (!Array.isArray(parts) || typeof parts[0] !== 'string' || typeof parts[1] !== 'string') return null;
+    const entry = { source: parts[0], destination: parts[1] };
+    if (typeof parts[2] === 'string' && parts[2]) entry.label = parts[2];
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Adds a relationship to the `links` of a Map view of the application layer, or takes one out (the last one takes the key out). One that names no relationship of the model, or
+ * is already there, is refused. The `highlight` is never touched.
+ */
+function setViewLink(view, entry, add) {
+  if (view.viewpoint !== 'map' || viewLayerOf(view) !== 'application' || !entry) return false;
+  const key = linkEntryKey(entry);
+  const items = Array.isArray(view.properties.links) ? view.properties.links : [];
+  const isThis = (item) => isLinkEntry(item) && linkEntryKey(item) === key;
+  if (add) {
+    if (!linkEntryExists(entry, AppState.index.application)) return false;
+    if (items.some(isThis)) return false;
+    const written = { source: entry.source, destination: entry.destination };
+    if (normalLinkLabel(entry.label)) written.label = normalLinkLabel(entry.label);
+    putViewProperty(view.properties, 'links', items.concat([written]));
+    return true;
+  }
+  if (!items.some(isThis)) return false;
+  const rest = items.filter((item) => !isThis(item));
+  if (rest.length) view.properties.links = rest;
+  else delete view.properties.links;
+  return true;
+}
 
 /** Adds an element of the layer of the view to the pinned, hidden or opened elements of a Map view, or takes one out. A reference that is not an element of that layer is refused. */
 function setViewListItem(view, list, reference, add) {
@@ -28355,6 +29026,18 @@ function setViewListItem(view, list, reference, add) {
 function handleViewFieldChange(control, immediate) {
   const field = control.getAttribute('data-view-field');
   const list = control.getAttribute('data-view-list');
+  if (control.getAttribute('data-view-link') === 'add') {
+    const chosen = control.value;
+    control.value = '';
+    pendingFocusSelector = '#view-edit-add-links';
+    return editSavedView((view) =>
+      setViewLink(
+        view,
+        chosen.startsWith('#') ? viewLinkChoices(view.properties)[Number(chosen.slice(1))] : linkEntryOfKey(chosen),
+        true
+      )
+    );
+  }
   const active = typeof document !== 'undefined' ? document.activeElement : null;
   // the focus is on another control already, or a pointer button is down on something else: the text is being left by a click that is not over
   // yet (Firefox says the focus is on the body while the field loses it, and a redraw then replaces the button before its click)
@@ -28407,11 +29090,13 @@ document.addEventListener('pointercancel', notePointer, true);
 
 /** Delegated `change` listener: the form of a view on its page, the list of Settings. (The menu of the steps of a story is the player's, `handleStoryPlayerChange`.) */
 function handleAppChange(e) {
+  if (handleMapLinksControl(e.target)) return; // the kind and "Ticked only" of the list of relationships
   if (e.target && e.target.matches && e.target.matches('[data-settings-current]')) {
     chooseCurrentPlateau(e.target);
     return;
   }
-  const control = e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list]') : null;
+  const control =
+    e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list], [data-view-link]') : null;
   if (control) handleViewFieldChange(control);
 }
 
@@ -29629,7 +30314,12 @@ async function storyStepScene(storyId, index, options) {
       comparison,
       changesOnly: drawing.changesOnly
     };
-    const recipe = viewDiagramRecipe(stepView(step), drawing.index, 'story');
+    const recipe = viewDiagramRecipe(
+      stepView(step),
+      drawing.index,
+      'story',
+      drawing.baseline ? drawing.baseline.index : null
+    );
     const { isMap, reference, viewpoint, facet, mapState } = recipe;
     const { input } = buildKernelInput(
       viewpoint,
@@ -29640,6 +30330,7 @@ async function storyStepScene(storyId, index, options) {
             layer: recipe.layer,
             opened: mapState.opened,
             pinned: mapState.pinned,
+            links: mapState.links,
             applications: recipePartsOf(recipe).applications,
             relationships: recipePartsOf(recipe).relationships,
             source
@@ -30649,6 +31340,74 @@ function entryFileLabel(entry) {
  * The view as a form: what it draws and where it is kept as facts, then a control for each attribute (TDD-0029 DEC-1). A control changes
  * the entry of the view (`editSavedView`) when it is committed: a select or a checkbox at once, a text by Enter or leaving it.
  */
+/** The text of an entry of `links`: "source → destination : label". */
+function linkEntryText(entry) {
+  const label = normalLinkLabel(entry.label);
+  return entry.source + ' → ' + entry.destination + (label ? ' : ' + label : '');
+}
+
+/** The relationships of the application layer that a Map view does not have in its `links` yet, sorted by key: what the select of the Links field offers. */
+function viewLinkChoices(properties) {
+  const there = new Set(linkEntriesOf(properties.links).entries.map(linkEntryKey));
+  const offered = [];
+  for (const [reference, record] of AppState.index.application) {
+    for (const relationship of record.relationships || []) {
+      const entry = linkEntryOf(relationship, reference);
+      if (!there.has(linkEntryKey(entry))) offered.push(entry);
+    }
+  }
+  return offered.sort((a, b) => (linkEntryKey(a) < linkEntryKey(b) ? -1 : 1));
+}
+
+/** The Links field of the form of a Map view of the application layer: a pill for each entry (missing ones marked) and a select of the relationships not there yet, read by their names (issue #143). */
+function viewLinksFieldHtml(properties, field, option) {
+  const entries = linkEntriesOf(properties.links).entries;
+  const index = AppState.index.application;
+  const nameOf = (reference) => (index.has(reference) ? index.get(reference).name || reference : reference);
+  const offered = viewLinkChoices(properties);
+  const pills = entries
+    .map((entry) => {
+      const exists = linkEntryExists(entry, index);
+      const text = linkEntryText(entry);
+      return (
+        '<span class="pill' +
+        (exists ? '' : ' pill-missing') +
+        '" role="listitem"' +
+        (exists ? '' : ' title="This relationship does not exist any more"') +
+        '>' +
+        escapeHtml(text) +
+        '<button type="button" class="pill-remove" data-action="view-link-remove" data-key="' +
+        escapeHtml(linkEntryKey(entry)) +
+        '" aria-label="Remove ' +
+        escapeHtml(text) +
+        ' from links" title="Remove">×</button></span>'
+      );
+    })
+    .join('');
+  return field(
+    'view-edit-add-links',
+    'Links',
+    '<div class="view-pills" role="list" aria-label="Links relationships">' +
+      pills +
+      '</div><select id="view-edit-add-links" data-view-link="add" title="The relationships the map is narrowed to">' +
+      option('', 'Add a relationship…', true) +
+      offered
+        .map((entry, i) =>
+          option(
+            '#' + i,
+            nameOf(entry.source) +
+              ' → ' +
+              nameOf(entry.destination) +
+              (normalLinkLabel(entry.label) ? ' : ' + normalLinkLabel(entry.label) : ''),
+            false
+          )
+        )
+        .join('') +
+      '</select>',
+    'links'
+  );
+}
+
 function renderViewFactsHtml(view) {
   const row = (name, content) => '<dt>' + name + '</dt><dd>' + content + '</dd>';
   const isMap = view.viewpoint === 'map';
@@ -30775,6 +31534,7 @@ function renderViewFactsHtml(view) {
       'element'
     );
   }
+  if (isMap && layer === 'application') html += viewLinksFieldHtml(properties, field, option);
   const facets = AppState.workspace.settings.facets.customs;
   const facetName = typeof properties.facet === 'string' ? properties.facet : '';
   if (facets.length || facetName) {
@@ -31759,6 +32519,12 @@ function handleAppClick(e) {
       editSavedView((view) => setViewListItem(view, list, reference, false));
       break;
     }
+    case 'view-link-remove': {
+      const entry = linkEntryOfKey(target.getAttribute('data-key'));
+      pendingFocusSelector = '#view-edit-add-links';
+      editSavedView((view) => setViewLink(view, entry, false));
+      break;
+    }
     case 'toggle-show': {
       const name = target.getAttribute('data-show');
       if (!DIAGRAM_SHOW_NAMES.includes(name)) break;
@@ -31781,6 +32547,36 @@ function handleAppClick(e) {
       pushDiagramHistory();
       mapStateOf().pinned = [];
       mapStateOf().hidden = [];
+      if (mapLayer() === 'application') mapLinks = [];
+      render();
+      break;
+    case 'map-link-toggle': {
+      // a relationship of the Map of the application layer: ticked in the list, or ticked and unticked in the panel of a link
+      const key = target.getAttribute('data-key');
+      let entry;
+      try {
+        const [source, destination, label] = JSON.parse(key);
+        entry = linkEntryOfParts(source, destination, label);
+      } catch {
+        break;
+      }
+      pushDiagramHistory();
+      toggleMapLink(entry);
+      mapSelectionCheck = true;
+      pendingFocusSelector = mapLinkKeyFocus(linkEntryKey(entry));
+      render();
+      break;
+    }
+    case 'map-link-only':
+      pushDiagramHistory();
+      chooseOnlyMapLink(AppState.selection);
+      mapSelectionCheck = true;
+      render();
+      break;
+    case 'map-links-clear':
+      pushDiagramHistory();
+      mapLinks = [];
+      mapSelectionCheck = true;
       render();
       break;
     case 'map-unhide':
@@ -32598,6 +33394,14 @@ function handleBrowserCardKeydown(e) {
 }
 
 document.addEventListener('input', handleBrowserCardInput);
+// the list of relationships remembers whether it is open (`toggle` does not bubble: heard in the capture phase)
+document.addEventListener(
+  'toggle',
+  (e) => {
+    if (e.target && e.target.matches && e.target.matches('[data-map-links-details]')) mapLinksListOpen = e.target.open;
+  },
+  true
+);
 document.addEventListener('keydown', handleBrowserCardKeydown);
 // =====================================================================
 // Landing screen — everything shown before a workspace is open

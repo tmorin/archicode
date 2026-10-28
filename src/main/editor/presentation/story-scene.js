@@ -178,7 +178,12 @@ async function storyStepScene(storyId, index, options) {
       comparison,
       changesOnly: drawing.changesOnly
     };
-    const recipe = viewDiagramRecipe(stepView(step), drawing.index, 'story');
+    const recipe = viewDiagramRecipe(
+      stepView(step),
+      drawing.index,
+      'story',
+      drawing.baseline ? drawing.baseline.index : null
+    );
     const { isMap, reference, viewpoint, facet, mapState } = recipe;
     const { input } = buildKernelInput(
       viewpoint,
@@ -189,6 +194,7 @@ async function storyStepScene(storyId, index, options) {
             layer: recipe.layer,
             opened: mapState.opened,
             pinned: mapState.pinned,
+            links: mapState.links,
             applications: recipePartsOf(recipe).applications,
             relationships: recipePartsOf(recipe).relationships,
             source

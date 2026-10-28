@@ -217,7 +217,15 @@
       "layer": "presentation"
     },
     {
+      "file": "presentation/map-links.js",
+      "layer": "presentation"
+    },
+    {
       "file": "model/kernel-bridge.js",
+      "layer": "model"
+    },
+    {
+      "file": "model/map-links.js",
       "layer": "model"
     },
     {

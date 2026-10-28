@@ -62,7 +62,7 @@ function shownTextsOf(view) {
 }
 
 /** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
-const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'facet', 'hide-unlinked'].concat(
+const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'links', 'facet', 'hide-unlinked'].concat(
   MAP_PARTS,
   DIAGRAM_SHOW_NAMES
 );
@@ -169,6 +169,10 @@ function setViewLayer(view, layer) {
       if (kept.length) view.properties[list] = kept;
       else delete view.properties[list];
     }
+    if (layer === 'technology') {
+      delete view.properties.links; // the relationships a Map is narrowed to are the application layer's alone (issue #143)
+      delete view.properties.highlight;
+    }
     if (layer !== 'technology') for (const part of MAP_PARTS) delete view.properties[part]; // only the Map of the technology layer draws the applications and the relationships of the model (issue #107)
   } else if (typeof view.properties.element !== 'string' || !AppState.index[layer].has(view.properties.element))
     delete view.properties.element;
@@ -192,7 +196,7 @@ function setViewViewpoint(view, viewpoint) {
     if (pinned.length) putViewProperty(properties, 'pinned', pinned);
   } else if (viewpoint !== 'map' && view.viewpoint === 'map') {
     const first = stringList(properties.pinned).find((reference) => AppState.index[viewLayerOf(view)].has(reference)); // the first pin that is still an element, in the order of the file
-    for (const key of ['pinned', 'hidden', 'opened'].concat(MAP_PARTS)) delete properties[key]; // the Map's own keys go with it
+    for (const key of ['pinned', 'hidden', 'opened', 'links', 'highlight'].concat(MAP_PARTS)) delete properties[key]; // the Map's own keys go with it
     if (first) putViewProperty(properties, 'element', first);
     else delete properties.element;
   }
@@ -202,6 +206,43 @@ function setViewViewpoint(view, viewpoint) {
 }
 
 const VIEW_LISTS = ['pinned', 'hidden', 'opened'];
+
+/** The entry of a key made by `linkEntryKey`, or null. */
+function linkEntryOfKey(key) {
+  try {
+    const parts = JSON.parse(String(key));
+    if (!Array.isArray(parts) || typeof parts[0] !== 'string' || typeof parts[1] !== 'string') return null;
+    const entry = { source: parts[0], destination: parts[1] };
+    if (typeof parts[2] === 'string' && parts[2]) entry.label = parts[2];
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Adds a relationship to the `links` of a Map view of the application layer, or takes one out (the last one takes the key out). One that names no relationship of the model, or
+ * is already there, is refused. The `highlight` is never touched.
+ */
+function setViewLink(view, entry, add) {
+  if (view.viewpoint !== 'map' || viewLayerOf(view) !== 'application' || !entry) return false;
+  const key = linkEntryKey(entry);
+  const items = Array.isArray(view.properties.links) ? view.properties.links : [];
+  const isThis = (item) => isLinkEntry(item) && linkEntryKey(item) === key;
+  if (add) {
+    if (!linkEntryExists(entry, AppState.index.application)) return false;
+    if (items.some(isThis)) return false;
+    const written = { source: entry.source, destination: entry.destination };
+    if (normalLinkLabel(entry.label)) written.label = normalLinkLabel(entry.label);
+    putViewProperty(view.properties, 'links', items.concat([written]));
+    return true;
+  }
+  if (!items.some(isThis)) return false;
+  const rest = items.filter((item) => !isThis(item));
+  if (rest.length) view.properties.links = rest;
+  else delete view.properties.links;
+  return true;
+}
 
 /** Adds an element of the layer of the view to the pinned, hidden or opened elements of a Map view, or takes one out. A reference that is not an element of that layer is refused. */
 function setViewListItem(view, list, reference, add) {
@@ -236,6 +277,18 @@ function setViewListItem(view, list, reference, add) {
 function handleViewFieldChange(control, immediate) {
   const field = control.getAttribute('data-view-field');
   const list = control.getAttribute('data-view-list');
+  if (control.getAttribute('data-view-link') === 'add') {
+    const chosen = control.value;
+    control.value = '';
+    pendingFocusSelector = '#view-edit-add-links';
+    return editSavedView((view) =>
+      setViewLink(
+        view,
+        chosen.startsWith('#') ? viewLinkChoices(view.properties)[Number(chosen.slice(1))] : linkEntryOfKey(chosen),
+        true
+      )
+    );
+  }
   const active = typeof document !== 'undefined' ? document.activeElement : null;
   // the focus is on another control already, or a pointer button is down on something else: the text is being left by a click that is not over
   // yet (Firefox says the focus is on the body while the field loses it, and a redraw then replaces the button before its click)
@@ -288,11 +341,13 @@ document.addEventListener('pointercancel', notePointer, true);
 
 /** Delegated `change` listener: the form of a view on its page, the list of Settings. (The menu of the steps of a story is the player's, `handleStoryPlayerChange`.) */
 function handleAppChange(e) {
+  if (handleMapLinksControl(e.target)) return; // the kind and "Ticked only" of the list of relationships
   if (e.target && e.target.matches && e.target.matches('[data-settings-current]')) {
     chooseCurrentPlateau(e.target);
     return;
   }
-  const control = e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list]') : null;
+  const control =
+    e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list], [data-view-link]') : null;
   if (control) handleViewFieldChange(control);
 }
 

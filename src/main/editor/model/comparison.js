@@ -352,6 +352,9 @@ function buildKernelInput(viewpoint, reference, options) {
     input.opened = Array.from(opts.opened || []);
     input.pinned = Array.from(opts.pinned || []);
     input.hidden = Array.from(opts.hidden || []);
+    // the relationships the Map of the application layer is narrowed to; absent when none (the whole map)
+    if (layer === 'application' && opts.links && opts.links.length)
+      input.links = opts.links.map((link) => Object.assign({}, link));
     // what the Map of the technology layer draws besides its elements: absent is drawn (the kernel's own default)
     if (layer === 'technology') for (const part of MAP_PARTS) if (opts[part] === false) input[part] = false;
   }

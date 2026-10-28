@@ -213,6 +213,18 @@ let mapPinned = [];
 
 let mapHidden = [];
 
+/** The relationships the Map of the application layer is narrowed to, as entries `{ source, destination, label }` (none: the whole map; view state, wave 026 run 0199). */
+let mapLinks = [];
+
+/** The controls of the list of relationships under the tree of the page Applications: whether it is open, its text filter, its kind select ('' is any kind) and "Ticked only" (view state, reset with the folder; wave 026 run 0199). */
+let mapLinksListOpen = false;
+
+let mapLinksFilter = '';
+
+let mapLinksKind = '';
+
+let mapLinksTickedOnly = false;
+
 /** The same three, for the map of the technology layer (the page Environments). */
 let technologyMapState = { opened: null, pinned: [], hidden: [] };
 

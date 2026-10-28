@@ -121,6 +121,7 @@ function autosizeAllTextareas() {
 
 /** Delegated `input` listener (DEC — mirrors the existing click/pointerdown/dblclick delegation on #app): resizes as the user types. */
 function handleAppInput(e) {
+  if (handleMapLinksControl(e.target)) return; // the filter of the list of relationships: the rows are drawn again in place
   if (e.target.matches && e.target.matches('[data-settings-current]')) return; // the list of Settings writes on `change`; choosing in it is no typed draft (run 0111, #111)
   if (e.target.matches && e.target.matches('input[name="theme-choice"]')) {
     // a preference of the browser, not a change of the workspace

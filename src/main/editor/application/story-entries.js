@@ -113,6 +113,14 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
         changed = true;
       }
     }
+    // the relationships a Map is narrowed to, and the ones it draws heavy, name their two ends (wave 026, run 0199, DEC-10); the label never changes
+    if (viewLayer === 'application') {
+      const rewrite = (reference) => rewriteReferenceValue(reference, oldRef, newRef);
+      for (const key of ['links', 'highlight']) {
+        if (Array.isArray(properties[key]) && rewriteLinkEntries(linkEntriesOf(properties[key], key).entries, rewrite))
+          changed = true;
+      }
+    }
   }
   return changed;
 }
@@ -147,10 +155,17 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
 function recipeNamedReferences(recipe, layer) {
   const properties = recipe.properties;
   if (!isPlainObject(properties) || viewLayerOf(recipe) !== layer) return [];
-  if (recipe.viewpoint === 'map')
-    return ['pinned', 'hidden', 'opened']
+  if (recipe.viewpoint === 'map') {
+    const named = ['pinned', 'hidden', 'opened']
       .reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), [])
       .filter((reference) => typeof reference === 'string');
+    if (layer === 'application') {
+      for (const key of ['links', 'highlight']) {
+        for (const link of linkEntriesOf(properties[key], key).entries) named.push(link.source, link.destination);
+      }
+    }
+    return named;
+  }
   return typeof properties.element === 'string' ? [properties.element] : [];
 }
 
