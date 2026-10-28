@@ -156,7 +156,7 @@ wave_manifest:
       slug: links-in-stories
       phase: P3
       depends_on: [W-4, W-5]
-      run: null
+      run: 0200
       delegation: standard
       likely_paths:
         - 'src/main/editor/**'
