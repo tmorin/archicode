@@ -104,7 +104,7 @@ wave_manifest:
       slug: map-links-kernel
       phase: P2
       depends_on: []
-      run: null
+      run: 0197
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
