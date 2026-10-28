@@ -71,6 +71,37 @@ class GenerateStoriesTest {
         id: "empty"
     """;
 
+    /** A story whose steps carry an inline Map recipe with {@code links}, told at {@code baseline}, which has no partner. */
+    private static final String LINKS_STORY = """
+      header:
+        kind: "archicode.morin.io/story"
+        version: "1"
+      content:
+        id: "links_story"
+        steps:
+          - viewpoint: "map"
+            layer: "application"
+            at: "baseline"
+            properties:
+              opened: ["shop"]
+              links:
+                - {source: "shop.web", destination: "shop.api", label: "calls"}
+          - viewpoint: "map"
+            layer: "application"
+            at: "baseline"
+            properties:
+              links:
+                - {source: "partner", destination: "shop.web", label: "pushes"}
+          - viewpoint: "map"
+            layer: "application"
+            at: "baseline"
+            properties:
+              opened: ["shop"]
+              links:
+                - {source: "shop.web", destination: "shop.api", label: "calls"}
+                - {source: "partner", destination: "shop.web", label: "pushes"}
+    """;
+
     @Inject
     CommandLine.IFactory factory;
 
@@ -338,6 +369,34 @@ class GenerateStoriesTest {
             1,
             result.err().split(java.util.regex.Pattern.quote(said), -1).length - 1,
             "said once: " + result.err()
+        );
+    }
+
+    @Test
+    @SneakyThrows
+    void aStepWithAnInlineMapAndLinksDrawsTheLinksAndSkipsOrWarnsLikeAView() {
+        val workspace = MapLinksTest.layered(dir.resolve("links"), LINKS_STORY);
+        val result = stories(workspace, "--plateau", "to-be", "--story", "links_story");
+        assertEquals(0, result.exit(), result.err());
+        val first = puml(workspace, "links_story", "01-map", "application/step_01.puml");
+        assertTrue(first.contains("Web site") && first.contains("calls"), first);
+        assertFalse(first.contains("Billing") || first.contains("Customer"), first);
+        assertTrue(
+            result.err().contains("warning: skip links_story/2: none of its links is in the plateau `baseline`\n"),
+            result.err()
+        );
+        assertFalse(Files.exists(workspace.resolveSibling("views-stories/links_story/02-map")));
+        assertTrue(
+            result
+                .err()
+                .contains(
+                    "warning: the step links_story/3 is drawn without the link `partner -> shop.web`, which the plateau `baseline` does not have\n"
+                ),
+            result.err()
+        );
+        assertFalse(
+            puml(workspace, "links_story", "03-map", "application/step_03.puml").contains("Partner"),
+            "step 3 is drawn without the partner"
         );
     }
 

@@ -96,6 +96,10 @@
 //! before, a `REMOVE` without one is what it was, and the version stays 5.
 //! A map that fails on `pinned`, `opened` or `hidden` (`dangling reference: x`, the first of them) also lists all the entries it cannot find, in
 //! `dangling` of the error: a key of the error only, added to version 4 (an input that worked gives the same output).
+//! `links` (wave 026, run 0197, issue #143; additive, the version stays 5): a map of the application layer may list `{source, destination, label?}`; it then draws
+//! those relationships (the ones the element `source` declares, same destination, same label after trimming, none matching only no label), the boxes of their ends,
+//! the pinned elements with what is open inside them, and what encloses these, and no other element. An entry that matches nothing is an `error`; an unknown end is
+//! `dangling reference: x` (and joins `dangling`); the technology layer refuses the key. Absent, null or empty: the map as it was.
 //!
 //! What changed (version 5, wave 014, issues #70 and #34). It is breaking for a host of `compare`, and for it only:
 //!   - `compare` takes `on_one_chain`, whether one of the two plateaus is the past of the other (an ancestor in the tree of plateaus, which only the host
@@ -416,6 +420,12 @@ struct Input {
     /// map: references of the elements left out, with what is inside them
     #[serde(default, deserialize_with = "null_as_default")]
     hidden: Vec<String>,
+    /// map of the application layer (wave 026, run 0197, #143): the relationships to draw, each `{source, destination, label?}`. The boxes are then the ends of those
+    /// relationships (projected on the first closed box, as ever), the pinned elements with what is open inside them, and what encloses all of these; the links are
+    /// those relationships, still filtered by `hidden` and `pinned`. Absent, null or empty: the map is drawn as before. Kept as JSON so that the technology layer is refused
+    /// before the shape of an entry is looked at (see `map_links`).
+    #[serde(default, deserialize_with = "null_as_default")]
+    links: Vec<serde_json::Value>,
     /// map of the technology layer, with `app_elements`: draw the applications deployed on the nodes that are open, as boxes inside them (absent or null: true; false:
     /// the nodes only). Without `app_elements`, or in the map of the application layer, it changes nothing.
     #[serde(default)]
@@ -432,6 +442,48 @@ struct Input {
     /// some element or relationship of the input carries `change`: the view is a comparison. Read before the facets run.
     #[serde(skip)]
     compared: bool,
+}
+
+/// An entry of `links`: the relationship an element declares, named by its source, its destination and its label (none: the relationship with no label).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LinkRef {
+    source: String,
+    destination: String,
+    #[serde(default)]
+    label: Option<String>,
+}
+
+impl LinkRef {
+    /// The label as the relationships are compared: trimmed, and none when empty.
+    fn label(&self) -> Option<String> {
+        normal_label(self.label.as_deref())
+    }
+}
+
+fn normal_label(label: Option<&str>) -> Option<String> {
+    label
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(str::to_string)
+}
+
+/// The entries of `links`, read; none when the input names none. Refused in the technology layer, then checked for shape.
+fn map_links(input: &Input) -> Result<Vec<LinkRef>, String> {
+    if input.links.is_empty() {
+        return Ok(Vec::new());
+    }
+    if input.layer == "technology" {
+        return Err("links is read in the map of the application layer only".to_string());
+    }
+    input
+        .links
+        .iter()
+        .map(|entry| {
+            serde_json::from_value::<LinkRef>(entry.clone())
+                .map_err(|e| format!("invalid input: {e}"))
+        })
+        .collect()
 }
 
 fn default_label() -> String {
@@ -1071,6 +1123,7 @@ fn overview(input: &Input, shared: &Shared, focal: &str) -> Result<Content, Stri
 /// "secondary" there), as links between the deployed applications when both boxes are drawn, else between the boxes they land on (`relationships`).
 fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
     let known = &shared.known;
+    let link_refs = map_links(input)?;
     for reference in input
         .pinned
         .iter()
@@ -1079,6 +1132,37 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
     {
         require(known, reference)?;
     }
+    for link in &link_refs {
+        require(known, &link.source)?;
+        require(known, &link.destination)?;
+    }
+    // the relationships the entries name, decided on the model before any filter: (source, destination, label)
+    let selected: HashSet<(&str, &str, Option<String>)> = link_refs
+        .iter()
+        .map(|l| (l.source.as_str(), l.destination.as_str(), l.label()))
+        .collect();
+    for (n, link) in link_refs.iter().enumerate() {
+        let matches = input
+            .elements
+            .iter()
+            .filter(|e| e.reference == link.source)
+            .flat_map(|e| e.relationships.iter())
+            .any(|r| {
+                r.destination == link.destination
+                    && normal_label(r.label.as_deref()) == link.label()
+            });
+        if !matches {
+            let label = match link.label() {
+                Some(l) => format!("the label `{l}`"),
+                None => "no label".to_string(),
+            };
+            return Err(format!(
+                "`links[{n}]` names a relationship from `{}` to `{}` with {label}, which does not exist",
+                link.source, link.destination
+            ));
+        }
+    }
+    let selecting = !link_refs.is_empty();
     let opened: HashSet<&str> = input.opened.iter().map(String::as_str).collect();
     let within = |x: &str, roots: &[String]| roots.iter().any(|r| x == r || is_descendant_of(x, r));
     let is_hidden = |x: &str| within(x, &input.hidden);
@@ -1124,6 +1208,15 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
     if draw_links {
         for e in &input.elements {
             for r in e.relationships.iter().collect::<BTreeSet<_>>() {
+                if selecting
+                    && !selected.contains(&(
+                        e.reference.as_str(),
+                        r.destination.as_str(),
+                        normal_label(r.label.as_deref()),
+                    ))
+                {
+                    continue;
+                }
                 if is_hidden(&e.reference) || is_hidden(&r.destination) {
                     continue;
                 }
@@ -1206,13 +1299,15 @@ fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
         .collect();
     refs.retain(|r| !app_ids.contains(r.as_str()));
     if input.pinned.is_empty() {
-        refs.extend(
-            input
-                .elements
-                .iter()
-                .filter(|e| visible(&e.reference))
-                .map(|e| e.reference.clone()),
-        );
+        if !selecting {
+            refs.extend(
+                input
+                    .elements
+                    .iter()
+                    .filter(|e| visible(&e.reference))
+                    .map(|e| e.reference.clone()),
+            );
+        }
     } else {
         refs.extend(input.pinned.iter().cloned());
         // the children of what is open inside a pinned element are all shown, linked or not
@@ -2176,11 +2271,18 @@ fn dangling_in_lists(input: &Input) -> Vec<String> {
         .map(|e| e.reference.as_str())
         .collect();
     let mut seen: HashSet<&str> = HashSet::new();
+    // the ends of the links come after the three lists; an input whose links cannot be read has none to list
+    let ends: Vec<String> = map_links(input)
+        .unwrap_or_default()
+        .into_iter()
+        .flat_map(|l| [l.source, l.destination])
+        .collect();
     input
         .pinned
         .iter()
         .chain(input.opened.iter())
         .chain(input.hidden.iter())
+        .chain(ends.iter())
         .filter(|r| !known.contains(r.as_str()) && seen.insert(r.as_str()))
         .cloned()
         .collect()

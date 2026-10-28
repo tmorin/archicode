@@ -2659,3 +2659,158 @@ fn two_boxes_that_would_have_one_id_in_the_deep_viewpoint_are_numbered_in_the_or
     assert_eq!(item(&out, "e_a_b_c_2")["reference"], "c");
     assert_eq!(item(&out, "e_a_b_c_2")["parent"], "e.a_b");
 }
+
+// ---- the `links` of a map: draw only the relationships an author names (wave 026, run 0197, #143) ----
+
+const MAP_LINKS_CASES: &str =
+    include_str!("../../../../test/javascript/viewpoint-kernel/map-links-cases.json");
+
+fn map_links_table() -> Value {
+    serde_json::from_str(MAP_LINKS_CASES).expect("map-links-cases.json is JSON")
+}
+
+/// The input of the case: the map of its workspace, the keys of `input` merged in, `links` left out when `with_links` is false.
+fn map_links_input(table: &Value, case: &Value, with_links: bool) -> Value {
+    let mut input = json!({
+        "viewpoint": "map", "layer": "application",
+        "elements": table["workspaces"][case["workspace"].as_str().unwrap()].clone()
+    });
+    for (key, value) in case["input"].as_object().unwrap() {
+        if with_links || key != "links" {
+            input[key] = value.clone();
+        }
+    }
+    input
+}
+
+fn map_links_drawn(out: &Value) -> (Vec<String>, Vec<String>) {
+    let mut items = ids(out);
+    items.sort();
+    let mut links: Vec<String> = out["links"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no links in {out}"))
+        .iter()
+        .map(|l| {
+            let (from, to) = (l["from"].as_str().unwrap(), l["to"].as_str().unwrap());
+            match l["label"].as_str() {
+                Some(label) => format!("{from}>{to}:{label}"),
+                None => format!("{from}>{to}"),
+            }
+        })
+        .collect();
+    links.sort();
+    (items, links)
+}
+
+fn strings(value: &Value) -> Vec<String> {
+    let mut all: Vec<String> = value
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s.as_str().unwrap().to_string())
+        .collect();
+    all.sort();
+    all
+}
+
+fn check_map_links_case(name: &str) {
+    let table = map_links_table();
+    let case = table["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == name)
+        .unwrap_or_else(|| panic!("no case {name} in map-links-cases.json"));
+    let out = compute(map_links_input(&table, case, true));
+    let expect = &case["expect"];
+    if expect["same_as_without_links"] == true {
+        let without = compute(map_links_input(&table, case, false));
+        assert_eq!(
+            out, without,
+            "{name}: the map is drawn as if there were no links"
+        );
+    } else if let Some(sentence) = expect["error"].as_str() {
+        assert_eq!(error(&out), sentence, "{name}: {out}");
+    } else if let Some(prefix) = expect["error_prefix"].as_str() {
+        assert!(error(&out).starts_with(prefix), "{name}: {out}");
+    } else {
+        assert!(out.get("error").is_none(), "{name}: {out}");
+        let (items, links) = map_links_drawn(&out);
+        assert_eq!(
+            items,
+            strings(&expect["items"]),
+            "{name}: the boxes of {out}"
+        );
+        assert_eq!(
+            links,
+            strings(&expect["links"]),
+            "{name}: the links of {out}"
+        );
+    }
+    if expect.get("error").is_some() || expect.get("error_prefix").is_some() {
+        match expect.get("dangling") {
+            Some(dangling) => assert_eq!(&out["dangling"], dangling, "{name}: {out}"),
+            None => assert!(out.get("dangling").is_none(), "{name}: {out}"),
+        }
+    }
+}
+
+macro_rules! map_links_cases {
+    ($($name:ident),* $(,)?) => {
+        $(
+            #[test]
+            fn $name() {
+                check_map_links_case(stringify!($name));
+            }
+        )*
+        const MAP_LINKS_CASE_NAMES: &[&str] = &[$(stringify!($name)),*];
+    };
+}
+
+map_links_cases!(
+    one_link,
+    two_links_sharing_an_end,
+    an_end_inside_a_closed_box,
+    an_opened_box_keeps_only_what_a_link_reaches,
+    hidden_drops_the_relationship_but_the_entry_still_matches,
+    pinned_keeps_the_links_that_touch_it,
+    a_pinned_element_no_link_reaches_is_drawn_with_what_is_open_inside_it,
+    two_relationships_of_one_triple_are_shown_together,
+    no_label_matches_the_relationship_with_no_label,
+    a_label_matches_only_that_label_after_trimming,
+    an_unknown_end,
+    an_unknown_destination,
+    an_empty_source,
+    no_match,
+    no_match_without_a_label,
+    an_exact_match_on_references_not_on_descendants,
+    both_ends_in_one_closed_box_draw_no_link_and_no_box,
+    both_ends_in_one_closed_box_draw_the_box_when_it_is_pinned,
+    both_ends_in_one_closed_box_draw_the_box_when_another_link_reaches_it,
+    a_repeated_entry_is_harmless,
+    the_technology_layer_refuses_links,
+    the_technology_refusal_comes_before_the_shape,
+    the_shape_comes_before_the_ends,
+    an_entry_with_a_label_that_is_not_text,
+    an_entry_that_is_not_a_mapping,
+    the_ends_come_before_the_match,
+    the_lists_come_before_the_ends_of_the_links,
+    links_empty_is_links_absent,
+    links_null_is_links_absent,
+    a_union_with_a_removed_relationship_can_name_it,
+);
+
+#[test]
+fn every_case_of_the_map_links_table_has_a_test_and_the_other_way_round() {
+    let table = map_links_table();
+    let mut in_table: Vec<&str> = table["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["name"].as_str().unwrap())
+        .collect();
+    let mut tested: Vec<&str> = MAP_LINKS_CASE_NAMES.to_vec();
+    in_table.sort_unstable();
+    tested.sort_unstable();
+    assert_eq!(in_table, tested);
+}

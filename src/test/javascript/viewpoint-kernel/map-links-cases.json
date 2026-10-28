@@ -1,0 +1,248 @@
+{
+  "description": "The cases of the `links` property of a map view (wave 026, run 0197, DEC-1 to DEC-6 and DEC-8 of the TDD). Read by the Rust tests of the kernel (lib_tests.rs: boxes, links and the sentence the kernel says) and by the Java existence test (does the relationship an entry names exist). A case: `workspace` (a key of `workspaces`), `input` (keys merged into the kernel input: `links`, `opened`, `pinned`, `hidden`, `layer`), and `expect`: `items` (the ids drawn, sorted), `links` (`from>to:label`, or `from>to` when it has no label, sorted, a pair drawn twice is listed twice), or `error` (the whole sentence of the kernel), or `error_prefix`, with `dangling` when the answer lists the unknown ends, or `same_as_without_links`. `exists` is what the Java test reads: whether each entry of `links` names a relationship of the workspace (source, destination, label equal after trimming; no label is no label), as an array of booleans.",
+  "workspaces": {
+    "basic": [
+      { "reference": "sys", "parent": true },
+      { "reference": "sys.a", "relationships": [{ "destination": "other.b.c", "label": "calls" }, { "destination": "sys.b", "label": "feeds" }] },
+      { "reference": "sys.b", "relationships": [{ "destination": "other.b.c", "label": "calls" }] },
+      { "reference": "other", "parent": true },
+      { "reference": "other.b", "parent": true },
+      { "reference": "other.b.c" },
+      { "reference": "ext", "relationships": [{ "destination": "sys.b", "label": "pushes" }] }
+    ],
+    "triple": [
+      { "reference": "x", "relationships": [{ "destination": "y", "label": "uses", "qualifiers": ["sync"] }, { "destination": "y", "label": "uses", "qualifiers": ["async"] }] },
+      { "reference": "y" },
+      { "reference": "z", "relationships": [{ "destination": "y", "label": "uses" }] }
+    ],
+    "labels": [
+      { "reference": "x", "relationships": [{ "destination": "y", "label": "reads" }, { "destination": "y" }] },
+      { "reference": "y" }
+    ],
+    "union": [
+      { "reference": "a", "relationships": [{ "destination": "b", "label": "gone", "change": "removed" }, { "destination": "b", "label": "stay", "change": "none" }] },
+      { "reference": "b" }
+    ]
+  },
+  "cases": [
+    {
+      "name": "one_link",
+      "workspace": "basic",
+      "input": { "opened": ["sys"], "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }] },
+      "expect": { "items": ["sys", "sys.a", "sys.b"], "links": ["sys.a>sys.b:feeds"] },
+      "exists": [true]
+    },
+    {
+      "name": "two_links_sharing_an_end",
+      "workspace": "basic",
+      "input": {
+        "opened": ["sys", "other", "other.b"],
+        "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }, { "source": "sys.b", "destination": "other.b.c", "label": "calls" }]
+      },
+      "expect": { "items": ["other", "other.b", "other.b.c", "sys", "sys.a", "sys.b"], "links": ["sys.a>sys.b:feeds", "sys.b>other.b.c:calls"] },
+      "exists": [true, true]
+    },
+    {
+      "name": "an_end_inside_a_closed_box",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "sys.a", "destination": "other.b.c", "label": "calls" }] },
+      "expect": { "items": ["other", "sys"], "links": ["sys>other:calls"] },
+      "exists": [true]
+    },
+    {
+      "name": "an_opened_box_keeps_only_what_a_link_reaches",
+      "workspace": "basic",
+      "input": { "opened": ["sys"], "links": [{ "source": "sys.a", "destination": "other.b.c", "label": "calls" }] },
+      "expect": { "items": ["other", "sys", "sys.a"], "links": ["sys.a>other:calls"] },
+      "exists": [true]
+    },
+    {
+      "name": "hidden_drops_the_relationship_but_the_entry_still_matches",
+      "workspace": "basic",
+      "input": {
+        "opened": ["sys"],
+        "hidden": ["sys.b"],
+        "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }, { "source": "sys.a", "destination": "other.b.c", "label": "calls" }]
+      },
+      "expect": { "items": ["other", "sys", "sys.a"], "links": ["sys.a>other:calls"] },
+      "exists": [true, true]
+    },
+    {
+      "name": "pinned_keeps_the_links_that_touch_it",
+      "workspace": "basic",
+      "input": {
+        "opened": ["sys"],
+        "pinned": ["ext"],
+        "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }, { "source": "ext", "destination": "sys.b", "label": "pushes" }]
+      },
+      "expect": { "items": ["ext", "sys", "sys.b"], "links": ["ext>sys.b:pushes"] },
+      "exists": [true, true]
+    },
+    {
+      "name": "a_pinned_element_no_link_reaches_is_drawn_with_what_is_open_inside_it",
+      "workspace": "basic",
+      "input": { "opened": ["other"], "pinned": ["other"], "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }] },
+      "expect": { "items": ["other", "other.b"], "links": [] },
+      "exists": [true]
+    },
+    {
+      "name": "two_relationships_of_one_triple_are_shown_together",
+      "workspace": "triple",
+      "input": { "links": [{ "source": "x", "destination": "y", "label": "uses" }] },
+      "expect": { "items": ["x", "y"], "links": ["x>y:uses", "x>y:uses"] },
+      "exists": [true]
+    },
+    {
+      "name": "no_label_matches_the_relationship_with_no_label",
+      "workspace": "labels",
+      "input": { "links": [{ "source": "x", "destination": "y" }] },
+      "expect": { "items": ["x", "y"], "links": ["x>y"] },
+      "exists": [true]
+    },
+    {
+      "name": "a_label_matches_only_that_label_after_trimming",
+      "workspace": "labels",
+      "input": { "links": [{ "source": "x", "destination": "y", "label": "  reads " }] },
+      "expect": { "items": ["x", "y"], "links": ["x>y:reads"] },
+      "exists": [true]
+    },
+    {
+      "name": "an_unknown_end",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "nope", "destination": "sys.b" }] },
+      "expect": { "error": "dangling reference: nope", "dangling": ["nope"] },
+      "exists": [false]
+    },
+    {
+      "name": "an_unknown_destination",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "sys.a", "destination": "nowhere", "label": "feeds" }] },
+      "expect": { "error": "dangling reference: nowhere", "dangling": ["nowhere"] },
+      "exists": [false]
+    },
+    {
+      "name": "an_empty_source",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "", "destination": "sys.b" }] },
+      "expect": { "error": "dangling reference: ", "dangling": [""] },
+      "exists": [false]
+    },
+    {
+      "name": "no_match",
+      "workspace": "basic",
+      "input": {
+        "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }, { "source": "sys.a", "destination": "sys.b", "label": "reads" }]
+      },
+      "expect": { "error": "`links[1]` names a relationship from `sys.a` to `sys.b` with the label `reads`, which does not exist" },
+      "exists": [true, false]
+    },
+    {
+      "name": "no_match_without_a_label",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "sys.a", "destination": "sys.b" }] },
+      "expect": { "error": "`links[0]` names a relationship from `sys.a` to `sys.b` with no label, which does not exist" },
+      "exists": [false]
+    },
+    {
+      "name": "an_exact_match_on_references_not_on_descendants",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "sys", "destination": "other", "label": "calls" }] },
+      "expect": { "error": "`links[0]` names a relationship from `sys` to `other` with the label `calls`, which does not exist" },
+      "exists": [false]
+    },
+    {
+      "name": "both_ends_in_one_closed_box_draw_no_link_and_no_box",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }] },
+      "expect": { "items": [], "links": [] },
+      "exists": [true]
+    },
+    {
+      "name": "both_ends_in_one_closed_box_draw_the_box_when_it_is_pinned",
+      "workspace": "basic",
+      "input": { "pinned": ["sys"], "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }] },
+      "expect": { "items": ["sys"], "links": [] },
+      "exists": [true]
+    },
+    {
+      "name": "both_ends_in_one_closed_box_draw_the_box_when_another_link_reaches_it",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }, { "source": "ext", "destination": "sys.b", "label": "pushes" }] },
+      "expect": { "items": ["ext", "sys"], "links": ["ext>sys:pushes"] },
+      "exists": [true, true]
+    },
+    {
+      "name": "a_repeated_entry_is_harmless",
+      "workspace": "basic",
+      "input": {
+        "opened": ["sys"],
+        "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }, { "source": "sys.a", "destination": "sys.b", "label": "feeds" }]
+      },
+      "expect": { "items": ["sys", "sys.a", "sys.b"], "links": ["sys.a>sys.b:feeds"] },
+      "exists": [true, true]
+    },
+    {
+      "name": "the_technology_layer_refuses_links",
+      "workspace": "basic",
+      "input": { "layer": "technology", "links": [{ "source": "sys.a", "destination": "sys.b", "label": "feeds" }] },
+      "expect": { "error": "links is read in the map of the application layer only" }
+    },
+    {
+      "name": "the_technology_refusal_comes_before_the_shape",
+      "workspace": "basic",
+      "input": { "layer": "technology", "links": [{ "bad": 1 }] },
+      "expect": { "error": "links is read in the map of the application layer only" }
+    },
+    {
+      "name": "the_shape_comes_before_the_ends",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "nope", "destination": "sys.b", "extra": 1 }] },
+      "expect": { "error_prefix": "invalid input: " }
+    },
+    {
+      "name": "an_entry_with_a_label_that_is_not_text",
+      "workspace": "basic",
+      "input": { "links": [{ "source": "sys.a", "destination": "sys.b", "label": 5 }] },
+      "expect": { "error_prefix": "invalid input: " }
+    },
+    {
+      "name": "an_entry_that_is_not_a_mapping",
+      "workspace": "basic",
+      "input": { "links": ["sys.a -> sys.b"] },
+      "expect": { "error_prefix": "invalid input: " }
+    },
+    {
+      "name": "the_ends_come_before_the_match",
+      "workspace": "basic",
+      "input": {
+        "links": [{ "source": "sys.a", "destination": "sys.b", "label": "reads" }, { "source": "nope", "destination": "sys.b" }]
+      },
+      "expect": { "error": "dangling reference: nope", "dangling": ["nope"] }
+    },
+    {
+      "name": "the_lists_come_before_the_ends_of_the_links",
+      "workspace": "basic",
+      "input": { "pinned": ["gone"], "links": [{ "source": "nope", "destination": "sys.b" }] },
+      "expect": { "error": "dangling reference: gone", "dangling": ["gone", "nope"] }
+    },
+    {
+      "name": "links_empty_is_links_absent",
+      "workspace": "basic",
+      "input": { "opened": ["sys"], "links": [] },
+      "expect": { "same_as_without_links": true }
+    },
+    {
+      "name": "links_null_is_links_absent",
+      "workspace": "basic",
+      "input": { "opened": ["sys"], "links": null },
+      "expect": { "same_as_without_links": true }
+    },
+    {
+      "name": "a_union_with_a_removed_relationship_can_name_it",
+      "workspace": "union",
+      "input": { "links": [{ "source": "a", "destination": "b", "label": "gone" }] },
+      "expect": { "items": ["a", "b"], "links": ["a>b:gone"] },
+      "exists": [true]
+    }
+  ]
+}

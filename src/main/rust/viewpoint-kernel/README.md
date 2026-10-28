@@ -10,6 +10,14 @@ that reached it among its children. `pinned` keeps the relationships that touch 
 elements out. Pinned on one element with nothing open it draws that element's overview, which the tests check against
 the views the CLI generates.
 
+`links` (wave 026, run 0197, issue #143; an optional input key of the map of the application layer, additive: the contract stays 5) lists the relationships to draw, each
+`{source, destination, label?}`. Each entry selects every relationship the element `source` declares towards `destination` with that label (trimmed; no label selects the
+relationships with no label; the match is on the references as written, not on descendants). The map then draws those links, still filtered by `hidden` and `pinned`, the
+boxes of their ends (projected on the first closed box, as ever), the pinned elements with what is open inside them, and what encloses them: no other element. An entry that
+matches no relationship is an `error` (``links[n] names a relationship from `a` to `b` with the label `x`, which does not exist``), an unknown end is `dangling reference: x`
+(listed in `dangling` after the three lists), an entry that is not `{source, destination, label?}` is `invalid input`, and the technology layer refuses the key. Absent, null or
+empty `links` draws the map as before.
+
 The map of the **technology** layer also draws the applications and the dependencies between environments (wave 016, run 0114, issue #107; additive, the contract stays 5). Given the
 application layer (`app_elements`), a node that hosts applications can be opened, and the applications deployed on it are boxes inside it, as the viewpoints of an element draw them
 (same ids); the dependencies of the applications of an environment on those of the environments it `uses` are links, between the boxes of the applications when both are drawn and
