@@ -115,3 +115,59 @@ test('a workspace kept in the browser is created, edited, saved, reopened, renam
   await expect(page.getByRole('button', { name: /Open .corner./ })).toBeVisible();
   await expect(page.locator('body')).not.toContainText('renamed');
 });
+
+// The name field of New workspace and of Rename (#177, run 0195): one line high, usable, inside the card.
+// The measure has a margin (DEC-2): a line of the field's own font, its padding and borders, plus 4 px.
+async function measureNameField(page) {
+  return page.locator('[data-browser-name]').evaluate((input) => {
+    const style = getComputedStyle(input);
+    const px = (value) => parseFloat(value) || 0;
+    const box = input.getBoundingClientRect();
+    const card = input.closest('.landing-card').getBoundingClientRect();
+    return {
+      height: box.height,
+      width: box.width,
+      allowedHeight:
+        px(style.fontSize) * 1.6 +
+        px(style.paddingTop) +
+        px(style.paddingBottom) +
+        px(style.borderTopWidth) +
+        px(style.borderBottomWidth) +
+        4,
+      insideCard: box.left >= card.left && box.right <= card.right,
+      pageScrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth
+    };
+  });
+}
+
+for (const width of [1280, 360]) {
+  test(`the name field of New workspace and of Rename is one line high at ${width} px`, async ({ page, hosted }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(hosted.url);
+
+    await page.getByRole('button', { name: /New workspace in this browser/ }).click();
+    const created = await measureNameField(page);
+    expect(
+      created.height,
+      `New workspace: the field is ${created.height} px high, at most ${created.allowedHeight}`
+    ).toBeLessThanOrEqual(created.allowedHeight);
+    expect(created.width, `New workspace: the field is ${created.width} px wide`).toBeGreaterThanOrEqual(140);
+    expect(created.insideCard).toBe(true);
+    expect(created.pageScrolls).toBe(false);
+
+    await page.getByRole('textbox').fill('field-check');
+    await page.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByRole('button', { name: 'Close workspace' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close workspace' }).click();
+
+    await page.getByRole('button', { name: /Rename .field-check./ }).click();
+    const renamed = await measureNameField(page);
+    expect(
+      renamed.height,
+      `Rename: the field is ${renamed.height} px high, at most ${renamed.allowedHeight}`
+    ).toBeLessThanOrEqual(renamed.allowedHeight);
+    expect(renamed.width, `Rename: the field is ${renamed.width} px wide`).toBeGreaterThanOrEqual(140);
+    expect(renamed.insideCard).toBe(true);
+    expect(renamed.pageScrolls).toBe(false);
+  });
+}
