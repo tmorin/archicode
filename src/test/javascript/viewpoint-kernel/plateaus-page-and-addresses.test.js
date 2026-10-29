@@ -79,9 +79,9 @@ test('the page is called Plateaus, at #/timeline/plateaus, and #/plateaus is no 
 test('#/timeline alone is no route, it opens the default page, Applications, whatever follows it, and the page then writes #/timeline/applications', async () => {
   const { sandbox, state } = await openLayered();
   for (const [typed, written] of [
-    ['#/timeline', '#/timeline/applications'],
-    ['#/timeline?x=1', '#/timeline/applications'],
-    ['#/timeline/nowhere', '#/timeline/applications']
+    ['#/timeline', '#/timeline/applications?compare='],
+    ['#/timeline?x=1', '#/timeline/applications?compare='],
+    ['#/timeline/nowhere', '#/timeline/applications?compare=']
   ]) {
     typeAddress(sandbox, typed);
     assert.equal(run(sandbox, 'currentPerspective'), 'map', typed);
@@ -247,7 +247,7 @@ test('a drawing that fails does not leave the next address to be a new entry of 
   const entries = history.entries.length;
   sandbox.render(); // the next drawing, of whatever
   assert.equal(history.entries.length, entries, 'it rewrites the address, it is not the plateau chosen');
-  assert.equal(sandbox.location.hash, '#/timeline/applications?plateau=saas');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?compare=&plateau=saas');
 });
 
 test('a workspace with no plateau ignores plateau= and compare=: it has the root only', async () => {
@@ -279,13 +279,13 @@ test('choosing a plateau is an entry of the history, and Back and Forward betwee
   const { sandbox, state } = await openLayered();
   const history = sandbox.__history;
   const start = history.entries.length;
-  assert.equal(sandbox.location.hash, '#/timeline/applications');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?compare=');
   chooseOnBand(sandbox, 'plateau', 'saas');
-  assert.equal(sandbox.location.hash, '#/timeline/applications?plateau=saas');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?compare=&plateau=saas');
   assert.equal(history.entries.length, start + 1, 'one entry for the plateau');
   assert.deepEqual(
     history.entries.slice(-2),
-    ['#/timeline/applications', '#/timeline/applications?plateau=saas'],
+    ['#/timeline/applications?compare=', '#/timeline/applications?compare=&plateau=saas'],
     'the place before is kept, not rewritten'
   );
   sandbox.render(); // a drawing of the same state adds nothing
@@ -295,17 +295,17 @@ test('choosing a plateau is an entry of the history, and Back and Forward betwee
   sandbox.history.back();
   assert.deepEqual(
     [state.layers.current, sandbox.location.hash],
-    ['saas', '#/timeline/applications?plateau=saas'],
+    ['saas', '#/timeline/applications?compare=&plateau=saas'],
     'Back draws the plateau before'
   );
   assert.equal(history.entries.length, start + 2, 'and adds no entry, nor rewrites one');
   sandbox.history.back();
-  assert.deepEqual([state.layers.current, sandbox.location.hash], ['baseline', '#/timeline/applications']);
+  assert.deepEqual([state.layers.current, sandbox.location.hash], ['baseline', '#/timeline/applications?compare=']);
   sandbox.history.forward();
   sandbox.history.forward();
   assert.deepEqual(
     [state.layers.current, sandbox.location.hash],
-    ['inhouse', '#/timeline/applications?plateau=inhouse']
+    ['inhouse', '#/timeline/applications?compare=&plateau=inhouse']
   );
   assert.equal(history.entries.length, start + 2);
 });
@@ -321,7 +321,7 @@ test('Back across a change of page and of plateau returns to both', async () => 
   assert.deepEqual([run(sandbox, 'currentPerspective'), state.layers.current], ['map', 'baseline']);
 });
 
-test('a comparison chosen on the band does not add an entry (the address does not change), and the Changes button of the page adds one for its plateau', async () => {
+test('a comparison chosen on the band is an entry of the history and is in the address (run 0203, DEC-3), and the Changes button of the page adds one for its plateau', async () => {
   const { sandbox, state } = await openLayered();
   const history = sandbox.__history;
   chooseOnBand(sandbox, 'plateau', 'marketplace');
@@ -329,14 +329,19 @@ test('a comparison chosen on the band does not add an entry (the address does no
   chooseOnBand(sandbox, 'compare', 'past');
   assert.equal(run(sandbox, 'layerCompareChoice()'), 'past');
   assert.equal(
+    sandbox.location.hash,
+    '#/timeline/applications?compare=past&plateau=marketplace',
+    'Past is in the address'
+  );
+  assert.equal(
     history.entries.length,
-    entries,
-    'Past is not in the address: it is a choice of whoever looks, kept for the folder'
+    entries + 1,
+    'and the comparison is a place of its own: Back returns to the one before'
   );
   click(sandbox, { 'data-action': 'timeline-changes', 'data-plateau': 'saas' });
   assert.deepEqual([state.layers.current, run(sandbox, 'layerCompareChoice()')], ['saas', 'past']);
-  assert.equal(history.entries.length, entries + 1);
-  assert.equal(history.entries[entries], '#/timeline/applications?plateau=saas');
+  assert.equal(history.entries.length, entries + 2);
+  assert.equal(history.entries[entries + 1], '#/timeline/applications?compare=past&plateau=saas');
 });
 
 test('a plateau chosen is remembered for the folder, as before', async () => {

@@ -249,7 +249,8 @@ function rememberComparison(choice) {
   panelSizeStorage.set(key, choice);
 }
 
-// Two more choices of whoever looks (run 0040), remembered per folder like the comparison: `changes-only` and `hide-wording`, '1' or '0'.
+// Two flags (run 0040), remembered per folder like the comparison: `changes-only` and `hide-wording`, '1' or '0'. Only `hide-wording` is a choice of whoever looks that no address carries;
+// `changes-only` is in the address with a comparison (run 0203), but an address never writes this memory.
 const FLAG_STORAGE_PREFIX = 'archicode-standalone-editor:flag:';
 const chosenFlags = new Map(); // for a browser that refuses its storage: the choice then lasts as long as the page
 

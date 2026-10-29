@@ -44,6 +44,7 @@ function applyDiagramParamsFromHash() {
     selectedStoryId = storyParam && findStory(storyParam) ? storyParam : null;
     const viewParam = params.get('view');
     selectedViewId = viewParam && findSavedView(viewParam) ? viewParam : null;
+    changesOnlyFromParams(params);
     return;
   }
   // the story being walked through travels with the diagram it is showing
@@ -57,16 +58,21 @@ function applyDiagramParamsFromHash() {
     const tab = params.get('tab');
     elementTab = tab && Object.prototype.hasOwnProperty.call(ELEMENT_TABS, tab) ? tab : 'details';
   } else {
-    const pin = params.get('pin');
     const layer = id === 'environments' ? 'technology' : 'application';
     const state = mapStateOf(layer);
-    state.pinned = pin ? pin.split(',').filter((reference) => AppState.index[layer].has(reference)) : [];
+    // run 0203 (DEC-4, DEC-5, DEC-6): what the address does not say is reset; the open boxes are read before the pins, which open their ancestors
+    const open = referencesFromParam(params, 'open', (reference) => referenceIsKnownToOpen(reference, layer));
+    state.opened = open.length ? new Set(open) : null;
+    state.hidden = referencesFromParam(params, 'hide', (reference) => AppState.index[layer].has(reference));
+    state.pinned = referencesFromParam(params, 'pin', (reference) => AppState.index[layer].has(reference));
     state.pinned.forEach((reference) => expandParentsOf(reference, layer));
     if (layer === 'application') {
       mapLinks = mapLinksFromParams(params);
       mapHighlight = mapHighlightFromParams(params);
     }
   }
+  diagramColumns = layoutFromParams(params);
+  changesOnlyFromParams(params);
   const shown = {};
   for (const name of DIAGRAM_SHOW_NAMES)
     shown[name] = params.get(name) === '1' ? true : params.get(name) === '0' ? false : null;
@@ -81,6 +87,42 @@ function applyDiagramParamsFromHash() {
   else if (diagramScale === 'fit') diagramScale = 'auto';
   const facet = params.get('facet');
   diagramFacet = facet && AppState.workspace.settings.facets.customs.some((f) => f.name === facet) ? facet : null;
+}
+
+/** The references a list parameter of the address names (`pin=`, `open=`, `hide=`: comma joined, each quoted), the ones `keep` accepts, in the order written. */
+function referencesFromParam(params, name, keep) {
+  const text = params.get(name);
+  return text ? text.split(',').filter(keep) : [];
+}
+
+/** The address of a list of references: `name=a,b` with each quoted, or null for an empty list (nothing is written). */
+function listParam(name, references) {
+  return references.length ? name + '=' + references.map(encodeURIComponent).join(',') : null;
+}
+
+/**
+ * A box the address opens is kept when the layer drawn has the element or the plateau compared with does (a removed element is drawn, as a ghost, and can be opened;
+ * `currentMapState` keeps the same boxes, gap-003).
+ */
+function referenceIsKnownToOpen(reference, layer) {
+  return AppState.index[layer].has(reference) || comparisonHasElement(layer, reference);
+}
+
+/** The toolbar's columns the address names (`layout=N`, a whole number from 1 to `DIAGRAM_COLUMNS_MAX`), else null: an invalid value names nothing (run 0203, DEC-1, DEC-6). */
+function layoutFromParams(params) {
+  const text = params.get('layout');
+  if (text === null || !/^[0-9]+$/.test(text)) return null;
+  const columns = Number(text);
+  return columns >= 1 && columns <= DIAGRAM_COLUMNS_MAX ? columns : null;
+}
+
+/**
+ * Changes only, as the address says it (run 0203, DEC-2, gap-001): read only when the address names a comparison (a non-empty `compare=`), and then it is on exactly when
+ * `changes-only=1`; without a comparison the flag is left as the reader has it. It is never remembered from an address (no `rememberFlag`).
+ */
+function changesOnlyFromParams(params) {
+  if (!params.get('compare')) return;
+  AppState.changesOnly = params.get('changes-only') === '1';
 }
 
 /**
@@ -239,6 +281,11 @@ function pushFrameParam(params) {
   if (diagramScale === 'fit') params.push('frame=fit');
 }
 
+/** The toolbar's columns, for the URL: `layout=N` when the reader chose a number (the view's and the workspace's are in the files). */
+function pushLayoutParam(params) {
+  if (diagramColumns !== null) params.push('layout=' + diagramColumns);
+}
+
 /** A change of framing (Fit, Center, a zoom, a move) is in the address bar at once, without an entry in the history. */
 function diagramFramingChanged() {
   if (AppState.workspace && (currentPerspective === 'elements' || mapIsShown())) syncHashFromState();
@@ -279,6 +326,7 @@ function currentRouteHash() {
   const sel = elementSelection(); // a link selected in a diagram of Elements leaves the element, and so the URL, as it is
   const ref = sel.kind === 'element' || sel.kind === 'file' ? sel.key : null;
   const params = [];
+  let onDiagramSurface = false;
   if (ref) params.push('ref=' + encodeURIComponent(ref));
   // a reference that exists in both layers needs to say which one the selection is
   if (ref && sel.kind === 'element' && referenceIsInBothLayers(ref))
@@ -294,19 +342,32 @@ function currentRouteHash() {
     params.push('tab=' + (findElementRecord(ref) ? effectiveDiagramViewpoint(findElementRecord(ref)) : elementTab)); // what the tabs show, not what a leaf was asked
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
     pushShowParams(params, false);
+    pushLayoutParam(params);
     pushFrameParam(params);
+    onDiagramSurface = true;
   }
   if (mapIsShown()) {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
-    const pinned = mapStateOf().pinned;
-    if (pinned.length) params.push('pin=' + pinned.map(encodeURIComponent).join(','));
+    const state = mapStateOf();
+    // run 0203 (DEC-4, DEC-5): the pins as they were chosen, the open boxes and the hidden elements sorted; a long list is DEF-1
+    for (const param of [
+      listParam('pin', state.pinned),
+      listParam('open', Array.from(state.opened || []).sort()),
+      listParam('hide', Array.from(state.hidden).sort())
+    ])
+      if (param) params.push(param);
     if (mapLayer() === 'application') params.push(...mapLinkParams(mapLinks), ...mapHighlightParams(mapHighlight));
     pushShowParams(params, true);
+    pushLayoutParam(params);
     pushFrameParam(params);
+    onDiagramSurface = true;
   }
   if (currentPerspective === 'library') {
     if (libraryTab === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
-    if (libraryTab === 'views' && selectedViewId) params.push('view=' + encodeURIComponent(selectedViewId));
+    if (libraryTab === 'views' && selectedViewId) {
+      params.push('view=' + encodeURIComponent(selectedViewId));
+      onDiagramSurface = true; // the page of a saved view: its toolbar edits the file, so no layout, but the comparison is drawn
+    }
   }
   if ((currentPerspective === 'elements' || mapIsShown()) && activeStory && !storyPlayer) {
     // the player's `step=` is the one of the address while it is open (below)
@@ -315,12 +376,16 @@ function currentRouteHash() {
   const link = linkInRoute();
   if (link) params.push('link-from=' + encodeURIComponent(link.from), 'link-to=' + encodeURIComponent(link.to));
   // run 0040: a removed element picked on the Map or in Elements. It means something only next to the comparison it was picked in, so the address names that too;
-  // the other choices of the comparison (Changes only, the wording-only toggle) are a choice of whoever looks, remembered per folder, and are not in the address.
+  // run 0203: Changes only is in the address too (below, with the comparison); the wording-only toggle, the key, zoom and pan and the selection of a box are the exceptions and are not.
   const removed = removedPickForRoute();
   if (removed) {
     params.push('removed=' + encodeURIComponent(removed.reference));
     if (removed.layer === 'technology') params.push('removed-layer=technology');
+  }
+  // run 0203 (DEC-2, DEC-3): what is compared is part of what is drawn, so a layered workspace says it on every diagram surface (empty for none), and Changes only with it
+  if (removed || (onDiagramSurface && AppState.plateauTree && AppState.plateauTree.layered)) {
     params.push('compare=' + encodeURIComponent(layerCompareChoice()));
+    if (AppState.changesOnly && compareTargetPlateau()) params.push('changes-only=1');
   }
   // wave 014 (run 0080): the plateau of the band, when it is not the root
   if (

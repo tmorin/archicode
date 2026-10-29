@@ -426,24 +426,30 @@ test('a future with several plateaus on top of the drawn one, from an address, i
   assert.equal(bandOf(sandbox).compared, '');
 });
 
-test('choosing a plateau to compare with is not an entry of the history, and choosing the plateau drawn still is', async () => {
+test('choosing a plateau to compare with is an entry of the history, since the address says the comparison (run 0203, DEC-3), and so is choosing the plateau drawn', async () => {
   const { sandbox, state } = await openBrightcart();
   const history = sandbox.__history;
   const start = history.entries.length;
   chooseOnBand(sandbox, 'plateau', 'marketplace');
   assert.equal(history.entries.length, start + 1);
-  assert.equal(sandbox.location.hash, '#/timeline/applications?plateau=marketplace');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?compare=&plateau=marketplace');
   chooseOnBand(sandbox, 'compare', 'plateau:saas');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?compare=other%3Asaas&plateau=marketplace');
   chooseOnBand(sandbox, 'compare', 'past');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?compare=past&plateau=marketplace');
   chooseOnBand(sandbox, 'compare', 'plateau:inhouse');
-  assert.equal(history.entries.length, start + 1, 'the address does not say the comparison, so it is not an entry');
-  assert.equal(sandbox.location.hash, '#/timeline/applications?plateau=marketplace');
-  // with a removed element picked, the address says the comparison, in the words it always had
+  assert.equal(
+    history.entries.length,
+    start + 3,
+    'each comparison chosen is a place of its own: Back returns to the one before (inhouse cannot be compared with marketplace: nothing changed, no entry)'
+  );
+  // with a removed element picked, the address says the comparison once, in the words it always had
   chooseOnBand(sandbox, 'compare', 'plateau:saas');
   const removed = sandbox.comparisonState().layers.application.find((e) => e.change === 'removed' && !e.replaced_by);
   assert.ok(removed, 'the pair has an application only saas has');
   sandbox.selectChange({ thing: 'element', change: 'removed', layer: 'application', ref: removed.reference });
   assert.match(run(sandbox, 'currentRouteHash()'), /compare=other%3Asaas/);
+  assert.equal((run(sandbox, 'currentRouteHash()').match(/compare=/g) || []).length, 1);
   assert.equal(state.layers.compare.other, 'saas');
 });
 

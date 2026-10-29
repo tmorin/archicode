@@ -185,11 +185,11 @@ test('a click on a page of the bar opens it, with its own address', async () => 
   const { sandbox } = await openLayered();
   const at = () => [sandbox.currentRouteHash(), run(sandbox, 'currentPerspective')];
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'environments' });
-  assert.deepEqual(at(), ['/timeline/environments', 'environments']);
+  assert.deepEqual(at(), ['/timeline/environments?compare=', 'environments']);
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'elements' });
   assert.deepEqual(at(), ['/timeline/elements', 'elements']);
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'map' });
-  assert.deepEqual(at(), ['/timeline/applications', 'map']);
+  assert.deepEqual(at(), ['/timeline/applications?compare=', 'map']);
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'plateaus' });
   assert.deepEqual(at(), ['/timeline/plateaus', 'plateaus']);
   // the button Timeline of the top bar opens the first page that draws something, Applications, whichever page of the perspective is on screen
@@ -201,7 +201,7 @@ test('a click on a page of the bar opens it, with its own address', async () => 
   );
   assert.deepEqual(top[0], ['map', 'Timeline'], 'the button Timeline opens Applications');
   click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': top[0][0] });
-  assert.deepEqual(at(), ['/timeline/applications', 'map']);
+  assert.deepEqual(at(), ['/timeline/applications?compare=', 'map']);
   click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': 'library' });
   assert.equal(sandbox.currentRouteHash(), '/stories');
   click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': 'files' });
@@ -237,7 +237,9 @@ test('each page has one address, and that address opens it', async () => {
   for (const [hash, page, perspective] of routes) {
     const got = opens(sandbox, hash);
     assert.deepEqual([got.page, got.perspective], [page, perspective], hash);
-    assert.equal('#' + sandbox.currentRouteHash(), hash, hash + ' is the address the page writes for itself');
+    // a layered workspace says the comparison on a diagram surface (run 0203, DEC-3): empty for none
+    const written = page === 'map' || page === 'environments' ? hash + '?compare=' : hash;
+    assert.equal('#' + sandbox.currentRouteHash(), written, hash + ' is the address the page writes for itself');
   }
   assert.equal(opens(sandbox, '#/stories/views').side, 'views');
   assert.equal(opens(sandbox, '#/stories').side, 'stories');
@@ -250,10 +252,10 @@ test('each page has one address, and that address opens it', async () => {
 
 // The routes are the ones the pages write. The former routes (0.17: no legacy) are no routes: they open the default page, Applications, and the page writes its address.
 const ROUTES = [
-  ['#/timeline/applications?pin=fleet', 'map', '/timeline/applications?pin=fleet'],
+  ['#/timeline/applications?pin=fleet', 'map', '/timeline/applications?pin=fleet&compare='],
   ['#/timeline/elements', 'elements', '/timeline/elements'],
   ['#/timeline/elements?ref=harbour', 'elements', '/timeline/elements?ref=harbour'],
-  ['#/timeline/environments', 'environments', '/timeline/environments'],
+  ['#/timeline/environments', 'environments', '/timeline/environments?compare='],
   ['#/timeline/plateaus', 'plateaus', '/timeline/plateaus'],
   ['#/stories', 'library', '/stories'],
   ['#/stories/views', 'library', '/stories/views'],
@@ -261,19 +263,19 @@ const ROUTES = [
   ['#/files', 'files', '/files'],
   ['#/settings', 'settings', '/settings'],
   // dropped: no legacy
-  ['#/map', 'map', '/timeline/applications'],
-  ['#/map?pin=fleet', 'map', '/timeline/applications?pin=fleet'],
-  ['#/elements', 'map', '/timeline/applications'],
-  ['#/elements?ref=harbour', 'map', '/timeline/applications?ref=harbour'],
-  ['#/diagram?ref=harbour&vp=overview', 'map', '/timeline/applications?ref=harbour'],
-  ['#/library', 'map', '/timeline/applications'],
-  ['#/library/stories', 'map', '/timeline/applications'],
-  ['#/library/views', 'map', '/timeline/applications'],
-  ['#/applications', 'map', '/timeline/applications'],
-  ['#/timeline', 'map', '/timeline/applications'],
-  ['#/timeline?plateau=fast', 'map', '/timeline/applications?plateau=fast'],
-  ['#/plateaus', 'map', '/timeline/applications'],
-  ['#/environments', 'map', '/timeline/applications']
+  ['#/map', 'map', '/timeline/applications?compare='],
+  ['#/map?pin=fleet', 'map', '/timeline/applications?pin=fleet&compare='],
+  ['#/elements', 'map', '/timeline/applications?compare='],
+  ['#/elements?ref=harbour', 'map', '/timeline/applications?ref=harbour&compare='],
+  ['#/diagram?ref=harbour&vp=overview', 'map', '/timeline/applications?ref=harbour&compare='],
+  ['#/library', 'map', '/timeline/applications?compare='],
+  ['#/library/stories', 'map', '/timeline/applications?compare='],
+  ['#/library/views', 'map', '/timeline/applications?compare='],
+  ['#/applications', 'map', '/timeline/applications?compare='],
+  ['#/timeline', 'map', '/timeline/applications?compare='],
+  ['#/timeline?plateau=fast', 'map', '/timeline/applications?compare=&plateau=fast'],
+  ['#/plateaus', 'map', '/timeline/applications?compare='],
+  ['#/environments', 'map', '/timeline/applications?compare=']
 ];
 for (const [former, page, address] of ROUTES) {
   test('the address ' + former + ' opens ' + page + ', and the page writes ' + address, async () => {
@@ -326,7 +328,11 @@ test('the plateau of the band stays in the address of every page', async () => {
     ['settings', '/settings']
   ]) {
     sandbox.setPerspective(page);
-    assert.equal(sandbox.currentRouteHash(), route + '?plateau=fast', page);
+    assert.equal(
+      sandbox.currentRouteHash(),
+      route + (page === 'map' || page === 'environments' ? '?compare=&plateau=fast' : '?plateau=fast'),
+      page
+    );
   }
 });
 
@@ -363,7 +369,7 @@ test('Elements lists both trees; Environments is a Map of the technology layer, 
   assert.equal(state.selection.kind, 'none');
   // the page of the same environment is Elements
   click(sandbox, { 'data-action': 'select-element', 'data-ref': 'harbour', 'data-layer': 'technology' });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=harbour');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=harbour&compare=');
   sandbox.setPerspective('elements');
   assert.equal(state.selection.key, 'harbour', 'the selection goes with the page');
 });
@@ -378,7 +384,7 @@ test('an application element selected on Environments stays selected, and the pa
     sandbox.renderActivePerspectiveHtml().right,
     /This map draws the technology layer, and the applications deployed on its nodes\./
   );
-  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=fleet');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=fleet&compare=');
   sandbox.setPerspective('elements');
   click(sandbox, { 'data-action': 'select-element', 'data-ref': 'harbour', 'data-layer': 'technology' });
   sandbox.setPerspective('map');
@@ -392,7 +398,7 @@ test('Environments writes the pins of its Map in its address, and an address wit
   sandbox.applySelectionFromHashRef();
   assert.deepEqual(plain(run(sandbox, 'technologyMapState.pinned')), ['harbour']);
   assert.deepEqual(plain(run(sandbox, 'mapPinned')), [], 'the pins of the other Map are its own');
-  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?pin=harbour');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?pin=harbour&compare=');
   // a pin that is not an element of the technology layer is dropped, whatever the other layer has
   opens(sandbox, '#/timeline/environments?pin=fleet');
   sandbox.applySelectionFromHashRef();
@@ -1147,7 +1153,7 @@ test('an address that names an application element on Environments opens Environ
   await sandbox.loadWorkspace(mem.handle);
   assert.deepEqual([run(sandbox, 'currentPerspective'), state.selection.key], ['environments', 'fleet']);
   sandbox.syncHashFromState(); // the end of the drawing
-  assert.equal(sandbox.location.hash, '#/timeline/environments?ref=fleet');
+  assert.equal(sandbox.location.hash, '#/timeline/environments?ref=fleet&compare=');
 });
 
 test('a link from Environments to an element of the other layer selects it where it is: both Maps keep a selection of the other layer', async () => {
