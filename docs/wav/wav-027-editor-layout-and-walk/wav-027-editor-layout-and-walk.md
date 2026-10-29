@@ -141,7 +141,7 @@ wave_manifest:
       slug: toolbar-review
       phase: P3
       depends_on: [W-3]
-      run: null
+      run: 0204
       delegation: standard
       profile: single-document
       likely_paths:
