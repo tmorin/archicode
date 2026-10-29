@@ -160,6 +160,8 @@ async function startPage(options) {
   const panel = { removed: false, scrolled: 0, sectionTop: 1500, right: null };
   const rightPanel = {
     scrollTop: 0,
+    style: { setProperty() {} },
+    querySelector: () => null, // no tabs and no walk bar to measure (`syncRightPanelSticky`, wave 027 run 0201)
     getBoundingClientRect: () => ({ top: 0, bottom: 800, left: 0, right: 288, width: 288, height: 800 })
   };
   panel.right = rightPanel;

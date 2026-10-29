@@ -843,7 +843,8 @@ function renderChangesReadingHtml(rows, filter, shown, current) {
       ? shown.length + ' of ' + rows.length + ' changes'
       : rows.length + (rows.length === 1 ? ' change' : ' changes')) +
     '</p>' +
-    '<div class="changes-walk"><span class="button-group" role="group" aria-label="Walk the changes">' +
+    '</div>' +
+    '<div class="changes-walkbar" data-changes-walkbar><div class="changes-walk"><span class="button-group" role="group" aria-label="Walk the changes">' +
     '<button type="button" data-action="change-previous"' +
     (before ? '' : ' disabled') +
     ' aria-keyshortcuts="k" title="The change before this one in the list (shortcut: K)">Previous change</button>' +

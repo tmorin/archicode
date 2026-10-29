@@ -544,8 +544,13 @@ test(
       return sandbox;
     };
     // what wave 021 (run 0153) takes out of the editing layout: Previous and Next on the bar of a story (the player has them), and Play, which opens the player instead of walking the diagrams
+    // and, wave 027 (run 0201), the walk bar of the Changes panel: the Previous and Next change buttons leave the filters' block for a sticky block of their own, `changes-walkbar`
     const asNow = (text) =>
       text
+        .replace(
+          /<\/p><div class="changes-walk">(<span class="button-group" role="group" aria-label="Walk the changes">.*?<\/span>)<\/div><\/div>/g,
+          '</p></div><div class="changes-walkbar" data-changes-walkbar><div class="changes-walk">$1</div></div>'
+        )
         .replace(
           /<span class="button-group" role="group" aria-label="Steps"><button type="button" data-action="story-prev"[^>]*>Previous<\/button><button type="button" data-action="story-next"[^>]*>Next<\/button><\/span>/g,
           ''

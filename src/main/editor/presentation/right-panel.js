@@ -60,6 +60,16 @@ function refreshRightPanel() {
   if (html !== null) panel.innerHTML = html;
 }
 
+/** The heights of the sticky block of the right panel, set as `--right-tabs-h` and `--right-walk-h` on the panel (0 when absent), read by the style (wave 027, run 0201). */
+function syncRightPanelSticky() {
+  const panel = document.getElementById('panel-right');
+  if (!panel) return;
+  const tabs = panel.querySelector('.right-tabs');
+  const walk = panel.querySelector('[data-changes-walkbar]');
+  panel.style.setProperty('--right-tabs-h', (tabs ? tabs.offsetHeight : 0) + 'px');
+  panel.style.setProperty('--right-walk-h', (walk ? walk.offsetHeight : 0) + 'px');
+}
+
 /** The Selected | Changes tabs: the Changes tab shows the list while the selection is what it is now. */
 function setRightTab(tab) {
   if (currentPerspective === 'library') {

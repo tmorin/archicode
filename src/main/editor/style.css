@@ -301,6 +301,8 @@
   .changes-filter { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.75rem; color: var(--muted); flex: 1 1 8rem; min-width: 0; }
   .changes-filter select { font-size: 0.82rem; max-width: 100%; }
   .changes-shown { margin: 0; font-size: 0.82rem; font-weight: 600; }
+  .changes-walkbar { position: sticky; top: calc(-1rem + var(--right-tabs-h, 0px)); z-index: 2; background: var(--panel-bg); padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+  .right-panel { scroll-padding-top: calc(var(--right-tabs-h, 0px) + var(--right-walk-h, 0px)); }
   .changes-walk { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
   .changes-position { font-size: 0.8rem; color: var(--muted); }
   .changes-detail { padding: 0.4rem 0; }

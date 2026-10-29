@@ -1399,6 +1399,7 @@
     "syncLinkTabStop",
     "syncNodeTabStop",
     "syncPerspectiveFromHash",
+    "syncRightPanelSticky",
     "syncSaveAllButtonsInPlace",
     "takeOverDiagramFraming",
     "takeOverPlayerFraming",
@@ -1543,5 +1544,5 @@
     "yamlWordIsToken",
     "yamlWordsOf"
   ],
-  "unnamed": 24
+  "unnamed": 25
 }
