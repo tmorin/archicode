@@ -309,7 +309,7 @@ task_catalog:
         - 'layers.json lists the part after model/map-links.js; names.json is rewritten with node scripts/check-editor.mjs --write-names'
         - 'standalone.html rebuilt with npm run editor:build'
       verification:
-        - 'node --test on diagram-columns.test.js and diagram-columns-elk.test.js passes, except the one test "a saved Map with a layout reaches the layout engine bounded..." (diagram-columns-elk.test.js), which needs the recipe wiring of task-003 and is checked there (plan correction of 2026-10-29: task-001 wrote it before the wiring existed, and task-002 failed twice on it)'
+        - 'node --test on diagram-columns.test.js and diagram-columns-elk.test.js passes, except the one test `a saved Map with a layout reaches the layout engine bounded...` (diagram-columns-elk.test.js), which needs the recipe wiring of task-003 and is checked there (plan correction of 2026-10-29: task-001 wrote it before the wiring existed, and task-002 failed twice on it)'
         - 'npm run editor:check exits 0'
         - 'node scripts/check-editor.mjs --list shows no upward pair that was not in the baseline of task-001'
         - 'npm run format:check and npm run lint pass'
@@ -348,7 +348,7 @@ task_catalog:
         - 'names.json updated and standalone.html rebuilt'
       verification:
         - 'node --test on diagram-columns-view.test.js and story-player-scene.test.js passes, including the case that the ELK graph of the player equals the one of the editing walk and a toolbar value is ignored by the player'
-        - 'node --test on diagram-columns-elk.test.js passes in full, including "a saved Map with a layout reaches the layout engine bounded..." (the columns of the view, then of the workspace, reach buildElkGraph through the recipes)'
+        - 'node --test on diagram-columns-elk.test.js passes in full, including `a saved Map with a layout reaches the layout engine bounded...` (the columns of the view, then of the workspace, reach buildElkGraph through the recipes)'
         - 'npm run test:unit passes'
         - 'npm run editor:check exits 0 and node scripts/check-editor.mjs --list shows no upward pair absent from the baseline'
         - 'grep -n modelsChanged src/main/editor/model/diagram-columns.js src/main/editor/model/ui-state.js finds no new call for layout'
@@ -650,7 +650,7 @@ agent_assignment_plan:
         - 'src/main/editor/layers.json'
         - 'src/main/editor/names.json'
       acceptance_criteria:
-        - 'diagram-columns.test.js passes, and diagram-columns-elk.test.js passes except the one test "a saved Map with a layout reaches the layout engine bounded..." (it needs the recipe wiring of task-003 and is checked there; do not add that wiring in this task)'
+        - 'diagram-columns.test.js passes, and diagram-columns-elk.test.js passes except the one test `a saved Map with a layout reaches the layout engine bounded...` (it needs the recipe wiring of task-003 and is checked there; do not add that wiring in this task)'
         - 'editor:check exits 0 with no new upward pair'
       verification:
         - 'node --test on both files (the one named test may fail until task-003), npm run editor:build, npm run editor:check, node scripts/check-editor.mjs --list'
@@ -678,7 +678,7 @@ agent_assignment_plan:
         - 'src/main/editor/presentation/story-scene.js'
       acceptance_criteria:
         - 'diagram-columns-view.test.js and story-player-scene.test.js pass and npm run test:unit passes'
-        - 'diagram-columns-elk.test.js passes in full, including "a saved Map with a layout reaches the layout engine bounded..."'
+        - 'diagram-columns-elk.test.js passes in full, including `a saved Map with a layout reaches the layout engine bounded...`'
         - 'the cache key of a diagram with no value is the old string'
       verification:
         - 'npm run editor:build then npm run test:unit then npm run editor:check'
