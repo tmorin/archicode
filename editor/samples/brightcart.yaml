@@ -1,0 +1,1569 @@
+--- # file: .archicode.yaml
+settings:
+  name: "Brightcart"
+  views:
+    path: "views"
+  facets:
+    customs:
+      - name: "journey"            # the purchase journey: no staff tools, no fulfilment
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.id == 'agent' || @.id == 'merchandiser' || @.id == 'backoffice' || @.id == 'fulfilment')]"
+      - name: "no-externals"       # what Brightcart builds, without its partners
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.tags['rendering-stereotypes'] == 'external')]"
+      - name: "without-cart"       # selects nothing in `saas`, where the cart is gone
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.id == 'cart')]"
+  manifests:
+    paths: ["./**"]
+styles:
+  by-tags:
+    external:
+      background-color: "lightgray"
+    legacy:
+      line-style: 8
+      line-gap: 4
+    hot-path:
+      line-color: "orangered"
+      line-thickness: 3
+  by-qualifiers:
+    PostgreSQL:
+      round-corner: 20
+--- # file: baseline/application/agent.yaml
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "agent"
+  name: "Support agent"
+  description: "Handles customer requests and orders."
+  relationships:
+    - destination: "backoffice.console"
+      label: "handles orders with"
+--- # file: baseline/application/backoffice.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "backoffice"
+  name: "Back office"
+  description: "Tools of the staff."
+  elements:
+    - kind: "container"
+      id: "console"
+      name: "Back-office console"
+      description: "Products, orders and customers for the staff."
+      qualifiers: ["Angular"]
+      relationships:
+        - destination: "shop.app.catalog"
+          label: "maintains products in"
+        - destination: "shop.app.orders"
+          label: "handles orders in"
+        - destination: "shop.app.promotions"
+          label: "configures promotions in"
+        - destination: "shop.app.customers"
+          label: "looks up customers in"
+--- # file: baseline/application/carrier.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "carrier"
+  name: "Carrier API"
+  description: "Books parcels and returns tracking numbers."
+  tags:
+    rendering-stereotypes: "external"
+--- # file: baseline/application/customer.yaml
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "customer"
+  name: "Shopper"
+  description: "Someone who buys from the web shop."
+  relationships:
+    - destination: "shop.web"
+      label: "browses and buys with"
+      qualifiers: ["HTTPS"]
+--- # file: baseline/application/erp.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "erp"
+  name: "ERP"
+  description: "Master of stock, purchases and accounting."
+  tags:
+    rendering-stereotypes: "external"
+--- # file: baseline/application/fulfilment.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "fulfilment"
+  name: "Fulfilment"
+  description: "Picks, packs and ships."
+  elements:
+    - kind: "container"
+      id: "sync"
+      name: "Order and stock sync"
+      description: "Nightly exchange of orders and stock with the ERP."
+      qualifiers: ["Batch job"]
+      relationships:
+        - destination: "shop.db"
+          label: "reads orders, writes stock levels"
+        - destination: "erp"
+          label: "exchanges orders and stock with"
+          qualifiers: ["SFTP"]
+        - destination: "carrier"
+          label: "books shipments with"
+          qualifiers: ["HTTPS"]
+--- # file: baseline/application/mailer.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "mailer"
+  name: "Mail provider"
+  description: "Delivers transactional mails."
+  tags:
+    rendering-stereotypes: "external"
+--- # file: baseline/application/merchandiser.yaml
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "merchandiser"
+  name: "Merchandiser"
+  description: "Maintains products and promotions."
+  relationships:
+    - destination: "backoffice.console"
+      label: "maintains the catalog with"
+--- # file: baseline/application/psp.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "psp"
+  name: "Payment provider"
+  description: "Authorises card and wallet payments."
+  tags:
+    rendering-stereotypes: "external"
+--- # file: baseline/application/shop.app.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "shop"
+content:
+  id: "app"
+  name: "Shop application"
+  description: "The monolith that runs every shop feature."
+  qualifiers: ["Java", "Spring Boot"]
+  elements:
+    - kind: "component"
+      id: "catalog"
+      name: "Catalog"
+      description: "Products, prices and availability."
+      relationships:
+        - destination: "shop.db"
+          label: "reads and writes"
+    - kind: "component"
+      id: "search"
+      name: "Search"
+      description: "Full-text search over products."
+      relationships:
+        - destination: "shop.db"
+          label: "queries"
+    - kind: "component"
+      id: "cart"
+      name: "Cart"
+      description: "Keeps the basket of a shopper."
+      relationships:
+        - destination: "shop.cache"
+          label: "keeps baskets in"
+    - kind: "component"
+      id: "checkout"
+      name: "Checkout"
+      description: "Turns a basket into an order."
+      relationships:
+        - destination: "shop.app.cart"
+          label: "reads baskets from"
+        - destination: "shop.app.orders"
+          label: "creates orders in"
+        - destination: "shop.app.payments"
+          label: "pays through"
+        - destination: "tax"
+          label: "computes taxes with"
+          qualifiers: ["HTTPS"]
+        - destination: "shop.app.inventory"
+          label: "reserves stock in"
+    - kind: "component"
+      id: "orders"
+      name: "Orders"
+      description: "Stores orders and their history."
+      relationships:
+        - destination: "shop.db"
+          label: "stores orders in"
+        - destination: "shop.app.notifications"
+          label: "asks to notify"
+    - kind: "component"
+      id: "customers"
+      name: "Customers"
+      description: "Accounts and addresses."
+      relationships:
+        - destination: "shop.db"
+          label: "stores accounts in"
+    - kind: "component"
+      id: "loyalty"
+      name: "Loyalty"
+      description: "Points earned and spent."
+      relationships:
+        - destination: "shop.db"
+          label: "stores points in"
+        - destination: "shop.app.customers"
+          label: "reads accounts from"
+    - kind: "component"
+      id: "promotions"
+      name: "Promotions"
+      description: "Discount rules and vouchers."
+      relationships:
+        - destination: "shop.db"
+          label: "reads rules from"
+    - kind: "component"
+      id: "payments"
+      name: "Payments"
+      description: "Talks to the payment provider."
+      relationships:
+        - destination: "psp"
+          label: "authorises payments with"
+          qualifiers: ["HTTPS"]
+    - kind: "component"
+      id: "notifications"
+      name: "Notifications"
+      description: "Mails about orders and accounts."
+      relationships:
+        - destination: "mailer"
+          label: "sends mails with"
+          qualifiers: ["SMTP"]
+    - kind: "component"
+      id: "inventory"
+      name: "Inventory"
+      description: "Stock levels and reservations."
+      relationships:
+        - destination: "shop.db"
+          label: "reads and reserves stock in"
+--- # file: baseline/application/shop.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  description: "The web shop of the retailer."
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web storefront"
+      description: "Pages of the shop, in the browser."
+      qualifiers: ["React"]
+      relationships:
+        - destination: "shop.app"
+          label: "calls"
+          qualifiers: ["JSON/HTTPS"]
+    - kind: "container"
+      id: "db"
+      name: "Shop database"
+      description: "Products, accounts, orders and stock."
+      qualifiers: ["PostgreSQL"]
+    - kind: "container"
+      id: "cache"
+      name: "Session cache"
+      description: "Baskets and sessions."
+      qualifiers: ["Redis"]
+--- # file: baseline/application/tax.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "tax"
+  name: "Tax service"
+  description: "Computes sales taxes per destination."
+  tags:
+    rendering-stereotypes: "external"
+--- # file: baseline/plateau.yaml
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "baseline"
+  name: "Monolith"
+  horizon: "2026-Q1"
+--- # file: baseline/technology/partners.yaml
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "partners"
+  name: "Partners (live)"
+  elements:
+    - kind: "node"
+      id: "psp-live"
+      name: "Payment provider (live)"
+      applications:
+        - "psp"
+    - kind: "node"
+      id: "tax-live"
+      name: "Tax service (live)"
+      applications:
+        - "tax"
+    - kind: "node"
+      id: "carrier-live"
+      name: "Carrier API (live)"
+      applications:
+        - "carrier"
+    - kind: "node"
+      id: "erp-live"
+      name: "ERP (live)"
+      applications:
+        - "erp"
+    - kind: "node"
+      id: "mail-live"
+      name: "Mail provider (live)"
+      applications:
+        - "mailer"
+--- # file: baseline/technology/prod.yaml
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "prod"
+  name: "Production"
+  uses:
+    - "partners"
+  elements:
+    - kind: "node"
+      id: "dc"
+      name: "Paris data centre"
+      elements:
+        - kind: "node"
+          id: "web-vm"
+          name: "Web VM"
+          applications:
+            - "shop.web"
+        - kind: "node"
+          id: "app-vm"
+          name: "Application VM"
+          applications:
+            - "shop.app"
+        - kind: "node"
+          id: "db-vm"
+          name: "Database VM"
+          applications:
+            - "shop.db"
+        - kind: "node"
+          id: "cache-vm"
+          name: "Cache VM"
+          applications:
+            - "shop.cache"
+        - kind: "node"
+          id: "batch-vm"
+          name: "Batch VM"
+          applications:
+            - "fulfilment.sync"
+        - kind: "node"
+          id: "admin-vm"
+          name: "Admin VM"
+          applications:
+            - "backoffice.console"
+--- # file: baseline/technology/sandbox.yaml
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "sandbox"
+  name: "Partners (sandbox)"
+  elements:
+    - kind: "node"
+      id: "psp-sandbox"
+      name: "Payment provider (sandbox)"
+      applications:
+        - "psp"
+    - kind: "node"
+      id: "tax-sandbox"
+      name: "Tax service (sandbox)"
+      applications:
+        - "tax"
+    - kind: "node"
+      id: "carrier-sandbox"
+      name: "Carrier API (sandbox)"
+      applications:
+        - "carrier"
+    - kind: "node"
+      id: "erp-sandbox"
+      name: "ERP (sandbox)"
+      applications:
+        - "erp"
+    - kind: "node"
+      id: "mail-sandbox"
+      name: "Mail provider (sandbox)"
+      applications:
+        - "mailer"
+--- # file: baseline/technology/staging.yaml
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "staging"
+  name: "Staging"
+  uses:
+    - "sandbox"
+  elements:
+    - kind: "node"
+      id: "vm"
+      name: "Staging VM"
+      applications:
+        - "shop.web"
+        - "shop.app"
+        - "shop.db"
+        - "shop.cache"
+        - "fulfilment.sync"
+        - "backoffice.console"
+--- # file: inhouse/application/accounts.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "inhouse"
+content:
+  id: "accounts"
+  name: "Accounts"
+  description: "Who the shoppers are."
+  elements:
+    - kind: "container"
+      id: "profiles"
+      name: "Customer profiles"
+      description: "Accounts, addresses and loyalty points."
+      qualifiers: ["Java", "Quarkus"]
+      replaces:
+        - "shop.app.customers"
+        - "shop.app.loyalty"
+      relationships:
+        - destination: "accounts.db"
+          label: "stores accounts in"
+    - kind: "container"
+      id: "db"
+      name: "Accounts database"
+      description: "Accounts and points."
+      qualifiers: ["PostgreSQL"]
+--- # file: inhouse/application/commerce.cart.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "inhouse"
+  parent: "commerce"
+content:
+  id: "cart"
+  name: "Cart service"
+  description: "Keeps the basket of a shopper."
+  qualifiers: ["Java", "Quarkus"]
+  replaces:
+    - "shop.app.cart"
+  relationships:
+    - destination: "commerce.cart-store"
+      label: "keeps baskets in"
+--- # file: inhouse/application/commerce.catalog.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "inhouse"
+  parent: "commerce"
+content:
+  id: "catalog"
+  name: "Catalog service"
+  description: "Products, prices and availability."
+  qualifiers: ["Java", "Quarkus"]
+  replaces:
+    - "shop.app.catalog"
+  relationships:
+    - destination: "commerce.catalog-db"
+      label: "reads and writes"
+--- # file: inhouse/application/commerce.checkout.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "inhouse"
+  parent: "commerce"
+content:
+  id: "checkout"
+  name: "Checkout service"
+  description: "Turns a basket into an order."
+  qualifiers: ["Java", "Quarkus"]
+  replaces:
+    - "shop.app.checkout"
+  relationships:
+    - destination: "commerce.cart"
+      label: "reads baskets from"
+    - destination: "orders.placement"
+      label: "creates orders in"
+    - destination: "payments.orchestrator"
+      label: "pays through"
+    - destination: "tax"
+      label: "computes taxes with"
+      qualifiers: ["HTTPS"]
+    - destination: "shop.app.inventory"
+      label: "reserves stock in"
+--- # file: inhouse/application/commerce.pricing.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "inhouse"
+  parent: "commerce"
+content:
+  id: "pricing"
+  name: "Pricing service"
+  description: "Discount rules and vouchers."
+  qualifiers: ["Java", "Quarkus"]
+  replaces:
+    - "shop.app.promotions"
+  relationships:
+    - destination: "commerce.catalog"
+      label: "reads prices from"
+--- # file: inhouse/application/commerce.search.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "inhouse"
+  parent: "commerce"
+content:
+  id: "search"
+  name: "Search service"
+  description: "Full-text search over products."
+  qualifiers: ["OpenSearch"]
+  replaces:
+    - "shop.app.search"
+  relationships:
+    - destination: "commerce.catalog"
+      label: "indexes products from"
+--- # file: inhouse/application/commerce.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "inhouse"
+content:
+  id: "commerce"
+  name: "Commerce services"
+  description: "Services of the shopping journey."
+  elements:
+    - kind: "container"
+      id: "cart-store"
+      name: "Cart store"
+      description: "Baskets, one key per shopper."
+      qualifiers: ["Redis"]
+      replaces:
+        - "shop.cache"
+    - kind: "container"
+      id: "gateway"
+      name: "API gateway"
+      description: "Single entry for the storefront."
+      qualifiers: ["Kong"]
+      relationships:
+        - destination: "commerce.catalog"
+          label: "routes to"
+        - destination: "commerce.search"
+          label: "routes to"
+        - destination: "commerce.cart"
+          label: "routes to"
+        - destination: "commerce.checkout"
+          label: "routes to"
+        - destination: "commerce.pricing"
+          label: "routes to"
+    - kind: "container"
+      id: "catalog-db"
+      name: "Catalog database"
+      description: "Products and prices."
+      qualifiers: ["PostgreSQL"]
+--- # file: inhouse/application/orders.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "inhouse"
+content:
+  id: "orders"
+  name: "Order management"
+  description: "Orders from placement to history."
+  elements:
+    - kind: "container"
+      id: "placement"
+      name: "Order placement"
+      description: "Creates and confirms orders."
+      qualifiers: ["Java", "Quarkus"]
+      replaces:
+        - "shop.app.orders"
+      relationships:
+        - destination: "orders.db"
+          label: "stores orders in"
+        - destination: "shop.app.notifications"
+          label: "asks to notify"
+    - kind: "container"
+      id: "history"
+      name: "Order history"
+      description: "Read model of past orders."
+      qualifiers: ["Java", "Quarkus"]
+      replaces:
+        - "shop.app.orders"
+      relationships:
+        - destination: "orders.db"
+          label: "reads orders from"
+    - kind: "container"
+      id: "db"
+      name: "Orders database"
+      description: "Orders and their events."
+      qualifiers: ["PostgreSQL"]
+--- # file: inhouse/application/payments.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "inhouse"
+content:
+  id: "payments"
+  name: "Payments"
+  description: "Everything about moving money."
+  elements:
+    - kind: "container"
+      id: "orchestrator"
+      name: "Payment orchestrator"
+      description: "Talks to the payment provider."
+      qualifiers: ["Java", "Quarkus"]
+      replaces:
+        - "shop.app.payments"
+      relationships:
+        - destination: "psp"
+          label: "authorises payments with"
+          qualifiers: ["HTTPS"]
+--- # file: inhouse/plateau.yaml
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "inhouse"
+  name: "Build commerce services"
+  horizon: "2026-Q4"
+  patches:
+    # pattern R: commerce.cart-store says replaces; the cascade takes the entries of the nodes that hosted the cache
+    - operator: REMOVE
+      target: "shop.cache"
+    # pattern R: the new containers say replaces, the old components go
+    - operator: REMOVE
+      target: "shop.app.catalog"
+    - operator: REMOVE
+      target: "shop.app.search"
+    - operator: REMOVE
+      target: "shop.app.cart"
+    - operator: REMOVE
+      target: "shop.app.checkout"
+    - operator: REMOVE
+      target: "shop.app.payments"
+    - operator: REMOVE
+      target: "shop.app.promotions"
+    - operator: REMOVE
+      target: "shop.app.orders"
+    - operator: REMOVE
+      target: "shop.app.customers"
+    - operator: REMOVE
+      target: "shop.app.loyalty"
+    # the monolith is reduced
+    - operator: SET
+      target: "shop.app"
+      field: name
+      value: "Legacy core"
+    - operator: SET
+      target: "shop.app"
+      field: description
+      value: "What is left of the monolith: stock levels and notifications."
+    - operator: SET
+      target: "shop.app"
+      field: tags
+      value: {"rendering-stereotypes": "legacy"}
+    # the storefront
+    - operator: SET
+      target: "shop.web"
+      field: description
+      value: "Pages of the shop, served behind the API gateway."
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value: {destination: "commerce.gateway", label: "browses and buys through", qualifiers: ["REST"]}
+    # deployment
+    - operator: ADD
+      target: "prod.cloud.redis"
+      layer: technology
+      field: applications
+      value: ["commerce.cart-store"]
+    - operator: ADD
+      target: "staging.k8s"
+      layer: technology
+      field: applications
+      value: ["commerce.cart-store"]
+    - operator: SET
+      target: "staging.vm"
+      layer: technology
+      field: applications
+      value: ["shop.web", "shop.app", "shop.db", "fulfilment.sync", "backoffice.console"]
+    - operator: REMOVE
+      target: "prod.dc.cache-vm"
+      layer: technology
+    # the staff tools follow
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "commerce.catalog", label: "maintains products in"}
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "commerce.pricing", label: "configures promotions in"}
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "orders.placement", label: "handles orders in"}
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "orders.history", label: "looks up past orders in"}
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "accounts.profiles", label: "looks up customers in"}
+    # the nightly batch
+    - operator: SET
+      target: "fulfilment.sync"
+      field: relationships
+      where: {destination: "shop.db", label: "reads orders, writes stock levels"}
+      value: {label: "writes stock levels"}
+    - operator: ADD
+      target: "fulfilment.sync"
+      field: relationships
+      value: {destination: "orders.db", label: "reads orders from", qualifiers: ["SQL"]}
+--- # file: inhouse/technology/prod.cloud.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "inhouse"
+  parent: "prod"
+content:
+  id: "cloud"
+  name: "Cloud region eu-west"
+  elements:
+    - kind: "node"
+      id: "k8s"
+      name: "Kubernetes cluster"
+      elements:
+        - kind: "node"
+          id: "commerce"
+          name: "Commerce namespace"
+          applications:
+            - "commerce.gateway"
+            - "commerce.catalog"
+            - "commerce.search"
+            - "commerce.cart"
+            - "commerce.checkout"
+            - "commerce.pricing"
+        - kind: "node"
+          id: "payments"
+          name: "Payments namespace"
+          applications:
+            - "payments.orchestrator"
+        - kind: "node"
+          id: "orders"
+          name: "Orders namespace"
+          applications:
+            - "orders.placement"
+            - "orders.history"
+        - kind: "node"
+          id: "accounts"
+          name: "Accounts namespace"
+          applications:
+            - "accounts.profiles"
+    - kind: "node"
+      id: "pg"
+      name: "Managed PostgreSQL"
+      applications:
+        - "commerce.catalog-db"
+        - "orders.db"
+        - "accounts.db"
+    - kind: "node"
+      id: "redis"
+      name: "Managed Redis"
+--- # file: inhouse/technology/staging.k8s.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "inhouse"
+  parent: "staging"
+content:
+  id: "k8s"
+  name: "Staging cluster"
+  applications:
+    - "commerce.gateway"
+    - "commerce.catalog"
+    - "commerce.catalog-db"
+    - "commerce.search"
+    - "commerce.cart"
+    - "commerce.checkout"
+    - "commerce.pricing"
+    - "payments.orchestrator"
+    - "orders.placement"
+    - "orders.history"
+    - "orders.db"
+    - "accounts.profiles"
+    - "accounts.db"
+--- # file: marketplace/application/discovery.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "marketplace"
+content:
+  id: "discovery"
+  name: "Discovery"
+  description: "Search and recommendations."
+  elements:
+    - kind: "container"
+      id: "recommender"
+      name: "Recommender"
+      description: "Suggests products to a shopper."
+      qualifiers: ["Python"]
+      relationships:
+        - destination: "platform.broker"
+          label: "consumes events from"
+        - destination: "discovery.features"
+          label: "reads features from"
+    - kind: "container"
+      id: "features"
+      name: "Feature store"
+      description: "Shopper and product features."
+      qualifiers: ["Redis"]
+    - kind: "container"
+      id: "search"
+      name: "Search service"
+      description: "Full-text search over products."
+      qualifiers: ["OpenSearch"]
+      replaces:
+        - "commerce.search"
+      relationships:
+        - destination: "commerce.catalog"
+          label: "indexes products from"
+--- # file: marketplace/application/fulfilment.db.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "marketplace"
+  parent: "fulfilment"
+content:
+  id: "db"
+  name: "Fulfilment database"
+  description: "Stock levels."
+  qualifiers: ["PostgreSQL"]
+--- # file: marketplace/application/fulfilment.inventory.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "marketplace"
+  parent: "fulfilment"
+content:
+  id: "inventory"
+  name: "Inventory service"
+  description: "Stock levels and reservations."
+  qualifiers: ["Java", "Quarkus"]
+  replaces:
+    - "shop.app.inventory"
+  relationships:
+    - destination: "fulfilment.db"
+      label: "reads and reserves stock in"
+    - destination: "platform.broker"
+      label: "publishes stock events to"
+--- # file: marketplace/application/kyc.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "marketplace"
+content:
+  id: "kyc"
+  name: "KYC provider"
+  description: "Checks the identity of sellers."
+  tags:
+    rendering-stereotypes: "external"
+--- # file: marketplace/application/marketplace.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "marketplace"
+content:
+  id: "marketplace"
+  name: "Marketplace"
+  description: "Offers of third-party sellers."
+  elements:
+    - kind: "container"
+      id: "seller-portal"
+      name: "Seller portal"
+      description: "Where sellers manage offers and payouts."
+      qualifiers: ["React"]
+      relationships:
+        - destination: "marketplace.listing"
+          label: "manages offers with"
+        - destination: "marketplace.settlement"
+          label: "reads payouts from"
+    - kind: "container"
+      id: "listing"
+      name: "Listing service"
+      description: "Validates and publishes offers."
+      qualifiers: ["Java", "Quarkus"]
+      relationships:
+        - destination: "marketplace.db"
+          label: "stores offers in"
+        - destination: "commerce.catalog"
+          label: "publishes offers to"
+        - destination: "kyc"
+          label: "checks sellers with"
+          qualifiers: ["HTTPS"]
+    - kind: "container"
+      id: "settlement"
+      name: "Settlement service"
+      description: "Computes and pays out seller balances."
+      qualifiers: ["Java", "Quarkus"]
+      relationships:
+        - destination: "marketplace.db"
+          label: "stores balances in"
+        - destination: "payments.orchestrator"
+          label: "pays out through"
+    - kind: "container"
+      id: "db"
+      name: "Marketplace database"
+      description: "Offers and balances."
+      qualifiers: ["PostgreSQL"]
+--- # file: marketplace/application/platform.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "marketplace"
+content:
+  id: "platform"
+  name: "Platform"
+  description: "Shared services."
+  elements:
+    - kind: "container"
+      id: "broker"
+      name: "Event backbone"
+      description: "Domain events between services."
+      qualifiers: ["Kafka"]
+    - kind: "container"
+      id: "notifications"
+      name: "Notification service"
+      description: "Mails and pushes about orders and accounts."
+      qualifiers: ["Java", "Quarkus"]
+      replaces:
+        - "shop.app.notifications"
+      relationships:
+        - destination: "mailer"
+          label: "sends mails with"
+          qualifiers: ["SMTP"]
+        - destination: "platform.broker"
+          label: "consumes events from"
+--- # file: marketplace/application/seller.yaml
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+  plateau: "marketplace"
+content:
+  id: "seller"
+  name: "Marketplace seller"
+  description: "A third party that lists offers."
+  relationships:
+    - destination: "marketplace.seller-portal"
+      label: "lists offers with"
+--- # file: marketplace/application/storefront.mobile.yaml
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "marketplace"
+  parent: "storefront"
+content:
+  id: "mobile"
+  name: "Mobile app"
+  description: "The shop in the pocket."
+  qualifiers: ["Kotlin Multiplatform"]
+  relationships:
+    - destination: "commerce.gateway"
+      label: "browses and buys through"
+      qualifiers: ["REST"]
+--- # file: marketplace/application/storefront.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "marketplace"
+content:
+  id: "storefront"
+  name: "Shop"
+  description: "The web shop of the retailer."
+  replaces:
+    - "shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web storefront"
+      description: "Pages of the shop, served from the CDN."
+      qualifiers: ["React"]
+      replaces:
+        - "shop.web"
+      relationships:
+        - destination: "commerce.gateway"
+          label: "browses and buys through"
+          qualifiers: ["REST"]
+--- # file: marketplace/plateau.yaml
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "marketplace"
+  name: "Marketplace and personalisation"
+  horizon: "2027-Q4"
+  override: "inhouse"
+  patches:
+    # retire the monolith; inventory and notifications are replaced by the manifests of this plateau
+    - operator: REMOVE
+      target: "shop.app"
+    - operator: REMOVE
+      target: "shop.db"
+    # rewire what pointed at the monolith (the REMOVE took those links)
+    - operator: ADD
+      target: "commerce.checkout"
+      field: relationships
+      value: {destination: "fulfilment.inventory", label: "reserves stock in", qualifiers: ["REST"]}
+    - operator: ADD
+      target: "orders.placement"
+      field: relationships
+      value: {destination: "platform.notifications", label: "asks to notify"}
+    - operator: ADD
+      target: "fulfilment.sync"
+      field: relationships
+      value: {destination: "fulfilment.inventory", label: "writes stock levels to", qualifiers: ["REST"]}
+    # a second move for this element: discovery.search says replaces
+    - operator: REMOVE
+      target: "commerce.search"
+    # what pointed at the old search (the REMOVE took the link)
+    - operator: ADD
+      target: "commerce.gateway"
+      field: relationships
+      value: {destination: "discovery.search", label: "routes to"}
+    # and the nodes that hosted it
+    - operator: ADD
+      target: "prod.cloud.k8s.commerce"
+      layer: technology
+      field: applications
+      value: ["discovery.search"]
+    - operator: ADD
+      target: "staging.k8s"
+      layer: technology
+      field: applications
+      value: ["discovery.search"]
+    # rename the system: storefront says replaces for shop and shop.web; the subtree goes
+    - operator: REMOVE
+      target: "shop"
+    # what pointed at the old storefront
+    - operator: ADD
+      target: "customer"
+      field: relationships
+      value: {destination: "storefront.web", label: "browses and buys with", qualifiers: ["HTTPS"]}
+    - operator: ADD
+      target: "staging.vm"
+      layer: technology
+      field: applications
+      value: ["storefront.web"]
+    # sellers, events, recommendations
+    - operator: SET
+      target: "commerce.catalog"
+      field: description
+      value: "Products, prices and availability, including offers of marketplace sellers."
+    - operator: ADD
+      target: "commerce.catalog"
+      field: relationships
+      value: {destination: "platform.broker", label: "publishes product events to"}
+    - operator: ADD
+      target: "commerce.catalog"
+      field: relationships
+      value: {destination: "discovery.recommender", label: "asks for suggestions"}
+    - operator: ADD
+      target: "orders.placement"
+      field: relationships
+      value: {destination: "platform.broker", label: "publishes order events to"}
+    # drawing only: compare ignores it
+    - operator: SET
+      target: "commerce.gateway"
+      field: tags
+      value: {"rendering-stereotypes": "hot-path"}
+    # retire the virtual machines
+    - operator: REMOVE
+      target: "prod.dc.web-vm"
+      layer: technology
+    - operator: REMOVE
+      target: "prod.dc.app-vm"
+      layer: technology
+    - operator: REMOVE
+      target: "prod.dc.db-vm"
+      layer: technology
+    # deployment
+    - operator: ADD
+      target: "prod.cloud.pg"
+      layer: technology
+      field: applications
+      value: ["marketplace.db", "fulfilment.db"]
+    - operator: ADD
+      target: "prod.cloud.redis"
+      layer: technology
+      field: applications
+      value: ["discovery.features"]
+    # a bulk edit written by hand, guarded by expect
+    - operator: MERGE
+      json-path: "$.application..elements[?(@.qualifiers[?(@ == 'Quarkus')])]"
+      field: tags
+      value: {"runtime": "quarkus"}
+      expect: 12
+--- # file: marketplace/technology/partners.kyc-live.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "partners"
+content:
+  id: "kyc-live"
+  name: "KYC (live)"
+  applications:
+    - "kyc"
+--- # file: marketplace/technology/prod.cloud.cdn.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "prod.cloud"
+content:
+  id: "cdn"
+  name: "CDN"
+  applications:
+    - "storefront.web"
+--- # file: marketplace/technology/prod.cloud.k8s.marketplace.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "prod.cloud.k8s"
+content:
+  id: "marketplace"
+  name: "Marketplace namespace"
+  applications:
+    - "marketplace.seller-portal"
+    - "marketplace.listing"
+    - "marketplace.settlement"
+--- # file: marketplace/technology/prod.cloud.k8s.platform.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "prod.cloud.k8s"
+content:
+  id: "platform"
+  name: "Platform namespace"
+  applications:
+    - "platform.notifications"
+    - "discovery.recommender"
+    - "fulfilment.inventory"
+--- # file: marketplace/technology/prod.cloud.kafka.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "prod.cloud"
+content:
+  id: "kafka"
+  name: "Managed Kafka"
+  applications:
+    - "platform.broker"
+--- # file: marketplace/technology/sandbox.kyc-sandbox.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "sandbox"
+content:
+  id: "kyc-sandbox"
+  name: "KYC (sandbox)"
+  applications:
+    - "kyc"
+--- # file: marketplace/technology/staging.platform.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "staging"
+content:
+  id: "platform"
+  name: "Staging cluster (platform)"
+  applications:
+    - "marketplace.seller-portal"
+    - "marketplace.listing"
+    - "marketplace.settlement"
+    - "marketplace.db"
+    - "platform.broker"
+    - "platform.notifications"
+    - "discovery.recommender"
+    - "discovery.features"
+    - "fulfilment.inventory"
+    - "fulfilment.db"
+--- # file: saas/application/commerce-saas.yaml
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "saas"
+content:
+  id: "commerce-saas"
+  name: "Commerce platform (SaaS)"
+  description: "Hosted catalog, cart, checkout and promotions."
+  tags:
+    rendering-stereotypes: "external"
+  relationships:
+    - destination: "shop.app.orders"
+      label: "sends order webhooks to"
+      qualifiers: ["HTTPS"]
+    - destination: "psp"
+      label: "authorises payments with"
+      qualifiers: ["HTTPS"]
+--- # file: saas/plateau.yaml
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "saas"
+  name: "Buy the commerce platform"
+  horizon: "2026-Q4"
+  patches:
+    # what the platform replaces
+    - operator: REMOVE
+      target: "shop.app.catalog"
+    - operator: REMOVE
+      target: "shop.app.search"
+    - operator: REMOVE
+      target: "shop.app.cart"
+    - operator: REMOVE
+      target: "shop.app.checkout"
+    - operator: REMOVE
+      target: "shop.app.payments"
+    - operator: REMOVE
+      target: "shop.app.promotions"
+    # no longer needed
+    - operator: REMOVE
+      target: "shop.cache"
+    # the platform computes taxes
+    - operator: REMOVE
+      target: "tax"
+    # REMOVE does not take the nodes that hosted what is gone
+    - operator: REMOVE
+      target: "prod.dc.cache-vm"
+      layer: technology
+    - operator: REMOVE
+      target: "partners.tax-live"
+      layer: technology
+    - operator: REMOVE
+      target: "sandbox.tax-sandbox"
+      layer: technology
+    # the storefront talks to the platform
+    - operator: SET
+      target: "shop.web"
+      field: description
+      value: "Headless storefront on the commerce platform."
+    - operator: SET
+      target: "shop.web"
+      field: qualifiers
+      value: ["React", "Next.js"]
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value: {destination: "commerce-saas", label: "browses and checks out with", qualifiers: ["GraphQL"]}
+    # what is left of the application
+    - operator: SET
+      target: "shop.app"
+      field: name
+      value: "Account and order history"
+    - operator: SET
+      target: "shop.app"
+      field: description
+      value: "Accounts, loyalty, order history and stock; the rest moved to the platform."
+    # the staff tools
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "commerce-saas", label: "maintains products in", qualifiers: ["HTTPS"]}
+    # the nightly batch
+    - operator: SET
+      target: "fulfilment.sync"
+      field: relationships
+      where: {destination: "shop.db", label: "reads orders, writes stock levels"}
+      value: {label: "writes stock levels"}
+    - operator: ADD
+      target: "fulfilment.sync"
+      field: relationships
+      value: {destination: "commerce-saas", label: "pulls orders from", qualifiers: ["REST"]}
+--- # file: saas/technology/partners.commerce-live.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "saas"
+  parent: "partners"
+content:
+  id: "commerce-live"
+  name: "Commerce platform (live)"
+  applications:
+    - "commerce-saas"
+--- # file: saas/technology/sandbox.commerce-sandbox.yaml
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "saas"
+  parent: "sandbox"
+content:
+  id: "commerce-sandbox"
+  name: "Commerce platform (sandbox)"
+  applications:
+    - "commerce-saas"
+--- # file: shared/story.fork_tour.yaml
+header:
+  kind: "archicode.morin.io/story"
+  version: "1"
+content:
+  id: "fork_tour"
+  name: "Two ways out of the monolith"
+  description: "Buy the commerce platform, or build the services; then the marketplace on top of the second."
+  steps:
+    - view: "shop_overview"
+      text: "Today one system does it all."
+      at: "baseline"
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "commerce-saas"
+      text: "Buy: the platform takes the catalog, the cart and the checkout."
+      at: "saas"
+      against: "baseline"
+    - view: "commerce_overview"
+      text: "Build: commerce services of our own."
+      at: "inhouse"
+      against: "baseline"
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "shop"
+      text: "The two ways side by side: what the shop becomes in `inhouse` compared with `saas`, which does not stack on it."
+      at: "inhouse"
+      against: "saas"
+    - view: "marketplace_overview"
+      text: "On top of the second way, sellers."
+      at: "marketplace"
+      against: "inhouse"
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "discovery"
+      text: "All the way from where we are: the search moved twice."
+      at: "marketplace"
+      against: "baseline"
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "customer"
+      text: "The shopper, in the plateau that is drawn, compared with the bought platform (there is nothing to compare when `saas` is the one drawn)."
+      against: "saas"
+--- # file: shared/story.order_flow.yaml
+header:
+  kind: "archicode.morin.io/story"
+  version: "1"
+content:
+  id: "order_flow"
+  name: "An order, link by link"
+  description: "The path of an order through the shop, one relationship more at each step, the newest one highlighted."
+  steps:
+    - viewpoint: "map"
+      layer: "application"
+      properties:
+        opened: ["shop", "shop.app"]
+        links:
+          - source: "customer"
+            destination: "shop.web"
+            label: "browses and buys with"
+      text: "The shopper browses and buys with the web storefront."
+      at: "baseline"
+      highlight:
+        - source: "customer"
+          destination: "shop.web"
+          label: "browses and buys with"
+    - viewpoint: "map"
+      layer: "application"
+      properties:
+        opened: ["shop", "shop.app"]
+        links:
+          - source: "customer"
+            destination: "shop.web"
+            label: "browses and buys with"
+          - source: "shop.web"
+            destination: "shop.app"
+            label: "calls"
+      text: "The storefront calls the application."
+      at: "baseline"
+      highlight:
+        - source: "shop.web"
+          destination: "shop.app"
+          label: "calls"
+    - viewpoint: "map"
+      layer: "application"
+      properties:
+        opened: ["shop", "shop.app"]
+        links:
+          - source: "customer"
+            destination: "shop.web"
+            label: "browses and buys with"
+          - source: "shop.web"
+            destination: "shop.app"
+            label: "calls"
+          - source: "shop.app.payments"
+            destination: "psp"
+            label: "authorises payments with"
+      text: "And the payments component authorises the payment with the provider."
+      at: "baseline"
+      highlight:
+        - source: "shop.app.payments"
+          destination: "psp"
+          label: "authorises payments with"
+--- # file: shared/story.order_journey.yaml
+header:
+  kind: "archicode.morin.io/story"
+  version: "1"
+content:
+  id: "order_journey"
+  name: "An order, from the shopper to the servers"
+  description: "Told in whatever plateau is drawn: no step names one."
+  steps:
+    - view: "customer_overview"
+      text: "A shopper browses and buys."
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "psp"
+      text: "The payment provider takes the money."
+    - view: "environments_map"
+      text: "And all of it runs in these environments."
+--- # file: shared/story.seller_journey.yaml
+header:
+  kind: "archicode.morin.io/story"
+  version: "1"
+content:
+  id: "seller_journey"
+  name: "A seller joins"
+  description: "Every step is told in `marketplace`, whatever plateau is drawn."
+  steps:
+    - view: "marketplace_overview"
+      text: "A seller signs up and lists products."
+      at: "marketplace"
+    - view: "cloud_map"
+      text: "The listings run in the cloud region."
+      at: "marketplace"
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "platform"
+      text: "And the platform carries the events between sellers and shoppers."
+      at: "marketplace"
+      against: "inhouse"
+--- # file: shared/view.applications_map.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "applications_map"
+  name: "The shopper, the payment provider and the shop"
+  description: "The shopper, the payment provider and the shop."
+  viewpoint: "map"
+  layer: "application"
+  properties:
+    pinned: ["customer", "psp"]
+    opened: ["shop"]
+--- # file: shared/view.cloud_map.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "cloud_map"
+  name: "The cloud region"
+  description: "The cloud region, the Kubernetes cluster pinned."
+  viewpoint: "map"
+  layer: "technology"
+  properties:
+    pinned: ["prod.cloud.k8s"]
+    opened: ["prod", "prod.cloud"]
+--- # file: shared/view.commerce_overview.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "commerce_overview"
+  name: "The commerce services we would build"
+  description: "The commerce services and what they talk to."
+  viewpoint: "overview"
+  layer: "application"
+  properties:
+    element: "commerce"
+--- # file: shared/view.customer_overview.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "customer_overview"
+  name: "The shopper"
+  description: "Who buys, and what the shopper talks to."
+  viewpoint: "overview"
+  layer: "application"
+  properties:
+    element: "customer"
+--- # file: shared/view.environments_map.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "environments_map"
+  name: "The environments, production opened"
+  description: "The environments, production opened."
+  viewpoint: "map"
+  layer: "technology"
+  properties:
+    opened: ["prod"]
+    hidden: ["sandbox", "staging"]
+--- # file: shared/view.marketplace_overview.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "marketplace_overview"
+  name: "The marketplace"
+  description: "The marketplace: sellers, listings and settlement."
+  viewpoint: "overview"
+  layer: "application"
+  properties:
+    element: "marketplace"
+--- # file: shared/view.shop_overview.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "shop_overview"
+  name: "The shop"
+  description: "The shop and what is around it."
+  viewpoint: "overview"
+  layer: "application"
+  properties:
+    element: "shop"

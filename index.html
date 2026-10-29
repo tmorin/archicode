@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="archicode-version" content="0.20.0">
+<meta name="archicode-version" content="0.21.0">
 <title>ArchiCode · Architecture as code</title>
 <meta name="description" content="Describe your systems and their relationships in YAML, in your repository. ArchiCode generates PlantUML views from that model.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6e5c'/%3E%3Cpath d='M9 22l7-12 7 12z' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
@@ -163,9 +163,10 @@ footer a { color: var(--muted); }
     <p class="lead">Describe your systems and their relationships in YAML, in your repository. ArchiCode generates PlantUML views from that model.</p>
     <div class="cta">
       <a class="btn primary" href="editor/">Open the editor</a>
+      <a class="btn" href="editor/#/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart">Try the editor on a realistic project</a>
       <a class="btn" href="#start">Get started</a>
     </div>
-    <p class="hint">The editor runs in your browser, nothing to install. Pick a workspace folder (Chrome, Edge, Brave or Opera); your files are not uploaded.</p>
+    <p class="hint">The editor runs in your browser, nothing to install: open the sample, create a workspace, or pick a folder where your browser allows it. Your files are not uploaded.</p>
   </div>
 </section>
 
@@ -296,7 +297,7 @@ footer a { color: var(--muted); }
 
     <h3>Editor, online</h3>
     <p class="prose">Browse and edit your workspace in the browser: the elements as a tree, with their details and their diagrams, and a map of the whole application layer and another of the technology layer, with the applications deployed on its nodes. Pick the folder that holds your <code>.archicode.yaml</code>, edit, save.</p>
-    <p><a class="btn primary" href="editor/">Open the editor</a></p>
+    <p><a class="btn primary" href="editor/">Open the editor</a> <a class="btn" href="editor/#/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart">Try the editor on a realistic project</a></p>
 
     <h3>Views</h3>
     <p class="prose">A viewpoint is a set of rules that extracts one perspective from the model: <code>overview</code> shows what an element exchanges with the outside, <code>detailed</code> its children and what they exchange, <code>deep</code> the same for all its descendants. The command generates every view of every viewpoint as PlantUML files in <code>views/</code>. Rendering them to images is up to your PlantUML tooling.</p>
@@ -332,7 +333,7 @@ footer a { color: var(--muted); }
       </div>
       <div class="card">
         <header>2 · Open it in the online editor</header>
-        <p class="note grow">Pick the folder. In a browser other than Chrome, Edge, Brave or Opera: <code>archicode editor serve</code> (<a href="docs/#serve-the-editor">how</a>).</p>
+        <p class="note grow">Open it in the online editor, or run <code>archicode editor serve</code> (<a href="docs/#serve-the-editor">how</a>).</p>
         <p class="note"><a class="btn primary" href="editor/">Open the editor</a></p>
       </div>
       <div class="card">
