@@ -320,6 +320,8 @@ try {
   .changes-filter { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.75rem; color: var(--muted); flex: 1 1 8rem; min-width: 0; }
   .changes-filter select { font-size: 0.82rem; max-width: 100%; }
   .changes-shown { margin: 0; font-size: 0.82rem; font-weight: 600; }
+  .changes-walkbar { position: sticky; top: calc(-1rem + var(--right-tabs-h, 0px)); z-index: 2; background: var(--panel-bg); padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+  .right-panel { scroll-padding-top: calc(var(--right-tabs-h, 0px) + var(--right-walk-h, 0px)); }
   .changes-walk { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
   .changes-position { font-size: 0.8rem; color: var(--muted); }
   .changes-detail { padding: 0.4rem 0; }
@@ -21095,7 +21097,8 @@ function renderChangesReadingHtml(rows, filter, shown, current) {
       ? shown.length + ' of ' + rows.length + ' changes'
       : rows.length + (rows.length === 1 ? ' change' : ' changes')) +
     '</p>' +
-    '<div class="changes-walk"><span class="button-group" role="group" aria-label="Walk the changes">' +
+    '</div>' +
+    '<div class="changes-walkbar" data-changes-walkbar><div class="changes-walk"><span class="button-group" role="group" aria-label="Walk the changes">' +
     '<button type="button" data-action="change-previous"' +
     (before ? '' : ' disabled') +
     ' aria-keyshortcuts="k" title="The change before this one in the list (shortcut: K)">Previous change</button>' +
@@ -21804,6 +21807,16 @@ function refreshRightPanel() {
   if (!panel) return;
   const html = currentPerspective === 'plateaus' ? withChangesPanel(null) : renderInspectionHtml(mapIsShown());
   if (html !== null) panel.innerHTML = html;
+}
+
+/** The heights of the sticky block of the right panel, set as `--right-tabs-h` and `--right-walk-h` on the panel (0 when absent), read by the style (wave 027, run 0201). */
+function syncRightPanelSticky() {
+  const panel = document.getElementById('panel-right');
+  if (!panel) return;
+  const tabs = panel.querySelector('.right-tabs');
+  const walk = panel.querySelector('[data-changes-walkbar]');
+  panel.style.setProperty('--right-tabs-h', (tabs ? tabs.offsetHeight : 0) + 'px');
+  panel.style.setProperty('--right-walk-h', (walk ? walk.offsetHeight : 0) + 'px');
 }
 
 /** The Selected | Changes tabs: the Changes tab shows the list while the selection is what it is now. */
@@ -34397,10 +34410,11 @@ function render() {
       el.scrollLeft = scrollBefore[id].left;
     }
   }
+  syncRightPanelSticky(); // the heights of the tabs and of the walk bar, before the row is scrolled to (wave 027, run 0201)
   if (scrollChangesToSelection) {
     scrollChangesToSelection = false;
     const selectedRow = document.querySelector('.change-row.selected');
-    if (selectedRow && selectedRow.scrollIntoView) selectedRow.scrollIntoView({ block: 'center' });
+    if (selectedRow && selectedRow.scrollIntoView) selectedRow.scrollIntoView({ block: 'nearest' });
   }
   // a selection that did not come from a click in the tree (a box of a diagram, a link, the URL) is brought into view in it
   if (scrollNavToSelection) {
@@ -34472,6 +34486,7 @@ window.addEventListener('codemirror-ready', () => {
 
 // the cap of the open key is 30 % of the diagram area, which a resize of the window changes (wave 019, run 0138, #137): view state, nothing is drawn again
 window.addEventListener('resize', syncDiagramKey);
+window.addEventListener('resize', syncRightPanelSticky); // the sticky block of the right panel wraps differently at another width (wave 027, run 0201)
 
 window.addEventListener('hashchange', () => {
   // the change came from the app itself (setPerspective writes the hash after it has set the state): the state is

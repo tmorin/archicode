@@ -57,6 +57,7 @@ window.addEventListener('codemirror-ready', () => {
 
 // the cap of the open key is 30 % of the diagram area, which a resize of the window changes (wave 019, run 0138, #137): view state, nothing is drawn again
 window.addEventListener('resize', syncDiagramKey);
+window.addEventListener('resize', syncRightPanelSticky); // the sticky block of the right panel wraps differently at another width (wave 027, run 0201)
 
 window.addEventListener('hashchange', () => {
   // the change came from the app itself (setPerspective writes the hash after it has set the state): the state is

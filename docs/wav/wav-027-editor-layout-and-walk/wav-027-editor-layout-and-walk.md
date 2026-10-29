@@ -80,7 +80,7 @@ wave_manifest:
       slug: sticky-walk-bar
       phase: P1
       depends_on: []
-      run: null
+      run: 0201
       delegation: standard
       likely_paths:
         - 'src/main/editor/style.css'

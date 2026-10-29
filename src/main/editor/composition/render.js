@@ -139,10 +139,11 @@ function render() {
       el.scrollLeft = scrollBefore[id].left;
     }
   }
+  syncRightPanelSticky(); // the heights of the tabs and of the walk bar, before the row is scrolled to (wave 027, run 0201)
   if (scrollChangesToSelection) {
     scrollChangesToSelection = false;
     const selectedRow = document.querySelector('.change-row.selected');
-    if (selectedRow && selectedRow.scrollIntoView) selectedRow.scrollIntoView({ block: 'center' });
+    if (selectedRow && selectedRow.scrollIntoView) selectedRow.scrollIntoView({ block: 'nearest' });
   }
   // a selection that did not come from a click in the tree (a box of a diagram, a link, the URL) is brought into view in it
   if (scrollNavToSelection) {

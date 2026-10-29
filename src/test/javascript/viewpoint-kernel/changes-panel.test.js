@@ -701,7 +701,7 @@ test('the Changes tab, once asked for, brings the row of the selection into view
   const source = run(sandbox, 'render.toString()');
   assert.match(
     source,
-    /if \(scrollChangesToSelection\) \{[\s\S]*?document\.querySelector\('\.change-row\.selected'\)[\s\S]*?scrollIntoView\(\{ block: 'center' \}\)/
+    /if \(scrollChangesToSelection\) \{[\s\S]*?document\.querySelector\('\.change-row\.selected'\)[\s\S]*?scrollIntoView\(\{ block: 'nearest' \}\)/
   );
   click(sandbox, { 'data-action': 'set-right-tab', 'data-tab': 'selected' });
   assert.equal(run(sandbox, 'scrollChangesToSelection'), false);
