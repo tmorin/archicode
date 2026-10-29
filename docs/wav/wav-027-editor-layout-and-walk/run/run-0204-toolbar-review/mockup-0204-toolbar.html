@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock-up of the diagram toolbar</title>
+<style>
+  :root {
+    --bg: #ffffff; --panel: #f4f5f7; --fg: #1d2330; --muted: #5d6677; --border: #c9ced8;
+    --accent: #1f5fbf; --on-accent: #ffffff; --saved: #b45f06; --box: #e9f1fb; --box-new: #d9efe1; --box-border: #7b8aa3;
+    --danger: #a4262c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171d; --panel: #1c2028; --fg: #e6e9ef; --muted: #9aa3b5; --border: #3a4152;
+      --accent: #6aa3ff; --on-accent: #0b1220; --saved: #f0a24a; --box: #1f2a3b; --box-new: #1d3a2b; --box-border: #5d6b84;
+      --danger: #ff8a8a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171d; --panel: #1c2028; --fg: #e6e9ef; --muted: #9aa3b5; --border: #3a4152;
+    --accent: #6aa3ff; --on-accent: #0b1220; --saved: #f0a24a; --box: #1f2a3b; --box-new: #1d3a2b; --box-border: #5d6b84;
+    --danger: #ff8a8a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+  button, select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; height: 1.9rem; padding: 0 0.55rem; cursor: pointer; }
+  button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  button:disabled { opacity: 0.45; cursor: default; }
+
+  /* the frame of the mock-up itself (not part of the proposal) */
+  .frame-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel); font-size: 0.85rem; }
+  .frame-bar strong { margin-right: 0.5rem; }
+  .frame-bar label { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .app { display: grid; grid-template-columns: 260px minmax(0, 1fr) 290px; min-height: 30rem; }
+  .side { padding: 0.75rem 1rem; background: var(--panel); font-size: 0.85rem; color: var(--muted); }
+  .side.left { border-right: 1px solid var(--border); }
+  .side.right { border-left: 1px solid var(--border); }
+  .side h3 { margin: 0 0 0.4rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .center { min-width: 0; display: flex; flex-direction: column; }
+  .center-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
+  .center-header h2 { margin: 0; font-size: 1.05rem; margin-right: auto; }
+
+  /* ---- the proposed toolbar ---- */
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; padding: 0.45rem 1rem; border-bottom: 1px solid var(--border); background: var(--bg); position: relative; }
+  .tool-group { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+  .tool-group > .group-name { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+  .saved-dot { color: var(--saved); font-size: 0.8rem; line-height: 1; }
+  .tool-row { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+  .joined { display: inline-flex; }
+  .joined button { border-radius: 0; }
+  .joined button + button { margin-left: -1px; }
+  .joined button:first-child { border-radius: 4px 0 0 4px; }
+  .joined button:last-child { border-radius: 0 4px 4px 0; }
+  .tool-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0.2rem 0; }
+  .reset-wrap { display: flex; }
+  .reset { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .reset .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--saved); }
+  .group-button { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .group-button .count { min-width: 1.2rem; padding: 0 0.3rem; border-radius: 999px; background: var(--panel); color: var(--fg); font-size: 0.75rem; text-align: center; border: 1px solid var(--border); }
+  .group-button[aria-pressed="true"] .count, .group-button[aria-expanded="true"] .count { background: var(--bg); }
+  .popover { position: absolute; left: 0.5rem; right: 0.5rem; top: 100%; z-index: 5; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+  .popover[hidden] { display: none; }
+  .popover .pop-title { width: 100%; font-size: 0.75rem; color: var(--muted); }
+  .legend-note { font-size: 0.75rem; color: var(--muted); padding: 0.25rem 1rem; border-bottom: 1px solid var(--border); }
+  .legend-note .saved-dot { margin-right: 0.2rem; }
+
+  /* the stand-in diagram */
+  .stage { position: relative; flex: 1; overflow: hidden; padding: 1rem; min-height: 16rem; }
+  .boxes { display: grid; gap: 0.9rem; transform-origin: top left; }
+  .box { min-width: 0; overflow-wrap: anywhere; border: 1.5px solid var(--box-border); border-radius: 6px; background: var(--box); padding: 0.4rem 0.6rem; font-size: 0.85rem; position: relative; }
+  .box.new { background: var(--box-new); border-color: var(--accent); }
+  .box .q { display: block; font-size: 0.72rem; color: var(--muted); }
+  .box .d { display: block; font-size: 0.72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .box.wrap .d { white-space: normal; }
+  .box .l { display: block; font-size: 0.72rem; color: var(--accent); }
+  .box.dim { opacity: 0.35; }
+  .box[hidden] { display: none; }
+  .status { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0.35rem 1rem; border-top: 1px solid var(--border); background: var(--panel); font-size: 0.8rem; color: var(--muted); align-items: center; }
+  .note { font-size: 0.78rem; color: var(--muted); margin: 0.5rem 1rem; }
+  .origin-line { font-size: 0.78rem; color: var(--muted); }
+
+  /* a frame narrower than the three regions together shows the centre alone, so that the toolbar can be read at the width the centre has in a 1280 window (about 730 px) */
+  @media (max-width: 56rem) { .app { grid-template-columns: minmax(0, 1fr); } .side { display: none; } }
+  /* narrow: the regions stack, as the editor does under 40rem */
+  @media (max-width: 40rem) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    .side { display: none; }
+    .center-header { flex-wrap: wrap; }
+    .toolbar { padding: 0.4rem 0.5rem; gap: 0.3rem; }
+    .stage { padding: 0.6rem; min-height: 13rem; }
+  }
+  /* wide: the groups are inline; narrow: each group is one button that shows how many of its controls are on */
+  .when-narrow { display: none; }
+  @media (max-width: 40rem) { .when-narrow { display: inline-flex; } .when-wide { display: none !important; } }
+</style>
+</head>
+<body>
+  <div class="frame-bar" role="group" aria-label="Mock-up settings (not part of the proposal)">
+    <strong>Toolbar mock-up (run 0204)</strong>
+    <label>Surface
+      <select id="surface" aria-label="Surface">
+        <option value="mapa">Map of the application layer</option>
+        <option value="mapt">Map of the technology layer</option>
+        <option value="elem">Page of an element</option>
+        <option value="view">Page of a saved view</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="compare" checked> A comparison is on</label>
+    <label>Theme
+      <select id="theme" aria-label="Theme"><option value="">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select>
+    </label>
+  </div>
+
+  <div class="app">
+    <aside class="side left"><h3>Elements</h3>Tree of the layer: Pin, Hide, open. Relationships list (Map of the application layer).</aside>
+
+    <main class="center">
+      <div class="center-header">
+        <h2 id="title">Applications</h2>
+        <button type="button" id="maximize" aria-pressed="false" title="Hide the panels to give the diagram all the room (M)">Maximize</button>
+      </div>
+      <div class="toolbar" id="toolbar" role="toolbar" aria-label="Diagram tools"></div>
+      <div class="legend-note" id="legend-note"><span class="saved-dot" aria-hidden="true">●</span>Kept when you name the view. Changes only and the framing are not part of a view.</div>
+      <div class="stage"><div class="boxes" id="boxes"></div></div>
+      <div class="status"><span id="status" role="status"></span><span class="origin-line" id="origin-line"></span></div>
+    </main>
+
+    <aside class="side right"><h3>Changes</h3>Selected | Changes tabs, unchanged by this proposal (two domains, no rail).</aside>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+  // the state of the diagram: `recipe` is what a view keeps, `compare`/`frame` are not part of a view
+  const SURFACES = {
+    mapa: { title: 'Applications', kind: 'map', layer: 'application', origin: 'applications_map', saved: false },
+    mapt: { title: 'Environments', kind: 'map', layer: 'technology', origin: 'environments_map', saved: false },
+    elem: { title: 'Shop, Overview', kind: 'element', layer: 'application', origin: null, saved: false },
+    view: { title: 'Stories, view applications_map', kind: 'map', layer: 'application', origin: null, saved: true }
+  };
+  const BASE = { hideUnlinked: false, labels: false, qualifiers: false, descriptions: false, wrap: false, columns: '', applications: true, relationships: true, opened: 0 };
+  let surface = 'mapa';
+  let origin = Object.assign({}, BASE);
+  let recipe = Object.assign({}, BASE);
+  let changesOnly = false;
+  let compare = true;
+  let frame = { mode: 'auto', zoom: 100 };
+  let maximized = false;
+  let openGroup = null;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const surf = () => SURFACES[surface];
+
+  function resetSurface() {
+    // a diagram opened from a saved view starts as that view says; one that was not starts as the defaults
+    origin = Object.assign({}, BASE);
+    if (surf().origin) { origin.labels = true; origin.hideUnlinked = surface === 'mapa'; }
+    recipe = Object.assign({}, origin);
+    changesOnly = false;
+    frame = { mode: 'auto', zoom: 100 };
+    openGroup = null;
+  }
+  function differs() { return JSON.stringify(recipe) !== JSON.stringify(origin); }
+  function pressed(on) { return ' aria-pressed="' + (on ? 'true' : 'false') + '"'; }
+
+  // ---- the groups, in the order of the proposal: Draw, Texts, Layout, (Reset), Compare, Frame ----
+  function groups() {
+    const s = surf();
+    const draw = [];
+    if (s.kind === 'map') draw.push({ id: 'fold-all', label: 'Fold all', action: true, title: 'Fold every box that contains others and close the ones that were opened' }, { id: 'unfold-all', label: 'Unfold all', action: true, title: 'Unfold every folded box, one more level each time' });
+    draw.push({ id: 'hideUnlinked', label: 'Hide unlinked', toggle: true, title: 'Leave out the boxes that no link reaches' });
+    if (s.kind === 'map' && s.layer === 'technology') draw.push({ id: 'applications', label: 'Applications', toggle: true, title: 'Draw the applications deployed on the nodes' }, { id: 'relationships', label: 'Relationships', toggle: true, title: 'Draw the links between the boxes' });
+    const texts = [
+      { id: 'labels', label: 'Labels', toggle: true, title: 'The caption of each link' },
+      { id: 'qualifiers', label: 'Qualifiers', toggle: true, title: 'The qualifiers of each element, after its kind' },
+      { id: 'descriptions', label: 'Descriptions', toggle: true, title: 'The description of each element' },
+      { id: 'wrap', label: 'Wrap', toggle: true, title: 'Break long names and descriptions over several lines' }
+    ];
+    return [
+      { id: 'draw', name: 'Draw', saved: true, controls: draw },
+      { id: 'texts', name: 'Texts', saved: true, controls: texts },
+      { id: 'layout', name: 'Layout', saved: true, controls: [{ id: 'columns', label: 'Columns', select: true }] }
+    ];
+  }
+  function isOn(c) { return c.toggle ? !!recipe[c.id] : false; }
+  function litCount(g) { return g.controls.filter((c) => c.toggle && (c.id === 'applications' || c.id === 'relationships' ? recipe[c.id] : recipe[c.id])).length; }
+
+  function controlHtml(c) {
+    if (c.select) {
+      return '<label class="tool-row"><span class="sr-label" style="font-size:0.8rem">Columns</span><select data-control="columns" aria-label="Columns" title="The number of boxes the layout aims at in a row">' +
+        ['', '1', '2', '3', '4', '5', '6', '8', '12'].map((v) => '<option value="' + v + '"' + (recipe.columns === v ? ' selected' : '') + '>' + (v === '' ? 'Default (none)' : v) + '</option>').join('') + '</select></label>';
+    }
+    return '<button type="button" data-control="' + c.id + '"' + (c.toggle ? pressed(recipe[c.id]) : '') + ' title="' + esc(c.title) + '">' + esc(c.label) + '</button>';
+  }
+  function savedDot() { return '<span class="saved-dot" role="img" aria-label="Saved with the view" title="Saved with the view">●</span>'; }
+
+  function wideGroupHtml(g) {
+    const buttons = g.controls.map(controlHtml).join('');
+    const inner = g.controls.length > 1 && !g.controls[0].select ? '<span class="joined" role="group" aria-label="' + g.name + '">' + buttons + '</span>' : buttons;
+    // the caption is inline (a row of buttons, not a column): Layout is named by its own label, Columns
+    const caption = g.id === 'layout' ? (g.saved ? savedDot() : '') : '<span class="group-name">' + (g.saved ? savedDot() : '') + g.name + '</span>';
+    return '<div class="tool-group when-wide" role="group" aria-label="' + g.name + (g.saved ? ', saved with the view' : '') + '">' + caption + '<span class="tool-row">' + inner + '</span></div>';
+  }
+  function narrowGroupButtonHtml(g) {
+    const n = g.id === 'layout' ? null : litCount(g);
+    const label = g.id === 'layout' ? 'Layout' : g.name;
+    const value = g.id === 'layout' ? (recipe.columns === '' ? 'default' : recipe.columns) : n;
+    const aria = label + ', ' + (g.id === 'layout' ? 'columns ' + value : n + ' on') + ', saved with the view';
+    return '<button type="button" class="group-button when-narrow" data-open="' + g.id + '" aria-expanded="' + (openGroup === g.id) + '" aria-controls="popover" aria-label="' + aria + '">' + savedDot() + label + '<span class="count">' + value + '</span></button>';
+  }
+
+  function resetHtml(wide) {
+    if (surf().saved) return '';
+    const name = surf().origin ? 'Reset to “' + surf().origin + '”' : 'Reset to defaults';
+    const title = differs() ? name + ': put Draw, Texts and Layout back as the view says. Changes only and the framing stay.' : 'The diagram is as the view says';
+    return '<div class="reset-wrap ' + (wide ? 'when-wide' : 'when-narrow') + '"><button type="button" class="reset" data-control="reset" aria-label="' + esc(name) + (differs() ? ', the diagram differs' : ', nothing to reset') + '" title="' + esc(title) + '"' + (differs() ? '' : ' disabled') + '>' + (differs() ? '<span class="dot" aria-hidden="true"></span>' : '') + 'Reset</button></div>';
+  }
+
+  function compareHtml() {
+    if (!compare) return '';
+    return '<div class="tool-group compare"><span class="tool-row"><button type="button" data-control="changesOnly"' + pressed(changesOnly) + ' title="Draw only what is new, changed or removed, with the boxes around it">Changes only</button></span></div>';
+  }
+  function frameWideHtml() {
+    return '<div class="tool-group when-wide"><span class="tool-row">' + frameButtonsHtml() + '</span></div>';
+  }
+  function frameButtonsHtml() {
+    return '<span class="joined" role="group" aria-label="Zoom"><button type="button" data-control="zoom-out" aria-label="Zoom out" title="Zoom out (−)">−</button><button type="button" data-control="zoom-reset" aria-label="Actual size" title="Actual size (0)">' + frame.zoom + '%</button><button type="button" data-control="zoom-in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
+      '<button type="button" data-control="center"' + pressed(frame.mode === 'auto') + ' title="Back to how the diagram opens, at a readable size (C)">Center</button>' +
+      '<button type="button" data-control="fit"' + pressed(frame.mode === 'fit') + ' title="Fit the whole diagram in the panel (F)">Fit</button>';
+  }
+  function frameNarrowHtml() {
+    return '<button type="button" class="group-button when-narrow" data-open="frame" aria-expanded="' + (openGroup === 'frame') + '" aria-controls="popover" aria-label="Frame, ' + frame.zoom + ' percent">Frame<span class="count">' + frame.zoom + '%</span></button>';
+  }
+
+  function popoverHtml() {
+    if (!openGroup) return '';
+    if (openGroup === 'frame') return '<div class="popover when-narrow" id="popover" role="group" aria-label="Frame"><span class="pop-title">Frame: not part of a view</span><span class="tool-row">' + frameButtonsHtml() + '</span></div>';
+    const g = groups().find((x) => x.id === openGroup);
+    return '<div class="popover when-narrow" id="popover" role="group" aria-label="' + g.name + '"><span class="pop-title">' + g.name + ': saved with the view</span>' + g.controls.map(controlHtml).join('') + '</div>';
+  }
+
+  function render() {
+    const gs = groups();
+    // one order for both widths: Draw, Texts, Layout, Reset, Compare, Frame (the wide and the narrow forms of a group sit side by side, one of them hidden by the stylesheet)
+    $('toolbar').innerHTML =
+      gs.map((g) => wideGroupHtml(g) + narrowGroupButtonHtml(g)).join('') +
+      resetHtml(true) +
+      resetHtml(false) +
+      '<span class="tool-sep when-wide" aria-hidden="true"></span>' +
+      compareHtml() +
+      '<span class="tool-sep when-wide" aria-hidden="true"></span>' +
+      frameWideHtml() +
+      frameNarrowHtml() +
+      popoverHtml();
+    $('title').textContent = surf().title;
+    $('maximize').setAttribute('aria-pressed', String(maximized));
+    $('legend-note').hidden = false;
+    document.querySelector('.side.left').style.display = maximized ? 'none' : '';
+    document.querySelector('.side.right').style.display = maximized ? 'none' : '';
+    $('origin-line').textContent = surf().saved ? 'Every control of Draw, Texts and Layout edits the view: Save all changes keeps it.' : (surf().origin ? 'Drawn from the view “' + surf().origin + '”.' : 'No view behind this diagram: Reset goes back to the defaults.');
+    drawBoxes();
+  }
+
+  function drawBoxes() {
+    const names = [['Marketplace', 'system', 'Sells for sellers', true], ['Discovery', 'system', 'Search and ranking', true], ['Shop', 'system', 'The storefront', false], ['Accounts', 'system', 'Identities', false], ['Carrier API', 'external', 'Parcel carrier', false], ['ERP', 'external', 'Back office ERP', false], ['Orphan', 'system', 'No link reaches it', false], ['Archive', 'system', 'No link reaches it', false]];
+    const cols = recipe.columns === '' ? 4 : Number(recipe.columns);
+    const boxes = $('boxes');
+    boxes.style.gridTemplateColumns = 'repeat(' + Math.min(cols, 6) + ', minmax(0, 1fr))';
+    boxes.style.transform = 'scale(' + (frame.mode === 'fit' ? 0.8 : frame.zoom / 100) + ')';
+    let html = '';
+    names.forEach((n, i) => {
+      const orphan = i >= 6;
+      const hidden = recipe.hideUnlinked && orphan;
+      const dim = compare && changesOnly ? !n[3] : false;
+      const hiddenByChanges = compare && changesOnly && !n[3] && false;
+      const isApp = surf().layer === 'technology' && !recipe.applications && i < 4;
+      html += '<div class="box' + (n[3] && compare ? ' new' : '') + (recipe.wrap ? ' wrap' : '') + (dim ? ' dim' : '') + '"' + (hidden || hiddenByChanges || isApp ? ' hidden' : '') + '><strong>' + n[0] + '</strong>' +
+        (recipe.qualifiers ? '<span class="q">[' + n[1] + ']</span>' : '') +
+        (recipe.descriptions ? '<span class="d">' + n[2] + (recipe.wrap ? ', a longer sentence that wraps over several lines when Wrap is on' : '') + '</span>' : '') +
+        (recipe.labels && !orphan && surf().layer === 'application' ? '<span class="l">calls ' + names[(i + 1) % 6][0] + '</span>' : '') + '</div>';
+    });
+    boxes.innerHTML = html;
+    const shown = boxes.querySelectorAll('.box:not([hidden])').length;
+    $('status').textContent = 'Map, ' + shown + ' boxes' + (recipe.opened ? ', ' + recipe.opened + ' level(s) unfolded' : '') + (compare && changesOnly ? ', changes only' : '') + (surf().layer === 'technology' && !recipe.relationships ? ', no links' : '');
+  }
+
+  function handle(control) {
+    const id = control.getAttribute('data-control');
+    if (id === 'columns') { recipe.columns = control.value; }
+    else if (id === 'changesOnly') { changesOnly = !changesOnly; }
+    else if (id === 'reset') { recipe = Object.assign({}, origin); }
+    else if (id === 'fold-all') { recipe.opened = 0; }
+    else if (id === 'unfold-all') { recipe.opened += 1; }
+    else if (id === 'zoom-in') { frame = { mode: 'user', zoom: Math.min(200, frame.zoom + 20) }; }
+    else if (id === 'zoom-out') { frame = { mode: 'user', zoom: Math.max(40, frame.zoom - 20) }; }
+    else if (id === 'zoom-reset') { frame = { mode: 'user', zoom: 100 }; }
+    else if (id === 'center') { frame = { mode: 'auto', zoom: 100 }; }
+    else if (id === 'fit') { frame = { mode: 'fit', zoom: 80 }; }
+    else if (id in recipe) { recipe[id] = !recipe[id]; }
+    return id;
+  }
+
+  $('toolbar').addEventListener('click', (e) => {
+    const opener = e.target.closest('[data-open]');
+    if (opener) { const id = opener.getAttribute('data-open'); openGroup = openGroup === id ? null : id; render(); const again = document.querySelector('[data-open="' + id + '"]'); if (again && openGroup) again.focus(); return; }
+    const control = e.target.closest('[data-control]');
+    if (!control || control.tagName === 'SELECT' || control.disabled) return;
+    const id = control.getAttribute('data-control');
+    handle(control);
+    render();
+    const again = document.querySelector('.toolbar [data-control="' + id + '"]:not([hidden])');
+    const visible = Array.from(document.querySelectorAll('.toolbar [data-control="' + id + '"]')).find((b) => b.getClientRects().length);
+    if (visible) visible.focus();
+    else if (again) again.focus();
+  });
+  $('toolbar').addEventListener('change', (e) => {
+    const control = e.target.closest('select[data-control]');
+    if (!control) return;
+    handle(control);
+    render();
+    const visible = Array.from(document.querySelectorAll('.toolbar select[data-control]')).find((b) => b.getClientRects().length);
+    if (visible) visible.focus();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && openGroup) { const id = openGroup; openGroup = null; render(); const b = document.querySelector('[data-open="' + id + '"]'); if (b) b.focus(); }
+  });
+  $('maximize').addEventListener('click', () => { maximized = !maximized; render(); });
+  $('surface').addEventListener('change', (e) => { surface = e.target.value; resetSurface(); render(); });
+  $('compare').addEventListener('change', (e) => { compare = e.target.checked; if (!compare) changesOnly = false; render(); });
+  $('theme').addEventListener('change', (e) => { if (e.target.value) document.documentElement.setAttribute('data-theme', e.target.value); else document.documentElement.removeAttribute('data-theme'); });
+
+  resetSurface();
+  render();
+})();
+</script>
+</body>
+</html>
