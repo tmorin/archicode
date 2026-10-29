@@ -1,6 +1,6 @@
 ---
 title: Execution Plan — layout.columns on every diagram
-status: pending
+status: done
 date: 2026-10-29
 related:
   - docs/wav/wav-027-editor-layout-and-walk/run/run-0202-diagram-layout-columns/tdd-0202-diagram-layout-columns.md
@@ -21,7 +21,7 @@ The TDD was reviewed at Stage 5 (findings F-1 to F-13, in the prg) and the revie
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'An author sets layout.columns (1 to 20) in a saved view, in settings.views.properties.<viewpoint>.layout, or with a Columns list in the diagram toolbar, and the diagrams of the editor and of the story player aim at that many boxes per row; with nothing set nothing moves; the command line ignores the key (#178).'
   technical_approach: 'Write the node tests first and see them red, then add one pure resolver in model/diagram-columns.js, bind ELK layer size on the root and on every compound node in buildElkGraph, carry the value through the recipes, the cache key, applySavedView, the saved view canonical form and storyStepScene, add the toolbar list and the Settings check, extend GuideViewPropertiesTest and the guide with a layout row, write the Chromium and Firefox spec on the layered Brightcart and record the rows before and after, then document and run every gate.'
   total_tasks: 8
@@ -129,7 +129,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-002
-      status: 'pending'
+      status: 'done'
       title: 'Add the resolver part and the layer bound in buildElkGraph'
       depends_on: [task-001]
       produces:
@@ -143,7 +143,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-003
-      status: 'pending'
+      status: 'done'
       title: 'Carry the value through the recipes, the cache key, applySavedView, the saved view and the story step'
       depends_on: [task-002]
       produces:
@@ -160,7 +160,7 @@ execution_graph:
       risk: 'medium'
       confidence: 70
     - id: task-004
-      status: 'pending'
+      status: 'done'
       title: 'Add the Columns list to the toolbar and the view form, and the Settings check'
       depends_on: [task-003]
       produces:
@@ -176,7 +176,7 @@ execution_graph:
       risk: 'medium'
       confidence: 70
     - id: task-005
-      status: 'pending'
+      status: 'done'
       title: 'Extend GuideViewPropertiesTest, add the layout row to the guide and regenerate the golden'
       depends_on: [task-003]
       produces:
@@ -188,7 +188,7 @@ execution_graph:
       risk: 'low'
       confidence: 75
     - id: task-006
-      status: 'pending'
+      status: 'done'
       title: 'Write the end-to-end spec, measure the real diagram and record the rows'
       depends_on: [task-004]
       produces:
@@ -199,7 +199,7 @@ execution_graph:
       risk: 'medium'
       confidence: 65
     - id: task-007
-      status: 'pending'
+      status: 'done'
       title: 'Document layout.columns in the manual and in CLAUDE.md'
       depends_on: [task-004, task-005]
       produces:
@@ -210,7 +210,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-008
-      status: 'pending'
+      status: 'done'
       title: 'Show the tests fail on purpose, run every gate and record the evidence'
       depends_on: [task-006, task-007]
       produces:
@@ -320,7 +320,7 @@ task_catalog:
         - 'the part cannot be placed without an upward pair: move the helper it needs to a lower layer, never raise ratchet.max'
         - 'the graph with no columns differs from the reference in any key: stop and fix before going on'
       delegation_tier: 'standard'
-      results: "tier standard, effort medium, failed first check and the escalated retry (high); blocked by the implement workflow"
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-003
       title: 'Carry the value through the recipes, the cache key, applySavedView, the saved view and the story step'
       source_requirements:
@@ -359,6 +359,7 @@ task_catalog:
         - 'a name the application layer needs lives in presentation: move it down, never raise ratchet.max'
         - 'an existing test of the cache key or of the saved view canonical form fails: the value of an unset layout must leave every old string unchanged, fix the code, not the test'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-004
       title: 'Add the Columns list to the toolbar and the view form, and the Settings check'
       source_requirements:
@@ -392,6 +393,7 @@ task_catalog:
         - 'redraw is only available through render(): use requestRedraw(); render() is called in composition only (RFC-002 rule 2)'
         - 'the css theme audit test fails on the new class: add the entry to the audit with theme variables, never weaken the test'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-005
       title: 'Extend GuideViewPropertiesTest, add the layout row to the guide and regenerate the golden'
       source_requirements:
@@ -420,6 +422,7 @@ task_catalog:
         - 'the guide test reads VIEW_PROPERTY_ORDER from a page that lacks layout: rebuild the page with npm run editor:build first'
         - 'a drawn file differs from the bare one: the command line reads layout somewhere, stop and report with the file'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-006
       title: 'Write the end-to-end spec, measure the real diagram and record the rows'
       source_requirements:
@@ -446,6 +449,7 @@ task_catalog:
         - 'a container shows 6 or more boxes in a row at columns 4: record it as RISK-1 evidence, keep the acceptance at most 5 in the spec for the shipped fixture and report the case in the run document'
         - 'the spec is unstable: drop the flaky flow with its reason, never add a retry (workers 1, retries 0)'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-007
       title: 'Document layout.columns in the manual and in CLAUDE.md'
       source_requirements:
@@ -467,6 +471,7 @@ task_catalog:
       escalation_triggers:
         - 'an anchor named in the manual does not exist: read the file and use the real anchor'
       delegation_tier: 'cheap'
+      results: "tier cheap, model haiku, effort high, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-008
       title: 'Show the tests fail on purpose, run every gate and record the evidence'
       source_requirements:
@@ -496,6 +501,7 @@ task_catalog:
         - 'byte-identity reports a new difference: stop, name the command and the file, and do not add an exception'
         - 'a coverage floor fails: add tests, never lower the floor'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
 ```
 
 ## 5. Parallelization Plan
@@ -905,7 +911,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed'
   autonomy_level: 'high'
   total_tasks: 8

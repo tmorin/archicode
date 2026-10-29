@@ -596,6 +596,16 @@ function renderViewFactsHtml(view) {
       'facet'
     );
   }
+  const layoutProblem = columnsProblem(properties.layout, 'the view `' + view.id + '`');
+  html += field(
+    'view-edit-columns',
+    'Columns',
+    '<select id="view-edit-columns" data-view-field="layout:columns">' +
+      columnsOptionsHtml(ownColumnsOf(view), workspaceColumnsOf(String(view.viewpoint)), layoutProblem !== null) +
+      '</select>' +
+      (layoutProblem ? '<div class="inline-error" role="alert">' + escapeHtml(layoutProblem) + '</div>' : ''),
+    'layout'
+  );
   const shows = shownTextsOf(view);
   const check = (id, fieldName, label, checked, title) =>
     '<label class="view-check" title="' +

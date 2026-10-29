@@ -229,6 +229,10 @@
       "layer": "model"
     },
     {
+      "file": "model/diagram-columns.js",
+      "layer": "model"
+    },
+    {
       "file": "model/comparison.js",
       "layer": "model"
     },

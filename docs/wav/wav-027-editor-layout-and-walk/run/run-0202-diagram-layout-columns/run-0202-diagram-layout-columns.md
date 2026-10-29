@@ -1,7 +1,7 @@
 ---
 type: run
 run: 0202
-status: in-progress
+status: completed
 profile: TDD+pln
 wave: 027
 ---
@@ -291,3 +291,76 @@ Three new test files and one new test in `story-player-scene.test.js` fail on th
 - `story-player-scene.test.js`: the new test fails on the missing bound in the graph of the editing walk and of the player.
 
 Names fixed by the tests that task-002 to task-004 must follow: `resolveDiagramColumns`, `columnsProblem`, `DIAGRAM_COLUMNS_MAX`, `DIAGRAM_COLUMNS_CHOICES`, `setViewLayout`, `diagramColumns`, `recipe.columns`, `recipe.layoutProblem`, `<select data-action="set-columns">`, `<select id="view-edit-columns" data-view-field="layout:columns">` (entries `""` for Default, numbers, `"invalid"`).
+
+## Rows per container before and after columns 4 (task-006, VER-6, VER-7)
+
+Measured by `src/test/e2e/diagram-columns.spec.js` (helper `rowsOf`: the boxes of the SVG grouped by the smallest group box that encloses them, a row being the boxes whose top is within 6 px) on a copy of the layered Brightcart, plateau `marketplace`, packaged jar, Chromium and Firefox (the same figures in both). `b` boxes, `r` rows, `w` the most boxes in one row. "After" is `columns: 4` in `settings.views.properties.<viewpoint>.layout`, except for the saved view, which also has the figures for its own `layout.columns: 2`. A saved view of the project (`shared/view.wide_map.yaml`, a Map of the application layer opened on `shop` and `platform`) is written by the spec.
+
+| Page | Container | Before (b / r / w) | After, columns 4 (b / r / w) |
+| --- | --- | --- | --- |
+| Map (Applications) | top level | 20 / 10 / 4 | 20 / 9 / 4 |
+| Element `commerce`, Detailed | top level | 10 / 3 / 6 | 10 / 4 / 4 |
+| Element `commerce`, Detailed | commerce | 7 / 4 / 2 | 7 / 4 / 2 |
+| Element `commerce`, Deep | top level | 10 / 3 / 6 | 10 / 5 / 4 |
+| Element `commerce`, Deep | commerce | 7 / 4 / 2 | 7 / 4 / 2 |
+| Element `commerce`, Deep | the nine other containers (discovery, storefront; the rest hold one box) | 1 to 2 boxes, 1 row | unchanged |
+| Saved view (wide map) | top level | 20 / 11 / 4 | 20 / 9 / 4 |
+| Saved view (wide map) | platform | 2 / 2 / 1 | 2 / 2 / 1 |
+| Saved view, `layout.columns: 2` in the view | top level | | 20 / 13 / 2 |
+| Map, toolbar 2 | top level | | 20 / 13 / 2 |
+
+Findings:
+
+- No container shows 6 boxes or more in a row at columns 4: the widest row is 4 everywhere (the acceptance of REQ-9 holds, at most 5). The escalation trigger did not fire.
+- RISK-1 evidence: on the real diagram the links already stack the boxes, so the Map's base is 4 wide with 20 boxes at the top level; the bound at 4 changes the number of rows (10 to 9) and not the widest row. The widest rows that the bound shortens are on the pages of an element: the top level of Detailed and Deep goes from 6 to 4 boxes in a row. A bound of 2 gives 2 in a row and 13 rows, as asked; the toolbar's 6 on the saved view gave 4 (links decide before the bound).
+- RISK-2: layout time, the fastest of three loads to a standing drawing of the Map (page load included, so it is an upper bound of the layout): without the value 834 ms and with columns 4 834 ms in Chromium (ratio 1.00), 1480 ms and 1426 ms in Firefox (ratios 0.96 to 1.01 across runs; ratios 0.58 to 1.01 in the earlier runs, all at or under 1.0 within noise). No time above twice the base: no finding.
+- On the page of a saved view the Columns list edits the view (it is the view's own value, as the form's field), so "Default" takes the view's value out and the workspace's 4 draws again; the toolbar over a saved view that is loaded on the Applications page is proved in Node (`diagram-columns-view.test.js`), not here.
+- At 360 px the Columns list is inside the box of the toolbar in both engines.
+
+## Deliberate breaks and gates (task-008, VER-8)
+
+Each file was saved before the break (copy outside the repository), broken, `npm run editor:build` run, the tests run, then restored from the copy and rebuilt; `diff` against the copy printed nothing after each restore and the page `standalone.html` is the saved one.
+
+| Break | File | Tests that failed (exit 1) | After restore |
+| --- | --- | --- | --- |
+| 1. the layering keys left off the compound nodes (`bound({` removed on the container node, line 367) | `presentation/diagram-layout.js` | `diagram-columns-elk.test.js`: "with columns 4 the root and every node that has children carry the two keys, no leaf does, and nothing else of the graph moves"; "a saved Map with a layout reaches the layout engine bounded: the view's columns, then the workspace's, and the page says so on the graph it builds" | `diagram-columns-elk.test.js` exit 0 |
+| 2. two levels of the resolver swapped (`levels.slice().reverse()`: workspace before view) | `model/diagram-columns.js` | `diagram-columns.test.js`: "the first level that is set decides, valid or not: an invalid view does not fall back to the workspace"; "the order is toolbar, view, workspace, none, for deep" and "for detailed"; "a valid level wins over an invalid one below it..."; `diagram-columns-view.test.js`: "the scene of a step with an inline recipe is bounded by its own layout, with no toolbar; an invalid one is the sentence of step_NN" | `diagram-columns.test.js` exit 0 |
+| 3. the value left out of `diagramCacheKey` (`.concat([viewKey])`) | `presentation/diagram-page.js` | `diagram-columns-view.test.js`: "the key of a diagram with no value is the key it was; with a value it says so and is another key" | `diagram-columns-view.test.js` exit 0 |
+
+Gates (exit code each):
+
+| Command | Exit | Tail |
+| --- | --- | --- |
+| `npm run editor:build` | 0 | 78 parts, 2710741 bytes; `standalone.html` unchanged from the saved copy |
+| `npm run editor:check` | 0 | names 1555 equal; load order holds; `upward pairs: 99 (max 99)` |
+| `node scripts/check-editor.mjs --list` | 0 | `upward pairs: 99`; compared with the baseline above, every upward pair line is identical; the only differences are the "used by other parts" lines (new names `workspaceColumnsOf`, `diagramColumns`, `columnsOptionsHtml`, `renderColumnsToolHtml` and the new part `model/diagram-columns.js`) |
+| `npm run test:coverage` (the unit suite with the floor) | 0 | pass 3284, fail 0, skipped 1; total 93.09 % of the lines (25591 of 27488), 96.27 % of the functions; "the figure holds the floor"; `git diff --stat -- scripts/editor-coverage-floor.json` prints nothing |
+| `npm run lint` | 0 | no finding |
+| `npm run format:check` | 0 | all matched files use Prettier code style |
+| `./mvnw verify` (JDK 25.0.4-tem) | 0 | Tests run 1588, failures 0, errors 0, skipped 2; jacoco check and PMD passed; BUILD SUCCESS |
+| `scripts/byte-identity.sh` | 0 | workspaces 20; commands compared 332; identical 326; accepted by the exceptions 5; unexpected 0; self-check ok; `git diff --stat -- scripts/byte-identity-exceptions.txt` prints nothing |
+| `npx playwright test src/test/e2e/diagram-columns.spec.js` | 0 | 12 passed (chromium and firefox) |
+
+Line counts: `model/diagram-columns.js` 65, `presentation/diagram-layout.js` 1256, `presentation/diagram-page.js` 1304; the longest part of the editor is `core/yaml-parser.js` with 1570, none above 3000. `ratchet.max` in `layers.json` is 99.
+
+Criteria of the Executive Summary:
+
+1. Tests red before, green after, three breaks caught with named tests: true (task-001 red run above; the table of breaks).
+2. No layout set: byte for byte as before (`diagram-columns-elk.test.js` against the reference copy, the cache-key test, the Map expected-boxes suites in `test:coverage`): true.
+3. Resolver order toolbar, view, workspace, none for the four viewpoints and the invalid sentence with `columns` null: true (`diagram-columns.test.js`, passes; break 2 turns it red).
+4. Player and editing walk build equal ELK graphs, a toolbar value ignored by the player: true (`story-player-scene.test.js` and `diagram-columns-view.test.js`, pass).
+5. `GuideViewPropertiesTest`, `GuideTest` and the two schema goldens: true (`./mvnw verify` exit 0, no schema golden in `git status`).
+6. Spec passes in chromium and firefox, at most 5 boxes in a row at columns 4, table of rows recorded: true (12 passed; table above).
+7. Page is the assembly, editor:check, coverage, lint, format pass, ratchet 99, no new upward pair, no floor lowered, no part above 3000 lines: true.
+8. Byte-identity no new difference, exceptions file unchanged: true.
+9. `CLAUDE.md` and `src/doc/README.adoc` describe `layout.columns`: true by grep below.
+
+## Verification
+
+Stage 11, re-run from the files by the Stage 11 agent on 2026-10-29: `npm run editor:check` exit 0 (1555 names equal, load order holds, upward pairs 99, max 99); the node tests `diagram-columns*.test.js` and `story-player-scene.test.js` 66 pass, 0 fail; `npm run lint` exit 0; `npm run format:check` clean. The gates of the section "Deliberate breaks and gates" (coverage, `./mvnw verify`, byte-identity, the Playwright spec in chromium and firefox) were run by task-008 and are not re-run here. Every criterion of the pln manifest holds, and the manifest is `done`. Not checked at Stage 11: the tag run, the native runner, WebKit.
+
+Review pass: dispatched, the Stage 5 KDMLLC review of the TDD was done by one fresh agent independent of the drafter (findings F-1 to F-13 in the prg, applied by the pln section 2).
+
+Canonical impact: none for the architecture or domain documents, because the run adds a view-state option of the editor and a key the command line ignores, and the contracts it touches are described in CLAUDE.md and the manual.
+
+Files outside likely_paths: src/main/editor/layers.json, src/main/editor/presentation/diagram-controls.js, src/test/java/io/morin/archicode/cli/GuideViewPropertiesTest.java, docs/wav/wav-027-editor-layout-and-walk/run/run-0202-diagram-layout-columns/workflows/002-implement.js

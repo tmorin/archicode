@@ -162,6 +162,7 @@ class GuideViewPropertiesTest {
     }
 
     @Test
+    @SneakyThrows
     void theKeysTheGuideSaysTheCommandLineIgnoresChangeNothing() {
         val bare = draw("application", "map", "");
         val ignored = List.of(
@@ -179,6 +180,55 @@ class GuideViewPropertiesTest {
         for (val key : List.of("facet", "hide-unlinked", "labels", "qualifiers", "descriptions", "wrap")) {
             assertTrue(guideSaysSo.contains("`" + key + "`"), key);
         }
+    }
+
+    @Test
+    @SneakyThrows
+    void theLayoutTheEditorWritesChangesNothingTheCommandLineDraws() {
+        val layout = "layout:\n  columns: 3";
+        // A saved view of every viewpoint that has one, with and without the key.
+        for (val spec : List.of(
+            new String[] { "application", "map", "opened: [shop]" },
+            new String[] { "technology", "map", "opened: [prod, prod.vm]" },
+            new String[] { "application", "overview", "element: shop" },
+            new String[] { "application", "detailed", "element: shop" },
+            new String[] { "application", "deep", "element: shop" }
+        )) {
+            val bare = draw(spec[0], spec[1], spec[2]);
+            assertEquals(bare, draw(spec[0], spec[1], spec[2] + "\n" + layout), spec[1]);
+        }
+        // The services that draw every element merge `settings.views.properties` into the view: the key is carried and not read.
+        val before = drawEverything();
+        assertTrue(before.size() > 3, before.keySet().toString());
+        val file = dir.resolve(".archicode.yaml");
+        val original = Files.readString(file);
+        Files.writeString(
+            file,
+            original +
+                "  views:\n    properties:\n      overview:\n        layout:\n          columns: 3\n      detailed:\n        layout:\n          columns: 3\n      deep:\n        layout:\n          columns: 3\n      map:\n        layout:\n          columns: 3\n"
+        );
+        assertEquals(before, drawEverything());
+        assertTrue(text.contains("`layout`"));
+    }
+
+    @SneakyThrows
+    private java.util.Map<String, String> drawEverything() {
+        val result = CliHarness.run(
+            factory,
+            errorOutput,
+            "views",
+            "generate",
+            "-w",
+            dir.resolve(".archicode.yaml").toString()
+        );
+        assertEquals(0, result.exit(), result.err());
+        val out = new java.util.TreeMap<String, String>();
+        try (val files = Files.walk(dir.resolve("views-to-be"))) {
+            for (val path : files.filter(Files::isRegularFile).toList()) {
+                out.put(dir.relativize(path).toString(), Files.readString(path));
+            }
+        }
+        return out;
     }
 
     @Test

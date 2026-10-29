@@ -135,6 +135,9 @@ let diagramMaximized = false;
 /** Leaves out of the diagram the boxes that no link reaches (the focal one and what encloses a kept box stay). */
 let diagramHideUnlinked = false;
 
+/** Wave 027, run 0202 (DEC-4): the boxes per row chosen on the toolbar of the diagram on screen, or null (the view, then the workspace, decide). View state: never `modelsChanged()`. */
+let diagramColumns = null;
+
 const DIAGRAM_SHOW_NAMES = ['labels', 'qualifiers', 'descriptions', 'wrap'];
 
 /** The Map is dense: it starts without any of them. An element's diagram starts as the command line draws it (the descriptions apart). */

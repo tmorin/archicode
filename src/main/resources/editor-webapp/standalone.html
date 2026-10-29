@@ -577,6 +577,9 @@ try {
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
   /* a narrow centre: a group of the toolbar that is wider than the toolbar wraps inside it (it was cut on the left, and the buttons were out of reach) */
   .diagram-tools .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
+  .diagram-tools .diagram-columns { align-items: center; gap: 0.3rem; }
+  .diagram-tools .diagram-columns label { font-size: 0.8rem; }
+  .diagram-tools .diagram-columns select { height: 1.75rem; font-size: 0.8rem; }
   .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
   .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
@@ -12486,6 +12489,7 @@ function resetUiState() {
   diagramFacet = null;
   diagramMaximized = false;
   diagramHideUnlinked = false;
+  diagramColumns = null;
   diagramScale = 'auto';
   diagramCenter = { x: 0, y: 0 };
   diagramCache = null;
@@ -13865,6 +13869,9 @@ let diagramMaximized = false;
 
 /** Leaves out of the diagram the boxes that no link reaches (the focal one and what encloses a kept box stay). */
 let diagramHideUnlinked = false;
+
+/** Wave 027, run 0202 (DEC-4): the boxes per row chosen on the toolbar of the diagram on screen, or null (the view, then the workspace, decide). View state: never `modelsChanged()`. */
+let diagramColumns = null;
 
 const DIAGRAM_SHOW_NAMES = ['labels', 'qualifiers', 'descriptions', 'wrap'];
 
@@ -16981,7 +16988,13 @@ function readSettingsDraft() {
   const properties = Object.assign({}, AppState.workspace.settings.views.properties);
   for (const vp of VIEWPOINT_IDS) {
     const result = validateViewPropertiesJson(readViewPropertiesEditorText(vp));
-    if (!result.valid) fail('view-properties-error-' + vp, result.error);
+    if (!result.valid) {
+      fail('view-properties-error-' + vp, result.error);
+      continue;
+    }
+    // wave 027, run 0202 (DEC-1): the `layout` a viewpoint gives to every view is checked where it is typed, with the sentence of the load
+    const layoutProblem = columnsProblem(result.value.layout, '`settings.views.properties.' + vp + '.layout`');
+    if (layoutProblem) fail('view-properties-error-' + vp, layoutProblem);
     else properties[vp] = result.value;
   }
 
@@ -23387,6 +23400,71 @@ function drawnLinkEntries(entries, indexes) {
   const models = indexes.filter(Boolean);
   return entries.filter((entry) => models.some((index) => linkEntryExists(entry, index)));
 }
+// Wave 027, run 0202 (W-2, issue #178, DEC-1 and DEC-2): `layout.columns`, the number of boxes per row a diagram aims at.
+// This part is the one place that knows the order of the four levels (the toolbar of the diagram on screen, then the saved view's
+// `properties.layout`, then `settings.views.properties.<viewpoint>.layout`, then none) and what an invalid value is.
+const DIAGRAM_COLUMNS_MAX = 20;
+const DIAGRAM_COLUMNS_CHOICES = [1, 2, 3, 4, 5, 6, 8, 12];
+
+/** The sentence for a `layout` value that is not `{columns: 1..20}`, or null when it is valid or not set. `where` is the place, told first. */
+function columnsProblem(layout, where) {
+  if (layout === undefined || layout === null) return null;
+  const lead = where + (String(where).startsWith('the view') ? ' has an invalid `layout`: ' : ' is invalid: ');
+  if (!isPlainObject(layout)) {
+    return lead + '`layout` is a mapping with the key `columns` (found `' + JSON.stringify(layout) + '`)';
+  }
+  const other = Object.keys(layout).find((key) => key !== 'columns');
+  if (other !== undefined) {
+    return lead + '`layout` is a mapping with the key `columns` (found the key `' + other + '`)';
+  }
+  const columns = layout.columns;
+  if (columns === undefined || columns === null) return null;
+  if (typeof columns === 'number' && Number.isInteger(columns) && columns >= 1 && columns <= DIAGRAM_COLUMNS_MAX) {
+    return null;
+  }
+  return (
+    lead +
+    '`columns` must be a whole number from 1 to ' +
+    DIAGRAM_COLUMNS_MAX +
+    ' (found `' +
+    JSON.stringify(columns) +
+    '`)'
+  );
+}
+
+/** `{ columns, from, problem }`: the first level that is set decides, valid or not; an invalid one is `columns: null` and its sentence. */
+function resolveDiagramColumns({ toolbar, view, settings, viewpoint } = {}) {
+  const none = { columns: null, from: null, problem: null };
+  if (toolbar !== undefined && toolbar !== null) return { columns: toolbar, from: 'toolbar', problem: null };
+  const viewLayout = view && view.properties ? view.properties.layout : null;
+  const levels = [
+    { from: 'view', layout: viewLayout, where: 'the view `' + (view && view.id) + '`' },
+    {
+      from: 'workspace',
+      layout:
+        settings && settings.views && settings.views.properties
+          ? (settings.views.properties[viewpoint] || {}).layout
+          : null,
+      where: '`settings.views.properties.' + viewpoint + '.layout`'
+    }
+  ];
+  for (const level of levels) {
+    const layout = level.layout;
+    if (layout === undefined || layout === null) continue;
+    const problem = columnsProblem(layout, level.where);
+    if (problem) return { columns: null, from: null, problem };
+    if (layout.columns === undefined || layout.columns === null) continue;
+    return { columns: layout.columns, from: level.from, problem: null };
+  }
+  return none;
+}
+
+/** The valid `layout.columns` a view says itself, or null: what the Columns list of its page and of its form show as the choice. */
+function ownColumnsOf(view) {
+  const layout = view && isPlainObject(view.properties) ? view.properties.layout : null;
+  if (columnsProblem(layout, 'the view') !== null || !isPlainObject(layout)) return null;
+  return typeof layout.columns === 'number' ? layout.columns : null;
+}
 // ---- The comparison of two plateaus (run 0039) ----
 
 /** The plateau drawn, as a plateau of the page: the one of the band. */
@@ -24026,6 +24104,37 @@ function diagramLinkText(link) {
   const qualifiers = Array.from(link.qualifiers || []);
   if (qualifiers.length) parts.push('[' + qualifiers.join(', ') + ']');
   return parts.join(' ');
+}
+
+/**
+ * The options of a Columns list (wave 027, run 0202, DEC-4): "Default (n)" or "Default (none)" first, then the usual choices, and the value in force
+ * when the list does not offer it (a 7 from a view, as an extra entry in its place); `invalid` is the entry of a `layout` the editor cannot read.
+ * `selected` is the choice (null: the Default), `inherited` the value the lower levels give.
+ */
+function columnsOptionsHtml(selected, inherited, invalid) {
+  const option = (value, label, on) =>
+    '<option value="' + value + '"' + (on ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+  const choices = DIAGRAM_COLUMNS_CHOICES.slice();
+  if (selected !== null && !choices.includes(selected)) choices.push(selected);
+  choices.sort((a, b) => a - b);
+  return (
+    option('', 'Default (' + (inherited === null ? 'none' : inherited) + ')', selected === null && !invalid) +
+    (invalid ? option('invalid', 'invalid', true) : '') +
+    choices.map((n) => option(String(n), String(n), n === selected && !invalid)).join('')
+  );
+}
+
+/** The list of the toolbar of a diagram: it chooses the boxes per row of the diagram on screen, or of the view on its page. */
+function renderColumnsToolHtml(record, host) {
+  const viewpoint = host ? host.viewpoint : record ? effectiveDiagramViewpoint(record) : 'map';
+  const selected = host ? ownColumnsOf(host.view) : diagramColumns;
+  return (
+    '<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">' +
+    '<label for="diagram-columns" title="The number of boxes the layout aims at in a row">Columns</label>' +
+    '<select id="diagram-columns" data-action="set-columns">' +
+    columnsOptionsHtml(selected, workspaceColumnsOf(viewpoint), false) +
+    '</select></span>'
+  );
 }
 // ---- Stereotypes and styles ----
 // The `styles` of the workspace give a stereotype its look (`by-tags` and `by-qualifiers`: the key is the stereotype, as
@@ -25048,13 +25157,13 @@ function buildElkGraph(result, options) {
       return {
         id: item.id,
         children: kids.map(toNode),
-        layoutOptions: {
+        layoutOptions: bound({
           'elk.padding': '[top=44,left=14,bottom=14,right=14]',
           'elk.nodeSize.constraints': 'MINIMUM_SIZE',
           // ELK's layered algorithm lays out left to right and turns the result for DOWN: this minimum is read as (height, width).
           // Written as (width, height) it made every box at least minWidth high, mostly empty space under its children.
           'elk.nodeSize.minimum': '(0, ' + minWidth + ')'
-        }
+        })
       };
     }
     let width = Math.max(
@@ -25083,9 +25192,18 @@ function buildElkGraph(result, options) {
     }
     edges.push(edge);
   });
+  const columns = options && options.columns !== undefined && options.columns !== null ? options.columns : null;
+  // wave 027, run 0202 (DEC-3): the layer bound, on the root and on every compound node (on the root alone the containers ignore it); a tendency, not a cap
+  const bound = (layoutOptions) => {
+    if (columns === null) return layoutOptions;
+    return Object.assign(layoutOptions, {
+      'elk.layered.layering.strategy': 'COFFMAN_GRAHAM',
+      'elk.layered.layering.coffmanGraham.layerBound': String(columns)
+    });
+  };
   return {
     id: 'root',
-    layoutOptions: {
+    layoutOptions: bound({
       'elk.algorithm': 'layered',
       // top to bottom: what comes in above, what goes out below. Left to right made overviews 5 times wider than high
       // (edge captions sit in every gap), which almost never fits a panel.
@@ -25095,7 +25213,7 @@ function buildElkGraph(result, options) {
       'elk.spacing.nodeNode': '28',
       'elk.layered.spacing.nodeNodeBetweenLayers': '56',
       'elk.spacing.edgeNode': '20'
-    },
+    }),
     children: roots.map(toNode),
     edges
   };
@@ -26853,6 +26971,7 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
         '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>'
       : '') +
     renderMapPartsToolHtml(record, host) +
+    renderColumnsToolHtml(record, host) +
     '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
     renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
     '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
@@ -27026,27 +27145,31 @@ function diagramCacheKey(recipe, comparison, viewKey) {
       ? 'technology'
       : 'application'
     : recipe.layer || layerOfReference(reference) || 'technology'; // as `buildKernelInput` settles it
-  return [
-    modelsKey(comparison, facet),
-    viewpoint,
-    layer,
-    reference,
-    isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
-    // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
-    isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
-    // wave 026 run 0200: the relationships drawn heavy; a map without one keeps the key it had
-    isMap && mapState.highlight && mapState.highlight.length
-      ? 'highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))
-      : '',
-    // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
-    isMap && layer === 'technology'
-      ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
-      : '',
-    hideUnlinked,
-    JSON.stringify(shows),
-    JSON.stringify(AppState.workspace.styles || null),
-    viewKey
-  ].join('|');
+  return (
+    [
+      modelsKey(comparison, facet),
+      viewpoint,
+      layer,
+      reference,
+      isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
+      // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
+      isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
+      // wave 026 run 0200: the relationships drawn heavy; a map without one keeps the key it had
+      isMap && mapState.highlight && mapState.highlight.length
+        ? 'highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))
+        : '',
+      // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
+      isMap && layer === 'technology'
+        ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
+        : '',
+      hideUnlinked,
+      JSON.stringify(shows),
+      JSON.stringify(AppState.workspace.styles || null)
+    ]
+      // wave 027, run 0202 (DEC-6): only a diagram that has a value says it, so every other key is the string it was
+      .concat(recipe.columns ? ['cols:' + recipe.columns] : [], [viewKey])
+      .join('|')
+  );
 }
 
 /**
@@ -27145,8 +27268,15 @@ function mainDiagramRecipe(canvas) {
     mapState: isMap ? currentMapState() : null,
     parts: isMap ? mapPartsShown() : null,
     hideUnlinked: diagramHideUnlinked,
-    shows: diagramShows(isMap)
+    shows: diagramShows(isMap),
+    ...columnsOfRecipe(null, isMap ? 'map' : effectiveDiagramViewpoint(record), diagramColumns)
   };
+}
+
+/** `{ columns, layoutProblem }` of a diagram: the level in force (DEC-2). The toolbar's value is the editor's alone: a view or a step passes none. */
+function columnsOfRecipe(view, viewpoint, toolbar) {
+  const resolved = resolveDiagramColumns({ toolbar, view, settings: AppState.workspace.settings, viewpoint });
+  return { columns: resolved.columns, layoutProblem: resolved.problem };
 }
 
 function libraryPickFor(viewId) {
@@ -27177,7 +27307,11 @@ function mapPartsOf(view) {
 
 /** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view and the model, and nothing else: an edit of the view is an edit of the entry. */
 function libraryDiagramRecipe(view) {
-  if (!view || viewProblem(view)) return null;
+  if (!view) return null;
+  // an invalid `layout` is told in the diagram's own panel and the form stays on screen to correct it (wave 027, run 0202, DEC-7); any other problem leaves the view undrawn
+  const properties = Object.assign({}, isPlainObject(view.properties) ? view.properties : {});
+  delete properties.layout;
+  if (viewProblem(Object.assign({}, view, { properties }))) return null;
   return viewDiagramRecipe(view, AppState.index, 'library', AppState.baseline ? AppState.baseline.index : null);
 }
 
@@ -27236,6 +27370,8 @@ function viewDiagramRecipe(view, index, host, baselineIndex) {
     recipe.record = index[layer].get(properties.element);
     recipe.viewpoint = leafSafeViewpoint(view.viewpoint, recipe.record);
   }
+  // the player and the page of a view have no toolbar: the view, then the workspace (DEC-7)
+  Object.assign(recipe, columnsOfRecipe({ id: view.id, properties }, recipe.viewpoint, null));
   return recipe;
 }
 
@@ -27396,6 +27532,19 @@ function mountDiagramIfNeeded() {
  */
 async function computeDiagramScene(recipe, input, comparison, source, kernel, elk, viewKey, readonly) {
   const { isMap, reference, record, viewpoint, facet, shows, hideUnlinked } = recipe;
+  if (recipe.layoutProblem) {
+    return {
+      scene: buildDiagramScene(
+        viewKey,
+        '<div class="error-panel">' + escapeHtml(recipe.layoutProblem) + '</div>',
+        '',
+        '',
+        { width: 0, height: 0 },
+        null
+      ),
+      cacheable: false
+    };
+  }
   const result = isMap && facet ? computeMapThroughFacet(kernel, input) : kernel.compute(input);
   if (result.error) {
     const removed =
@@ -27498,6 +27647,7 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
           descriptions: shows.descriptions,
           wrap: shows.wrap,
           itemLayer: recipe.layer,
+          columns: recipe.columns,
           source
         })
       ),
@@ -28320,8 +28470,19 @@ function canonicalViewProperties(properties) {
   if (typeof source.facet === 'string' && source.facet) out.facet = source.facet;
   if (source['hide-unlinked'] === true) out['hide-unlinked'] = true;
   for (const name of MAP_PARTS) if (source[name] === false) out[name] = false; // drawn is the default, so only `false` is a choice (issue #107)
+  // wave 027, run 0202 (DEC-5): `layout.columns`, after the Map parts and before the texts; one the editor cannot read is left as written, it is not its to rewrite
+  if (isPlainObject(source.layout)) {
+    if (columnsProblem(source.layout, 'the view') !== null) out.layout = source.layout;
+    else if (source.layout.columns !== undefined && source.layout.columns !== null)
+      out.layout = { columns: source.layout.columns };
+  } else if (source.layout !== undefined && source.layout !== null) out.layout = source.layout;
   for (const name of DIAGRAM_SHOW_NAMES) if (typeof source[name] === 'boolean') out[name] = source[name];
   return out;
+}
+
+/** The `layout.columns` the workspace gives for a viewpoint (`settings.views.properties.<viewpoint>.layout`), or null: none, or one that is invalid. */
+function workspaceColumnsOf(viewpoint) {
+  return resolveDiagramColumns({ settings: AppState.workspace.settings, viewpoint }).columns;
 }
 
 function canonicalViewDefinition(view) {
@@ -28337,6 +28498,9 @@ function canonicalViewDefinition(view) {
     delete properties.links;
     delete properties.highlight;
   }
+  // a value the workspace gives for that viewpoint is the default of the view: it is not remembered
+  const inherited = workspaceColumnsOf(viewpoint);
+  if (properties.layout && inherited !== null && properties.layout.columns === inherited) delete properties.layout;
   if (viewpoint === 'map') delete properties.element; // a Map is about its pins, not about one element
   return { viewpoint, layer: viewLayerOf(view), properties };
 }
@@ -28357,7 +28521,8 @@ function currentViewDefinition() {
           links: mapLayer() === 'application' ? mapLinks : [],
           highlight: mapLayer() === 'application' ? mapHighlight : [],
           facet: facetName,
-          'hide-unlinked': diagramHideUnlinked
+          'hide-unlinked': diagramHideUnlinked,
+          layout: diagramColumns === null ? null : { columns: diagramColumns }
         },
         mapPartsShown(),
         diagramShowOverrides(true)
@@ -28371,7 +28536,12 @@ function currentViewDefinition() {
       viewpoint: effectiveDiagramViewpoint(record),
       layer: layerOfReference(sel.key, sel.layer),
       properties: Object.assign(
-        { element: sel.key, facet: facetName, 'hide-unlinked': diagramHideUnlinked },
+        {
+          element: sel.key,
+          facet: facetName,
+          'hide-unlinked': diagramHideUnlinked,
+          layout: diagramColumns === null ? null : { columns: diagramColumns }
+        },
         diagramShowOverrides(false)
       )
     });
@@ -28436,6 +28606,8 @@ function viewProblem(view, plateau, name, against) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const index = indexOfPlateau(plateau);
   const viewName = typeof name === 'string' ? name : view.id;
+  const layoutProblem = columnsProblem(properties.layout, 'the view `' + viewName + '`');
+  if (layoutProblem) return layoutProblem;
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = viewLayerOf(view);
@@ -28553,6 +28725,8 @@ function applySavedView(view) {
       : null;
   setDiagramShow(properties);
   diagramHideUnlinked = properties['hide-unlinked'] === true;
+  // the toolbar takes what the view says (viewProblem has refused an invalid one), else none: the value of the diagram before does not stay
+  diagramColumns = resolveDiagramColumns({ view }).columns;
   if (view.viewpoint === 'map') {
     const layer = viewLayerOf(view); // the page Environments draws the technology layer, the page Applications the application layer
     const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
@@ -28987,10 +29161,10 @@ function shownTextsOf(view) {
 }
 
 /** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
-const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'links', 'facet', 'hide-unlinked'].concat(
-  MAP_PARTS,
-  DIAGRAM_SHOW_NAMES
-);
+// `layout` (wave 027, run 0202) stands after the parts of a Map: the first array literal holds every key but the parts and the texts, as the guide's test reads it
+const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'links', 'facet', 'hide-unlinked', 'layout']
+  .flatMap((key) => (key === 'layout' ? MAP_PARTS.concat(key) : [key]))
+  .concat(DIAGRAM_SHOW_NAMES);
 
 /**
  * Writes a property of a view. One the view already has keeps its place; one it has not (a default that an earlier edit took out, written again)
@@ -29026,6 +29200,21 @@ function setViewShow(view, name, value) {
   }
   if (properties[name] === value) return false;
   putViewProperty(properties, name, value);
+  return true;
+}
+
+/** Sets the `layout.columns` of a view; none, or the value the workspace gives, takes the key out (a value equal to the default is not remembered). True when the view changed. */
+function setViewLayout(view, columns) {
+  const properties = view.properties;
+  const inherited = workspaceColumnsOf(String(view.viewpoint));
+  if (columns === null || columns === undefined || columns === inherited) {
+    if (!('layout' in properties)) return false;
+    delete properties.layout;
+    return true;
+  }
+  const current = properties.layout;
+  if (isPlainObject(current) && current.columns === columns && Object.keys(current).length === 1) return false;
+  putViewProperty(properties, 'layout', { columns });
   return true;
 }
 
@@ -29258,7 +29447,11 @@ function handleViewFieldChange(control, immediate) {
   else if (field === 'layer') apply((view) => setViewLayer(view, control.value));
   else if (field === 'element') apply((view) => setViewElement(view, control.value));
   else if (field === 'facet') apply((view) => setViewFacet(view, control.value));
-  else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
+  else if (field === 'layout:columns') {
+    if (control.value === 'invalid') return false; // the entry that says what the view holds, not a choice
+    const columns = control.value === '' ? null : Number(control.value);
+    if (columns === null || Number.isInteger(columns)) apply((view) => setViewLayout(view, columns));
+  } else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
   else if (field && field.startsWith('part:') && MAP_PARTS.includes(field.slice(5)))
     apply((view) => setViewMapPart(view, field.slice(5), !!control.checked));
   else if (field && field.startsWith('show:') && DIAGRAM_SHOW_NAMES.includes(field.slice(5)))
@@ -29287,8 +29480,30 @@ document.addEventListener('pointerdown', notePointer, true);
 document.addEventListener('pointerup', notePointer, true);
 document.addEventListener('pointercancel', notePointer, true);
 
+/**
+ * The Columns list of the toolbar (wave 027, run 0202, DEC-4): on the page of a view it edits the view, as the four texts do; elsewhere it sets the toolbar level of the diagram on screen.
+ * A choice equal to what the lower levels give is no choice (null). View state: no `modelsChanged()`.
+ */
+function chooseColumns(text) {
+  const columns = text === '' ? null : Number(text);
+  if (columns !== null && !Number.isInteger(columns)) return;
+  if (currentPerspective === 'library') {
+    editSavedView((view) => setViewLayout(view, columns));
+    return;
+  }
+  const record = mapIsShown() ? null : findElementRecord(elementSelection().key);
+  const viewpoint = mapIsShown() ? 'map' : record ? effectiveDiagramViewpoint(record) : null;
+  if (viewpoint === null) return;
+  diagramColumns = columns === workspaceColumnsOf(viewpoint) ? null : columns;
+  requestRedraw();
+}
+
 /** Delegated `change` listener: the form of a view on its page, the list of Settings. (The menu of the steps of a story is the player's, `handleStoryPlayerChange`.) */
 function handleAppChange(e) {
+  if (e.target && e.target.getAttribute && e.target.getAttribute('data-action') === 'set-columns') {
+    chooseColumns(e.target.value);
+    return;
+  }
   if (handleMapLinksControl(e.target)) return; // the kind and "Ticked only" of the list of relationships
   if (e.target.matches && e.target.matches('[data-story-step-highlight]')) {
     const chosen = e.target.value;
@@ -31914,6 +32129,16 @@ function renderViewFactsHtml(view) {
       'facet'
     );
   }
+  const layoutProblem = columnsProblem(properties.layout, 'the view `' + view.id + '`');
+  html += field(
+    'view-edit-columns',
+    'Columns',
+    '<select id="view-edit-columns" data-view-field="layout:columns">' +
+      columnsOptionsHtml(ownColumnsOf(view), workspaceColumnsOf(String(view.viewpoint)), layoutProblem !== null) +
+      '</select>' +
+      (layoutProblem ? '<div class="inline-error" role="alert">' + escapeHtml(layoutProblem) + '</div>' : ''),
+    'layout'
+  );
   const shows = shownTextsOf(view);
   const check = (id, fieldName, label, checked, title) =>
     '<label class="view-check" title="' +
