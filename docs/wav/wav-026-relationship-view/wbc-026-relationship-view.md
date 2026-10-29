@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 026
-status: planned
+status: completed
 date: 2026-10-28
 related:
   - docs/wav/wav-025-hosted-editor/wav-025-hosted-editor.md

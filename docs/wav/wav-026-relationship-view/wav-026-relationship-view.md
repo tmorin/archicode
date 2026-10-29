@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 026
-status: planned
+status: completed
 date: 2026-10-28
 related:
   - docs/wav/wav-026-relationship-view/wbc-026-relationship-view.md
@@ -42,7 +42,7 @@ None open. The shape is decided in D11 (comment of 2026-10-23 on #143): applicat
 wave_manifest:
   wave: 026
   slug: relationship-view
-  status: planned
+  status: completed
   sources:
     - 'gh:tmorin/archicode#143'
     - 'gh:tmorin/archicode#177'
