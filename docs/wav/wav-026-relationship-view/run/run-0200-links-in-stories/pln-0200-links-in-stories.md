@@ -1,6 +1,6 @@
 ---
 title: Execution Plan — Play a flow of relationships in the editor and the story player
-status: draft
+status: done
 date: 2026-10-28
 related:
   - docs/wav/wav-026-relationship-view/run/run-0200-links-in-stories/tdd-0200-links-in-stories.md
@@ -19,7 +19,7 @@ Profile TDD+pln: there is no PRD, so REQ-1 to REQ-9 are the IDs the TDD labels (
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'The editor and the story player draw the highlight the kernel marks (a heavy link with a mark and a bold caption, the others calmer), an author can write a highlight on the Applications page, in a saved view and in a story step, a step highlight replaces the view highlight as on the command line, a rename or a move rewrites it, a story of a flow is shipped in the Brightcart fixture and loaded by both tools, and the manual, the guide and CLAUDE.md tell how to write one (REQ-1 to REQ-9).'
   technical_approach: 'Apply F1 to F9 to the TDD and read the fixture to settle the story and the pinned counts, write the node tests red first, add the live mapHighlight state, the pure stepViewForDrawing and the kernel input, draw dg-hl and dg-calm in the SVG renderer, add the authoring controls and the address, teach rename and move the step key, add the announcement for the player, add the story order_flow to the fixture with the byte-identity list, extend the shared contract with a Java test, add one end-to-end spec, then say it in the manual, the guide and CLAUDE.md and run the gate checks. No Java source, Rust or kernel change.'
   total_tasks: 13
@@ -200,7 +200,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-013
-      status: 'pending'
+      status: 'done'
       title: 'Record the built behaviour, the sentences and the limits in the run document'
       depends_on: [task-012]
       produces:
@@ -593,6 +593,7 @@ task_catalog:
       escalation_triggers:
         - 'a gate result of task-012 is not green'
       delegation_tier: 'cheap'
+      results: 'tier cheap, model haiku, effort high, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -1134,7 +1135,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed'
   autonomy_level: 'high'
   total_tasks: 13
@@ -1163,7 +1164,7 @@ execution_manifest:
     - task-008
     - task-010
     - task-003
-  next_action: 'Run task-001: apply the Stage 5 findings F1 to F9 to the TDD and list the pinned counts of the fixture.'
+  next_action: 'none: every task is done and Stage 11 confirmed the criteria (2026-10-29).'
   criteria:
     - 'Every criterion of the Executive Summary holds and the gate checks of task-012 are recorded green in the prg.'
 ```
