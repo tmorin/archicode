@@ -166,7 +166,8 @@ function drawPlateau(id, options) {
  * Wave 015 (run 0096, W-8, #91): an address typed while the editor is open (or reached by Back and Forward) draws the plateau and the comparison it names, as the band
  * does, through `drawPlateau`: nothing is read from the disk and nothing is lost. The address is the whole say of the plateau: one that names none is the root (that is
  * what the page writes for it, so Back to such an address draws it), one that names a plateau that does not exist leaves the plateau drawn (the page writes its own
- * address back). `compare=` is read when the address has it (the page writes it with a removed element; a typed or kept link may carry it): empty is no comparison.
+ * address back). `compare=` is read when the address has it (run 0203: the page writes it on every diagram surface of a layered workspace and with a removed element; a typed or kept link may carry it): empty is no comparison.
+ * `drawPlateau` remembers the addressed comparison through `rememberLayerChoice`; the Changes only flag, read from `changes-only=` by the diagram reader, is not remembered from an address.
  * A write in flight, or a dialog that is open (a form of a plateau, the question of a write that other plateaus inherit), keeps the plateau it was opened in: the address is
  * not followed and the page writes back the address of what is drawn. Returns whether anything was drawn again.
  */

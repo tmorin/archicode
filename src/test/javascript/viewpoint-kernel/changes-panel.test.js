@@ -915,7 +915,7 @@ test('the SVG export carries the faded rule', async () => {
 test('a removed element picked on the Map is in the address with the comparison; the other selections are as they were', async () => {
   const { sandbox, state } = await open('as-is');
   run(sandbox, "currentPerspective = 'map';");
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?plateau=to-be');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?compare=other%3Aas-is&plateau=to-be');
   click(sandbox, {
     'data-action': 'select-change',
     'data-thing': 'element',
@@ -925,7 +925,8 @@ test('a removed element picked on the Map is in the address with the comparison;
   });
   assert.equal(
     sandbox.currentRouteHash(),
-    '/timeline/applications?removed=shop.session&compare=other%3Aas-is&plateau=to-be'
+    // the click opens the box around the removed element, and the open boxes are in the address (run 0203, DEC-4)
+    '/timeline/applications?open=shop&removed=shop.session&compare=other%3Aas-is&plateau=to-be'
   );
   click(sandbox, {
     'data-action': 'select-change',
@@ -936,8 +937,8 @@ test('a removed element picked on the Map is in the address with the comparison;
   });
   assert.equal(
     sandbox.currentRouteHash(),
-    '/timeline/applications?ref=shop.web&plateau=to-be',
-    'a changed element is an ordinary selection: nothing new in the address'
+    '/timeline/applications?ref=shop.web&open=shop&compare=other%3Aas-is&plateau=to-be',
+    'a changed element is an ordinary selection: only the box left open is new in the address'
   );
   click(sandbox, {
     'data-action': 'select-change',
@@ -947,7 +948,10 @@ test('a removed element picked on the Map is in the address with the comparison;
     'data-ref': 'customer',
     'data-to': 'shop.web'
   });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?link-from=customer&link-to=shop.web&plateau=to-be');
+  assert.equal(
+    sandbox.currentRouteHash(),
+    '/timeline/applications?open=shop&link-from=customer&link-to=shop.web&compare=other%3Aas-is&plateau=to-be'
+  );
   assert.equal(state.selection.kind, 'link');
   // closing the panel takes it out of the address
   click(sandbox, {
@@ -958,7 +962,7 @@ test('a removed element picked on the Map is in the address with the comparison;
     'data-ref': 'shop.session'
   });
   click(sandbox, { 'data-action': 'close-removed' });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?plateau=to-be');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?open=shop&compare=other%3Aas-is&plateau=to-be');
 });
 
 test('in Elements the removed element is in the address next to the element that stays the subject', async () => {
@@ -1056,8 +1060,8 @@ test('an address that names a removed element the comparison does not have, or n
   run(gone.sandbox, "currentPerspective = 'map';");
   assert.equal(
     gone.sandbox.currentRouteHash(),
-    '/timeline/applications?plateau=to-be',
-    'the element is not in the comparison, and the comparison is not in the address without it'
+    '/timeline/applications?compare=other%3Aas-is&plateau=to-be',
+    'the element is not in the comparison: the removed element is not in the address, the comparison is (run 0203)'
   );
   const none = await open(undefined, {
     hash: '#/timeline/applications?removed=shop.session&compare=other%3Anowhere&plateau=to-be'

@@ -260,6 +260,7 @@ test("the two toggles of the editor's diagram (Changes only, wording) are not re
   toggled.state.changesOnly = true;
   toggled.state.hideWording = true;
   run(toggled.sandbox, 'diagramHideUnlinked = true;');
+  toggled.sandbox.syncHashFromState(); // the address says Changes only, as the page writes it after a click on the toggle (run 0203)
   assert.deepEqual(await scenesOf(toggled), await scenesOf(plain), 'the same scenes with the toggles on');
   // the scene itself has the two toggles as options of its own, off unless given
   const sandbox = plain.sandbox;
@@ -534,7 +535,7 @@ test("the address with the player on top keeps the editor's own part: the step o
   page.sandbox.goToStoryStep('order_journey', 1);
   await page.drawn();
   const bar = page.sandbox.location.hash;
-  assert.match(bar, /[?&]story=order_journey&step=1$/);
+  assert.match(bar, /[?&]story=order_journey&step=1(&compare=[^&]*)?(&plateau=[^&]*)?$/);
   pressPlay(page, 'order_journey');
   await sceneShown(page, 0);
   playerClick(page, 'next');

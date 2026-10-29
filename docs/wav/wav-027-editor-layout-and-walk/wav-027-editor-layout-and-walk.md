@@ -122,7 +122,7 @@ wave_manifest:
       slug: diagram-address
       phase: P2
       depends_on: [W-2]
-      run: null
+      run: 0203
       delegation: standard
       likely_paths:
         - 'src/main/editor/composition/address-routing.js'

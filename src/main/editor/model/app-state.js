@@ -52,7 +52,7 @@ function createInitialAppState() {
     layerUndrawable: false, // the plateau drawn has no graph (the kernel refused the patches of a layer): its index is empty
     plateauTree: null, // the tree of the layered plateaus the manifests write (see buildPlateauTree): { nodes, ids, problems, redeclared, warnings, layered }
     baseline: null, // the plateau compared with, read-only: { plateau, index, problem, undrawable }; null while nothing is compared (see syncLayers)
-    changesOnly: false, // run 0040: draw only what changed, with its context (the kernel's `only_changes`); a choice of whoever looks, remembered per folder (see rememberFlag)
+    changesOnly: false, // run 0040: draw only what changed, with its context (the kernel's `only_changes`); remembered per folder (see rememberFlag) and, with a comparison, written in the address as `changes-only=1` (run 0203), which a reader's page follows without remembering it
     hideWording: false, // run 0040: set the changes of wording only (description alone) aside: not marked, not listed, counted apart; remembered per folder
     selection: { kind: 'none', key: null, mode: 'view' },
     expanded: new Set(),

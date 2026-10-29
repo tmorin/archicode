@@ -148,7 +148,7 @@ test("pin: a pinned node keeps its enclosing environments open and the address c
     'the node and what encloses it: ' + drawn.join(', ')
   );
   assert.ok(!drawn.includes('staging') && !drawn.includes('partners'), 'only what touches the pin');
-  assert.equal(page.sandbox.currentRouteHash(), '/timeline/environments?pin=prod.dc.web-vm');
+  assert.equal(page.sandbox.currentRouteHash(), '/timeline/environments?pin=prod.dc.web-vm&compare=');
   assert.match(page.sandbox.renderMapChipsHtml(), /Pinned: Web VM/);
   assert.ok(
     run(page.sandbox, 'AppState.expanded.has("technology:prod")'),
