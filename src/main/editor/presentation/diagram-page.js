@@ -56,6 +56,7 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
         '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>'
       : '') +
     renderMapPartsToolHtml(record, host) +
+    renderColumnsToolHtml(record, host) +
     '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
     renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
     '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
@@ -229,27 +230,31 @@ function diagramCacheKey(recipe, comparison, viewKey) {
       ? 'technology'
       : 'application'
     : recipe.layer || layerOfReference(reference) || 'technology'; // as `buildKernelInput` settles it
-  return [
-    modelsKey(comparison, facet),
-    viewpoint,
-    layer,
-    reference,
-    isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
-    // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
-    isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
-    // wave 026 run 0200: the relationships drawn heavy; a map without one keeps the key it had
-    isMap && mapState.highlight && mapState.highlight.length
-      ? 'highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))
-      : '',
-    // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
-    isMap && layer === 'technology'
-      ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
-      : '',
-    hideUnlinked,
-    JSON.stringify(shows),
-    JSON.stringify(AppState.workspace.styles || null),
-    viewKey
-  ].join('|');
+  return (
+    [
+      modelsKey(comparison, facet),
+      viewpoint,
+      layer,
+      reference,
+      isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
+      // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
+      isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
+      // wave 026 run 0200: the relationships drawn heavy; a map without one keeps the key it had
+      isMap && mapState.highlight && mapState.highlight.length
+        ? 'highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))
+        : '',
+      // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
+      isMap && layer === 'technology'
+        ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
+        : '',
+      hideUnlinked,
+      JSON.stringify(shows),
+      JSON.stringify(AppState.workspace.styles || null)
+    ]
+      // wave 027, run 0202 (DEC-6): only a diagram that has a value says it, so every other key is the string it was
+      .concat(recipe.columns ? ['cols:' + recipe.columns] : [], [viewKey])
+      .join('|')
+  );
 }
 
 /**
@@ -348,8 +353,15 @@ function mainDiagramRecipe(canvas) {
     mapState: isMap ? currentMapState() : null,
     parts: isMap ? mapPartsShown() : null,
     hideUnlinked: diagramHideUnlinked,
-    shows: diagramShows(isMap)
+    shows: diagramShows(isMap),
+    ...columnsOfRecipe(null, isMap ? 'map' : effectiveDiagramViewpoint(record), diagramColumns)
   };
+}
+
+/** `{ columns, layoutProblem }` of a diagram: the level in force (DEC-2). The toolbar's value is the editor's alone: a view or a step passes none. */
+function columnsOfRecipe(view, viewpoint, toolbar) {
+  const resolved = resolveDiagramColumns({ toolbar, view, settings: AppState.workspace.settings, viewpoint });
+  return { columns: resolved.columns, layoutProblem: resolved.problem };
 }
 
 function libraryPickFor(viewId) {
@@ -380,7 +392,11 @@ function mapPartsOf(view) {
 
 /** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view and the model, and nothing else: an edit of the view is an edit of the entry. */
 function libraryDiagramRecipe(view) {
-  if (!view || viewProblem(view)) return null;
+  if (!view) return null;
+  // an invalid `layout` is told in the diagram's own panel and the form stays on screen to correct it (wave 027, run 0202, DEC-7); any other problem leaves the view undrawn
+  const properties = Object.assign({}, isPlainObject(view.properties) ? view.properties : {});
+  delete properties.layout;
+  if (viewProblem(Object.assign({}, view, { properties }))) return null;
   return viewDiagramRecipe(view, AppState.index, 'library', AppState.baseline ? AppState.baseline.index : null);
 }
 
@@ -439,6 +455,8 @@ function viewDiagramRecipe(view, index, host, baselineIndex) {
     recipe.record = index[layer].get(properties.element);
     recipe.viewpoint = leafSafeViewpoint(view.viewpoint, recipe.record);
   }
+  // the player and the page of a view have no toolbar: the view, then the workspace (DEC-7)
+  Object.assign(recipe, columnsOfRecipe({ id: view.id, properties }, recipe.viewpoint, null));
   return recipe;
 }
 
@@ -599,6 +617,19 @@ function mountDiagramIfNeeded() {
  */
 async function computeDiagramScene(recipe, input, comparison, source, kernel, elk, viewKey, readonly) {
   const { isMap, reference, record, viewpoint, facet, shows, hideUnlinked } = recipe;
+  if (recipe.layoutProblem) {
+    return {
+      scene: buildDiagramScene(
+        viewKey,
+        '<div class="error-panel">' + escapeHtml(recipe.layoutProblem) + '</div>',
+        '',
+        '',
+        { width: 0, height: 0 },
+        null
+      ),
+      cacheable: false
+    };
+  }
   const result = isMap && facet ? computeMapThroughFacet(kernel, input) : kernel.compute(input);
   if (result.error) {
     const removed =
@@ -701,6 +732,7 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
           descriptions: shows.descriptions,
           wrap: shows.wrap,
           itemLayer: recipe.layer,
+          columns: recipe.columns,
           source
         })
       ),

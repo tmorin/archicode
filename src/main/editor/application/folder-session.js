@@ -39,6 +39,7 @@ function resetUiState() {
   diagramFacet = null;
   diagramMaximized = false;
   diagramHideUnlinked = false;
+  diagramColumns = null;
   diagramScale = 'auto';
   diagramCenter = { x: 0, y: 0 };
   diagramCache = null;

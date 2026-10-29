@@ -18,8 +18,19 @@ function canonicalViewProperties(properties) {
   if (typeof source.facet === 'string' && source.facet) out.facet = source.facet;
   if (source['hide-unlinked'] === true) out['hide-unlinked'] = true;
   for (const name of MAP_PARTS) if (source[name] === false) out[name] = false; // drawn is the default, so only `false` is a choice (issue #107)
+  // wave 027, run 0202 (DEC-5): `layout.columns`, after the Map parts and before the texts; one the editor cannot read is left as written, it is not its to rewrite
+  if (isPlainObject(source.layout)) {
+    if (columnsProblem(source.layout, 'the view') !== null) out.layout = source.layout;
+    else if (source.layout.columns !== undefined && source.layout.columns !== null)
+      out.layout = { columns: source.layout.columns };
+  } else if (source.layout !== undefined && source.layout !== null) out.layout = source.layout;
   for (const name of DIAGRAM_SHOW_NAMES) if (typeof source[name] === 'boolean') out[name] = source[name];
   return out;
+}
+
+/** The `layout.columns` the workspace gives for a viewpoint (`settings.views.properties.<viewpoint>.layout`), or null: none, or one that is invalid. */
+function workspaceColumnsOf(viewpoint) {
+  return resolveDiagramColumns({ settings: AppState.workspace.settings, viewpoint }).columns;
 }
 
 function canonicalViewDefinition(view) {
@@ -35,6 +46,9 @@ function canonicalViewDefinition(view) {
     delete properties.links;
     delete properties.highlight;
   }
+  // a value the workspace gives for that viewpoint is the default of the view: it is not remembered
+  const inherited = workspaceColumnsOf(viewpoint);
+  if (properties.layout && inherited !== null && properties.layout.columns === inherited) delete properties.layout;
   if (viewpoint === 'map') delete properties.element; // a Map is about its pins, not about one element
   return { viewpoint, layer: viewLayerOf(view), properties };
 }
@@ -55,7 +69,8 @@ function currentViewDefinition() {
           links: mapLayer() === 'application' ? mapLinks : [],
           highlight: mapLayer() === 'application' ? mapHighlight : [],
           facet: facetName,
-          'hide-unlinked': diagramHideUnlinked
+          'hide-unlinked': diagramHideUnlinked,
+          layout: diagramColumns === null ? null : { columns: diagramColumns }
         },
         mapPartsShown(),
         diagramShowOverrides(true)
@@ -69,7 +84,12 @@ function currentViewDefinition() {
       viewpoint: effectiveDiagramViewpoint(record),
       layer: layerOfReference(sel.key, sel.layer),
       properties: Object.assign(
-        { element: sel.key, facet: facetName, 'hide-unlinked': diagramHideUnlinked },
+        {
+          element: sel.key,
+          facet: facetName,
+          'hide-unlinked': diagramHideUnlinked,
+          layout: diagramColumns === null ? null : { columns: diagramColumns }
+        },
         diagramShowOverrides(false)
       )
     });
@@ -134,6 +154,8 @@ function viewProblem(view, plateau, name, against) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const index = indexOfPlateau(plateau);
   const viewName = typeof name === 'string' ? name : view.id;
+  const layoutProblem = columnsProblem(properties.layout, 'the view `' + viewName + '`');
+  if (layoutProblem) return layoutProblem;
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = viewLayerOf(view);
@@ -251,6 +273,8 @@ function applySavedView(view) {
       : null;
   setDiagramShow(properties);
   diagramHideUnlinked = properties['hide-unlinked'] === true;
+  // the toolbar takes what the view says (viewProblem has refused an invalid one), else none: the value of the diagram before does not stay
+  diagramColumns = resolveDiagramColumns({ view }).columns;
   if (view.viewpoint === 'map') {
     const layer = viewLayerOf(view); // the page Environments draws the technology layer, the page Applications the application layer
     const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));

@@ -564,6 +564,12 @@ test(
             (disabled || '') +
             ' title="Play the story like slides, in a window of its own, from its first step: the editor behind it is not touched">Play</button>'
         );
+    // and, wave 027 (run 0202), the Columns list that the toolbar of every diagram gained: the tag has none, so it is left out of the page now before the two are compared
+    const withoutColumns = (text) =>
+      text.replace(
+        /<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">.*?<\/select><\/span>/g,
+        ''
+      );
     let compared = 0;
     for (const { story, dir } of SHIPPED) {
       const files = shippedFiles(dir);
@@ -574,12 +580,12 @@ test(
         old.goToStoryStep(story, step);
         now.goToStoryStep(story, step);
         assert.equal(
-          now.renderShellHtml(),
+          withoutColumns(now.renderShellHtml()),
           asNow(old.renderShellHtml()),
           story + ' step ' + (step + 1) + ': the shell'
         );
         assert.equal(
-          now.renderDiagramCanvasHtml(null, ''),
+          withoutColumns(now.renderDiagramCanvasHtml(null, '')),
           old.renderDiagramCanvasHtml(null, ''),
           story + ' step ' + (step + 1) + ': the diagram and its tools'
         );
@@ -594,9 +600,60 @@ test(
         sandbox.selectStory(story);
         run(sandbox, "currentPerspective = 'library';");
       }
-      assert.equal(now.renderShellHtml(), asNow(old.renderShellHtml()), story + ': the page of the stories');
+      assert.equal(
+        withoutColumns(now.renderShellHtml()),
+        asNow(old.renderShellHtml()),
+        story + ': the page of the stories'
+      );
       assert.match(now.renderShellHtml(), /data-action="story-player-open" data-story="/, 'Play opens the player');
     }
     assert.ok(compared >= 10, 'the shells of the steps were compared');
   }
 );
+
+// ============================================================ wave 027, run 0202 (W-2): layout.columns in the player
+
+test("a step whose view has a layout is bounded the same in the player and in the editing walk, and a toolbar value is the editor's alone", async () => {
+  const BOUND = 'elk.layered.layering.coffmanGraham.layerBound';
+  const graphsOf = (sandbox) => {
+    run(
+      sandbox,
+      `globalThis.__graphs = [];
+       (function () {
+         const real = buildElkGraph;
+         buildElkGraph = function (result, options) {
+           const graph = real(result, options);
+           globalThis.__graphs.push(graph);
+           return graph;
+         };
+       })();`
+    );
+    return () => JSON.parse(JSON.stringify(run(sandbox, '__graphs')));
+  };
+  const setUp = async () => {
+    const page = await openPage(shippedFiles(DOMAIN_PLATEAUS), {});
+    page.sandbox.createManifestEntry('view', {
+      id: 'wide',
+      name: 'Wide',
+      viewpoint: 'map',
+      layer: 'application',
+      properties: { opened: ['shop'], layout: { columns: 3 } }
+    });
+    page.sandbox.createManifestEntry('story', { id: 'wide_tour', name: 'Wide tour', steps: [{ view: 'wide' }] });
+    return page;
+  };
+  const editing = await setUp();
+  const walked = graphsOf(editing.sandbox);
+  editing.sandbox.goToStoryStep('wide_tour', 0);
+  await editing.drawn();
+  const walkGraph = walked().at(-1);
+  assert.equal(walkGraph.layoutOptions[BOUND], '3', 'the editing walk is bounded by the layout of the view');
+
+  const player = await setUp();
+  const played = graphsOf(player.sandbox);
+  run(player.sandbox, 'diagramColumns = 9;'); // a toolbar value of the editor
+  const scene = await player.sandbox.storyStepScene('wide_tour', 0, { home: run(player.sandbox, 'storyHomeNow()') });
+  assert.equal(scene.problem, null);
+  assert.deepEqual(played().at(-1), walkGraph, 'the player hands ELK the graph of the editing walk');
+  assert.equal(run(player.sandbox, 'diagramColumns'), 9, 'and writes nothing to the editor');
+});

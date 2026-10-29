@@ -300,7 +300,13 @@ function readSettingsDraft() {
   const properties = Object.assign({}, AppState.workspace.settings.views.properties);
   for (const vp of VIEWPOINT_IDS) {
     const result = validateViewPropertiesJson(readViewPropertiesEditorText(vp));
-    if (!result.valid) fail('view-properties-error-' + vp, result.error);
+    if (!result.valid) {
+      fail('view-properties-error-' + vp, result.error);
+      continue;
+    }
+    // wave 027, run 0202 (DEC-1): the `layout` a viewpoint gives to every view is checked where it is typed, with the sentence of the load
+    const layoutProblem = columnsProblem(result.value.layout, '`settings.views.properties.' + vp + '.layout`');
+    if (layoutProblem) fail('view-properties-error-' + vp, layoutProblem);
     else properties[vp] = result.value;
   }
 

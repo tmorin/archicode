@@ -1,6 +1,6 @@
 ---
 type: prg
-status: active
+status: completed
 run: 0202
 wave: 027
 ---
@@ -16,6 +16,8 @@ wave: 027
 - 2026-10-29: Stage 9 PRD/TDD/pln consistency check done inline by the stage agent (no PRD; TDD and repository only): every REQ, DEC, IMP, CTR, IF, FLOW, VER, RISK and CON id in the pln's source_requirements exists in the TDD, no invented scope; the likely_files that exist were checked against the repository (resolver names, `VIEW_PROPERTY_ORDER` first literal in `presentation/view-edit.js`, `isPlainObject` in `model/styles.js`, `ratchet.max` 99), the new test, spec and part files are to be created; one defect fixed in the pln (task-005 outputs, 2 places): `GuideViewPropertiesTest` is in `src/test/java/io/morin/archicode/cli/`, not `.../doc/`; the TDD text itself still carries the Stage 5 errors F-1 to F-13 and the pln section 2 overrides it (the finding wins), left as is; blocking_gaps is empty so nothing is carried to Stage 10 as a blocker; `complete_wave.py run --stage implement --json` exits 0 after the edit; no blocker.
 - 2026-10-29: implement workflow stopped, state blocked: task not verified ["task-002: failed twice (reported not done: The last test of diagram-columns-elk.test.js needs the recipe wiring of task-003, so the acceptance criterion "both files pass" cannot be met by this task alone.)"]
 - 2026-10-29: implement workflow stopped, state blocked: task not verified ["task-002: failed twice (reported not done: That wiring (diagramColumns in ui-state, applySavedView, the view recipe and the diagram cache key) is task-003 in the plan, and the brief said to work this task only. I did not add it. The "both files pass" criterion cannot be met until task-003 is done, or you tell me to pull that single wiring into this task.)"]
+- 2026-10-29: implement workflow stopped, state blocked: task not verified ["task-003: failed twice (diagram-columns-view.test.js: 9 failures, for example 'the Map has the Columns list: Default (none) first, then 1 to 6, 8 and 12', 'the list always has the value in force', and 'the Settings save refuses an invalid layout of deep with the sentence...' (AssertionError: true !== false at line 471). npm run test:unit also fails 'the real page: --statements HEAD passes'.)"]
+- 2026-10-29: Stage 11 verification by a leaf agent: editor:check, the columns node tests (66 pass), lint and format:check re-run exit 0; task-008 gates (coverage, verify, byte-identity, e2e 12 passed) read from the run document; pln manifest set to done, run and prg to completed; tooling/docs/check-backlog.py does not exist in this repository, so the backlog check could not run; untracked jacoco-quarkus.exec is a build leftover, not committed.
 
 ## Findings
 

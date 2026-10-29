@@ -364,13 +364,13 @@ function buildElkGraph(result, options) {
       return {
         id: item.id,
         children: kids.map(toNode),
-        layoutOptions: {
+        layoutOptions: bound({
           'elk.padding': '[top=44,left=14,bottom=14,right=14]',
           'elk.nodeSize.constraints': 'MINIMUM_SIZE',
           // ELK's layered algorithm lays out left to right and turns the result for DOWN: this minimum is read as (height, width).
           // Written as (width, height) it made every box at least minWidth high, mostly empty space under its children.
           'elk.nodeSize.minimum': '(0, ' + minWidth + ')'
-        }
+        })
       };
     }
     let width = Math.max(
@@ -399,9 +399,18 @@ function buildElkGraph(result, options) {
     }
     edges.push(edge);
   });
+  const columns = options && options.columns !== undefined && options.columns !== null ? options.columns : null;
+  // wave 027, run 0202 (DEC-3): the layer bound, on the root and on every compound node (on the root alone the containers ignore it); a tendency, not a cap
+  const bound = (layoutOptions) => {
+    if (columns === null) return layoutOptions;
+    return Object.assign(layoutOptions, {
+      'elk.layered.layering.strategy': 'COFFMAN_GRAHAM',
+      'elk.layered.layering.coffmanGraham.layerBound': String(columns)
+    });
+  };
   return {
     id: 'root',
-    layoutOptions: {
+    layoutOptions: bound({
       'elk.algorithm': 'layered',
       // top to bottom: what comes in above, what goes out below. Left to right made overviews 5 times wider than high
       // (edge captions sit in every gap), which almost never fits a panel.
@@ -411,7 +420,7 @@ function buildElkGraph(result, options) {
       'elk.spacing.nodeNode': '28',
       'elk.layered.spacing.nodeNodeBetweenLayers': '56',
       'elk.spacing.edgeNode': '20'
-    },
+    }),
     children: roots.map(toNode),
     edges
   };

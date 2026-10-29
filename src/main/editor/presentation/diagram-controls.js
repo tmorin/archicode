@@ -265,3 +265,34 @@ function diagramLinkText(link) {
   if (qualifiers.length) parts.push('[' + qualifiers.join(', ') + ']');
   return parts.join(' ');
 }
+
+/**
+ * The options of a Columns list (wave 027, run 0202, DEC-4): "Default (n)" or "Default (none)" first, then the usual choices, and the value in force
+ * when the list does not offer it (a 7 from a view, as an extra entry in its place); `invalid` is the entry of a `layout` the editor cannot read.
+ * `selected` is the choice (null: the Default), `inherited` the value the lower levels give.
+ */
+function columnsOptionsHtml(selected, inherited, invalid) {
+  const option = (value, label, on) =>
+    '<option value="' + value + '"' + (on ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+  const choices = DIAGRAM_COLUMNS_CHOICES.slice();
+  if (selected !== null && !choices.includes(selected)) choices.push(selected);
+  choices.sort((a, b) => a - b);
+  return (
+    option('', 'Default (' + (inherited === null ? 'none' : inherited) + ')', selected === null && !invalid) +
+    (invalid ? option('invalid', 'invalid', true) : '') +
+    choices.map((n) => option(String(n), String(n), n === selected && !invalid)).join('')
+  );
+}
+
+/** The list of the toolbar of a diagram: it chooses the boxes per row of the diagram on screen, or of the view on its page. */
+function renderColumnsToolHtml(record, host) {
+  const viewpoint = host ? host.viewpoint : record ? effectiveDiagramViewpoint(record) : 'map';
+  const selected = host ? ownColumnsOf(host.view) : diagramColumns;
+  return (
+    '<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">' +
+    '<label for="diagram-columns" title="The number of boxes the layout aims at in a row">Columns</label>' +
+    '<select id="diagram-columns" data-action="set-columns">' +
+    columnsOptionsHtml(selected, workspaceColumnsOf(viewpoint), false) +
+    '</select></span>'
+  );
+}

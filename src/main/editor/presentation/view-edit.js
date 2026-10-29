@@ -62,10 +62,10 @@ function shownTextsOf(view) {
 }
 
 /** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
-const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'links', 'facet', 'hide-unlinked'].concat(
-  MAP_PARTS,
-  DIAGRAM_SHOW_NAMES
-);
+// `layout` (wave 027, run 0202) stands after the parts of a Map: the first array literal holds every key but the parts and the texts, as the guide's test reads it
+const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'links', 'facet', 'hide-unlinked', 'layout']
+  .flatMap((key) => (key === 'layout' ? MAP_PARTS.concat(key) : [key]))
+  .concat(DIAGRAM_SHOW_NAMES);
 
 /**
  * Writes a property of a view. One the view already has keeps its place; one it has not (a default that an earlier edit took out, written again)
@@ -101,6 +101,21 @@ function setViewShow(view, name, value) {
   }
   if (properties[name] === value) return false;
   putViewProperty(properties, name, value);
+  return true;
+}
+
+/** Sets the `layout.columns` of a view; none, or the value the workspace gives, takes the key out (a value equal to the default is not remembered). True when the view changed. */
+function setViewLayout(view, columns) {
+  const properties = view.properties;
+  const inherited = workspaceColumnsOf(String(view.viewpoint));
+  if (columns === null || columns === undefined || columns === inherited) {
+    if (!('layout' in properties)) return false;
+    delete properties.layout;
+    return true;
+  }
+  const current = properties.layout;
+  if (isPlainObject(current) && current.columns === columns && Object.keys(current).length === 1) return false;
+  putViewProperty(properties, 'layout', { columns });
   return true;
 }
 
@@ -333,7 +348,11 @@ function handleViewFieldChange(control, immediate) {
   else if (field === 'layer') apply((view) => setViewLayer(view, control.value));
   else if (field === 'element') apply((view) => setViewElement(view, control.value));
   else if (field === 'facet') apply((view) => setViewFacet(view, control.value));
-  else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
+  else if (field === 'layout:columns') {
+    if (control.value === 'invalid') return false; // the entry that says what the view holds, not a choice
+    const columns = control.value === '' ? null : Number(control.value);
+    if (columns === null || Number.isInteger(columns)) apply((view) => setViewLayout(view, columns));
+  } else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
   else if (field && field.startsWith('part:') && MAP_PARTS.includes(field.slice(5)))
     apply((view) => setViewMapPart(view, field.slice(5), !!control.checked));
   else if (field && field.startsWith('show:') && DIAGRAM_SHOW_NAMES.includes(field.slice(5)))
@@ -362,8 +381,30 @@ document.addEventListener('pointerdown', notePointer, true);
 document.addEventListener('pointerup', notePointer, true);
 document.addEventListener('pointercancel', notePointer, true);
 
+/**
+ * The Columns list of the toolbar (wave 027, run 0202, DEC-4): on the page of a view it edits the view, as the four texts do; elsewhere it sets the toolbar level of the diagram on screen.
+ * A choice equal to what the lower levels give is no choice (null). View state: no `modelsChanged()`.
+ */
+function chooseColumns(text) {
+  const columns = text === '' ? null : Number(text);
+  if (columns !== null && !Number.isInteger(columns)) return;
+  if (currentPerspective === 'library') {
+    editSavedView((view) => setViewLayout(view, columns));
+    return;
+  }
+  const record = mapIsShown() ? null : findElementRecord(elementSelection().key);
+  const viewpoint = mapIsShown() ? 'map' : record ? effectiveDiagramViewpoint(record) : null;
+  if (viewpoint === null) return;
+  diagramColumns = columns === workspaceColumnsOf(viewpoint) ? null : columns;
+  requestRedraw();
+}
+
 /** Delegated `change` listener: the form of a view on its page, the list of Settings. (The menu of the steps of a story is the player's, `handleStoryPlayerChange`.) */
 function handleAppChange(e) {
+  if (e.target && e.target.getAttribute && e.target.getAttribute('data-action') === 'set-columns') {
+    chooseColumns(e.target.value);
+    return;
+  }
   if (handleMapLinksControl(e.target)) return; // the kind and "Ticked only" of the list of relationships
   if (e.target.matches && e.target.matches('[data-story-step-highlight]')) {
     const chosen = e.target.value;
