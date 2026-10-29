@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 027
-status: planned
+status: in-progress
 date: 2026-10-29
 related:
   - docs/wav/wav-027-editor-layout-and-walk/wbc-027-editor-layout-and-walk.md
@@ -43,7 +43,7 @@ None open. The five decisions are accepted and recorded in `rfc/rfc-001-diagram-
 wave_manifest:
   wave: 027
   slug: editor-layout-and-walk
-  status: planned
+  status: in-progress
   sources:
     - 'gh:tmorin/archicode#179'
     - 'gh:tmorin/archicode#178'
