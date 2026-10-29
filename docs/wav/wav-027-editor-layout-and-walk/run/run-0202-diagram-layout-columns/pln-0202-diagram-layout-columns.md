@@ -650,10 +650,10 @@ agent_assignment_plan:
         - 'src/main/editor/layers.json'
         - 'src/main/editor/names.json'
       acceptance_criteria:
-        - 'diagram-columns.test.js and diagram-columns-elk.test.js pass'
+        - 'diagram-columns.test.js passes, and diagram-columns-elk.test.js passes except the one test "a saved Map with a layout reaches the layout engine bounded..." (it needs the recipe wiring of task-003 and is checked there; do not add that wiring in this task)'
         - 'editor:check exits 0 with no new upward pair'
       verification:
-        - 'node --test on both files, npm run editor:build, npm run editor:check, node scripts/check-editor.mjs --list'
+        - 'node --test on both files (the one named test may fail until task-003), npm run editor:build, npm run editor:check, node scripts/check-editor.mjs --list'
       escalation_triggers:
         - 'a new upward pair appears'
       suggested_subagent_type: 'general-purpose'
@@ -678,6 +678,7 @@ agent_assignment_plan:
         - 'src/main/editor/presentation/story-scene.js'
       acceptance_criteria:
         - 'diagram-columns-view.test.js and story-player-scene.test.js pass and npm run test:unit passes'
+        - 'diagram-columns-elk.test.js passes in full, including "a saved Map with a layout reaches the layout engine bounded..."'
         - 'the cache key of a diagram with no value is the old string'
       verification:
         - 'npm run editor:build then npm run test:unit then npm run editor:check'
