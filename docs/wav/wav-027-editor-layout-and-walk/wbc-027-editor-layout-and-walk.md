@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 027
-status: proposed
+status: completed
 date: 2026-10-29
 related:
   - docs/wav/wav-027-editor-layout-and-walk/rfc/rfc-001-diagram-layout-address-and-walk.md
