@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>N-plateaus matrix mock-up</title>
+<style>
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --ink:#1b2430; --muted:#566274; --line:#d5dae2; --line-soft:#e8ebf0;
+  --accent:#1b5fb4; --accent-ink:#ffffff; --focus:#1b5fb4;
+  --new:#12663a; --new-bg:#e3f4ea;
+  --changed:#7a4b00; --changed-bg:#fdf0d5;
+  --removed:#9c1c1c; --removed-bg:#fbe4e4;
+  --moved:#2d4b9a; --moved-bg:#e5ebfb;
+  --split:#6a2c91; --split-bg:#f1e6f8;
+  --merged:#00606b; --merged-bg:#ddf1f3;
+  --same:#6b7788; --pin-bg:#1b2430; --pin-ink:#ffffff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161d; --surface:#192029; --ink:#e6ebf2; --muted:#9aa7b8; --line:#2e3846; --line-soft:#242d39;
+    --accent:#6aa6f0; --accent-ink:#0d1a2b; --focus:#8ebcf5;
+    --new:#7fdca4; --new-bg:#143222;
+    --changed:#f2c46a; --changed-bg:#3a2d0e;
+    --removed:#ff9b9b; --removed-bg:#401a1a;
+    --moved:#9db8ff; --moved-bg:#1d2a4d;
+    --split:#d9b0f2; --split-bg:#33204a;
+    --merged:#7fd9e3; --merged-bg:#0f3238;
+    --same:#8795a8; --pin-bg:#e6ebf2; --pin-ink:#11161d;
+  }
+}
+:root[data-theme="dark"]{
+    --bg:#11161d; --surface:#192029; --ink:#e6ebf2; --muted:#9aa7b8; --line:#2e3846; --line-soft:#242d39;
+    --accent:#6aa6f0; --accent-ink:#0d1a2b; --focus:#8ebcf5;
+    --new:#7fdca4; --new-bg:#143222;
+    --changed:#f2c46a; --changed-bg:#3a2d0e;
+    --removed:#ff9b9b; --removed-bg:#401a1a;
+    --moved:#9db8ff; --moved-bg:#1d2a4d;
+    --split:#d9b0f2; --split-bg:#33204a;
+    --merged:#7fd9e3; --merged-bg:#0f3238;
+    --same:#8795a8; --pin-bg:#e6ebf2; --pin-ink:#11161d;
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.page{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.35rem;margin:0 0 4px}
+h2{font-size:1.02rem;margin:0 0 8px}
+p{margin:0 0 8px}
+code,.ref{font-family:var(--mono);font-size:.92em}
+.muted{color:var(--muted)}
+.banner{border:1px dashed var(--line);border-radius:8px;padding:8px 12px;background:var(--surface);margin:10px 0 16px;font-size:.9rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.pin{display:inline-block;background:var(--pin-bg);color:var(--pin-ink);border-radius:999px;font-size:.7rem;font-weight:700;padding:1px 7px;margin-left:6px;vertical-align:middle;letter-spacing:.02em}
+.controls{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.tree{list-style:none;margin:0;padding:0}
+.tree ul{list-style:none;margin:0;padding:0 0 0 18px;border-left:2px solid var(--line)}
+.tree li{margin:4px 0;position:relative}
+.node{display:inline-flex;gap:8px;align-items:baseline;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:5px 10px;font:inherit;cursor:pointer;min-height:36px}
+.node small{color:var(--muted)}
+.node[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.node.onpath{background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);color:var(--ink);font:inherit;padding:6px 12px;min-height:36px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+label.chk{display:inline-flex;gap:8px;align-items:center;min-height:36px}
+.ctl-title{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px}
+.tablewrap{overflow-x:auto}
+table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:720px}
+.mx caption{text-align:left;padding:0 0 8px;color:var(--muted);font-size:.9rem}
+.mx th,.mx td{border-bottom:1px solid var(--line-soft);padding:7px 10px;text-align:left;vertical-align:top}
+.mx thead th{position:sticky;top:0;background:var(--surface);border-bottom:2px solid var(--line);font-weight:600;z-index:1}
+.mx th.rowh{font-weight:600;width:19%;min-width:11rem}
+.mx th.rowh .ref{font-weight:600}
+.mx th.rowh .layer{display:block;font-weight:400;color:var(--muted);font-size:.78rem}
+.mx th.spancol,.mx td.spancol{background:color-mix(in srgb,var(--accent) 7%,var(--surface));border-left:2px solid var(--accent)}
+.mx tr.sel th,.mx tr.sel td{outline:0;box-shadow:inset 0 0 0 9999px color-mix(in srgb,var(--accent) 6%,transparent)}
+.mx tbody tr{cursor:pointer}
+.colhead small{display:block;font-weight:400;color:var(--muted)}
+.counts{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.chip{display:inline-flex;gap:3px;align-items:center;border-radius:999px;padding:0 7px;font-size:.74rem;font-weight:600;line-height:1.6;white-space:nowrap}
+.st-new{color:var(--new);background:var(--new-bg)} .st-changed{color:var(--changed);background:var(--changed-bg)}
+.st-removed{color:var(--removed);background:var(--removed-bg)} .st-moved{color:var(--moved);background:var(--moved-bg)}
+.st-split{color:var(--split);background:var(--split-bg)} .st-merged{color:var(--merged);background:var(--merged-bg)}
+.cell .state{display:inline-flex;gap:5px;align-items:center;font-weight:600;border-radius:6px;padding:1px 7px}
+.cell .note{display:block;font-size:.8rem;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.cell.same,.cell.absent,.cell.present{color:var(--same)}
+.cell.present .state,.cell.same .state,.cell.absent .state{font-weight:500}
+.glyph{font-weight:700}
+.detail dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0}
+.detail dt{color:var(--muted)}
+.detail dd{margin:0}
+.lineage{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 10px}
+.lineage .step{border:1px solid var(--line);border-radius:8px;padding:3px 9px;background:var(--bg)}
+.lineage .step b{display:block;font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.arrow{color:var(--muted)}
+pre.md{margin:8px 0 0;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:auto;font:12px/1.5 var(--mono)}
+details summary{cursor:pointer;min-height:36px;display:flex;align-items:center}
+.keyrow{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.88rem}
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:6px 18px;margin:0;padding:0;list-style:none;font-size:.9rem}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:640px){
+  .page{padding:14px 16px 40px}
+  .tablewrap{overflow:visible}
+  table.mx{min-width:0}
+  .mx thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .mx,.mx tbody,.mx tr,.mx th,.mx td,.mx caption{display:block;width:100%}
+  .mx tr{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:6px 8px;background:var(--surface)}
+  .mx th.rowh{width:100%;min-width:0;border:0;padding:4px 2px 6px}
+  .mx td{display:grid;grid-template-columns:5.2rem 1fr;column-gap:8px;row-gap:2px;border:0;border-top:1px solid var(--line-soft);padding:6px 2px}
+  .mx td::before{content:attr(data-col);color:var(--muted);font-size:.78rem;overflow-wrap:anywhere;grid-column:1;grid-row:1 / span 2}
+  .mx td>.state{grid-column:2;justify-self:start}
+  .mx td>.note{grid-column:2;margin-top:0}
+  .mx td.spancol{border-left:0;border-top:2px solid var(--accent);border-radius:0 0 6px 6px}
+  .mx td.hide-narrow{display:none}
+  .colcounts{display:grid;gap:8px;margin-bottom:12px}
+}
+@media (min-width:641px){ .colcounts{display:none} }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Plateaus as a matrix <span class="pin" title="the layout of #24">#24</span></h1>
+  <p class="muted">Mock-up of run 0206, wave 028. It builds nothing: the numbers and the cells are the output of <code>archicode diff</code> on the layered Brightcart, 14 rows of 88 drawn. The pins <span class="pin">Q1</span> to <span class="pin">Q5</span> mark the place where each question of the issue is answered.</p>
+  <div class="banner" id="status" role="status"></div>
+
+  <section class="panel" aria-labelledby="h-tree">
+    <h2 id="h-tree">The tree of plateaus <span class="pin" title="a tree that forks">Q4</span></h2>
+    <div class="controls">
+      <div>
+        <div class="ctl-title">Columns: choose a plateau, its path from the root is drawn</div>
+        <ul class="tree" id="tree">
+          <li><button class="node" data-root="1"><span class="ref">baseline</span><small>As is, 2026-Q1</small></button>
+            <ul>
+              <li><button class="node" data-leaf="chain-i"><span class="ref">inhouse</span><small>2026-Q4</small></button>
+                <ul><li><button class="node" data-path="chain"><span class="ref">marketplace</span><small>2027-Q4</small></button></li></ul>
+              </li>
+              <li><button class="node" data-path="saas"><span class="ref">saas</span><small>2026-Q4</small></button></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <div class="ctl-title">Each plateau is read</div>
+        <div class="seg" role="group" aria-label="Reading">
+          <button type="button" data-reading="steps" aria-pressed="true">Step by step</button>
+          <button type="button" data-reading="root" aria-pressed="false">Against baseline</button>
+        </div>
+        <p class="muted" style="margin-top:6px;max-width:26rem;font-size:.86rem" id="reading-help"></p>
+      </div>
+      <div>
+        <div class="ctl-title">Also</div>
+        <button type="button" class="seg" style="padding:0;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;min-height:36px" id="all-btn" aria-pressed="false"><span style="padding:6px 12px">All four, against baseline</span></button>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="only" checked> Changes only</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-mx">
+    <h2 id="h-mx">The matrix <span class="pin">Q1</span></h2>
+    <div class="colcounts" id="colcounts" aria-label="Counts of the columns"></div>
+    <div class="tablewrap">
+      <table class="mx" id="mx">
+        <caption id="cap"></caption>
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="muted" id="folded" style="margin-top:10px"></p>
+  </section>
+
+  <section class="panel detail" aria-labelledby="h-detail" id="detail"></section>
+
+  <section class="panel" aria-labelledby="h-key">
+    <h2 id="h-key">Key</h2>
+    <div class="keyrow" id="key"></div>
+    <p class="muted" style="margin-top:8px;font-size:.88rem">A cell says the state of the row in that plateau compared with the plateau on its left (step by step) or with <code>baseline</code>. <span class="ref">present</span> is an element that exists and is not changed; <span class="ref">–</span> is an element that does not exist there. The last column, <b>Span</b>, is one comparison of the first and the last plateau, not a sum of the cells.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-file">
+    <h2 id="h-file">The same reading as a file <span class="pin">Q5</span></h2>
+    <details>
+      <summary><span>matrix.md, beside <code>gap.md</code> and <code>gap.json</code> (provisional name)</span></summary>
+      <pre class="md" id="md"></pre>
+    </details>
+  </section>
+</div>
+
+<script id="data" type="application/json">{"rows":[{"label":"discovery.search","layer":"application","q":"q3","base":{"s":"present","as":"shop.app.search"},"in_step":{"s":"moved","from":["shop.app.search"],"nat":"kind, name, qualifiers, relationships","as":"commerce.search"},"mp_step":{"s":"moved","from":["commerce.search"]},"mp_root":{"s":"moved","from":["shop.app.search"],"nat":"kind, name, qualifiers, relationships"},"span":{"s":"moved","from":["shop.app.search"],"nat":"kind, name, qualifiers, relationships"},"saas":{"s":"removed","as":"shop.app.search"},"detail":{"replaces":["shop.app.search"],"natures":"kind, name, qualifiers, relationships","before":{"kind":"component","name":"Search","qualifiers":[]},"after":{"kind":"container","name":"Search service","qualifiers":["OpenSearch"]},"name":"Search service","change":"moved"}},{"label":"storefront.web","layer":"application","q":"q3","base":{"s":"present","as":"shop.web"},"in_step":{"s":"changed","nat":"description, relationships","as":"shop.web"},"mp_step":{"s":"moved","from":["shop.web"],"nat":"description, relationships"},"mp_root":{"s":"moved","from":["shop.web"],"nat":"description, relationships"},"span":{"s":"moved","from":["shop.web"],"nat":"description, relationships"},"saas":{"s":"changed","nat":"description, qualifiers, relationships","as":"shop.web"},"detail":{"replaces":["shop.web"],"natures":"description, relationships","before":{"description":"Pages of the shop, in the browser."},"after":{"description":"Pages of the shop, served from the CDN."},"name":"Web storefront","change":"moved"}},{"label":"orders.history","layer":"application","q":"q3","base":{"s":"present","as":"shop.app.orders"},"in_step":{"s":"split","from":["shop.app.orders"],"nat":"relationships"},"mp_step":{"s":"changed","nat":"tags"},"mp_root":{"s":"split","from":["shop.app.orders"],"nat":"relationships"},"span":{"s":"split","from":["shop.app.orders"],"nat":"relationships"},"saas":{"s":"same","as":"shop.app.orders"},"detail":{"replaces":["shop.app.orders"],"natures":"relationships","name":"Order history","change":"split"}},{"label":"orders.placement","layer":"application","q":"q3","base":{"s":"present","as":"shop.app.orders"},"in_step":{"s":"split","from":["shop.app.orders"],"nat":"relationships"},"mp_step":{"s":"changed","nat":"tags, relationships"},"mp_root":{"s":"split","from":["shop.app.orders"],"nat":"relationships"},"span":{"s":"split","from":["shop.app.orders"],"nat":"relationships"},"saas":{"s":"same","as":"shop.app.orders"},"detail":{"replaces":["shop.app.orders"],"natures":"relationships","name":"Order placement","change":"split"}},{"label":"accounts.profiles","layer":"application","q":"q3","base":{"s":"present","also":"shop.app.loyalty","as":"shop.app.customers"},"in_step":{"s":"merged","from":["shop.app.customers","shop.app.loyalty"],"nat":"relationships"},"mp_step":{"s":"changed","nat":"tags"},"mp_root":{"s":"merged","from":["shop.app.customers","shop.app.loyalty"],"nat":"relationships"},"span":{"s":"merged","from":["shop.app.customers","shop.app.loyalty"],"nat":"relationships"},"saas":{"s":"same","as":"shop.app.customers"},"detail":{"replaces":["shop.app.customers","shop.app.loyalty"],"natures":"relationships","name":"Customer profiles","change":"merged"}},{"label":"commerce.cart","layer":"application","q":"q2","base":{"s":"present","as":"shop.app.cart"},"in_step":{"s":"moved","from":["shop.app.cart"],"nat":"kind, name, qualifiers"},"mp_step":{"s":"changed","nat":"tags"},"mp_root":{"s":"moved","from":["shop.app.cart"],"nat":"kind, name, qualifiers, tags"},"span":{"s":"moved","from":["shop.app.cart"],"nat":"kind, name, qualifiers, tags"},"saas":{"s":"removed","as":"shop.app.cart"},"detail":{"replaces":["shop.app.cart"],"natures":"kind, name, qualifiers, tags","before":{"kind":"component","name":"Cart","qualifiers":[],"tags":{}},"after":{"kind":"container","name":"Cart service","qualifiers":["Java","Quarkus"],"tags":{"runtime":"quarkus"}},"name":"Cart service","change":"moved"}},{"label":"shop.app","layer":"application","q":"q2","base":{"s":"present"},"in_step":{"s":"changed","nat":"name, description"},"mp_step":{"s":"removed"},"mp_root":{"s":"removed"},"span":{"s":"removed"},"saas":{"s":"changed","nat":"name, description"},"detail":{"replaces":null,"natures":"","name":"Shop application","change":"removed"}},{"label":"shop.db","layer":"application","q":null,"base":{"s":"present"},"in_step":{"s":"same"},"mp_step":{"s":"removed"},"mp_root":{"s":"removed"},"span":{"s":"removed"},"saas":{"s":"same"},"detail":{"replaces":null,"natures":"","name":"Shop database","change":"removed"}},{"label":"commerce.gateway","layer":"application","q":null,"base":{"s":"absent"},"in_step":{"s":"new"},"mp_step":{"s":"same"},"mp_root":{"s":"new"},"span":{"s":"new"},"saas":{"s":"absent"},"detail":{"replaces":null,"natures":"","name":"API gateway","change":"new"}},{"label":"discovery.recommender","layer":"application","q":null,"base":{"s":"absent"},"in_step":{"s":"absent"},"mp_step":{"s":"new"},"mp_root":{"s":"new"},"span":{"s":"new"},"saas":{"s":"absent"},"detail":{"replaces":null,"natures":"","name":"Recommender","change":"new"}},{"label":"fulfilment.sync","layer":"application","q":null,"base":{"s":"present"},"in_step":{"s":"changed","nat":"relationships"},"mp_step":{"s":"changed","nat":"relationships"},"mp_root":{"s":"changed","nat":"relationships"},"span":{"s":"changed","nat":"relationships"},"saas":{"s":"changed","nat":"relationships"},"detail":{"replaces":null,"natures":"relationships","name":"Order and stock sync","change":"changed"}},{"label":"commerce-saas","layer":"application","q":"q4","base":{"s":"absent"},"in_step":{"s":"absent"},"mp_step":{"s":"absent"},"mp_root":{"s":"absent"},"span":{"s":"absent"},"saas":{"s":"new"}},{"label":"prod.cloud.pg","layer":"technology","q":null,"base":{"s":"absent"},"in_step":{"s":"new"},"mp_step":{"s":"changed","nat":"deployment"},"mp_root":{"s":"new"},"span":{"s":"new"},"saas":{"s":"absent"},"detail":{"replaces":null,"natures":"","name":"Managed PostgreSQL","change":"new"}},{"label":"prod.dc.cache-vm","layer":"technology","q":null,"base":{"s":"present"},"in_step":{"s":"removed"},"mp_step":{"s":"absent"},"mp_root":{"s":"removed"},"span":{"s":"removed"},"saas":{"s":"removed"},"detail":{"replaces":null,"natures":"","name":"Cache VM","change":"removed"}}],"counts":{"in":{"new":17,"changed":5,"removed":1,"moved":7,"split":2,"merged":1},"mp_step":{"new":21,"changed":12,"removed":5,"moved":5,"split":0,"merged":0},"mp_root":{"new":38,"changed":3,"removed":6,"moved":11,"split":2,"merged":1},"saas":{"new":3,"changed":5,"removed":11,"moved":0,"split":0,"merged":0}},"totals":{"rows":88,"rowsWithChange":61,"unchanged":27,"refs":103}}</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('data').textContent);
+  var GLYPH = {new:'+',changed:'~',removed:'−',moved:'→',split:'⑂',merged:'⑃'};
+  var state = {path:'chain', reading:'steps', only:true, sel:'discovery.search'};
+  var COLS = {
+    chain:  [{id:'base',name:'baseline',sub:'As is'},{id:'in_step',name:'inhouse',sub:'overrides baseline'},{id:'mp_step',name:'marketplace',sub:'overrides inhouse'},{id:'span',name:'Span',sub:'baseline to marketplace',span:true}],
+    chainRoot: [{id:'base',name:'baseline',sub:'As is'},{id:'in_step',name:'inhouse',sub:'against baseline'},{id:'mp_root',name:'marketplace',sub:'against baseline'}],
+    saas:   [{id:'base',name:'baseline',sub:'As is'},{id:'saas',name:'saas',sub:'overrides baseline'}],
+    all:    [{id:'base',name:'baseline',sub:'As is'},{id:'in_step',name:'inhouse',sub:'against baseline'},{id:'mp_root',name:'marketplace',sub:'against baseline'},{id:'saas',name:'saas',sub:'against baseline'}]
+  };
+  function cols(){
+    if(state.path==='all') return COLS.all;
+    if(state.path==='saas') return COLS.saas;
+    return state.reading==='root' ? COLS.chainRoot : COLS.chain;
+  }
+  function countsFor(id){
+    var c = id==='in_step'?D.counts.in : id==='mp_step'?D.counts.mp_step : id==='mp_root'||id==='span'?D.counts.mp_root : id==='saas'?D.counts.saas : null;
+    return c;
+  }
+  function chips(c){
+    if(!c) return '';
+    var order=['new','changed','removed','moved','split','merged'], h='';
+    order.forEach(function(k){ if(c[k]) h+='<span class="chip st-'+k+'"><span class="glyph" aria-hidden="true">'+GLYPH[k]+'</span>'+c[k]+' '+k+'</span>'; });
+    return '<div class="counts">'+h+'</div>';
+  }
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function cellHtml(c, row, col){
+    if(!c) return '';
+    var cls='cell '+(['same','absent','present'].indexOf(c.s)>=0?c.s:'');
+    var inner='';
+    if(c.s==='absent') inner='<span class="state" title="does not exist in this plateau">–</span>';
+    else if(c.s==='same') inner='<span class="state" title="exists, not changed">present</span>';
+    else if(c.s==='present') inner='<span class="state">present</span>'+(c.also?'<span class="note"><span class="ref">'+esc(c.as||'')+'</span> and <span class="ref">'+esc(c.also)+'</span></span>':(c.as?'<span class="note"><span class="ref">'+esc(c.as)+'</span></span>':''));
+    else {
+      inner='<span class="state st-'+c.s+'"><span class="glyph" aria-hidden="true">'+GLYPH[c.s]+'</span>'+c.s+'</span>';
+      var n='';
+      if(c.from) n+='from <span class="ref">'+c.from.map(esc).join('</span> and <span class="ref">')+'</span>';
+      else if(c.as) n+='as <span class="ref">'+esc(c.as)+'</span>';
+      if(c.nat) n+=(n?'. ':'')+esc(c.nat);
+      if(n) inner+='<span class="note">'+n+'</span>';
+    }
+    return '<td class="'+cls+(col.span?' spancol':'')+'" data-col="'+esc(col.name)+'">'+inner+'</td>';
+  }
+  function visible(row, cs){
+    if(!state.only) return true;
+    return cs.some(function(c){ if(c.id==='base') return false; var v=row[c.id]; return v && ['same','absent'].indexOf(v.s)<0; });
+  }
+  function render(){
+    var cs=cols();
+    var th='<tr><th scope="col">Element'+'</th>';
+    cs.forEach(function(c){
+      th+='<th scope="col" class="colhead'+(c.span?' spancol':'')+'">'+esc(c.name)+(c.span?' <span class="pin">Q2</span>':'')+'<small>'+esc(c.sub)+'</small>'+(c.id==='base'?'':'<span class="counts-slot">'+chips(countsFor(c.id))+'</span>')+'</th>';
+    });
+    document.querySelector('#mx thead').innerHTML=th+'</tr>';
+    var body='', shown=0;
+    D.rows.forEach(function(r){
+      if(state.path==='saas'&&state.only&&r.saas.s==='same') return;
+      if(!visible(r,cs)) return;
+      shown++;
+      var pin = r.q ? ' <span class="pin" title="see the answer">'+r.q.toUpperCase()+'</span>' : '';
+      body+='<tr data-row="'+esc(r.label)+'"'+(r.label===state.sel?' class="sel" aria-selected="true"':'')+' tabindex="0"><th scope="row" class="rowh"><span class="ref">'+esc(r.label)+'</span>'+pin+'<span class="layer">'+esc(r.layer)+'</span></th>';
+      cs.forEach(function(c){ body+=cellHtml(r[c.id], r, c); });
+      body+='</tr>';
+    });
+    document.querySelector('#mx tbody').innerHTML=body;
+    var T=D.totals;
+    var cap = (state.path==='saas') ? 'baseline then saas: one step, the span is the step itself.' : state.path==='all' ? 'Every plateau of the tree, each against baseline. Branches never meet.' : state.reading==='steps' ? 'baseline, inhouse, marketplace: a cell is the pair (plateau on its left, this plateau); Span compares baseline with marketplace.' : 'baseline, inhouse, marketplace: every cell is compared with baseline; the last cell is the Span.';
+    document.getElementById('cap').textContent=cap;
+    var st = 'Sample: '+shown+' of the 14 drawn rows. Whole Brightcart on this path: '+T.rows+' rows, '+T.rowsWithChange+' with a change, '+T.unchanged+' without (folded). Numbers from archicode diff, not drawn by this page.';
+    if(state.path==='saas') st='Sample: '+shown+' of the 14 rows. The whole Brightcart on this path: saas against baseline changes 19 elements (3 new, 5 changed, 11 removed) out of 50 in baseline and 42 in saas.';
+    document.getElementById('status').textContent=st;
+    document.getElementById('folded').textContent = state.only ? (state.path==='saas' ? '' : T.unchanged+' rows with no change in any column are folded. The row of an element that is unchanged everywhere is not an event.') : 'Unchanged rows are shown (27 on this path); the sample holds none.';
+    // narrow counts
+    var cc=''; cs.forEach(function(c){ if(c.id!=='base') cc+='<div><b>'+esc(c.name)+'</b> <span class="muted">'+esc(c.sub)+'</span>'+chips(countsFor(c.id))+'</div>'; });
+    document.getElementById('colcounts').innerHTML=cc;
+    document.querySelectorAll('[data-path],[data-leaf]').forEach(function(b){
+      var onpath = (state.path==='chain'&&(b.dataset.path==='chain'||b.dataset.leaf==='chain-i')) || (state.path==='saas'&&b.dataset.path==='saas') || state.path==='all';
+      b.classList.toggle('onpath',onpath);
+      b.setAttribute('aria-pressed', String(b.dataset.path===state.path && state.path!=='all'));
+    });
+    document.querySelectorAll('[data-root]').forEach(function(b){b.classList.add('onpath')});
+    document.getElementById('all-btn').setAttribute('aria-pressed',String(state.path==='all'));
+    document.querySelectorAll('[data-reading]').forEach(function(b){ b.setAttribute('aria-pressed',String(b.dataset.reading===state.reading)); b.disabled = state.path!=='chain'; b.style.opacity = state.path!=='chain'?.5:1; });
+    document.getElementById('reading-help').textContent = state.path==='chain' ? (state.reading==='steps'?'Each cell compares a plateau with the one it overrides. Read left to right, it is the history of the row.':'Each cell compares a plateau with baseline. Read left to right, it is the distance from today.') : 'One step from baseline: both readings give the same cells.';
+    renderDetail(); renderMd(cs); 
+  }
+  function renderDetail(){
+    var r=D.rows.filter(function(x){return x.label===state.sel})[0]; if(!r) return;
+    var refs=[['baseline',r.base.as||r.label],['inhouse',r.in_step.as||r.label],['marketplace',r.mp_step.as||r.label]];
+    var h='<h2 id="h-detail">'+esc(r.label)+(r.q?' <span class="pin">'+r.q.toUpperCase()+'</span>':'')+'</h2>';
+    h+='<div class="ctl-title">Its name in each plateau of the path</div><div class="lineage">';
+    refs.forEach(function(x,i){
+      var cellId=['base','in_step','mp_step'][i]; var c=r[cellId];
+      var present = c.s!=='absent' && !(i===2 && r.mp_step.s==='absent');
+      h+=(i?'<span class="arrow" aria-hidden="true">→</span>':'')+'<span class="step"><b>'+x[0]+'</b>'+(present?'<span class="ref">'+esc(x[1])+'</span>':'<span class="muted">does not exist</span>')+'</span>';
+    });
+    h+='</div>';
+    var d=r.detail, sp=r.span;
+    h+='<dl>';
+    h+='<dt>Span</dt><dd>'+(sp.s==='same'?'unchanged':sp.s==='absent'?'not in baseline and not in marketplace':'<b>'+sp.s+'</b>'+(sp.from?' from <span class="ref">'+sp.from.map(esc).join('</span> and <span class="ref">')+'</span>':''))+'</dd>';
+    if(d && d.natures) h+='<dt>What differs</dt><dd>'+esc(d.natures)+'</dd>';
+    if(d && d.before){ Object.keys(d.before).forEach(function(k){ h+='<dt>'+esc(k)+'</dt><dd>'+esc(JSON.stringify(d.before[k]))+' → '+esc(JSON.stringify(d.after&&d.after[k]))+'</dd>'; }); }
+    h+='<dt>On the other branch</dt><dd>saas: '+(r.saas.s==='same'?'unchanged':r.saas.s==='absent'?'does not exist':'<b>'+r.saas.s+'</b>'+(r.saas.as?' (<span class="ref">'+esc(r.saas.as)+'</span>)':''))+'. Never compared with inhouse in this view.</dd>';
+    h+='</dl>';
+    if(r.label==='discovery.search') h+='<p class="muted" style="margin-top:10px">The marketplace cell alone says only <i>moved from commerce.search</i>. The Span, one comparison of baseline with marketplace, says <i>moved from shop.app.search</i> and keeps what changed on the way (kind, name, qualifiers). Adding up the cells row by reference would be wrong on exactly two of the 63 rows: <span class="ref">commerce.search</span> and <span class="ref">shop.web</span>. Those names are cells of a row, not rows of their own.</p>';
+    document.getElementById('detail').innerHTML=h;
+  }
+  function renderMd(cs){
+    var head='| element | '+cs.map(function(c){return c.name}).join(' | ')+' |', sep='|---|'+cs.map(function(){return '---'}).join('|')+'|', lines=[head,sep];
+    D.rows.forEach(function(r){
+      if(state.path==='saas'&&state.only&&r.saas.s==='same') return;
+      if(!visible(r,cs)) return;
+      var cells=cs.map(function(c){var v=r[c.id]; if(v.s==='absent')return '-'; if(v.s==='same')return 'present'; if(v.s==='present')return 'present'+(v.as?' (`'+v.as+'`)':''); return v.s+(v.from?' from `'+v.from.join('`, `')+'`':v.as?' (`'+v.as+'`)':'');});
+      lines.push('| `'+r.label+'` | '+cells.join(' | ')+' |');
+    });
+    document.getElementById('md').textContent=lines.join('\n');
+  }
+  document.getElementById('tree').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.path){ state.path=b.dataset.path; if(state.path==='saas') {} render(); }
+    else if(b.dataset.leaf){ state.path='chain'; render(); }
+    else if(b.dataset.root){ state.path='chain'; render(); }
+  });
+  document.getElementById('all-btn').addEventListener('click',function(){ state.path = state.path==='all'?'chain':'all'; render(); });
+  document.querySelectorAll('[data-reading]').forEach(function(b){ b.addEventListener('click',function(){ state.reading=b.dataset.reading; render(); }); });
+  document.getElementById('only').addEventListener('change',function(e){ state.only=e.target.checked; render(); });
+  document.getElementById('mx').addEventListener('click',function(e){ var tr=e.target.closest('tr[data-row]'); if(tr){ state.sel=tr.dataset.row; render(); } });
+  document.getElementById('mx').addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ var tr=e.target.closest('tr[data-row]'); if(tr){ e.preventDefault(); state.sel=tr.dataset.row; render(); var again=document.querySelector('tr[data-row="'+tr.dataset.row.replace(/"/g,'')+'"]'); if(again) again.focus(); } } });
+  var key=''; ['new','changed','removed','moved','split','merged'].forEach(function(k){ key+='<span class="chip st-'+k+'"><span class="glyph" aria-hidden="true">'+GLYPH[k]+'</span>'+k+'</span>'; });
+  document.getElementById('key').innerHTML=key+'<span class="muted">present: exists, not changed</span><span class="muted">–: does not exist</span>';
+  render();
+})();
+</script>
+</body>
+</html>
