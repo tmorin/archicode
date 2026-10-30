@@ -26,7 +26,7 @@ module.exports = defineConfig({
     // a click on something that never appears fails after 15 s naming the locator, not after the whole test's 60
     actionTimeout: 15000
   },
-  // WebKit runs four specs only (run 0194, DEC-2): the ones that open the editor and the hosted page, the folder in the
+  // WebKit runs five specs only (run 0194, DEC-2; run 0205 added the Workspace menu): the ones that open the editor and the hosted page, the folder in the
   // browser, the sample and the hosted acceptance. Playwright's WebKit is not Safari, and it needs more system libraries.
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
@@ -34,7 +34,7 @@ module.exports = defineConfig({
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
-      testMatch: /(open-and-pages|browser-workspace|sample|hosted-acceptance)\.spec\.js$/
+      testMatch: /(open-and-pages|browser-workspace|sample|hosted-acceptance|workspace-menu)\.spec\.js$/
     }
   ]
 });
