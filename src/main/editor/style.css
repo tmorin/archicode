@@ -217,7 +217,7 @@
   .cascade-effect { font-weight: 600; }
   .top-panel > .folder-name { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .help-wrap { position: relative; flex-shrink: 0; }
-  .top-actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; min-width: 0; max-width: 100%; }
+  .top-actions { display: flex; align-items: center; gap: 0.25rem 1rem; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; min-width: 0; max-width: 100%; }
   .top-actions > button, .top-actions > .button-group { flex-shrink: 0; }
   .top-panel .help-button { width: 2rem; padding: 0 !important; border-radius: 50% !important; flex-shrink: 0; font-weight: 600; }
   .top-panel .help-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
@@ -228,12 +228,13 @@
   .workspace-wrap { position: relative; flex-shrink: 0; }
   .top-panel .workspace-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .workspace-menu { position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; width: min(21rem, calc(100vw - 2rem)); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
-  .workspace-menu .workspace-item { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; width: 100%; max-width: 100%; padding: 0.35rem 1rem; border: none; border-radius: 0; background: transparent; color: var(--accent); text-align: left; }
-  .workspace-menu .workspace-item:hover, .workspace-menu .workspace-item:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); outline: none; }
+  .workspace-menu .workspace-item { display: flex; height: auto; flex-direction: column; align-items: flex-start; gap: 0.1rem; width: 100%; max-width: 100%; padding: 0.35rem 1rem !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: var(--accent); text-align: left; white-space: normal; }
+  .workspace-menu .workspace-item:hover, .workspace-menu .workspace-item:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent) !important; outline: none; }
   .workspace-menu .workspace-item[aria-disabled="true"] { color: var(--muted); cursor: not-allowed; }
   .workspace-item-note { font-size: 0.8rem; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
   .workspace-ask { margin: 0; padding: 0.4rem 1rem; font-size: 0.85rem; line-height: 1.4; overflow-wrap: anywhere; }
   .workspace-ask-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.2rem 1rem 0.4rem; }
+  .workspace-menu .workspace-ask-actions button { height: auto; min-height: 2rem; padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; white-space: normal; }
   .workspace-ask-actions .workspace-reset { color: var(--danger); overflow-wrap: anywhere; }
   .help-note { margin: 0; padding: 0.4rem 1rem 0; font-size: 0.8rem; line-height: 1.4; color: var(--muted); border-top: 1px solid var(--border); }
   .help-note + .help-note { border-top: none; padding-top: 0.2rem; padding-bottom: 0.2rem; }
@@ -983,6 +984,9 @@
      instead, each as wide as the window: the tree, then the centre, then the inspection, the page scrolling from one to the next. The sizes the user gave the panels
      (inline widths, by dragging) are for the wide layout: they do not apply here, and neither do the handles that set them. Wider windows are untouched. */
   @media (max-width: 40rem) {
+    /* The Workspace menu (wave 028, run 0205, #182): the bar wraps, so the menu is placed from the bar and not from a button that may have wrapped. */
+    .top-panel { position: relative; }
+    .workspace-wrap { position: static; }
     .timeline-item { margin-left: calc(var(--depth, 0) * 0.5rem); }
     #app { height: auto; min-height: 100vh; }
     .app-shell { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
