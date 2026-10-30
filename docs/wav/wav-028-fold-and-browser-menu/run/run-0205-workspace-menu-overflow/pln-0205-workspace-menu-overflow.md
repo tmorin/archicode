@@ -1,6 +1,6 @@
 ---
 title: Execution Plan — Workspace menu overflow
-status: pending
+status: done
 date: 2026-10-30
 related:
   - docs/wav/wav-028-fold-and-browser-menu/run/run-0205-workspace-menu-overflow/tdd-0205-workspace-menu-overflow.md
@@ -19,7 +19,7 @@ Profile TDD+pln: there is no PRD, so REQ-1 to REQ-5 are the IDs the TDD labels (
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'In a browser workspace the Workspace menu items each have their own box with the note under the label, and the top bar wraps so that no button is cut off at 360 px and about 560 px (#182).'
   technical_approach: 'Measure the cascade first, write the node test and the end-to-end spec (three engines) and see them fail on the committed page, then change style.css only (item reset with important, wrapping button group, bar anchored menu under 40 rem), rebuild the generated page, run the gates, sabotage once, look at the result, and describe the narrow case in the manual and CLAUDE.md.'
   total_tasks: 7
@@ -113,7 +113,7 @@ execution_graph:
       risk: 'medium'
       confidence: 80
     - id: task-004
-      status: 'pending'
+      status: 'done'
       title: 'Run the gate commands'
       depends_on: [task-003]
       produces:
@@ -123,7 +123,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-005
-      status: 'pending'
+      status: 'done'
       title: 'Sabotage check and look at the result at 360 and 1280 px, light and dark'
       depends_on: [task-004]
       produces:
@@ -133,7 +133,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-006
-      status: 'pending'
+      status: 'done'
       title: 'Describe the narrow case in the manual and CLAUDE.md'
       depends_on: [task-005]
       produces:
@@ -144,7 +144,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-007
-      status: 'pending'
+      status: 'done'
       title: 'Final run of the changed files and of the docs checks'
       depends_on: [task-006]
       produces:
@@ -304,6 +304,7 @@ task_catalog:
         - 'A spec other than workspace-menu fails because of the wrap or the narrow anchor'
         - 'ratchet.max would have to rise'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-005
       title: 'Sabotage check and look at the result at 360 and 1280 px, light and dark'
       source_requirements:
@@ -329,6 +330,7 @@ task_catalog:
       escalation_triggers:
         - 'A sabotaged page still passes the spec in some engine'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed after escalation to effort high, inline (leaf), independently verified"
     - id: task-006
       title: 'Describe the narrow case in the manual and CLAUDE.md'
       source_requirements:
@@ -353,6 +355,7 @@ task_catalog:
       escalation_triggers:
         - 'The manual has no open release block for the next version'
       delegation_tier: 'cheap'
+      results: "tier cheap, model haiku, effort high, profile low-cost, passed first time, inline (leaf), independently verified"
     - id: task-007
       title: 'Final run of the changed files and of the docs checks'
       source_requirements:
@@ -376,6 +379,7 @@ task_catalog:
       escalation_triggers:
         - 'A file outside the list above changed'
       delegation_tier: 'standard'
+      results: "tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified"
 ```
 
 ## 5. Parallelization Plan
@@ -705,7 +709,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed'
   autonomy_level: 'high'
   total_tasks: 7
