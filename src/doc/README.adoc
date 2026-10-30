@@ -1644,6 +1644,8 @@ Nothing is to be changed in the manifests themselves: their format is the one it
 . *The buttons that walk the changes stay in view* (Fixed, see <<editor-small-screen>>). With many changes, each press of *Next change* scrolled the panel and carried the buttons away; the row now stays under the tabs, and the selected row is brought into view without moving one that is already visible.
 . *The Workspace menu and the top bar of a browser workspace fit a narrow window* (Fixed, see <<editor-small-screen>>). In a window 360 pixels wide the note of *Export as a file* ran out of its item and the buttons of the bar went past the window, so the page scrolled sideways; the buttons now wrap, the notes stay in their items and the menu stays inside the window.
 
+. *You can read the plan of a fold before you make it* (New, see <<plateau-fold>>). `archicode plateau fold <id> --dry-run` prints what folding a plateau into the one above it would rewrite, delete and compose, or the one line that says why it cannot be done. It writes nothing: the fold is still done by hand (see <<fold-by-hand>>).
+
 [[upgrade-0-20]]
 *What changes for a reader who knows 0.20.0.* These are the changes after the release 0.20.0; they are in the release 0.21.0. Nothing breaks: the editor opens in a browser that has no folder picker, a Map can be drawn from the relationships it lists, a story can light up one relationship at a time, and a few mistakes are fixed or told in the same words by both tools. A workspace that loaded in 0.20.0 loads in 0.21.0 and the command line writes the same files for it (checked by running every command on every example and fixture of the repository against the jar of 0.19.0: the only differences are the sentence of 0.20.0 for a reference that names no element, see <<upgrade-0-19>>, and the files of the new story `order_flow`); the new keys `links`, `highlight` and `layout` mean nothing until you write them. As for the blocks below, there is no release notes file in the repository: these blocks are the notes.
 
@@ -2129,7 +2131,7 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 ----
 +
 A plateau that nothing of this kind concerns is deleted as before, byte for byte. On the layered Brightcart, `inhouse` cannot be deleted for that reason (`marketplace` patches what `inhouse` declares).
-* [[fold-by-hand]]*Folding a plateau into the one above, by hand.* The editor does not move the patches and the elements of a plateau into the plateau above: that is a choice about your history, and no button makes it. When the refusal tells you the plateau above would lose what the plateau deleted gave it, and you want that plateau to keep it, fold by hand, in the files, with the plateau `to-be` and the plateau `later` above it (`later` overrides `to-be`):
+* [[fold-by-hand]]*Folding a plateau into the one above, by hand.* The editor does not move the patches and the elements of a plateau into the plateau above: that is a choice about your history, and no button makes it. When the refusal tells you the plateau above would lose what the plateau deleted gave it, and you want that plateau to keep it, fold by hand, in the files, with the plateau `to-be` and the plateau `later` above it (`later` overrides `to-be`; `archicode plateau fold to-be --dry-run` prints the files and the `replaces` of this recipe before you change any, see <<plateau-fold>>):
 +
 . In every manifest whose header says `plateau: "to-be"`, write `plateau: "later"`. These are the elements `to-be` declares.
 . In the manifest of kind `archicode.morin.io/plateau` of `later`, change `override: "to-be"` to the plateau `to-be` overrode (`"baseline"`, or take the line out when that is the root), and put the `patches` of `to-be` in front of those of `later`, in their order: `later` was written to be read over `to-be`, so its patches come last. A patch of `later` that refers to what `to-be` declared (a `REMOVE` of an element of `to-be`) still finds it, since it is now declared by `later` itself.
@@ -2760,6 +2762,82 @@ after    4 REMOVE target shop.report  removed  application  shop.report.chart
 - In JSON, a row of an element that replaces others has a `replaces` list (the references, sorted), the counts of `elements` have `moved`, `split` and `merged` when there are some, and `candidates` is a list of `layer`, `from`, `to`, `reasons` and `"applied": false`. In Markdown, the candidates are a section, `## Candidates, not applied`.
 - The relationships of a split element are not compared with the other plateau (which half would own them is a guess), so those of the halves, and those that end on a half, read as new. When there are some, the header has a line `of a split` (in Markdown, a sentence under the counts; in JSON, `counts.relationships.of_split`) that says how many of the new relationships they are, and each of those rows ends with `of the split` and the element or elements concerned (in JSON, `of_split`, a list). Nothing is invented as removed, and the counts of `new` still include them. The editor's *Changes* panel says the same under its counts and on each row.
 - A plateau that does not use `replaces` gets the table it always had, byte for byte. A difference is not an error: the exit code is 0, unless `--fail-on` asks otherwise (the exit code is then 3, see above). The command stops with an error (exit code 1) that says what to do when the workspace has no plateau, when the plateau is the root and `--against` names none, and when the plateau named by `--against` is unknown or is the plateau itself.
+
+[[plateau-fold]]
+=== Read the plan of a fold
+
+.Read the plan of a fold - The command line
+[source,shell]
+----
+archicode plateau fold inhouse --dry-run
+----
+
+`archicode plateau fold <id> --dry-run` folds nothing. It reads what folding the plateau `<id>` into the plateau that overrides it would do, and prints the plan: the folder, its manifests and `.archicode.yaml` are the same afterwards, byte for byte. There is no other mode yet. Without `--dry-run` the command refuses, and the fold is done by hand (see <<fold-by-hand>>):
+
+[source,text]
+----
+error: plateau fold does not write yet: add `--dry-run` to read the plan
+----
+
+A plateau that cannot be folded is refused with one line on the error output and exit code 1, and nothing on the standard output. The refusals are checked in this order, and the first one found is the only line:
+
+[source,text]
+----
+error: unknown plateau `saaz`: the plateaus of this workspace are `baseline`, `inhouse`, `marketplace` and `saas`
+error: the plateau `baseline` is the root of the plateaus: nothing is below it to fold it into
+error: the plateau `marketplace` is not overridden by any plateau, so there is no plateau above it to fold it into: to remove it, use Delete in the editor
+error: the plateau `inhouse` is overridden by `inhouse-alt` and `marketplace`, which do not stack: folding it into one would change the other. Keep it
+error: `settings.current` names the plateau `inhouse`: write another plateau in `.archicode.yaml` first (`marketplace` is the one above it)
+error: the plateau `inhouse` is named by the story `fork_tour` (`shared/story.fork_tour.yaml`) step 3 (`at`), step 4 (`at`) and step 5 (`against`), and the story `seller_journey` (`shared/story.seller_journey.yaml`) step 3 (`against`): change those steps first, none is rewritten for you
+----
+
+The sentences name the plateaus of the layered Brightcart of the repository, a test fixture; on your workspace they name yours. There the two stories `fork_tour` and `seller_journey` name `inhouse`, so its fold is refused with the last sentence. Once those steps are changed (the test replaces each story by one step told at `baseline`), `archicode plateau fold inhouse --dry-run` prints:
+
+[source,text]
+----
+plateau fold inhouse into marketplace (dry run: nothing was written)
+
+after: `marketplace` overrides `baseline`; the plateaus that stay are `baseline` and `saas`
+
+files rewritten (they lose their comments, quotes and layout):
+  inhouse/application/accounts.yaml
+  inhouse/application/commerce.cart.yaml
+  inhouse/application/commerce.catalog.yaml
+  inhouse/application/commerce.checkout.yaml
+  inhouse/application/commerce.pricing.yaml
+  inhouse/application/commerce.search.yaml
+  inhouse/application/commerce.yaml
+  inhouse/application/orders.yaml
+  inhouse/application/payments.yaml
+  inhouse/technology/prod.cloud.yaml
+  inhouse/technology/staging.k8s.yaml
+  marketplace/application/discovery.yaml
+  marketplace/plateau.yaml
+
+files deleted:
+  inhouse/plateau.yaml
+
+patches:
+  the 26 patches of `inhouse` go in front of the 23 of `marketplace`: 49
+
+replaces to compose:
+  discovery.search (marketplace/application/discovery.yaml): commerce.search -> shop.app.search
+
+plateaus removed:
+  inhouse: a command line or a CI file that names it will fail
+  the default --against of `marketplace` changes from `inhouse` to `baseline`
+
+The result is not checked here: the plateaus that stay are compared before and after when the fold is written
+----
+
+Read the plan as follows:
+
+* The first line says that nothing was written. The `after` line names the plateau above the folded one and the plateaus that stay.
+* `files rewritten` lists the files the fold would rewrite, and `files deleted` the manifest of the folded plateau.
+* `patches` counts the patches of the folded plateau that go in front of those of the plateau above.
+* `replaces to compose` lists the entries of the plateau above that name an element of the folded plateau, with the file that holds them. Step 3 of <<fold-by-hand>> composes each one.
+* `plateaus removed` says what names the folded plateau and breaks: a command line or a CI file, and the default `--against` of the plateau above.
+* The last line says that the result is not checked here: the command does not fold, so it does not compare the plateaus that stay. Check the result as <<fold-by-hand>> says, with `archicode plateau list` and `archicode diff`.
 
 === Generate JSON Schemas
 

@@ -101,7 +101,7 @@ wave_manifest:
       slug: plateau-fold-dry-run
       phase: P2
       depends_on: []
-      run: null
+      run: 0207
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'
