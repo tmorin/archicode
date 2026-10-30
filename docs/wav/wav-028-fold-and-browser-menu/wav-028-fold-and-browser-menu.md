@@ -76,7 +76,7 @@ wave_manifest:
       slug: workspace-menu-overflow
       phase: P1
       depends_on: []
-      run: null
+      run: 0205
       delegation: standard
       likely_paths:
         - 'src/main/editor/style.css'
@@ -91,7 +91,7 @@ wave_manifest:
       slug: n-plateaus-design
       phase: P1
       depends_on: []
-      run: null
+      run: 0206
       delegation: standard
       profile: single-document
       likely_paths:
