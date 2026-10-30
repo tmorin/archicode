@@ -1,0 +1,127 @@
+{
+  "comment": "Fold cases (wave 028, run 0207, issue #65, decisions DEC-6 and DEC-8). Only Java reads this file: PlateauFoldServiceTest runs each case through the service and PlateauFoldCommandTest through `archicode plateau fold`; FoldTest builds its own data. A case copies the folder `base` of src/test/resources first, then writes `files` over the copy (a path from the workspace folder, the whole text of the file); `args` are the arguments after `plateau fold` (the service reads the plateau id, args[0], and ignores the options); a case with `scope: command` is run through the command only. `expect` is an `error` (the line the command prints on the error output, with `error: ` in front; exit 1, nothing on the standard output) or the `output` lines of the report (exit 0; an empty string is a blank line). The cases F09 to F12 of the TDD (an entry that names an element of the plateau below, a plateau no manifest declares, a patch that sets replaces, a fold into a plateau whose parent is the root) are hand-made data of FoldTest.",
+  "cases": [
+    {
+      "id": "F01",
+      "what": "unknown plateau: the sentence of the tree, unchanged",
+      "base": "brightcart/layered",
+      "files": {},
+      "args": ["saaz", "--dry-run"],
+      "expect": {
+        "error": "error: unknown plateau `saaz`: the plateaus of this workspace are `baseline`, `inhouse`, `marketplace` and `saas`"
+      }
+    },
+    {
+      "id": "F02",
+      "what": "the root has nothing below it to fold into",
+      "base": "brightcart/layered",
+      "files": {},
+      "args": ["baseline", "--dry-run"],
+      "expect": {
+        "error": "error: the plateau `baseline` is the root of the plateaus: nothing is below it to fold it into"
+      }
+    },
+    {
+      "id": "F03",
+      "what": "a leaf has no plateau above it",
+      "base": "brightcart/layered",
+      "files": {},
+      "args": ["marketplace", "--dry-run"],
+      "expect": {
+        "error": "error: the plateau `marketplace` is not overridden by any plateau, so there is no plateau above it to fold it into: to remove it, use Delete in the editor"
+      }
+    },
+    {
+      "id": "F04",
+      "what": "two plateaus that do not stack override it",
+      "base": "brightcart/layered",
+      "files": {
+        "inhouse-alt/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"inhouse-alt\"\n  override: \"inhouse\"\n"
+      },
+      "args": ["inhouse", "--dry-run"],
+      "expect": {
+        "error": "error: the plateau `inhouse` is overridden by `inhouse-alt` and `marketplace`, which do not stack: folding it into one would change the other. Keep it"
+      }
+    },
+    {
+      "id": "F05",
+      "what": "settings.current names it",
+      "base": "brightcart/layered",
+      "files": {
+        ".archicode.yaml": "settings:\n  name: \"Brightcart\"\n  current: \"inhouse\"\n  views:\n    path: \"views\"\n  facets:\n    customs:\n      - name: \"journey\"            # the purchase journey: no staff tools, no fulfilment\n        actions:\n          - operator: REMOVE\n            json-path: \"$.application..elements[?(@.id == 'agent' || @.id == 'merchandiser' || @.id == 'backoffice' || @.id == 'fulfilment')]\"\n      - name: \"no-externals\"       # what Brightcart builds, without its partners\n        actions:\n          - operator: REMOVE\n            json-path: \"$.application..elements[?(@.tags['rendering-stereotypes'] == 'external')]\"\n      - name: \"without-cart\"       # selects nothing in `saas`, where the cart is gone\n        actions:\n          - operator: REMOVE\n            json-path: \"$.application..elements[?(@.id == 'cart')]\"\n  manifests:\n    paths: [\"./**\"]\nstyles:\n  by-tags:\n    external:\n      background-color: \"lightgray\"\n    legacy:\n      line-style: 8\n      line-gap: 4\n    hot-path:\n      line-color: \"orangered\"\n      line-thickness: 3\n  by-qualifiers:\n    PostgreSQL:\n      round-corner: 20\n"
+      },
+      "args": ["inhouse", "--dry-run"],
+      "expect": {
+        "error": "error: `settings.current` names the plateau `inhouse`: write another plateau in `.archicode.yaml` first (`marketplace` is the one above it)"
+      }
+    },
+    {
+      "id": "F06",
+      "what": "steps of two stories name it, by at and by against",
+      "base": "brightcart/layered",
+      "files": {},
+      "args": ["inhouse", "--dry-run"],
+      "expect": {
+        "error": "error: the plateau `inhouse` is named by the story `fork_tour` (`shared/story.fork_tour.yaml`) step 3 (`at`), step 4 (`at`) and step 5 (`against`), and the story `seller_journey` (`shared/story.seller_journey.yaml`) step 3 (`against`): change those steps first, none is rewritten for you"
+      }
+    },
+    {
+      "id": "F07",
+      "what": "without --dry-run the command refuses (the command only: the service has no such option)",
+      "base": "brightcart/layered",
+      "files": {},
+      "args": ["inhouse"],
+      "expect": {
+        "error": "error: plateau fold does not write yet: add `--dry-run` to read the plan"
+      },
+      "scope": "command"
+    },
+    {
+      "id": "F08",
+      "what": "the plan for inhouse into marketplace on the layered Brightcart, once the two stories that name inhouse are replaced",
+      "base": "brightcart/layered",
+      "files": {
+        "shared/story.fork_tour.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"fork_tour\"\n  name: \"Two ways out of the monolith\"\n  steps:\n    - view: \"shop_overview\"\n      text: \"Names no plateau but the root.\"\n      at: \"baseline\"\n",
+        "shared/story.seller_journey.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"seller_journey\"\n  name: \"The marketplace for sellers\"\n  steps:\n    - view: \"shop_overview\"\n      text: \"Names no plateau but the root.\"\n      at: \"baseline\"\n"
+      },
+      "args": ["inhouse", "--dry-run"],
+      "expect": {
+        "output": [
+          "plateau fold inhouse into marketplace (dry run: nothing was written)",
+          "",
+          "after: `marketplace` overrides `baseline`; the plateaus that stay are `baseline` and `saas`",
+          "",
+          "files rewritten (they lose their comments, quotes and layout):",
+          "  inhouse/application/accounts.yaml",
+          "  inhouse/application/commerce.cart.yaml",
+          "  inhouse/application/commerce.catalog.yaml",
+          "  inhouse/application/commerce.checkout.yaml",
+          "  inhouse/application/commerce.pricing.yaml",
+          "  inhouse/application/commerce.search.yaml",
+          "  inhouse/application/commerce.yaml",
+          "  inhouse/application/orders.yaml",
+          "  inhouse/application/payments.yaml",
+          "  inhouse/technology/prod.cloud.yaml",
+          "  inhouse/technology/staging.k8s.yaml",
+          "  marketplace/application/discovery.yaml",
+          "  marketplace/plateau.yaml",
+          "",
+          "files deleted:",
+          "  inhouse/plateau.yaml",
+          "",
+          "patches:",
+          "  the 26 patches of `inhouse` go in front of the 23 of `marketplace`: 49",
+          "",
+          "replaces to compose:",
+          "  discovery.search (marketplace/application/discovery.yaml): commerce.search -> shop.app.search",
+          "",
+          "plateaus removed:",
+          "  inhouse: a command line or a CI file that names it will fail",
+          "  the default --against of `marketplace` changes from `inhouse` to `baseline`",
+          "",
+          "The result is not checked here: the plateaus that stay are compared before and after when the fold is written"
+        ]
+      }
+    }
+  ]
+}

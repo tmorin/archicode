@@ -20,7 +20,7 @@ archicode views generate -i shop_overview
 1. Write or change a manifest under `manifests/`.
 2. `archicode query graph` loads everything and prints the resolved elements and relationships as one line of JSON (`{"elements":[{"reference":...}],"relationships":[...]}`; exit 0 when the workspace is valid), for `jq` or any JSON reader; without a tool, `archicode query graph | grep -o '"reference"' | wc -l` counts the elements. It is the cheapest check.
 3. `archicode views generate` draws: for every element the `overview`, `detailed` and `deep` views, into `views/plantuml/<layer>/<reference>-<viewpoint>.puml` (a `.` of the reference becomes `_`; with plateaus the folder is `views-<plateau>`). A saved view (a manifest of kind view) is drawn only when named: `views generate -i <view id>`.
-4. Plateaus: `archicode plateau list`, then `archicode diff` to see what a plateau changes (it compares the plateau drawn with `--against <id>`, default the plateau it overrides; the root `baseline` has none, so `diff` on it is one `error:` line: name one with `--against`).
+4. Plateaus: `archicode plateau list`, then `archicode diff` to see what a plateau changes (it compares the plateau drawn with `--against <id>`, default the plateau it overrides; the root `baseline` has none, so `diff` on it is one `error:` line: name one with `--against`). To see what folding a plateau into the one above it would do, run `archicode plateau fold <id> --dry-run`: it lists the files rewritten or deleted and what stays, and writes nothing (without `--dry-run` it is an `error:`).
 
 Output and exit codes:
 
@@ -215,6 +215,8 @@ Every command takes `-h`/`--help` and `-w`/`--workspace=<workspace file>` (defau
 - `archicode guide`: Print the guide to ArchiCode for an agent that has only this program.
 - `archicode init` `<folder>`: Write a small workspace (.archicode.yaml, a person, a system with a container, a relationship and a view) that loads and is drawn.
 - `archicode plateau`: Manage the plateaus of the workspace.
+- `archicode plateau fold` `<plateau>`: Say what folding a plateau into the plateau above it would do: the files rewritten or deleted, the patches, the replaces to compose and what stays.
+  - `--dry-run`: Read the plan and write nothing (required for now).
 - `archicode plateau list`: List the plateaus of the workspace, in the order of the tree: baseline, then what overrides it, each plateau followed by what overrides it.
 - `archicode query`: Query the ArchiCode data model.
 - `archicode query graph`: Print the resolved element/relationship graph of the workspace as JSON.

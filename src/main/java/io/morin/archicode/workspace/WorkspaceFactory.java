@@ -138,6 +138,33 @@ public class WorkspaceFactory {
         return tree;
     }
 
+    /**
+     * What the manifests of a workspace hold and the plateau it is on by default, read without loading any plateau (wave
+     * 028, run 0207): the facts {@link Fold} is given.
+     *
+     * @param parsed  the elements per plateau, the placed stories and the tree of the plateaus
+     * @param current {@code settings.current}, or null when the file does not write it
+     */
+    public record Facts(ManifestParser.Parsed parsed, String current) {}
+
+    /**
+     * Reads the manifests of a workspace and {@code settings.current}, with the checks {@link #plateauTree(Path)} makes.
+     *
+     * @param path the workspace file
+     * @return the manifests, and {@code settings.current}
+     * @throws ArchiCodeException when the workspace file or a manifest or the tree of the plateaus is wrong
+     */
+    public Facts facts(Path path) {
+        val source = read(path);
+        val settings = source.rawWorkspace().getSettings();
+        requireReadablePaths(settings, null);
+        val parsed = parse(path, source, settings.getManifests().getPaths(), null);
+        if (!parsed.plateaus().isLayered()) {
+            requireNoPlateaus(settings, null);
+        }
+        return new Facts(parsed, settings.getCurrent());
+    }
+
     /** Read the manifests of the folders, and tell the warnings of the tree of the plateaus they write. */
     private ManifestParser.Parsed parse(Path path, Source source, Set<String> manifestsDirs, Path viewsDirPath) {
         // the folders of the views are not manifests: the ones of the settings, and the ones `--output` names, which an earlier

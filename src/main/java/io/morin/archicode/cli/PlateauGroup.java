@@ -7,7 +7,7 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "plateau",
     description = "Manage the plateaus of the workspace.",
-    subcommands = { ListPlateausCommand.class }
+    subcommands = { ListPlateausCommand.class, FoldCommand.class }
 )
 public class PlateauGroup {
 
