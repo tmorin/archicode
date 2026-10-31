@@ -1,0 +1,5 @@
+# Defaults of the run-management plugin for this repository (complete_wave.py wave and run).
+# The command line wins over this file; an unknown key or value is refused before anything is written.
+profile: low-cost
+commit: when-needed
+run_workflows: true
