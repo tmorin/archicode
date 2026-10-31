@@ -1941,6 +1941,10 @@ Relationship o--&gt; "1" Element
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<div class="title">What a viewpoint opens</div>
+<p>A view about one element opens only that element. The <code>overview</code> draws the element and what it is linked to, all as closed boxes. The <code>detailed</code> view opens the element drawn to what it holds, and the <code>deep</code> view opens it down to its leaves. In both, the elements it is linked to stay closed boxes, even when they are systems that hold containers: a link towards the kernel of a system is drawn towards the box of that system. To see the inside of another element, draw a view about that element, or use a <code>map</code> view, whose <code>opened</code> list opens the boxes you name.</p>
+</div>
 <div class="sect3">
 <h4 id="_composition_3">Composition</h4>
 <div class="paragraph">
@@ -2127,7 +2131,7 @@ View o--&gt; "1" Layer
 <div class="ulist">
 <ul>
 <li>
-<p><strong>The applications</strong> are the <code>applications</code> that the nodes list, one box each, inside its node. Only an open node shows them (a node is open when it is in <code>opened</code>, or when it encloses a pinned element), and a node that is hidden shows none; when the map is pinned, they are drawn only inside what it is pinned on. A node that hosts applications can be opened, so it is no longer drawn as a closed box with nothing in it; an application box has nothing to open. A <code>pinned</code>, <code>hidden</code> or <code>opened</code> entry names a technology element: an application is not pinned, hidden or opened on its own (hide its node, or leave the applications out with <code>applications: false</code>).</p>
+<p><strong>The applications</strong> are the <code>applications</code> that the nodes list, one box each, inside its node. Only an open node shows them (a node is open when it is in <code>opened</code>, or when it encloses a pinned element), and a node that is hidden shows none; when the map is pinned, they are drawn only inside what it is pinned on. A node that hosts applications can be opened, so it is no longer drawn as a closed box with nothing in it; an application box has nothing to open. Opening a box shows its children one level down: <code>opened: [prod]</code> on an environment shows its nodes as boxes, and their applications show only if the nodes themselves are in <code>opened</code> too (<code>opened: [prod, prod.dc]</code>). A <code>pinned</code>, <code>hidden</code> or <code>opened</code> entry names a technology element: an application is not pinned, hidden or opened on its own (hide its node, or leave the applications out with <code>applications: false</code>).</p>
 </li>
 <li>
 <p><strong>The relationships</strong> are the ones the elements of the layer declare, and the dependencies between environments that the deployed applications give: an application of one environment that depends on an application the environment does not host, found in an environment or a node that the first <code>uses</code>, is a link between the two application boxes when both are drawn, and between the boxes of the nodes that host them otherwise. These are the dependencies that the <code>overview</code>, <code>detailed</code> and <code>deep</code> viewpoints draw; the dependencies inside one environment stay out, as in those viewpoints. <code>uses</code> is a scope and no link of its own. The dependency is read from the relationships of the application that is deployed and from the ones of everything inside it (a relationship of a component of a deployed container counts); a relationship that ends inside the same application gives nothing. The destination is read the same way: a relationship that ends on a component of a deployed container is a dependency towards the node that hosts the container, and the destination must be a deployed application or inside one (see <a href="#using-environments">Using other environments</a>).</p>
@@ -4166,6 +4170,22 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </li>
 </ol>
 </div>
+<div id="upgrade-0-22" class="paragraph">
+<p><strong>What changes for a reader who knows 0.22.0.</strong> These are the changes after the release 0.22.0; they are in the release 0.23.0. Nothing breaks: the editor gains a second sample, and the manual and <code>archicode guide</code> say two things about the views that they left unsaid. A workspace that loaded in 0.22.0 loads in 0.23.0 and the command line writes the same files for it.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>The model of ArchiCode is a second sample of the editor</strong> (New, see <a href="#editor-browser-workspace">A workspace kept in the browser</a>). <strong>Open the ArchiCode model</strong>, on the card and in the <strong>Workspace</strong> menu of a served page, keeps a copy of the as-is model of ArchiCode itself in the browser, as a workspace named ArchiCode; <code>sample=archicode</code> in the address does the same. It has its own <strong>Reset to the sample&#8230;&#8203;</strong>, and the Brightcart sample is as it was.</p>
+</li>
+<li>
+<p><strong>A view opens only the element it is about</strong> (Documented, see <a href="#viewpoints">Viewpoints and Views</a>). In a <code>detailed</code> or a <code>deep</code> view the elements linked to the one drawn stay closed boxes, even when they are systems that hold containers. Nothing is drawn differently; the manual and <code>archicode guide</code> now say so.</p>
+</li>
+<li>
+<p><strong>A box of a Map opens one level at a time</strong> (Documented, see <a href="#map-technology">[map-technology]</a>). <code>opened: [prod]</code> on an environment shows its nodes as boxes, and the applications of a node show only when the node is in <code>opened</code> too. Nothing is drawn differently; the manual and <code>archicode guide</code> now say so.</p>
+</li>
+</ol>
+</div>
 <div id="upgrade-0-21" class="paragraph">
 <p><strong>What changes for a reader who knows 0.21.0.</strong> These are the changes after the release 0.21.0; they are in the release 0.22.0. Nothing breaks: the editor lays a wide diagram out in rows of a size you choose, a link copied from the address bar draws what the sender sees, and the buttons that walk the changes stay in reach. A workspace that loaded in 0.21.0 loads in 0.22.0 and the command line writes the same files for it (the key <code>layout</code> is one it ignores, see <a href="#editor-layout">The boxes per row</a>).</p>
 </div>
@@ -4536,7 +4556,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p>A browser workspace lives in the data of the site, on this device only: nothing is uploaded. Clearing the data of the site, a private window or a browser that frees space can remove it, so the editor asks the browser to keep it (once, at the first save) and the top bar says <em>In this browser</em> and when the workspace was last exported. Nothing is stored until you click <em>Save all changes</em>. Keep a copy with <strong>Export as a file</strong>.</p>
 </div>
 <div class="paragraph">
-<p><strong>The sample.</strong> <strong>Open the Brightcart sample</strong> opens a copy of the layered Brightcart workspace, as the same workspace every time: the second click opens the one you already have, with your changes. The address <code><mark>/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart</code> does the same, and it is what the button of the presentation page uses (<a href="../editor/</mark>/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart">the editor on the Brightcart sample</a>). A workspace made from the sample has <strong>Reset to the sample&#8230;&#8203;</strong> in its <strong>Workspace</strong> menu: it names the workspace and what is lost (your changes), and replaces the files with the sample&#8217;s, in one step.</p>
+<p><strong>The sample.</strong> <strong>Open the Brightcart sample</strong> opens a copy of the layered Brightcart workspace, as the same workspace every time: the second click opens the one you already have, with your changes. The address <code><mark>/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart</code> does the same, and it is what the button of the presentation page uses (<a href="../editor/</mark>/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart">the editor on the Brightcart sample</a>). A workspace made from the sample has <strong>Reset to the sample&#8230;&#8203;</strong> in its <strong>Workspace</strong> menu: it names the workspace and what is lost (your changes), and replaces the files with the sample&#8217;s, in one step. A second sample is the model of ArchiCode itself: <strong>Open the ArchiCode model</strong> (or the address <code>#/timeline/applications?sample=archicode</code>) keeps a copy of <code>docs/architecture</code> in the browser the same way, as a workspace named ArchiCode, with its own <strong>Reset to the sample&#8230;&#8203;</strong>. It has no plateau, so the page draws the application layer as it is.</p>
 </div>
 <div class="paragraph">
 <p><strong>Export and import.</strong> The <strong>Workspace</strong> menu of the top bar has <strong>Export as a file</strong>, which downloads one YAML file named after the workspace (<code>brightcart-bundle.yaml</code> for the sample): every YAML file of the workspace, each opened by a line <code>--- # file: &lt;path&gt;</code>. It waits while changes are not saved. A file the bundle cannot carry (a path that is absolute, hidden other than <code>.archicode.yaml</code>, leaves the folder or is not YAML, a file that is not UTF-8) is left out and listed. <strong>Import a workspace file</strong> on the card reads such a file and creates a new workspace from it, named after the file&#8217;s <code>settings.name</code> or else the file; it never changes an existing workspace. It refuses a file over 10 MB, one that is not UTF-8 text, and a path with <code>..</code>, an absolute path, a hidden file other than <code>.archicode.yaml</code>, or a path given twice, and then creates nothing.</p>
@@ -8884,7 +8904,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-31 03:45:58 UTC
+Last updated 2026-10-31 21:54:03 UTC
 </div>
 </div>
 </body>
