@@ -115,7 +115,7 @@ function stubFile(content, claimedSize) {
 test('the catalog of samples has the Brightcart sample, its name and its relative address', () => {
   const sandbox = createApp();
   const catalog = pageValue(sandbox, 'BROWSER_SAMPLES');
-  assert.deepEqual(plain(Object.keys(catalog)), ['brightcart']);
+  assert.deepEqual(plain(Object.keys(catalog)), ['brightcart', 'archicode']);
   const values = Object.values(plain(catalog.brightcart));
   assert.ok(values.includes('Brightcart'), 'the name');
   assert.ok(values.includes(SAMPLE_URL), 'the relative URL, the same on the site and on `editor serve`');

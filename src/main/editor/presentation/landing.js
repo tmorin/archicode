@@ -72,6 +72,7 @@ function landingScreenConfig() {
     const firstVisit = browserWorkspaces.length === 0 && landingFolderRows().length === 0;
     if (browser) {
       actions.push({ label: 'Open the Brightcart sample', action: 'open-sample', primary: firstVisit });
+      actions.push({ label: 'Open the ArchiCode model', action: 'open-sample-archicode' });
       actions.push({
         label: 'New workspace in this browser',
         action: 'new-browser-workspace',

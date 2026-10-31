@@ -53,14 +53,14 @@ Conventions:
 - **Nesting.** An element is written in the `elements` of its parent (with a `kind`), or in a manifest of its own with `header.parent` set to the reference of the parent, and then its `kind` is in the header. Each kind holds only the kinds listed above; at the top of a layer only the kinds marked as such.
 - **Relationships** are written on the source element and name the destination. A node lists in `applications` the application-layer references it hosts; an environment lists in `uses` the environments it depends on.
 - **Tags and qualifiers.** `qualifiers` are words shown on the box (a technology: `React`; the diagram writes `[system: React]`) and each is also a PlantUML stereotype, so `styles.by-qualifiers` can style it. `tags.rendering-stereotypes` is a string of space-separated stereotypes that are not shown and that `styles.by-tags` can style (it overrides `by-qualifiers`). There is no `external` flag, no other key marks a system as external and the code gives no word a special meaning: write `qualifiers: ["external"]` on the system, the box then reads `[system: external]`, and style the stereotype `external` in `styles.by-qualifiers` if it should look different.
-- **Views.** A view has an `id`, a `viewpoint` and `properties`. The viewpoints are `overview`, `detailed` and `deep` (about one element: the element and what it is linked to; the element opened to what it holds; opened down to its leaves) and `map` (a whole layer, folded). `layer` is `application` (default) or `technology`. The `properties` of a view are not in the schema (the code reads them by name); the keys that the command line reads are:
+- **Views.** A view has an `id`, a `viewpoint` and `properties`. The viewpoints are `overview`, `detailed` and `deep` (about one element: the element and what it is linked to; the element opened to what it holds; opened down to its leaves) and `map` (a whole layer, folded). In `detailed` and `deep` only the element drawn is opened: the elements it links to stay closed boxes. `layer` is `application` (default) or `technology`. The `properties` of a view are not in the schema (the code reads them by name); the keys that the command line reads are:
 
   | key | viewpoint | value |
   | --- | --- | --- |
   | `element` | overview, detailed, deep | the reference drawn (required) |
   | `pinned` | map | list of references: draw only these, with what they link to |
   | `hidden` | map | list of references left out |
-  | `opened` | map | list of references whose box is opened to show its children |
+  | `opened` | map | list of references whose box is opened to show its children, one level down: open the node as well to see its applications |
   | `applications` | map, technology | `false` leaves out the applications drawn in the nodes |
   | `relationships` | map, technology | `false` leaves out the links |
   | `links` | map, application | list of `{source, destination, label}`: draw only these relationships, their ends and what encloses them; no label means a relationship with no label; one that matches nothing is an error |

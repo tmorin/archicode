@@ -58,8 +58,9 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  *       {@code X-ArchiCode-Modified}), write (parents are created) or delete a {@code .yaml}, {@code .yml} or
  *       {@code .json} file of the folder. A file is UTF-8, as GET declares it; PUT refuses (400) a body that is not
  *       valid UTF-8, caps it at {@value #MAX_BODY_BYTES} bytes (413), and replaces the file atomically.</li>
- *   <li>{@code GET /samples/brightcart.yaml} — the sample of the hosted editor, the bundle of Brightcart, a resource of
- *       the application (UTF-8, {@code text/yaml}). The routes under {@code /samples/} are a table of one entry
+ *   <li>{@code GET /samples/brightcart.yaml} — the sample of the hosted editor, the bundle of Brightcart (and
+ *       {@code GET /samples/archicode.yaml}, the bundle of the model of ArchiCode), a resource of
+ *       the application (UTF-8, {@code text/yaml}). The routes under {@code /samples/} are a table of two entries
  *       ({@link #SAMPLES}): any other path there is 404, and a request never names a resource. It has the {@code Host}
  *       check of the page and wants the token in the header or the session cookie, never in the query (403).</li>
  * </ul>
@@ -93,7 +94,12 @@ public class EditorHttpServer {
      * The samples the server gives, by the name after {@code /samples/}: the one table of the route. A request is looked up
      * in it and never used to build a path, so it can name no other resource.
      */
-    static final Map<String, String> SAMPLES = Map.of("brightcart.yaml", "/editor-webapp/samples/brightcart.yaml");
+    static final Map<String, String> SAMPLES = Map.of(
+        "brightcart.yaml",
+        "/editor-webapp/samples/brightcart.yaml",
+        "archicode.yaml",
+        "/editor-webapp/samples/archicode.yaml"
+    );
 
     private static final String WEBAPP_RESOURCE = "/editor-webapp/standalone.html";
     private static final String TOKEN_MARKER = "<head>";

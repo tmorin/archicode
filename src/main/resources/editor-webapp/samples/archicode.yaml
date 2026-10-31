@@ -1,0 +1,535 @@
+--- # file: .archicode.yaml
+# The architecture of ArchiCode itself, as it is. Hand-written; `tags.path` names the code each element stands for.
+settings:
+  name: "ArchiCode"
+  manifests:
+    paths: ["manifests/**"]
+--- # file: manifests/agent.yaml
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "agent"
+  name: "Agent"
+  description: "The AI agent that edits the code and queries the graph."
+  relationships:
+    - destination: "archicode.commandline"
+      label: "asks the graph of"
+      qualifiers: ["query graph"]
+--- # file: manifests/archicode.yaml
+header:
+  kind: "archicode.morin.io/solution"
+  version: "1"
+content:
+  id: "archicode"
+  name: "ArchiCode"
+  description: "Architecture-as-code: reads a workspace and renders C4 and ArchiMate views."
+  elements:
+    - kind: "system"
+      id: "commandline"
+      name: "Command line"
+      description: "Java 25, Quarkus and Picocli: reads a workspace and renders views."
+      tags:
+        path: "src/main/java/io/morin/archicode"
+      elements:
+        - kind: "container"
+          id: "commands"
+          name: "Commands"
+          description: "Picocli commands and ErrorOutput (package cli)."
+          tags:
+            path: "src/main/java/io/morin/archicode/cli"
+          relationships:
+            - destination: "archicode.commandline.workspace"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.viewpoint"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.rendering"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.resource"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.manifest"
+              label: "imports the package"
+              qualifiers: ["imports"]
+          elements:
+            - kind: "component"
+              id: "editor_serve"
+              name: "Editor serve"
+              description: "The editor serve command and its HTTP server."
+              tags:
+                path: "src/main/java/io/morin/archicode/cli/ServeEditorCommand.java, src/main/java/io/morin/archicode/cli/EditorHttpServer.java"
+              relationships:
+                - destination: "archicode.editor.page"
+                  label: "serves the page"
+                  qualifiers: ["serves"]
+            - kind: "component"
+              id: "guide"
+              name: "Guide"
+              description: "The archicode guide command."
+              tags:
+                path: "src/main/java/io/morin/archicode/cli/GuideCommand.java, src/main/java/io/morin/archicode/cli/Guide.java"
+              relationships:
+                - destination: "archicode.contracts.couplings.manifest_schema"
+                  label: "reads"
+                  qualifiers: ["reads"]
+            - kind: "component"
+              id: "init"
+              name: "Init"
+              description: "The archicode init command."
+              tags:
+                path: "src/main/java/io/morin/archicode/cli/InitCommand.java"
+              relationships:
+                - destination: "archicode.contracts.couplings.manifest_schema"
+                  label: "reads"
+                  qualifiers: ["reads"]
+        - kind: "container"
+          id: "workspace"
+          name: "Workspace"
+          description: "WorkspaceFactory, LayerLoader and the Fold classes (package workspace)."
+          tags:
+            path: "src/main/java/io/morin/archicode/workspace"
+          relationships:
+            - destination: "archicode.commandline.manifest"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.resource"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.viewpoint"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.rendering"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.kernel.engine.patches"
+              label: "applies the patches of a layer"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.facets"
+              label: "applies the facets"
+              qualifiers: ["calls"]
+        - kind: "container"
+          id: "manifest"
+          name: "Manifest"
+          description: "Parser, discovery and ManifestSchema (package manifest)."
+          tags:
+            path: "src/main/java/io/morin/archicode/manifest"
+          relationships:
+            - destination: "archicode.commandline.resource"
+              label: "imports the package"
+              qualifiers: ["imports"]
+        - kind: "container"
+          id: "resource"
+          name: "Resource"
+          description: "Elements, views, stories and plateaus (package resource)."
+          tags:
+            path: "src/main/java/io/morin/archicode/resource"
+        - kind: "container"
+          id: "viewpoint"
+          name: "Viewpoint"
+          description: "The adapter around the kernel and PlateauComparer (package viewpoint)."
+          tags:
+            path: "src/main/java/io/morin/archicode/viewpoint"
+          relationships:
+            - destination: "archicode.commandline.resource"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.workspace"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.kernel.engine.compute"
+              label: "draws with"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.compare"
+              label: "draws with"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.facets"
+              label: "draws with"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.states"
+              label: "draws with"
+              qualifiers: ["calls"]
+        - kind: "container"
+          id: "rendering"
+          name: "Rendering"
+          description: "PlantUML output and the gap tables (package rendering)."
+          tags:
+            path: "src/main/java/io/morin/archicode/rendering"
+          relationships:
+            - destination: "archicode.commandline.resource"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.viewpoint"
+              label: "imports the package"
+              qualifiers: ["imports"]
+            - destination: "archicode.commandline.workspace"
+              label: "imports the package"
+              qualifiers: ["imports"]
+    - kind: "system"
+      id: "kernel"
+      name: "Kernel"
+      description: "Rust compiled to WebAssembly, shared by the command line and the editor."
+      tags:
+        path: "src/main/rust/viewpoint-kernel"
+      elements:
+        - kind: "container"
+          id: "engine"
+          name: "Engine"
+          description: "The Rust crate that computes views, comparisons, facets and patches."
+          tags:
+            path: "src/main/rust/viewpoint-kernel"
+          elements:
+            - kind: "component"
+              id: "compute"
+              name: "Compute"
+              description: "Entry point compute: assembles a view."
+              tags:
+                path: "src/main/rust/viewpoint-kernel/src/lib.rs"
+            - kind: "component"
+              id: "compare"
+              name: "Compare"
+              description: "Entry point compare: the union of two plateaus and its table of changes."
+              tags:
+                path: "src/main/rust/viewpoint-kernel/src/compare.rs"
+            - kind: "component"
+              id: "facets"
+              name: "Facets"
+              description: "Entry point apply_facet: standard JSONPath, RFC 9535."
+              tags:
+                path: "src/main/rust/viewpoint-kernel/src/facet.rs"
+            - kind: "component"
+              id: "patches"
+              name: "Patches"
+              description: "Entry point apply_patches: the patches of a layer."
+              tags:
+                path: "src/main/rust/viewpoint-kernel/src/patch.rs"
+            - kind: "component"
+              id: "states"
+              name: "States"
+              description: "Entry point states: the seven state words, said once."
+              tags:
+                path: "src/main/rust/viewpoint-kernel/src/lib.rs"
+            - kind: "component"
+              id: "quiet"
+              name: "Quiet"
+              description: "Entry point quiet: the elements of a layer with nothing to draw."
+              tags:
+                path: "src/main/rust/viewpoint-kernel/src/lib.rs"
+    - kind: "system"
+      id: "editor"
+      name: "Editor"
+      description: "The standalone editor. A layer uses the layers before it; upward pairs are the debt of the ratchet."
+      tags:
+        path: "src/main/editor"
+      elements:
+        - kind: "container"
+          id: "core"
+          name: "Core layer"
+          description: "Parsing, serializing and schemas; uses no other layer."
+          tags:
+            path: "src/main/editor/core"
+          relationships:
+            - destination: "archicode.contracts.couplings.read_schema"
+              label: "owns the schema"
+              qualifiers: ["owns"]
+        - kind: "container"
+          id: "model"
+          name: "Model layer"
+          description: "State, indexes and the kernel bridge."
+          tags:
+            path: "src/main/editor/model"
+          relationships:
+            - destination: "archicode.editor.core"
+              label: "uses the layers before it"
+              qualifiers: ["uses"]
+            - destination: "archicode.kernel.engine.compute"
+              label: "calls the kernel"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.compare"
+              label: "calls the kernel"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.facets"
+              label: "calls the kernel"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.patches"
+              label: "calls the kernel"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.states"
+              label: "calls the kernel"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.quiet"
+              label: "calls the kernel"
+              qualifiers: ["calls"]
+            - destination: "archicode.editor.application"
+              label: "names a declaration of a higher layer"
+              qualifiers: ["upward"]
+            - destination: "archicode.editor.presentation"
+              label: "names a declaration of a higher layer"
+              qualifiers: ["upward"]
+        - kind: "container"
+          id: "persistence"
+          name: "Persistence layer"
+          description: "Folders, files and the browser workspace."
+          tags:
+            path: "src/main/editor/persistence"
+          relationships:
+            - destination: "archicode.editor.model"
+              label: "uses the layers before it"
+              qualifiers: ["uses"]
+            - destination: "archicode.editor.application"
+              label: "names a declaration of a higher layer"
+              qualifiers: ["upward"]
+            - destination: "archicode.editor.presentation"
+              label: "names a declaration of a higher layer"
+              qualifiers: ["upward"]
+            - destination: "archicode.editor.composition"
+              label: "names a declaration of a higher layer"
+              qualifiers: ["upward"]
+        - kind: "container"
+          id: "application"
+          name: "Application layer"
+          description: "Flows: edits, writes, stories."
+          tags:
+            path: "src/main/editor/application"
+          relationships:
+            - destination: "archicode.editor.persistence"
+              label: "uses the layers before it"
+              qualifiers: ["uses"]
+            - destination: "archicode.kernel.engine.patches"
+              label: "loads the kernel before the patches"
+              qualifiers: ["calls"]
+            - destination: "archicode.editor.presentation"
+              label: "names a declaration of a higher layer"
+              qualifiers: ["upward"]
+            - destination: "archicode.editor.composition"
+              label: "names a declaration of a higher layer"
+              qualifiers: ["upward"]
+        - kind: "container"
+          id: "presentation"
+          name: "Presentation layer"
+          description: "Drawing and forms."
+          tags:
+            path: "src/main/editor/presentation"
+          relationships:
+            - destination: "archicode.editor.application"
+              label: "uses the layers before it"
+              qualifiers: ["uses"]
+            - destination: "archicode.kernel.engine.compute"
+              label: "draws with"
+              qualifiers: ["calls"]
+            - destination: "archicode.kernel.engine.compare"
+              label: "draws with"
+              qualifiers: ["calls"]
+            - destination: "archicode.editor.composition"
+              label: "names a declaration of a higher layer"
+              qualifiers: ["upward"]
+        - kind: "container"
+          id: "composition"
+          name: "Composition layer"
+          description: "Render, events and routing; the only place that calls render()."
+          tags:
+            path: "src/main/editor/composition"
+          relationships:
+            - destination: "archicode.editor.presentation"
+              label: "uses the layers before it"
+              qualifiers: ["uses"]
+        - kind: "container"
+          id: "page"
+          name: "Page"
+          description: "The generated standalone page."
+          tags:
+            path: "src/main/resources/editor-webapp/standalone.html"
+          relationships:
+            - destination: "archicode.editor.composition"
+              label: "is generated from the layers"
+              qualifiers: ["generated from"]
+    - kind: "system"
+      id: "contracts"
+      name: "Contracts"
+      description: "What couples the command line, the kernel and the editor."
+      elements:
+        - kind: "container"
+          id: "couplings"
+          name: "Couplings"
+          description: "The five couplings that must change together."
+          elements:
+            - kind: "component"
+              id: "kernel_wasm"
+              name: "Kernel WebAssembly"
+              description: "The committed WebAssembly both tools run."
+              tags:
+                path: "src/main/wasm/viewpoint_kernel.wasm"
+              relationships:
+                - destination: "archicode.kernel.engine"
+                  label: "is generated from"
+                  qualifiers: ["generated from"]
+            - kind: "component"
+              id: "shared_cases"
+              name: "Shared cases"
+              description: "Case files run by a Java test and a node test."
+              tags:
+                path: "src/test/javascript/viewpoint-kernel"
+              relationships:
+                - destination: "archicode.commandline.workspace"
+                  label: "validates"
+                  qualifiers: ["validated by"]
+                - destination: "archicode.editor.application"
+                  label: "validates"
+                  qualifiers: ["validated by"]
+            - kind: "component"
+              id: "read_schema"
+              name: "Read schema"
+              description: "READ_SCHEMA of the editor, mirror of the Java classes."
+              tags:
+                path: "src/main/editor/core/read-schema.js"
+              relationships:
+                - destination: "archicode.commandline.resource"
+                  label: "mirrors the classes of"
+                  qualifiers: ["mirror of"]
+            - kind: "component"
+              id: "manifest_schema"
+              name: "Manifest schema"
+              description: "The JSON schema of the manifests."
+              tags:
+                path: "src/test/resources/schemas/manifest.schema.json"
+              relationships:
+                - destination: "archicode.commandline.manifest"
+                  label: "is generated from"
+                  qualifiers: ["generated from"]
+            - kind: "component"
+              id: "goldens"
+              name: "Goldens"
+              description: "Byte-identity goldens."
+              tags:
+                path: "scripts/byte-identity.sh, src/test/resources/guide/golden.md"
+              relationships:
+                - destination: "archicode.commandline.commands"
+                  label: "validates"
+                  qualifiers: ["validated by"]
+                - destination: "archicode.commandline.rendering"
+                  label: "validates"
+                  qualifiers: ["validated by"]
+--- # file: manifests/author.yaml
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "author"
+  name: "Author"
+  description: "The human who reads the model and writes the workspaces."
+  relationships:
+    - destination: "archicode.editor"
+      label: "edits workspaces with"
+      qualifiers: ["uses"]
+    - destination: "archicode.commandline"
+      label: "generates views with"
+      qualifiers: ["uses"]
+--- # file: manifests/environment.github.yaml
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "github"
+  name: "GitHub"
+  description: "Where the tools are built, released and published."
+  elements:
+    - kind: "node"
+      id: "actions"
+      name: "Actions"
+      description: "Builds the command line and the editor."
+      applications:
+        - "archicode.commandline"
+        - "archicode.editor"
+    - kind: "node"
+      id: "pages"
+      name: "Pages"
+      description: "Hosts the website and the editor."
+      applications:
+        - "archicode.editor"
+    - kind: "node"
+      id: "releases"
+      name: "Releases"
+      description: "Holds the packaged binaries."
+      applications:
+        - "archicode.commandline"
+--- # file: manifests/environment.workstation.yaml
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "workstation"
+  name: "Workstation"
+  description: "The machine of the author, where the tools run."
+  elements:
+    - kind: "node"
+      id: "machine"
+      name: "Machine"
+      description: "Runs the command line and the editor."
+      applications:
+        - "archicode.commandline"
+        - "archicode.editor"
+--- # file: manifests/views/view.archicode_overview.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "archicode_overview"
+  name: "ArchiCode and its people"
+  description: "The systems and the people around ArchiCode."
+  viewpoint: "overview"
+  properties:
+    element: "archicode"
+--- # file: manifests/views/view.commandline_and_kernel.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "commandline_and_kernel"
+  name: "The command line and the kernel"
+  description: "The command line, with the kernel it reaches through its relationships."
+  viewpoint: "detailed"
+  properties:
+    element: "archicode.commandline"
+--- # file: manifests/views/view.contracts.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "contracts"
+  name: "What couples the tools"
+  description: "The five couplings that must change together."
+  viewpoint: "map"
+  properties:
+    pinned:
+      - "archicode.contracts.couplings.kernel_wasm"
+      - "archicode.contracts.couplings.shared_cases"
+      - "archicode.contracts.couplings.read_schema"
+      - "archicode.contracts.couplings.manifest_schema"
+      - "archicode.contracts.couplings.goldens"
+    opened: ["archicode.contracts.couplings"]
+--- # file: manifests/views/view.deployment.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "deployment"
+  name: "Deployment"
+  description: "The workstation and GitHub, with the applications deployed on them."
+  viewpoint: "map"
+  layer: "technology"
+  properties:
+    applications: true
+    opened: ["workstation", "github", "workstation.machine", "github.actions", "github.pages", "github.releases"]
+--- # file: manifests/views/view.editor_layers.yaml
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "editor_layers"
+  name: "The editor layers"
+  description: "The six layers and the page of the editor."
+  viewpoint: "detailed"
+  properties:
+    element: "archicode.editor"

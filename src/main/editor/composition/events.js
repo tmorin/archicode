@@ -111,6 +111,9 @@ function handleAppClick(e) {
     case 'open-sample':
       openSample('brightcart');
       break;
+    case 'open-sample-archicode':
+      openSample('archicode');
+      break;
     case 'import-bundle':
       chooseBundleFile(); // the picker is asked in the turn of the click
       break;
@@ -144,6 +147,15 @@ function handleAppClick(e) {
       )
         break;
       openSample('brightcart');
+      break;
+    case 'workspace-open-sample-archicode':
+      setWorkspaceMenuOpen(false);
+      if (
+        workspaceExportIsPending() &&
+        !confirm('You have unsaved changes that will be lost. Open the ArchiCode model anyway?')
+      )
+        break;
+      openSample('archicode');
       break;
     case 'workspace-ask-reset':
       askToResetSample();
