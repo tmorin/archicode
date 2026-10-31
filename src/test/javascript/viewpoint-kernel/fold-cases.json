@@ -1,5 +1,5 @@
 {
-  "comment": "Fold cases (wave 028, run 0207, issue #65, decisions DEC-6 and DEC-8). Only Java reads this file: PlateauFoldServiceTest runs each case through the service and PlateauFoldCommandTest through `archicode plateau fold`; FoldTest builds its own data. A case copies the folder `base` of src/test/resources first, then writes `files` over the copy (a path from the workspace folder, the whole text of the file); `args` are the arguments after `plateau fold` (the service reads the plateau id, args[0], and ignores the options); a case with `scope: command` is run through the command only. `expect` is an `error` (the line the command prints on the error output, with `error: ` in front; exit 1, nothing on the standard output) or the `output` lines of the report (exit 0; an empty string is a blank line). The cases F09 to F12 of the TDD (an entry that names an element of the plateau below, a plateau no manifest declares, a patch that sets replaces, a fold into a plateau whose parent is the root) are hand-made data of FoldTest.",
+  "comment": "Fold cases (wave 028, runs 0207 and 0208, issue #65, decisions DEC-6 and DEC-8). Java reads this file: PlateauFoldServiceTest runs each case through the service and PlateauFoldCommandTest through `archicode plateau fold`; FoldTest builds its own data; the node test of run 0208 (fold-workspace.test.js) opens the folded workspaces of the small write cases in the editor. A case copies the folder `base` of src/test/resources first (null: an empty folder), then writes `files` over the copy (a path from the workspace folder, the whole text of the file); `args` are the arguments after `plateau fold` (the service reads the plateau id, args[0]; a case folds, and writes, unless `--dry-run` is among the args); a case with `scope: command` is run through the command only. `expect` is an `error` (the line the command prints on the error output, with `error: ` in front; exit 1, nothing on the standard output) or the `output` lines of the report (exit 0; an empty string is a blank line), and may carry `files` for a case that writes: a path from the workspace folder to the exact new text, to null for a deleted file, or to the marker \"changed\" for a file that must differ from the base without its text being pinned; every file not named is checked byte for byte unchanged, and no file is added. A refusal and a dry run leave the whole folder as it was. The cases F09 to F12 of the TDD of run 0207 (an entry that names an element of the plateau below, a plateau no manifest declares, a patch that sets replaces, a fold into a plateau whose parent is the root) are hand-made data of FoldTest.",
   "cases": [
     {
       "id": "F01",
@@ -67,14 +67,67 @@
     },
     {
       "id": "F07",
-      "what": "without --dry-run the command refuses (the command only: the service has no such option)",
+      "what": "the plain form on the layered Brightcart, once the two stories that name inhouse are replaced: inhouse is folded into marketplace and the files are written",
       "base": "brightcart/layered",
-      "files": {},
+      "files": {
+        "shared/story.fork_tour.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"fork_tour\"\n  name: \"Two ways out of the monolith\"\n  steps:\n    - view: \"shop_overview\"\n      text: \"Names no plateau but the root.\"\n      at: \"baseline\"\n",
+        "shared/story.seller_journey.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"seller_journey\"\n  name: \"The marketplace for sellers\"\n  steps:\n    - view: \"shop_overview\"\n      text: \"Names no plateau but the root.\"\n      at: \"baseline\"\n"
+      },
       "args": ["inhouse"],
       "expect": {
-        "error": "error: plateau fold does not write yet: add `--dry-run` to read the plan"
-      },
-      "scope": "command"
+        "output": [
+          "plateau fold inhouse into marketplace (written)",
+          "",
+          "after: `marketplace` overrides `baseline`; the plateaus that stay are `baseline` and `saas`",
+          "",
+          "files rewritten (they lost their comments, quotes and layout):",
+          "  inhouse/application/accounts.yaml",
+          "  inhouse/application/commerce.cart.yaml",
+          "  inhouse/application/commerce.catalog.yaml",
+          "  inhouse/application/commerce.checkout.yaml",
+          "  inhouse/application/commerce.pricing.yaml",
+          "  inhouse/application/commerce.search.yaml",
+          "  inhouse/application/commerce.yaml",
+          "  inhouse/application/orders.yaml",
+          "  inhouse/application/payments.yaml",
+          "  inhouse/technology/prod.cloud.yaml",
+          "  inhouse/technology/staging.k8s.yaml",
+          "  marketplace/application/discovery.yaml",
+          "  marketplace/plateau.yaml",
+          "",
+          "files deleted:",
+          "  inhouse/plateau.yaml (its name \"Build commerce services\" and its horizon \"2026-Q4\" are not kept)",
+          "",
+          "patches:",
+          "  the 26 patches of `inhouse` go in front of the 23 of `marketplace`: 49",
+          "",
+          "replaces to compose:",
+          "  discovery.search (marketplace/application/discovery.yaml): commerce.search -> shop.app.search",
+          "",
+          "plateaus removed:",
+          "  inhouse: a command line or a CI file that names it will fail",
+          "  the default --against of `marketplace` changes from `inhouse` to `baseline`",
+          "",
+          "checked on a temporary copy before writing: the models of the 3 plateaus that remain and the 6 comparisons between them are the same before and after, but for the PLATEAU and PATCH columns of the cascade",
+          "Read what changed with `git diff`, and run `archicode plateau list` and `archicode diff`"
+        ],
+        "files": {
+          "inhouse/application/accounts.yaml": "changed",
+          "inhouse/application/commerce.cart.yaml": "changed",
+          "inhouse/application/commerce.catalog.yaml": "changed",
+          "inhouse/application/commerce.checkout.yaml": "changed",
+          "inhouse/application/commerce.pricing.yaml": "changed",
+          "inhouse/application/commerce.search.yaml": "changed",
+          "inhouse/application/commerce.yaml": "changed",
+          "inhouse/application/orders.yaml": "changed",
+          "inhouse/application/payments.yaml": "changed",
+          "inhouse/technology/prod.cloud.yaml": "changed",
+          "inhouse/technology/staging.k8s.yaml": "changed",
+          "marketplace/application/discovery.yaml": "changed",
+          "marketplace/plateau.yaml": "changed",
+          "inhouse/plateau.yaml": null
+        }
+      }
     },
     {
       "id": "F08",
@@ -107,7 +160,7 @@
           "  marketplace/plateau.yaml",
           "",
           "files deleted:",
-          "  inhouse/plateau.yaml",
+          "  inhouse/plateau.yaml (its name \"Build commerce services\" and its horizon \"2026-Q4\" are not kept)",
           "",
           "patches:",
           "  the 26 patches of `inhouse` go in front of the 23 of `marketplace`: 49",
@@ -119,7 +172,200 @@
           "  inhouse: a command line or a CI file that names it will fail",
           "  the default --against of `marketplace` changes from `inhouse` to `baseline`",
           "",
-          "The result is not checked here: the plateaus that stay are compared before and after when the fold is written"
+          "checked on a temporary copy before writing: the models of the 3 plateaus that remain and the 6 comparisons between them are the same before and after, but for the PLATEAU and PATCH columns of the cascade"
+        ]
+      }
+    },
+    {
+      "id": "F20",
+      "what": "a small workspace: the headers name the plateau above, the override goes, the patches of the folded plateau come first, its manifest is deleted",
+      "base": null,
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"./**\"]\n",
+        "base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n    - kind: \"container\"\n      id: \"old\"\n      name: \"Old\"\n",
+        "a/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"Build\"\n  horizon: \"2026-Q4\"\n  patches:\n    - operator: SET\n      target: \"shop.web\"\n      field: description\n      value: \"Pages of the shop.\"\n",
+        "a/cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"a\"\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n",
+        "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"a\"\n  patches:\n    - operator: SET\n      target: \"shop.web\"\n      field: name\n      value: \"Storefront\"\n",
+        "b/search.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"b\"\ncontent:\n  id: \"search\"\n  name: \"Search\"\n"
+      },
+      "args": ["a"],
+      "expect": {
+        "output": [
+          "plateau fold a into b (written)",
+          "",
+          "after: `b` overrides `baseline`; the plateau that stays is `baseline`",
+          "",
+          "files rewritten (they lost their comments, quotes and layout):",
+          "  a/cart.yaml",
+          "  b/plateau.yaml",
+          "",
+          "files deleted:",
+          "  a/plateau.yaml (its name \"Build\" and its horizon \"2026-Q4\" are not kept)",
+          "",
+          "patches:",
+          "  the 1 patches of `a` go in front of the 1 of `b`: 2",
+          "",
+          "plateaus removed:",
+          "  a: a command line or a CI file that names it will fail",
+          "  the default --against of `b` changes from `a` to `baseline`",
+          "",
+          "checked on a temporary copy before writing: the models of the 2 plateaus that remain and the 2 comparisons between them are the same before and after, but for the PLATEAU and PATCH columns of the cascade",
+          "Read what changed with `git diff`, and run `archicode plateau list` and `archicode diff`"
+        ],
+        "files": {
+          "a/cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"b\"\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n",
+          "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: \"SET\"\n      target: \"shop.web\"\n      field: \"description\"\n      value: \"Pages of the shop.\"\n    - operator: \"SET\"\n      target: \"shop.web\"\n      field: \"name\"\n      value: \"Storefront\"\n",
+          "a/plateau.yaml": null
+        }
+      }
+    },
+    {
+      "id": "F21",
+      "what": "the plateau above overrides a plateau that is not the root: its override becomes that plateau",
+      "base": null,
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"./**\"]\n",
+        "base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n    - kind: \"container\"\n      id: \"old\"\n      name: \"Old\"\n",
+        "p/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p\"\n",
+        "q/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"q\"\n  override: \"p\"\n",
+        "q/cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"q\"\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n",
+        "r/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"r\"\n  override: \"q\"\n  patches:\n    - operator: SET\n      target: \"shop.web\"\n      field: name\n      value: \"Storefront\"\n"
+      },
+      "args": ["q"],
+      "expect": {
+        "files": {
+          "q/cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"r\"\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n",
+          "r/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"r\"\n  override: \"p\"\n  patches:\n    - operator: \"SET\"\n      target: \"shop.web\"\n      field: \"name\"\n      value: \"Storefront\"\n",
+          "q/plateau.yaml": null
+        }
+      }
+    },
+    {
+      "id": "F22",
+      "what": "only a header names the folded plateau: nothing is deleted, no patch is merged",
+      "base": null,
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"./**\"]\n",
+        "base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n    - kind: \"container\"\n      id: \"old\"\n      name: \"Old\"\n",
+        "a/cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"a\"\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n",
+        "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"a\"\n  patches:\n    - operator: SET\n      target: \"shop.web\"\n      field: name\n      value: \"Storefront\"\n"
+      },
+      "args": ["a"],
+      "expect": {
+        "files": {
+          "a/cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"b\"\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n",
+          "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: \"SET\"\n      target: \"shop.web\"\n      field: \"name\"\n      value: \"Storefront\"\n"
+        }
+      }
+    },
+    {
+      "id": "F23",
+      "what": "a replaces entry in the value of a patch is composed: it names what the folded element replaced",
+      "base": null,
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"./**\"]\n",
+        "base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n    - kind: \"container\"\n      id: \"old\"\n      name: \"Old\"\n",
+        "a/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  patches:\n    - operator: REMOVE\n      target: \"shop.old\"\n",
+        "a/modern.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"a\"\ncontent:\n  id: \"modern\"\n  name: \"Modern\"\n  replaces: [\"shop.old\"]\n",
+        "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"a\"\n  patches:\n    - operator: SET\n      target: \"latest\"\n      field: replaces\n      value: [\"modern\"]\n    - operator: REMOVE\n      target: \"modern\"\n",
+        "b/latest.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"b\"\ncontent:\n  id: \"latest\"\n  name: \"Latest\"\n"
+      },
+      "args": ["a"],
+      "expect": {
+        "files": {
+          "a/modern.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"b\"\ncontent:\n  id: \"modern\"\n  name: \"Modern\"\n  replaces:\n    - \"shop.old\"\n",
+          "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: \"REMOVE\"\n      target: \"shop.old\"\n    - operator: \"SET\"\n      target: \"latest\"\n      field: \"replaces\"\n      value:\n        - \"shop.old\"\n    - operator: \"REMOVE\"\n      target: \"modern\"\n",
+          "a/plateau.yaml": null
+        }
+      }
+    },
+    {
+      "id": "F24",
+      "what": "a patch of the folded plateau selects by json-path: after the fold it would also reach an element of the plateau above, so the check refuses",
+      "base": null,
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"./**\"]\n",
+        "base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n    - kind: \"container\"\n      id: \"old\"\n      name: \"Legacy\"\n",
+        "a/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  patches:\n    - operator: SET\n      json-path: \"$.application..elements[?(@.name == 'Legacy')]\"\n      field: description\n      value: \"Retired\"\n",
+        "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"a\"\n",
+        "b/extra.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"b\"\ncontent:\n  id: \"extra\"\n  name: \"Extra\"\n  elements:\n    - kind: \"container\"\n      id: \"leg\"\n      name: \"Legacy\"\n"
+      },
+      "args": ["a"],
+      "expect": {
+        "error": "error: the fold of `a` into `b` would change the plateau `b`: before the fold it has application element extra.leg {\"id\":\"leg\",\"kind\":\"container\",\"name\":\"Legacy\"}, after it application element extra.leg {\"description\":\"Retired\",\"id\":\"leg\",\"kind\":\"container\",\"name\":\"Legacy\"}: no file is written"
+      }
+    },
+    {
+      "id": "F25",
+      "what": "a TOML manifest and a JSON manifest keep their format",
+      "base": null,
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"./**\"]\n",
+        "base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n    - kind: \"container\"\n      id: \"old\"\n      name: \"Old\"\n",
+        "a/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n",
+        "a/cart.toml": "[header]\nkind = \"archicode.morin.io/system\"\nversion = \"1\"\nplateau = \"a\"\n\n[content]\nid = \"cart\"\nname = \"Cart\"\n",
+        "b/plateau.json": "{\n  \"header\": {\"kind\": \"archicode.morin.io/plateau\", \"version\": \"1\"},\n  \"content\": {\"id\": \"b\", \"override\": \"a\", \"patches\": [{\"operator\": \"SET\", \"target\": \"shop.web\", \"field\": \"name\", \"value\": \"Storefront\"}]}\n}\n"
+      },
+      "args": ["a"],
+      "expect": {
+        "files": {
+          "a/cart.toml": "header.kind = 'archicode.morin.io/system'\nheader.version = '1'\nheader.plateau = 'b'\ncontent.id = 'cart'\ncontent.name = 'Cart'\n",
+          "b/plateau.json": "{\n  \"header\" : {\n    \"kind\" : \"archicode.morin.io/plateau\",\n    \"version\" : \"1\"\n  },\n  \"content\" : {\n    \"id\" : \"b\",\n    \"patches\" : [ {\n      \"operator\" : \"SET\",\n      \"target\" : \"shop.web\",\n      \"field\" : \"name\",\n      \"value\" : \"Storefront\"\n    } ]\n  }\n}\n",
+          "a/plateau.yaml": null
+        }
+      }
+    },
+    {
+      "id": "F26",
+      "what": "a plateau that stays does not load as it is: the loader line, nothing is written",
+      "base": null,
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"./**\"]\n",
+        "base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n    - kind: \"container\"\n      id: \"old\"\n      name: \"Old\"\n",
+        "a/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n",
+        "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"a\"\n",
+        "c/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"c\"\n",
+        "c/bad.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"c\"\ncontent:\n  id: \"bad\"\n  name: \"Bad\"\n  relationships:\n    - destination: \"nowhere\"\n      label: \"uses\"\n"
+      },
+      "args": ["a"],
+      "expect": {
+        "error": "error: in the plateau `c`, `bad` has a relationship towards `nowhere`, which does not exist, in `c/bad.yaml` at `relationships[0].destination`"
+      }
+    },
+    {
+      "id": "F27",
+      "what": "the dry run of F20 prints the dry report and writes nothing",
+      "base": null,
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"./**\"]\n",
+        "base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n    - kind: \"container\"\n      id: \"old\"\n      name: \"Old\"\n",
+        "a/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"Build\"\n  horizon: \"2026-Q4\"\n  patches:\n    - operator: SET\n      target: \"shop.web\"\n      field: description\n      value: \"Pages of the shop.\"\n",
+        "a/cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"a\"\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n",
+        "b/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"a\"\n  patches:\n    - operator: SET\n      target: \"shop.web\"\n      field: name\n      value: \"Storefront\"\n",
+        "b/search.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"b\"\ncontent:\n  id: \"search\"\n  name: \"Search\"\n"
+      },
+      "args": ["a", "--dry-run"],
+      "expect": {
+        "output": [
+          "plateau fold a into b (dry run: nothing was written)",
+          "",
+          "after: `b` overrides `baseline`; the plateau that stays is `baseline`",
+          "",
+          "files rewritten (they lose their comments, quotes and layout):",
+          "  a/cart.yaml",
+          "  b/plateau.yaml",
+          "",
+          "files deleted:",
+          "  a/plateau.yaml (its name \"Build\" and its horizon \"2026-Q4\" are not kept)",
+          "",
+          "patches:",
+          "  the 1 patches of `a` go in front of the 1 of `b`: 2",
+          "",
+          "plateaus removed:",
+          "  a: a command line or a CI file that names it will fail",
+          "  the default --against of `b` changes from `a` to `baseline`",
+          "",
+          "checked on a temporary copy before writing: the models of the 2 plateaus that remain and the 2 comparisons between them are the same before and after, but for the PLATEAU and PATCH columns of the cascade"
         ]
       }
     }

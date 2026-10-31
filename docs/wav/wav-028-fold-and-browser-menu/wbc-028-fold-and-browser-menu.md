@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 028
-status: proposed
+status: completed
 date: 2026-10-30
 related:
   - docs/wav/wav-025-hosted-editor/run/run-0190-plateau-fold-analysis/run-0190-plateau-fold-analysis.md

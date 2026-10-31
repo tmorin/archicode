@@ -1644,7 +1644,7 @@ Nothing is to be changed in the manifests themselves: their format is the one it
 . *The buttons that walk the changes stay in view* (Fixed, see <<editor-small-screen>>). With many changes, each press of *Next change* scrolled the panel and carried the buttons away; the row now stays under the tabs, and the selected row is brought into view without moving one that is already visible.
 . *The Workspace menu and the top bar of a browser workspace fit a narrow window* (Fixed, see <<editor-small-screen>>). In a window 360 pixels wide the note of *Export as a file* ran out of its item and the buttons of the bar went past the window, so the page scrolled sideways; the buttons now wrap, the notes stay in their items and the menu stays inside the window.
 
-. *You can read the plan of a fold before you make it* (New, see <<plateau-fold>>). `archicode plateau fold <id> --dry-run` prints what folding a plateau into the one above it would rewrite, delete and compose, or the one line that says why it cannot be done. It writes nothing: the fold is still done by hand (see <<fold-by-hand>>).
+. *You can read the plan of a fold before you make it* (New, see <<plateau-fold>>). `archicode plateau fold <id>` folds a plateau into the one above it: it rewrites the manifests, deletes the manifest of the folded plateau, composes the `replaces`, checks on a temporary copy that the plateaus that stay are the same before and after, and writes all its files or none. `--dry-run` prints the plan and the check and writes nothing; the plain form writes, so read the plan first and fold in a clean git tree. A fold it cannot make is one `error:` line (exit 1) and nothing is written. The name and the horizon of the folded plateau, and the comments, quotes and layout of the files rewritten, are not kept.
 
 [[upgrade-0-20]]
 *What changes for a reader who knows 0.20.0.* These are the changes after the release 0.20.0; they are in the release 0.21.0. Nothing breaks: the editor opens in a browser that has no folder picker, a Map can be drawn from the relationships it lists, a story can light up one relationship at a time, and a few mistakes are fixed or told in the same words by both tools. A workspace that loaded in 0.20.0 loads in 0.21.0 and the command line writes the same files for it (checked by running every command on every example and fixture of the repository against the jar of 0.19.0: the only differences are the sentence of 0.20.0 for a reference that names no element, see <<upgrade-0-19>>, and the files of the new story `order_flow`); the new keys `links`, `highlight` and `layout` mean nothing until you write them. As for the blocks below, there is no release notes file in the repository: these blocks are the notes.
@@ -1746,7 +1746,7 @@ These are things that do not work yet, or not the way you might expect. Each is 
 
 *Plateaus.*
 
-* *The editor does not fold a plateau into the one above* (not planned). Deleting a plateau that others override is one step and tells what the plateaus above lose, but no operation moves the patches and the elements of the deleted plateau into the plateau above, and the delete is refused when a step or a view would lose what it draws. Folding is done by hand, and <<fold-by-hand>> says how.
+* *The editor does not fold a plateau into the one above* (not planned). Deleting a plateau that others override is one step and tells what the plateaus above lose, but no operation moves the patches and the elements of the deleted plateau into the plateau above, and the delete is refused when a step or a view would lose what it draws. `archicode plateau fold` does it from the command line (see <<plateau-fold>>); <<fold-by-hand>> says how to do it by hand, for a plateau the command refuses.
 * *The editor does not move an element a plateau inherits* (a patch never changes an `id` or a `parent`): draw the plateau that declares it.
 * *A comparison with the parent cannot stay on the parent.* On the band, the parent in the tree of *Compare with* is read as _Past (follows the plateau drawn)_, so the comparison moves to the new parent when another plateau is drawn. There is no fixed comparison with the parent.
 * *Which plateau the editor and the command line draw first.* The editor draws the plateau of the address, then the one this browser drew last, then `settings.current` (which *Settings* writes, see <<editor-current-plateau>>), then the root; the command line draws the last plateau when the plateaus form one line and no `settings.current` says otherwise.
@@ -2131,7 +2131,7 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 ----
 +
 A plateau that nothing of this kind concerns is deleted as before, byte for byte. On the layered Brightcart, `inhouse` cannot be deleted for that reason (`marketplace` patches what `inhouse` declares).
-* [[fold-by-hand]]*Folding a plateau into the one above, by hand.* The editor does not move the patches and the elements of a plateau into the plateau above: that is a choice about your history, and no button makes it. When the refusal tells you the plateau above would lose what the plateau deleted gave it, and you want that plateau to keep it, fold by hand, in the files, with the plateau `to-be` and the plateau `later` above it (`later` overrides `to-be`; `archicode plateau fold to-be --dry-run` prints the files and the `replaces` of this recipe before you change any, see <<plateau-fold>>):
+* [[fold-by-hand]]*Folding a plateau into the one above, by hand.* The editor does not move the patches and the elements of a plateau into the plateau above: that is a choice about your history, and no button makes it. `archicode plateau fold <id>` makes it from the command line and checks the result (see <<plateau-fold>>); this recipe is what it does, and what to do for a plateau it refuses. When the refusal tells you the plateau above would lose what the plateau deleted gave it, and you want that plateau to keep it, fold by hand, in the files, with the plateau `to-be` and the plateau `later` above it (`later` overrides `to-be`; `archicode plateau fold to-be` does these steps and `--dry-run` prints them first, see <<plateau-fold>>):
 +
 . In every manifest whose header says `plateau: "to-be"`, write `plateau: "later"`. These are the elements `to-be` declares.
 . In the manifest of kind `archicode.morin.io/plateau` of `later`, change `override: "to-be"` to the plateau `to-be` overrode (`"baseline"`, or take the line out when that is the root), and put the `patches` of `to-be` in front of those of `later`, in their order: `later` was written to be read over `to-be`, so its patches come last. A patch of `later` that refers to what `to-be` declared (a `REMOVE` of an element of `to-be`) still finds it, since it is now declared by `later` itself.
@@ -2764,22 +2764,18 @@ after    4 REMOVE target shop.report  removed  application  shop.report.chart
 - A plateau that does not use `replaces` gets the table it always had, byte for byte. A difference is not an error: the exit code is 0, unless `--fail-on` asks otherwise (the exit code is then 3, see above). The command stops with an error (exit code 1) that says what to do when the workspace has no plateau, when the plateau is the root and `--against` names none, and when the plateau named by `--against` is unknown or is the plateau itself.
 
 [[plateau-fold]]
-=== Read the plan of a fold
+=== Fold a plateau into the one above
 
-.Read the plan of a fold - The command line
+.Fold a plateau - The command line
 [source,shell]
 ----
-archicode plateau fold inhouse --dry-run
+archicode plateau fold inhouse --dry-run   # read the plan, write nothing
+archicode plateau fold inhouse             # fold it
 ----
 
-`archicode plateau fold <id> --dry-run` folds nothing. It reads what folding the plateau `<id>` into the plateau that overrides it would do, and prints the plan: the folder, its manifests and `.archicode.yaml` are the same afterwards, byte for byte. There is no other mode yet. Without `--dry-run` the command refuses, and the fold is done by hand (see <<fold-by-hand>>):
+`archicode plateau fold <id>` folds the plateau `<id>` into the plateau that overrides it: the elements the folded plateau declares become elements of the plateau above, its patches go in front of the patches of the plateau above, and its manifest is deleted. The plateau above then overrides what the folded plateau overrode. The command does what <<fold-by-hand>> does by hand, and then checks the result. With `--dry-run` it does everything but the write: it prepares the fold, checks it and prints the report, and the folder, its manifests and `.archicode.yaml` are the same afterwards, byte for byte. Run it first, and read the plan.
 
-[source,text]
-----
-error: plateau fold does not write yet: add `--dry-run` to read the plan
-----
-
-A plateau that cannot be folded is refused with one line on the error output and exit code 1, and nothing on the standard output. The refusals are checked in this order, and the first one found is the only line:
+A plateau that cannot be folded is refused with one line on the error output and exit code 1, and nothing on the standard output. The first six refusals are checked in this order, and the first one found is the only line:
 
 [source,text]
 ----
@@ -2815,7 +2811,7 @@ files rewritten (they lose their comments, quotes and layout):
   marketplace/plateau.yaml
 
 files deleted:
-  inhouse/plateau.yaml
+  inhouse/plateau.yaml (its name "Build commerce services" and its horizon "2026-Q4" are not kept)
 
 patches:
   the 26 patches of `inhouse` go in front of the 23 of `marketplace`: 49
@@ -2827,17 +2823,45 @@ plateaus removed:
   inhouse: a command line or a CI file that names it will fail
   the default --against of `marketplace` changes from `inhouse` to `baseline`
 
-The result is not checked here: the plateaus that stay are compared before and after when the fold is written
+checked on a temporary copy before writing: the models of the 3 plateaus that remain and the 6 comparisons between them are the same before and after, but for the PLATEAU and PATCH columns of the cascade
 ----
 
-Read the plan as follows:
+Without `--dry-run` the report is the same text in the past tense: its first line ends in `(written)`, the title of the first block is `files rewritten (they lost their comments, quotes and layout):`, and two lines close it:
 
-* The first line says that nothing was written. The `after` line names the plateau above the folded one and the plateaus that stay.
-* `files rewritten` lists the files the fold would rewrite, and `files deleted` the manifest of the folded plateau.
+[source,text]
+----
+Read what changed with `git diff`, and run `archicode plateau list` and `archicode diff`
+----
+
+Read the report as follows:
+
+* The first line says whether anything was written. The `after` line names the plateau above the folded one and the plateaus that stay.
+* `files rewritten` lists the files the fold rewrites: the manifests whose header names the folded plateau, and the manifest of the plateau above. A rewritten manifest keeps its format (a TOML manifest stays TOML, a JSON one stays JSON) but loses its comments, its quotes and its layout, as the editor does when it writes a file again from scratch.
+* `files deleted` lists the manifest of the folded plateau, and says what it takes with it: the `name` and the `horizon` of the folded plateau are not kept, and the plateau above keeps its own.
 * `patches` counts the patches of the folded plateau that go in front of those of the plateau above.
-* `replaces to compose` lists the entries of the plateau above that name an element of the folded plateau, with the file that holds them. Step 3 of <<fold-by-hand>> composes each one.
+* `replaces to compose` lists the entries of the plateau above that name an element of the folded plateau, with the file that holds them; the fold composes each one, as step 3 of <<fold-by-hand>> does.
 * `plateaus removed` says what names the folded plateau and breaks: a command line or a CI file, and the default `--against` of the plateau above.
-* The last line says that the result is not checked here: the command does not fold, so it does not compare the plateaus that stay. Check the result as <<fold-by-hand>> says, with `archicode plateau list` and `archicode diff`.
+* The last block says what was checked.
+
+*What is checked.* Before it writes anything, the command folds on a temporary copy and compares the plateaus that stay: the model of each plateau, and the table of changes of every pair of them, are read before and after. They must be the same, but for the PLATEAU and PATCH columns of the cascade of the removals, which name the folded plateau. The check runs in the dry run too. A fold that fails it is refused with one line that names the difference, and no file is written; nothing can force it, repair the cause the line names. Three more refusals come after the first six:
+
+[source,text]
+----
+error: the fold of `a` into `b` would leave the plateau `c` unreadable: <the sentence of the loader>: no file is written
+error: the fold of `a` into `b` would change the plateau `b`: before the fold it has application element extra.leg {"id":"leg","kind":"container","name":"Legacy"}, after it application element extra.leg {"description":"Retired","id":"leg","kind":"container","name":"Legacy"}: no file is written
+error: the fold of `a` into `b` would change how the plateau `b` compares with `baseline`: <line> becomes <line or nothing>: no file is written
+----
+
+The first is for a plateau that stays and does not load once the fold is made; the second is for a model that changes, here a patch of the folded plateau that selects by `json-path` and would, after the fold, reach an element of the plateau above too; the third is for a comparison that changes. A plateau that does not load as it is, before the fold, is refused with the sentence of the loader, as for every command:
+
+[source,text]
+----
+error: in the plateau `c`, `bad` has a relationship towards `nowhere`, which does not exist, in `c/bad.yaml` at `relationships[0].destination`
+----
+
+*What the guarantee is.* A fold writes all its files or none. The command writes each new file next to its target under the name `<file>.archicode-fold`, moves each over its target, and deletes the manifest of the folded plateau last. If a write fails, it puts back every file already moved and stops with `error: the fold stopped at `<path>` (<the reason of the file system>): every file is as it was`; if putting a file back fails too, the line lists the files that may be partly written, and says to restore them with git. A file that changed between the moment the command read it and the moment it writes is refused (`error: `marketplace/plateau.yaml` changed while the fold was prepared: no file is written, run the command again`). The guarantee is for a failure of a write, not for a process that is killed while it moves the files: then a file may be left as it was written last, and a `.archicode-fold` file may remain, which is no manifest and is read by nothing. Git is the safety net: fold in a clean tree, read `git diff`, and `git restore` what you do not want.
+
+*What it does not do.* It folds into the plateau directly above and no further; it does not rewrite a story or a view that names the folded plateau (it refuses, and you change those steps first); it does not keep the name and the horizon of the folded plateau; and it does not keep the comments, the quotes and the layout of the files it rewrites. The editor has no button for it (see <<plateau-limits>>).
 
 === Generate JSON Schemas
 

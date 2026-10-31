@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 028
-status: planned
+status: completed
 date: 2026-10-30
 related:
   - docs/wav/wav-028-fold-and-browser-menu/wbc-028-fold-and-browser-menu.md
@@ -42,7 +42,7 @@ None open. D1 to D4 are the author's answers of 2026-10-30, recorded in the prog
 wave_manifest:
   wave: 028
   slug: fold-and-browser-menu
-  status: planned
+  status: completed
   sources:
     - 'gh:tmorin/archicode#182'
     - 'gh:tmorin/archicode#65'
@@ -118,7 +118,7 @@ wave_manifest:
       slug: plateau-fold-writer
       phase: P3
       depends_on: [W-3]
-      run: null
+      run: 0208
       delegation: hard_judgment
       delegation_reason: 'rewrites and deletes manifests in the author''s workspace: data deletion'
       likely_paths:

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.val;
 
@@ -62,5 +63,28 @@ public class Warnings {
         val lines = new ArrayList<>(pending);
         pending.clear();
         return lines;
+    }
+
+    /**
+     * Run a piece of work and forget the sentences it kept, leaving the ones kept before it (the loads that check a copy of a
+     * workspace must not say to the user what the loads of the original already said).
+     *
+     * @param work the work to run
+     * @param <T>  what the work returns
+     * @return what the work returns
+     */
+    public <T> T silently(@NonNull Supplier<T> work) {
+        final Set<String> before;
+        synchronized (this) {
+            before = new LinkedHashSet<>(pending);
+        }
+        try {
+            return work.get();
+        } finally {
+            synchronized (this) {
+                pending.clear();
+                pending.addAll(before);
+            }
+        }
     }
 }

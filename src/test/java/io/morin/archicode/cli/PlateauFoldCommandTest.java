@@ -1,7 +1,9 @@
 package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +12,8 @@ import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
@@ -53,7 +57,10 @@ class PlateauFoldCommandTest {
     @SneakyThrows
     private void run(JsonNode c) {
         val folder = dir.resolve(c.get("id").asText());
-        copy(Path.of("src/test/resources").resolve(c.get("base").asText()), folder);
+        Files.createDirectories(folder);
+        if (!c.get("base").isNull()) {
+            copy(Path.of("src/test/resources").resolve(c.get("base").asText()), folder);
+        }
         val files = c.get("files");
         for (val name : (Iterable<String>) files::fieldNames) {
             val file = folder.resolve(name);
@@ -68,6 +75,7 @@ class PlateauFoldCommandTest {
         c.get("args").forEach(a -> args.add(a.asText()));
 
         val before = snapshot(folder);
+        val files0 = contents(folder);
         val result = CliHarness.run(factory, errorOutput, args.toArray(String[]::new));
         val expect = c.get("expect");
         if (expect.has("error")) {
@@ -75,13 +83,66 @@ class PlateauFoldCommandTest {
             assertEquals(expect.get("error").asText() + "\n", result.err());
             assertEquals("", result.out());
         } else {
-            val lines = new ArrayList<String>();
-            expect.get("output").forEach(line -> lines.add(line.asText()));
             assertEquals(0, result.exit(), result.err());
-            assertEquals(String.join("\n", lines) + "\n", result.out());
-            assertEquals("", result.err());
+            if (expect.has("output")) {
+                val lines = new ArrayList<String>();
+                expect.get("output").forEach(line -> lines.add(line.asText()));
+                assertEquals(String.join("\n", lines) + "\n", result.out());
+            } else {
+                assertTrue(result.out().startsWith("plateau fold "), result.out());
+            }
+            // the Brightcart says nothing as it is; a small workspace may carry the warning of its own load, never anything else
+            result
+                .err()
+                .lines()
+                .forEach(line -> assertTrue(line.startsWith("warning: "), result.err()));
         }
-        assertEquals(before, snapshot(folder));
+        if (expect.has("error") || args.contains("--dry-run")) {
+            assertEquals(before, snapshot(folder), "a refusal and a dry run leave the folder as it was");
+        } else if (expect.has("files")) {
+            assertFiles(expect.get("files"), folder, files0);
+        }
+        if (args.contains("--dry-run") && !expect.has("error")) {
+            // the same workspace, the same bytes
+            assertEquals(result.out(), CliHarness.run(factory, errorOutput, args.toArray(String[]::new)).out());
+        }
+    }
+
+    /** Every file the case names is as it says, every other file is byte for byte what it was, and none is added. */
+    @SneakyThrows
+    private static void assertFiles(JsonNode expected, Path folder, Map<String, String> was) {
+        val now = contents(folder);
+        for (val path : (Iterable<String>) expected::fieldNames) {
+            val said = expected.get(path);
+            if (said.isNull()) {
+                assertFalse(now.containsKey(path), path + " is deleted");
+            } else if ("changed".equals(said.asText())) {
+                assertTrue(now.containsKey(path), path + " is written");
+                assertNotEquals(was.get(path), now.get(path), path + " changed");
+            } else {
+                assertEquals(said.asText(), now.get(path), path);
+            }
+        }
+        for (val entry : was.entrySet()) {
+            if (!expected.has(entry.getKey())) {
+                assertEquals(entry.getValue(), now.get(entry.getKey()), entry.getKey() + " is untouched");
+            }
+        }
+        for (val path : now.keySet()) {
+            assertTrue(was.containsKey(path) || expected.has(path), path + " was not there and is not expected");
+        }
+    }
+
+    /** Every file, hidden ones too, by its path from the folder, with its text. */
+    @SneakyThrows
+    private static Map<String, String> contents(Path root) {
+        val out = new TreeMap<String, String>();
+        try (Stream<Path> walk = Files.walk(root)) {
+            for (val p : (Iterable<Path>) walk.filter(Files::isRegularFile)::iterator) {
+                out.put(root.relativize(p).toString().replace('\\', '/'), Files.readString(p));
+            }
+        }
+        return out;
     }
 
     @Test

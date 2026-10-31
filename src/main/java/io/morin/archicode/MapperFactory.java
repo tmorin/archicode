@@ -8,12 +8,14 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.cfg.EnumFeature;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.TypeDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.morin.archicode.manifest.AliasExpandingYamlFactory;
 import io.morin.archicode.resource.element.application.ApplicationElement;
@@ -179,6 +181,35 @@ public class MapperFactory {
             }
             default -> throw new IllegalStateException("Unexpected value: " + format);
         }
+    }
+
+    /**
+     * A mapper that writes a manifest read with the mapper of the same format: the same features as the reading mapper, a YAML
+     * without the document start marker and with the items of an array indented under their key, a JSON that is indented, and
+     * {@code NON_NULL} inclusion rather than {@code NON_EMPTY} (which would leave out an empty {@code content}, a key the reader
+     * requires). The reading mappers are not touched.
+     *
+     * @param format the format of the file
+     * @return a new mapper, to write with
+     */
+    public ObjectMapper forWriting(MapperFormat format) {
+        return switch (format) {
+            case YAML -> writing(
+                YAMLMapper.builder(new AliasExpandingYamlFactory())
+                    .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
+                    .enable(YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR)
+                    .build()
+            );
+            case TOML -> writing(TomlMapper.builder().build());
+            case JSON -> writing(JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build());
+        };
+    }
+
+    private static <M extends ObjectMapper> M writing(M mapper) {
+        mapper.configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true);
+        mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        return reading(mapper);
     }
 
     /**
