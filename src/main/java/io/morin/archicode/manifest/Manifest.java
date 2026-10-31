@@ -30,7 +30,7 @@ public class Manifest {
     }
 
     @Value
-    @Builder
+    @Builder(toBuilder = true)
     @Jacksonized
     @ToString(onlyExplicitlyIncluded = true)
     public static class Header {

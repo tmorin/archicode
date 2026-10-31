@@ -144,8 +144,9 @@ public class WorkspaceFactory {
      *
      * @param parsed  the elements per plateau, the placed stories and the tree of the plateaus
      * @param current {@code settings.current}, or null when the file does not write it
+     * @param manifestFiles the manifest files the loader discovers, sorted as it reads them (the workspace file is not one)
      */
-    public record Facts(ManifestParser.Parsed parsed, String current) {}
+    public record Facts(ManifestParser.Parsed parsed, String current, List<Path> manifestFiles) {}
 
     /**
      * Reads the manifests of a workspace and {@code settings.current}, with the checks {@link #plateauTree(Path)} makes.
@@ -162,13 +163,28 @@ public class WorkspaceFactory {
         if (!parsed.plateaus().isLayered()) {
             requireNoPlateaus(settings, null);
         }
-        return new Facts(parsed, settings.getCurrent());
+        val files = ManifestDiscovery.discover(
+            source.wksDir(),
+            settings.getManifests().getPaths(),
+            viewsPathsOf(source, null),
+            path
+        );
+        return new Facts(parsed, settings.getCurrent(), files);
     }
 
     /** Read the manifests of the folders, and tell the warnings of the tree of the plateaus they write. */
     private ManifestParser.Parsed parse(Path path, Source source, Set<String> manifestsDirs, Path viewsDirPath) {
-        // the folders of the views are not manifests: the ones of the settings, and the ones `--output` names, which an earlier
-        // run of the command wrote beside the workspace file
+        val viewsPaths = viewsPathsOf(source, viewsDirPath);
+        val parsed = manifestParser.parse(source.wksDir(), manifestsDirs, path, viewsPaths);
+        warnings.warnAll(parsed.plateaus().warnings());
+        return parsed;
+    }
+
+    /**
+     * The folders of the views are not manifests: the one of the settings, and the one {@code --output} names, which an earlier
+     * run of the command wrote beside the workspace file.
+     */
+    private static List<String> viewsPathsOf(Source source, Path viewsDirPath) {
         val viewsPaths = new ArrayList<String>();
         viewsPaths.add(source.rawWorkspace().getSettings().getViews().getPath());
         if (viewsDirPath != null) {
@@ -181,9 +197,7 @@ public class WorkspaceFactory {
                 viewsPaths.add(wksDir.relativize(output).toString().replace('\\', '/'));
             }
         }
-        val parsed = manifestParser.parse(source.wksDir(), manifestsDirs, path, viewsPaths);
-        warnings.warnAll(parsed.plateaus().warnings());
-        return parsed;
+        return viewsPaths;
     }
 
     /**

@@ -2,6 +2,7 @@ package io.morin.archicode.workspace;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.morin.archicode.ArchiCodeException;
@@ -43,8 +44,24 @@ class FoldTest {
     }
 
     private static PlateauTree.Declared declared(String id, String override, int patchCount) {
+        return declared(id, override, patchCount, null, null);
+    }
+
+    private static PlateauTree.Declared declared(
+        String id,
+        String override,
+        int patchCount,
+        String name,
+        String horizon
+    ) {
         return new PlateauTree.Declared(
-            Plateau.builder().id(id).override(override).patches(patches(patchCount)).build(),
+            Plateau.builder()
+                .id(id)
+                .name(name)
+                .horizon(horizon)
+                .override(override)
+                .patches(patches(patchCount))
+                .build(),
             id + "/plateau.yaml"
         );
     }
@@ -212,6 +229,36 @@ class FoldTest {
             plan.replaces()
         );
         assertEquals(List.of("baseline", "c"), plan.stay());
+    }
+
+    @Test
+    void shouldCarryWhatTheWriterNeeds() {
+        val named = PlateauTree.of(
+            List.of(declared("a", null, 2, "Build services", "2026-Q4"), declared("b", "a", 3)),
+            Map.of("a", List.of("a/y.yaml", "a/x.yaml")),
+            "test"
+        );
+
+        val plan = Fold.plan("a", named, null, List.of(), () -> new Composition(Set.of(), Map.of(), List.of()));
+
+        assertEquals(List.of("a/x.yaml", "a/y.yaml"), plan.headers());
+        assertEquals("b/plateau.yaml", plan.intoManifest());
+        assertEquals("Build services", plan.foldedName());
+        assertEquals("2026-Q4", plan.foldedHorizon());
+        assertEquals(List.of("a/plateau.yaml"), plan.deleted());
+    }
+
+    @Test
+    void shouldHaveNoNameAndNoHorizonWhenNoManifestDeclaresThePlateau() {
+        val headerOnly = PlateauTree.of(List.of(declared("b", "a", 3)), Map.of("a", List.of("a/x.yaml")), "test");
+
+        val plan = Fold.plan("a", headerOnly, null, List.of(), () -> new Composition(Set.of(), Map.of(), List.of()));
+
+        assertNull(plan.foldedName());
+        assertNull(plan.foldedHorizon());
+        assertEquals(List.of(), plan.deleted());
+        assertEquals(List.of("a/x.yaml"), plan.headers());
+        assertEquals("b/plateau.yaml", plan.intoManifest());
     }
 
     @Test

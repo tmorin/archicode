@@ -42,6 +42,12 @@ public final class Fold {
      * @param intoPatches   the number of patches of {@code into}
      * @param replaces      the {@code replaces} entries to compose
      * @param stay          the plateaus that are neither folded nor {@code into}, sorted
+     * @param headers       the manifests whose header names the folded plateau, sorted: the files of the first edit of the
+     *                      writer (a subset of {@code rewritten})
+     * @param intoManifest  the manifest of the plateau above, which receives the patches and the new parent; null only when
+     *                      no manifest declares it
+     * @param foldedName    the name the manifest of the folded plateau gives it, or null
+     * @param foldedHorizon the horizon the manifest of the folded plateau gives it, or null
      */
     public record Plan(
         String folded,
@@ -52,7 +58,11 @@ public final class Fold {
         int foldedPatches,
         int intoPatches,
         List<ReplacesChange> replaces,
-        List<String> stay
+        List<String> stay,
+        List<String> headers,
+        String intoManifest,
+        String foldedName,
+        String foldedHorizon
     ) {}
 
     /**
@@ -203,7 +213,11 @@ public final class Fold {
             folded.patches().size(),
             into.patches().size(),
             List.copyOf(changes),
-            stay
+            stay,
+            List.copyOf(folded.headers()),
+            into.manifest(),
+            folded.name(),
+            folded.horizon()
         );
     }
 
