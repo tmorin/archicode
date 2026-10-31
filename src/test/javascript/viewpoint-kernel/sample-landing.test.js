@@ -375,11 +375,13 @@ test('first visit: the sample is the primary action, then the new workspace, the
   assert.equal(card.kind, 'first-launch');
   assert.deepEqual(actionsOf(card), [
     ['open-sample', true],
+    ['open-sample-archicode', false],
     ['new-browser-workspace', false],
     ['import-bundle', false]
   ]);
   assert.deepEqual(plain(card.actions.map((a) => a.label)), [
     'Open the Brightcart sample',
+    'Open the ArchiCode model',
     'New workspace in this browser',
     'Import a workspace file'
   ]);
@@ -389,6 +391,7 @@ test('first visit: the sample is the primary action, then the new workspace, the
   const withPicker = await ready(fakeIndexedDB(), { picker: true });
   assert.deepEqual(actionsOf(withPicker.sandbox.landingScreenConfig()), [
     ['open-sample', true],
+    ['open-sample-archicode', false],
     ['new-browser-workspace', false],
     ['open-folder', false],
     ['import-bundle', false]
@@ -401,6 +404,7 @@ test('a visitor who has a workspace keeps the primary action W-4 chose; the samp
   const { sandbox } = await ready(idb);
   assert.deepEqual(actionsOf(sandbox.landingScreenConfig()), [
     ['open-sample', false],
+    ['open-sample-archicode', false],
     ['new-browser-workspace', true],
     ['import-bundle', false]
   ]);

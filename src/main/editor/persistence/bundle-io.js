@@ -10,7 +10,10 @@
    the entry points of this part: the flows of application/bundle-flows.js call them (run 0193, task 009). */
 
 /** The samples the page can open (DEC-6): the id, the name of the workspace made from it and its address, relative so that it works under `/editor/` and at `/`. */
-const BROWSER_SAMPLES = { brightcart: { name: 'Brightcart', url: 'samples/brightcart.yaml' } };
+const BROWSER_SAMPLES = {
+  brightcart: { name: 'Brightcart', url: 'samples/brightcart.yaml' },
+  archicode: { name: 'ArchiCode', url: 'samples/archicode.yaml' }
+};
 
 const BUNDLE_NOT_UTF8 = 'The file is not UTF-8 text.';
 const BUNDLE_IMPORT_FALLBACK_NAME = 'Imported workspace';

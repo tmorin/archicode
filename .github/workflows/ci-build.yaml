@@ -114,9 +114,10 @@ jobs:
         # from src/main/editor, and the names, the load order and the ratchet of scripts/check-editor.mjs must hold.
         # Run `npm run editor:build` to write the page, `npm run editor:check` to see this check
         run: npm run editor:check
-      - name: "Check the Brightcart sample is the bundle of its fixture"
-        # The hosted editor's sample, src/main/resources/editor-webapp/samples/brightcart.yaml, is the bundle of
-        # src/test/resources/brightcart/layered made by the page's own codec; it must be what `npm run sample:build` writes
+      - name: "Check the samples are the bundles of their folders"
+        # The hosted editor's samples, src/main/resources/editor-webapp/samples/brightcart.yaml and archicode.yaml, are the bundles of
+        # src/test/resources/brightcart/layered and of docs/architecture (the model of ArchiCode) made by the page's own codec;
+        # they must be what `npm run sample:build` writes
         run: npm run sample:check
       - name: "Check the move commits"
         # A commit `refactor: move ...` must leave the assembled page byte for byte what its parent's was, a commit
@@ -381,6 +382,8 @@ jobs:
           cp -r src/main/resources/editor-webapp/samples/. target/site/editor/samples/
           test -f target/site/editor/samples/brightcart.yaml
           cmp src/main/resources/editor-webapp/samples/brightcart.yaml target/site/editor/samples/brightcart.yaml
+          test -f target/site/editor/samples/archicode.yaml
+          cmp src/main/resources/editor-webapp/samples/archicode.yaml target/site/editor/samples/archicode.yaml
           grep -q "content=\"${version}\"" target/site/index.html
           grep -q "content=\"${version}\"" target/site/editor/index.html
           test -f target/site/docs/index.html

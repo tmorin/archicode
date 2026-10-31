@@ -15803,7 +15803,10 @@ function unbundleWorkspaceFiles(text, options) {
    the entry points of this part: the flows of application/bundle-flows.js call them (run 0193, task 009). */
 
 /** The samples the page can open (DEC-6): the id, the name of the workspace made from it and its address, relative so that it works under `/editor/` and at `/`. */
-const BROWSER_SAMPLES = { brightcart: { name: 'Brightcart', url: 'samples/brightcart.yaml' } };
+const BROWSER_SAMPLES = {
+  brightcart: { name: 'Brightcart', url: 'samples/brightcart.yaml' },
+  archicode: { name: 'ArchiCode', url: 'samples/archicode.yaml' }
+};
 
 const BUNDLE_NOT_UTF8 = 'The file is not UTF-8 text.';
 const BUNDLE_IMPORT_FALLBACK_NAME = 'Imported workspace';
@@ -17419,6 +17422,12 @@ function renderWorkspaceMenuHtml() {
     body += workspaceMenuItemHtml(
       'workspace-open-sample',
       'Open the Brightcart sample',
+      '',
+      ' title="' + escapeHtml(WORKSPACE_SERVED_SAMPLE_TITLE) + '"'
+    );
+    body += workspaceMenuItemHtml(
+      'workspace-open-sample-archicode',
+      'Open the ArchiCode model',
       '',
       ' title="' + escapeHtml(WORKSPACE_SERVED_SAMPLE_TITLE) + '"'
     );
@@ -32834,6 +32843,9 @@ function handleAppClick(e) {
     case 'open-sample':
       openSample('brightcart');
       break;
+    case 'open-sample-archicode':
+      openSample('archicode');
+      break;
     case 'import-bundle':
       chooseBundleFile(); // the picker is asked in the turn of the click
       break;
@@ -32867,6 +32879,15 @@ function handleAppClick(e) {
       )
         break;
       openSample('brightcart');
+      break;
+    case 'workspace-open-sample-archicode':
+      setWorkspaceMenuOpen(false);
+      if (
+        workspaceExportIsPending() &&
+        !confirm('You have unsaved changes that will be lost. Open the ArchiCode model anyway?')
+      )
+        break;
+      openSample('archicode');
       break;
     case 'workspace-ask-reset':
       askToResetSample();
@@ -34172,6 +34193,7 @@ function landingScreenConfig() {
     const firstVisit = browserWorkspaces.length === 0 && landingFolderRows().length === 0;
     if (browser) {
       actions.push({ label: 'Open the Brightcart sample', action: 'open-sample', primary: firstVisit });
+      actions.push({ label: 'Open the ArchiCode model', action: 'open-sample-archicode' });
       actions.push({
         label: 'New workspace in this browser',
         action: 'new-browser-workspace',

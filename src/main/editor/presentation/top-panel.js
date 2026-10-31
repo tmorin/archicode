@@ -279,6 +279,12 @@ function renderWorkspaceMenuHtml() {
       '',
       ' title="' + escapeHtml(WORKSPACE_SERVED_SAMPLE_TITLE) + '"'
     );
+    body += workspaceMenuItemHtml(
+      'workspace-open-sample-archicode',
+      'Open the ArchiCode model',
+      '',
+      ' title="' + escapeHtml(WORKSPACE_SERVED_SAMPLE_TITLE) + '"'
+    );
   }
   return '<div class="workspace-menu" role="dialog" aria-label="Workspace">' + body + '</div>';
 }

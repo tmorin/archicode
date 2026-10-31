@@ -185,6 +185,7 @@ test('without a picker and with the store ready, the card is first-launch, says 
     plain(card.actions.map((a) => [a.label, a.action])),
     [
       ['Open the Brightcart sample', 'open-sample'],
+      ['Open the ArchiCode model', 'open-sample-archicode'],
       ['New workspace in this browser', 'new-browser-workspace'],
       ['Import a workspace file', 'import-bundle']
     ],
@@ -204,6 +205,7 @@ test('with a picker, the card offers the sample, the new workspace, the folder a
   assert.equal(card.kind, 'first-launch');
   assert.deepEqual(plain(card.actions.map((a) => [a.label, a.action])), [
     ['Open the Brightcart sample', 'open-sample'],
+    ['Open the ArchiCode model', 'open-sample-archicode'],
     ['New workspace in this browser', 'new-browser-workspace'],
     ['Open workspace folder', 'open-folder'],
     ['Import a workspace file', 'import-bundle']

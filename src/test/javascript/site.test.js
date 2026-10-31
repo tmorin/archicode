@@ -99,7 +99,7 @@ test('the sample button opens the editor on a sample of the catalog, in the hero
   assert.equal(hrefs.length, 2);
   const source = fs.readFileSync(path.resolve(__dirname, '../../main/editor/persistence/bundle-io.js'), 'utf8');
   const ids = Object.keys(
-    vm.runInNewContext(source.match(/const BROWSER_SAMPLES = (\{.*\});/)[1].replace(/^/, '(') + ')')
+    vm.runInNewContext(source.match(/const BROWSER_SAMPLES = (\{[\s\S]*?\});/)[1].replace(/^/, '(') + ')')
   );
   for (const href of hrefs) {
     assert.ok(href.startsWith('editor/#'), href);

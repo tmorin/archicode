@@ -474,6 +474,23 @@ class EditorHttpServerTest {
 
     @SneakyThrows
     @Test
+    void servesTheModelOfArchiCodeAsAnotherSample() {
+        val response = sample("/samples/archicode.yaml", running.token());
+        assertEquals(200, response.statusCode());
+        assertArrayEquals(
+            Files.readAllBytes(Path.of("src/main/resources/editor-webapp/samples/archicode.yaml")),
+            response.body(),
+            "the bytes of the resource, as committed"
+        );
+        assertEquals(
+            403,
+            sample("/samples/archicode.yaml", null).statusCode(),
+            "the token is wanted as for the other sample"
+        );
+    }
+
+    @SneakyThrows
+    @Test
     void servesTheSampleWithTheSessionCookie() {
         val cookie = "Cookie: " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
         val raw = rawGet("/samples/brightcart.yaml", "127.0.0.1", cookie);

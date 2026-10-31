@@ -14,17 +14,21 @@ const REPO = path.resolve(__dirname, '..', '..', '..', '..');
 const SCRIPT = path.join(REPO, 'scripts', 'build-sample.mjs');
 const FIXTURE = 'src/test/resources/brightcart/layered';
 const SAMPLE = 'src/main/resources/editor-webapp/samples/brightcart.yaml';
+const MODEL = 'docs/architecture';
+const MODEL_SAMPLE = 'src/main/resources/editor-webapp/samples/archicode.yaml';
 const PAGE = 'src/main/resources/editor-webapp/standalone.html';
 
 /** A tree with the same layout as the repository: the fixture, the page and (unless `withSample` is false) the committed sample. */
 function copyTree(withSample) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'build-sample-'));
   fs.cpSync(path.join(REPO, FIXTURE), path.join(root, FIXTURE), { recursive: true });
+  fs.cpSync(path.join(REPO, MODEL), path.join(root, MODEL), { recursive: true });
   fs.mkdirSync(path.join(root, path.dirname(PAGE)), { recursive: true });
   fs.copyFileSync(path.join(REPO, PAGE), path.join(root, PAGE));
   if (withSample !== false) {
     fs.mkdirSync(path.join(root, path.dirname(SAMPLE)), { recursive: true });
     fs.copyFileSync(path.join(REPO, SAMPLE), path.join(root, SAMPLE));
+    fs.copyFileSync(path.join(REPO, MODEL_SAMPLE), path.join(root, MODEL_SAMPLE));
   }
   return root;
 }
@@ -106,4 +110,15 @@ test('a file of the fixture that the bundle skips fails the script, in the build
     fs.readFileSync(path.join(root, SAMPLE)).equals(fs.readFileSync(path.join(REPO, SAMPLE))),
     'the sample is not touched'
   );
+});
+
+test('--check names the model sample when it is not the bundle of docs/architecture, and --only checks one sample', () => {
+  const root = copyTree();
+  fs.appendFileSync(path.join(root, MODEL, '.archicode.yaml'), '# one more line\n');
+  const model = script(root, '--check', '--only', 'archicode');
+  assert.equal(model.status, 1);
+  assert.match(model.err, /archicode\.yaml is not the bundle of docs\/architecture/);
+  assert.match(model.err, /npm run sample:build/);
+  const brightcart = script(root, '--check', '--only', 'brightcart');
+  assert.equal(brightcart.status, 0, brightcart.err);
 });
