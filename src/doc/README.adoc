@@ -1639,6 +1639,13 @@ Nothing is to be changed in the manifests themselves: their format is the one it
 . *Folders of a comparison.* A folder that holds both `gap.json` and `gap.md` is left out of a `+/**+` read, whichever command wrote it (see <<manifests-folders>>).
 . *The editor.* The pages are Plateaus, Applications, Environments, Elements, Stories, Files and Settings (see <<editor-pages>>); the band has two lists; Files has no choice of what it lists.
 
+[[upgrade-0-22]]
+*What changes for a reader who knows 0.22.0.* These are the changes after the release 0.22.0; they are in the release 0.23.0. Nothing breaks: the editor gains a second sample, and the manual and `archicode guide` say two things about the views that they left unsaid. A workspace that loaded in 0.22.0 loads in 0.23.0 and the command line writes the same files for it.
+
+. *The model of ArchiCode is a second sample of the editor* (New, see <<editor-browser-workspace>>). *Open the ArchiCode model*, on the card and in the *Workspace* menu of a served page, keeps a copy of the as-is model of ArchiCode itself in the browser, as a workspace named ArchiCode; `sample=archicode` in the address does the same. It has its own *Reset to the sample...*, and the Brightcart sample is as it was.
+. *A view opens only the element it is about* (Documented, see <<viewpoints>>). In a `detailed` or a `deep` view the elements linked to the one drawn stay closed boxes, even when they are systems that hold containers. Nothing is drawn differently; the manual and `archicode guide` now say so.
+. *A box of a Map opens one level at a time* (Documented, see <<map-technology>>). `opened: [prod]` on an environment shows its nodes as boxes, and the applications of a node show only when the node is in `opened` too. Nothing is drawn differently; the manual and `archicode guide` now say so.
+
 [[upgrade-0-21]]
 *What changes for a reader who knows 0.21.0.* These are the changes after the release 0.21.0; they are in the release 0.22.0. Nothing breaks: the editor lays a wide diagram out in rows of a size you choose, a link copied from the address bar draws what the sender sees, and the buttons that walk the changes stay in reach. A workspace that loaded in 0.21.0 loads in 0.22.0 and the command line writes the same files for it (the key `layout` is one it ignores, see <<editor-layout>>).
 
