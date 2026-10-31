@@ -1,0 +1,27 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "github"
+  name: "GitHub"
+  description: "Where the tools are built, released and published."
+  elements:
+    - kind: "node"
+      id: "actions"
+      name: "Actions"
+      description: "Builds the command line and the editor."
+      applications:
+        - "archicode.commandline"
+        - "archicode.editor"
+    - kind: "node"
+      id: "pages"
+      name: "Pages"
+      description: "Hosts the website and the editor."
+      applications:
+        - "archicode.editor"
+    - kind: "node"
+      id: "releases"
+      name: "Releases"
+      description: "Holds the packaged binaries."
+      applications:
+        - "archicode.commandline"

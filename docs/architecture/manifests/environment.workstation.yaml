@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "workstation"
+  name: "Workstation"
+  description: "The machine of the author, where the tools run."
+  elements:
+    - kind: "node"
+      id: "machine"
+      name: "Machine"
+      description: "Runs the command line and the editor."
+      applications:
+        - "archicode.commandline"
+        - "archicode.editor"

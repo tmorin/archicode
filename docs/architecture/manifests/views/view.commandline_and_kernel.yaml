@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "commandline_and_kernel"
+  name: "The command line and the kernel"
+  description: "The command line, with the kernel it reaches through its relationships."
+  viewpoint: "detailed"
+  properties:
+    element: "archicode.commandline"

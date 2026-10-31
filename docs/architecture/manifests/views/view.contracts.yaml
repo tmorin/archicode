@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "contracts"
+  name: "What couples the tools"
+  description: "The five couplings that must change together."
+  viewpoint: "map"
+  properties:
+    pinned:
+      - "archicode.contracts.couplings.kernel_wasm"
+      - "archicode.contracts.couplings.shared_cases"
+      - "archicode.contracts.couplings.read_schema"
+      - "archicode.contracts.couplings.manifest_schema"
+      - "archicode.contracts.couplings.goldens"
+    opened: ["archicode.contracts.couplings"]

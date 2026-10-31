@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "agent"
+  name: "Agent"
+  description: "The AI agent that edits the code and queries the graph."
+  relationships:
+    - destination: "archicode.commandline"
+      label: "asks the graph of"
+      qualifiers: ["query graph"]

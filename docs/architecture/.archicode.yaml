@@ -1,0 +1,5 @@
+# The architecture of ArchiCode itself, as it is. Hand-written; `tags.path` names the code each element stands for.
+settings:
+  name: "ArchiCode"
+  manifests:
+    paths: ["manifests/**"]

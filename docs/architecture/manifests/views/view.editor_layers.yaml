@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "editor_layers"
+  name: "The editor layers"
+  description: "The six layers and the page of the editor."
+  viewpoint: "detailed"
+  properties:
+    element: "archicode.editor"

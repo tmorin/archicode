@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "author"
+  name: "Author"
+  description: "The human who reads the model and writes the workspaces."
+  relationships:
+    - destination: "archicode.editor"
+      label: "edits workspaces with"
+      qualifiers: ["uses"]
+    - destination: "archicode.commandline"
+      label: "generates views with"
+      qualifiers: ["uses"]
