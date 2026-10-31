@@ -603,6 +603,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#editor-header">The header of a diagram</a></li>
 <li><a href="#editor-small-screen">The editor on a small screen</a></li>
 <li><a href="#editor-texts">The texts of a diagram</a></li>
+<li><a href="#editor-layout">The boxes per row</a></li>
 <li><a href="#editor-stories">Stories: stories and views</a></li>
 <li><a href="#editor-facets">Facets</a></li>
 <li><a href="#editor-files">Files</a></li>
@@ -617,6 +618,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#editor-what-changed">What changed</a></li>
 <li><a href="#editor-changes-only">Changes only and wording-only changes</a></li>
 <li><a href="#editor-changes-address">The address and the trees</a></li>
+<li><a href="#editor-link-carries">What a link carries</a></li>
 <li><a href="#editor-replaces">Moved, split and merged elements, and candidates</a></li>
 <li><a href="#editor-move">Moving an element under another parent</a></li>
 </ul>
@@ -638,6 +640,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#stories-generate">Draw the stories</a></li>
 <li><a href="#plateau-list">List the plateaus</a></li>
 <li><a href="#diff">Compare plateaus</a></li>
+<li><a href="#plateau-fold">Fold a plateau into the one above</a></li>
 <li><a href="#_generate_json_schemas">Generate JSON Schemas</a></li>
 </ul>
 </li>
@@ -2489,6 +2492,9 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <div class="paragraph">
 <p>The <code>settings</code> also accept a <code>name</code> for the workspace (see <a href="#workspace">Workspace</a>) and the plateau that is <code>current</code> (see <a href="#plateau-choose">[plateau-choose]</a>). They have no default, so the snippet below does not show them. There is no <code>settings.plateaus</code>: the plateaus are written in the manifests (see <a href="#plateaus">Plateaus</a>).</p>
 </div>
+<div class="paragraph">
+<p>The <code>settings.views.properties</code> key has one entry for each viewpoint (<code>overview</code>, <code>detailed</code>, <code>deep</code> and <code>map</code>), a mapping of properties for the views of that viewpoint. The editor reads one key of them, <code>layout</code>, the number of boxes per row its diagrams aim at (see <a href="#editor-layout">The boxes per row</a>). <strong>Settings</strong> edits the entries of <code>overview</code>, <code>detailed</code> and <code>deep</code>; the entry of <code>map</code> is written in the file, in <strong>Files</strong>. The command line reads none of it.</p>
+</div>
 <div class="listingblock">
 <div class="title">The default settings of a workspace</div>
 <div class="content">
@@ -4160,8 +4166,30 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </li>
 </ol>
 </div>
+<div id="upgrade-0-21" class="paragraph">
+<p><strong>What changes for a reader who knows 0.21.0.</strong> These are the changes after the release 0.21.0; they are in the release 0.22.0. Nothing breaks: the editor lays a wide diagram out in rows of a size you choose, a link copied from the address bar draws what the sender sees, and the buttons that walk the changes stay in reach. A workspace that loaded in 0.21.0 loads in 0.22.0 and the command line writes the same files for it (the key <code>layout</code> is one it ignores, see <a href="#editor-layout">The boxes per row</a>).</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>A diagram can aim at a number of boxes per row</strong> (New, see <a href="#editor-layout">The boxes per row</a>). <code>layout: {columns: N}</code>, a whole number from 1 to 20, in a saved view or under <code>settings.views.properties.&lt;viewpoint&gt;</code>, and a <strong>Columns</strong> list in the toolbar of a diagram; the editor and the story player lay the diagram out with it. A workspace that sets none is drawn as before, and the command line ignores the key.</p>
+</li>
+<li>
+<p><strong>A link copied from the address bar draws the diagram the sender saw</strong> (Changed, see <a href="#editor-link-carries">What a link carries</a>). The address carries what changes the boxes and the links drawn: the layout, <strong>Changes only</strong>, and which boxes of a Map are open or hidden, on the page of an element, on both Maps and on the page of a saved view. The wording toggle, the key and the zoom stay out of it.</p>
+</li>
+<li>
+<p><strong>The buttons that walk the changes stay in view</strong> (Fixed, see <a href="#editor-small-screen">The editor on a small screen</a>). With many changes, each press of <strong>Next change</strong> scrolled the panel and carried the buttons away; the row now stays under the tabs, and the selected row is brought into view without moving one that is already visible.</p>
+</li>
+<li>
+<p><strong>The Workspace menu and the top bar of a browser workspace fit a narrow window</strong> (Fixed, see <a href="#editor-small-screen">The editor on a small screen</a>). In a window 360 pixels wide the note of <strong>Export as a file</strong> ran out of its item and the buttons of the bar went past the window, so the page scrolled sideways; the buttons now wrap, the notes stay in their items and the menu stays inside the window.</p>
+</li>
+<li>
+<p><strong>You can read the plan of a fold before you make it</strong> (New, see <a href="#plateau-fold">Fold a plateau into the one above</a>). <code>archicode plateau fold &lt;id&gt;</code> folds a plateau into the one above it: it rewrites the manifests, deletes the manifest of the folded plateau, composes the <code>replaces</code>, checks on a temporary copy that the plateaus that stay are the same before and after, and writes all its files or none. <code>--dry-run</code> prints the plan and the check and writes nothing; the plain form writes, so read the plan first and fold in a clean git tree. A fold it cannot make is one <code>error:</code> line (exit 1) and nothing is written. The name and the horizon of the folded plateau, and the comments, quotes and layout of the files rewritten, are not kept.</p>
+</li>
+</ol>
+</div>
 <div id="upgrade-0-20" class="paragraph">
-<p><strong>What changes for a reader who knows 0.20.0.</strong> These are the changes after the release 0.20.0; they are in the release 0.21.0. Nothing breaks: the editor opens in a browser that has no folder picker, a Map can be drawn from the relationships it lists, a story can light up one relationship at a time, and a few mistakes are fixed or told in the same words by both tools. A workspace that loaded in 0.20.0 loads in 0.21.0 and the command line writes the same files for it (checked by running every command on every example and fixture of the repository against the jar of 0.19.0: the only differences are the sentence of 0.20.0 for a reference that names no element, see <a href="#upgrade-0-19">[upgrade-0-19]</a>, and the files of the new story <code>order_flow</code>); the new keys <code>links</code> and <code>highlight</code> mean nothing until you write them. As for the blocks below, there is no release notes file in the repository: these blocks are the notes.</p>
+<p><strong>What changes for a reader who knows 0.20.0.</strong> These are the changes after the release 0.20.0; they are in the release 0.21.0. Nothing breaks: the editor opens in a browser that has no folder picker, a Map can be drawn from the relationships it lists, a story can light up one relationship at a time, and a few mistakes are fixed or told in the same words by both tools. A workspace that loaded in 0.20.0 loads in 0.21.0 and the command line writes the same files for it (checked by running every command on every example and fixture of the repository against the jar of 0.19.0: the only differences are the sentence of 0.20.0 for a reference that names no element, see <a href="#upgrade-0-19">[upgrade-0-19]</a>, and the files of the new story <code>order_flow</code>); the new keys <code>links</code>, <code>highlight</code> and <code>layout</code> mean nothing until you write them. As for the blocks below, there is no release notes file in the repository: these blocks are the notes.</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -4402,7 +4430,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="ulist">
 <ul>
 <li>
-<p><strong>The editor does not fold a plateau into the one above</strong> (not planned). Deleting a plateau that others override is one step and tells what the plateaus above lose, but no operation moves the patches and the elements of the deleted plateau into the plateau above, and the delete is refused when a step or a view would lose what it draws. Folding is done by hand, and <a href="#fold-by-hand">[fold-by-hand]</a> says how.</p>
+<p><strong>The editor does not fold a plateau into the one above</strong> (not planned). Deleting a plateau that others override is one step and tells what the plateaus above lose, but no operation moves the patches and the elements of the deleted plateau into the plateau above, and the delete is refused when a step or a view would lose what it draws. <code>archicode plateau fold</code> does it from the command line (see <a href="#plateau-fold">Fold a plateau into the one above</a>); <a href="#fold-by-hand">[fold-by-hand]</a> says how to do it by hand, for a plateau the command refuses.</p>
 </li>
 <li>
 <p><strong>The editor does not move an element a plateau inherits</strong> (a patch never changes an <code>id</code> or a <code>parent</code>): draw the plateau that declares it.</p>
@@ -4580,7 +4608,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p>Since 0.17 the pages answer to the addresses of the table above and to no other: <code><mark>/map</code>, <code></mark>/elements</code>, <code><mark>/library</code>, <code></mark>/library/stories</code>, <code><mark>/library/views</code>, <code></mark>/diagram</code>, <code><mark>/applications</code>, <code></mark>/plateaus</code>, <code><mark>/environments</code> and <code></mark>/timeline</code> alone are no routes any more, and open the default page, Applications, like any address the editor does not know. Replace them with <code><mark>/timeline/applications</code>, <code></mark>/timeline/elements</code>, <code><mark>/stories</code>, <code></mark>/stories/views</code>, <code><mark>/timeline/plateaus</code> and <code></mark>/timeline/environments</code>. The page writes its own address in place of the one that was typed, without adding an entry to the history of the browser. The parameters of an address (<code>ref</code>, <code>tab</code>, <code>pin</code>, <code>facet</code>, <code>story</code>, <code>view</code>, <code>plateau</code>&#8230;&#8203;) are the ones they were.</p>
 </div>
 <div class="paragraph">
-<p><strong>The address says the plateau.</strong> A link with <code>plateau=&lt;id&gt;</code> draws that plateau, and <code>compare=</code> the comparison it names (see <a href="#editor-changes-address">The address and the trees</a>); an address with no <code>plateau=</code> is the root, <code>baseline</code>, which the page never writes. This is also true once the editor is open: an address that is typed in the tab, followed, or reached by Back and Forward draws the plateau it names (an unknown plateau leaves the one that is drawn). A plateau that you choose, on the band or on the page Plateaus, is an entry of the history, so Back walks back through the plateaus you drew. A comparison chosen on the band changes no address, so Back between two comparisons of the same plateau does nothing.</p>
+<p><strong>The address says the plateau.</strong> A link with <code>plateau=&lt;id&gt;</code> draws that plateau, and <code>compare=</code> the comparison it names (see <a href="#editor-changes-address">The address and the trees</a>); an address with no <code>plateau=</code> is the root, <code>baseline</code>, which the page never writes. This is also true once the editor is open: an address that is typed in the tab, followed, or reached by Back and Forward draws the plateau it names (an unknown plateau leaves the one that is drawn). A plateau that you choose, on the band or on the page Plateaus, is an entry of the history, so Back walks back through the plateaus you drew. A comparison chosen on the band is an entry of the history too, and the address says it (<code>compare=</code>, see <a href="#editor-link-carries">What a link carries</a>), so Back walks back through the comparisons of the same plateau.</p>
 </div>
 <div class="paragraph">
 <p><strong>Environments</strong> is a Map like Applications, on the technology layer: the tree of environments and nodes on the left, the pins, the eye, the chips, the Changes panel and <strong>Name view&#8230;&#8203;</strong> are the ones of Applications. Unlike Applications, it draws the applications deployed on the nodes and the relationships between environments, and its tools can leave each of them out (see <a href="#editor-map">Applications and Environments: the Map</a>). The page <strong>Elements</strong> keeps the tree of both layers, and is where an environment or a node is edited and created, as an application element is. <strong>Show on map</strong>, on an element of either layer, opens the Map of that layer with the element pinned, and a row of the <strong>Changes</strong> panel about the other layer leaves the Map on screen for the Map of that layer.</p>
@@ -4739,10 +4767,16 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </tbody>
 </table>
 <div class="paragraph">
-<p>The section <strong>Relationships</strong> of the page Applications (see <a href="#editor-map-links">[editor-map-links]</a>) wraps its filter, its kind list and <strong>Ticked only</strong> in the width of the tree, which is stacked above the diagram in this layout, and its long references wrap inside the rows. The controls of the highlight (the <strong>Highlight</strong> boxes, their chip, and the <strong>Highlight</strong> fields of a saved view and of a story step, see <a href="#editor-map-links">[editor-map-links]</a> and <a href="#editor-stories">Stories: stories and views</a>) came with run 0200 and are not in the table above.</p>
+<p>The top bar row of the table is the measure it had before #182 and is left as it is. The bar of a browser workspace, with the <strong>Workspace</strong> menu of its name, was measured again after the fix, on the sample, in a window of 360 pixels and of 1280 pixels, in the light and the dark scheme, with the menu open: at 360 pixels the bar is 141 pixels high, its buttons wrap onto as many rows as they need and every one lies inside the window, the document is as wide as the window, and the menu is 328 pixels wide, inside the window; at 1280 pixels the bar is 48 pixels high and the menu is 336 pixels wide. In the menu each item holds its label and its note: <strong>Export as a file</strong> with its note is 48 pixels high and <strong>Reset to the sample</strong> is 29 pixels, and the items do not overlap. Before the fix the note of <strong>Export as a file</strong> ran out of its item and the bar ran past the window, so the page scrolled sideways (see <a href="#upgrade-0-21">[upgrade-0-21]</a>).</p>
+</div>
+<div class="paragraph">
+<p>The section <strong>Relationships</strong> of the page Applications (see <a href="#editor-map-links">[editor-map-links]</a>) wraps its filter, its kind list and <strong>Ticked only</strong> in the width of the tree, which is stacked above the diagram in this layout, and its long references wrap inside the rows. The controls of the highlight (the <strong>Highlight</strong> boxes, their chip, and the <strong>Highlight</strong> fields of a saved view and of a story step, see <a href="#editor-map-links">[editor-map-links]</a> and <a href="#editor-stories">Stories: stories and views</a>) came with run 0200 and are not in the table above. The <strong>Columns</strong> list of the toolbar (see <a href="#editor-layout">The boxes per row</a>) came with run 0202 and is not in the table above either.</p>
 </div>
 <div class="paragraph">
 <p>Nothing is wider than the window, on the seven pages, on 52 states of the Brightcart in each theme (the forms of ten elements in view, edit, <em>Move</em> and delete, three stories, seven views) and on 20 of <code>domain_application</code>; the diagram is drawn to scale and scrolls in its own box, and the code editor of Files scrolls inside itself, as they do on a large screen. Four places did go past the window inside the scroll of the center and are fixed: the row that adds a tag, the four buttons in the header of an element, the list of saved views of a story, and the lists of the references in <em>Confirm delete</em>. The list of the places not offered in the dialog of <em>Move</em> has text wider than its box and scrolls inside it.</p>
+</div>
+<div class="paragraph">
+<p>The walk row of the <strong>Changes</strong> panel (see <a href="#editor-changes-panel">The Changes panel</a>) is sticky at this width too: <strong>Previous change</strong>, <strong>Next change</strong>, the position and <strong>Show all</strong> stay under the tabs while the list scrolls, and a press brings the selected row into view with the nearest scroll (<code>block: nearest</code>) that shows it. The row&#8217;s height was measured at 360 by 640 pixels, as a share of the panel&#8217;s height, against the 35 percent limit of the design, and the figure is in the record of the change (run 0201). Safari was not tested, so whether the row sticks the same way there is not proved.</p>
 </div>
 <div class="paragraph">
 <p>The story player (see <a href="#editor-story-player">[editor-story-player]</a>) is not a stacked layout either: it is a window of its own, as high and as wide as the browser window, and nothing in it makes the page scroll sideways. Its bar (the title, "Step n of N", the list of the steps, <strong>Previous</strong>, <strong>Next</strong>, <strong>Full screen</strong> and <strong>Close</strong>) wraps onto as many lines as it needs (four at 360 pixels), the plateau and the comparison are one line under it, the diagram takes the room that is left and is moved with a finger or the mouse inside its own box, the status line and the folded key under a comparison are one row that scrolls along, and the words of the step scroll in their own box. It was looked at in a desktop browser (the browser pane of the development tool), on the example <code>domain_plateaus</code>, in a window 360 pixels wide in the dark scheme, and the page was as wide as the window (<code>scrollWidth</code> 360), the diagram, the status and the words readable, zoom, <strong>Fit</strong>, <strong>Center</strong> and the wheel moving the drawing, and the open key capped and scrolling inside itself; the wide window in the light scheme was looked at as well, the same way (the first build of the player, before the cap on the key went from 30 to 24 percent of the height). The player is tested with a fake layout in the automated tests, which do not see pixels.</p>
@@ -4774,6 +4808,43 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </div>
 <div class="paragraph">
 <p>The diagram of an element starts with the labels and the qualifiers, as the command line draws them. The Map starts with none of them, to stay readable. Only a choice that differs from that is remembered: it is in the URL (<code>labels=0</code>, <code>qualifiers=1</code>, <code>descriptions=1</code>, <code>wrap=1</code>), and in a saved view (see <a href="#editor-stories">Stories: stories and views</a>), so that a link or a step of a story draws the same texts. The tooltip of a box always has the qualifiers and the whole description, and the SVG that is downloaded is the diagram as it is on screen.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-layout">The boxes per row</h3>
+<div class="paragraph">
+<p><strong>Columns</strong>, in the toolbar of a diagram, chooses how many boxes a row of its layout aims at. The list begins with <strong>Default</strong>, which names the value the diagram gets from the levels below it (<code>Default (4)</code>, or <code>Default (none)</code> when there is none), then the numbers 1, 2, 3, 4, 5, 6, 8 and 12; a value that is none of these, such as a 7 written in a view, is listed too, in its place. On the Applications and Environments pages and on the page of an element it changes the diagram on screen and writes nothing. On the page of a saved view it changes the view, which is then modified and saved with <strong>Save all changes</strong>, as the texts are.</p>
+</div>
+<div class="paragraph">
+<p>The choice is a <code>layout</code> with one key, <code>columns</code>. The value in force is the first one that is set, looked for in this order:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>the list of the toolbar, for the diagram on screen;</p>
+</li>
+<li>
+<p>the <code>layout</code> of the saved view, in its <code>properties</code>;</p>
+</li>
+<li>
+<p>the <code>layout</code> that the workspace gives its viewpoint, in <code>settings.views.properties.&lt;viewpoint&gt;.layout</code>, for <code>overview</code>, <code>detailed</code>, <code>deep</code> or <code>map</code>;</p>
+</li>
+<li>
+<p>none, which is the layout the editor has always drawn.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>With nothing set, nothing moves. A diagram that aims at N boxes per row asks the layout engine for layers of at most N boxes, on the diagram and in each box that holds other boxes, so that boxes no link joins do not all fall in one long row. It is an aim and not a limit: when links join boxes, the layout can need more than N boxes in a row, and then it draws them so.</p>
+</div>
+<div class="paragraph">
+<p>The value is a whole number from 1 to 20. A <code>layout</code> that is not a mapping, a key other than <code>columns</code>, or a <code>columns</code> out of that range is not guessed at: the diagram is not drawn, and its place says why, for instance <code>the view <code>shop_map</code> has an invalid <code>layout</code>: <code>columns</code> must be a whole number from 1 to 20 (found <code>0</code>)</code>. The page <strong>Settings</strong> refuses the same sentence at its field when you save the value of <code>overview</code>, <code>detailed</code> or <code>deep</code>. It has no field for the Map: a Map draws with the value of the workspace when it is drawn, and a wrong one is told there, on the Map. The first level that is set decides, valid or not: a wrong value of the view is told even when the workspace has a good one.</p>
+</div>
+<div class="paragraph">
+<p>A story step has no toolbar: it takes the value of its saved view, else that of the workspace, as the editor does on the page of a view, so the player draws the same boxes as the editor for the same view. <strong>Keep as named view</strong> writes the value of the toolbar as the view&#8217;s <code>layout</code>, and nothing when the diagram takes the value of the workspace; a rename or a move leaves the <code>layout</code> of a view alone. The value of the toolbar is in the address as <code>layout=N</code> (see the table of the address), so a reload of the page or a copied URL carries it, on the page of an element and on both Maps; a saved view and the workspace keep theirs in their files.</p>
+</div>
+<div class="paragraph">
+<p>The command line does not read <code>layout</code>. The views it writes are the same with or without it, and the key is one of the view properties it ignores (see <a href="#map-viewpoint">[map-viewpoint]</a> and <a href="#guide">Print the guide for an agent</a>).</p>
 </div>
 </div>
 <div class="sect2">
@@ -4840,6 +4911,9 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </li>
 <li>
 <p><strong>Links</strong> and <strong>Highlight</strong> (the Map of the application layer): each is a list of relationships of the layer, a pill for each entry and a select of the relationships not there yet, with a missing one marked as such. They are <code>properties.links</code> and <code>properties.highlight</code> (see <a href="#editor-map-links">[editor-map-links]</a> and <a href="#story-of-a-flow">[story-of-a-flow]</a>).</p>
+</li>
+<li>
+<p><strong>Columns</strong>: the boxes per row the layout aims at, with <strong>Default</strong> first (the value the view gets from the workspace) and then the numbers. It is <code>properties.layout</code>, and it is the same list as the one of the toolbar (see <a href="#editor-layout">The boxes per row</a>).</p>
 </li>
 <li>
 <p><strong>Facet</strong>: the facets of the workspace, or none. <strong>Hide unlinked</strong>, <strong>Labels</strong>, <strong>Qualifiers</strong>, <strong>Descriptions</strong> and <strong>Wrap</strong> are boxes to tick (a Map of the technology layer has two more, <strong>Applications</strong> and <strong>Relationships</strong>, ticked when the property is absent: unticking one writes <code>false</code>, see <a href="#map-technology">[map-technology]</a>), and they are the same as the buttons of the tools over the diagram. A text that is what that kind of diagram draws by default is not written to the file, as for any view.</p>
@@ -5075,7 +5149,7 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 </div>
 </li>
 <li>
-<p><a id="fold-by-hand"></a><strong>Folding a plateau into the one above, by hand.</strong> The editor does not move the patches and the elements of a plateau into the plateau above: that is a choice about your history, and no button makes it. When the refusal tells you the plateau above would lose what the plateau deleted gave it, and you want that plateau to keep it, fold by hand, in the files, with the plateau <code>to-be</code> and the plateau <code>later</code> above it (<code>later</code> overrides <code>to-be</code>):</p>
+<p><a id="fold-by-hand"></a><strong>Folding a plateau into the one above, by hand.</strong> The editor does not move the patches and the elements of a plateau into the plateau above: that is a choice about your history, and no button makes it. <code>archicode plateau fold &lt;id&gt;</code> makes it from the command line and checks the result (see <a href="#plateau-fold">Fold a plateau into the one above</a>); this recipe is what it does, and what to do for a plateau it refuses. When the refusal tells you the plateau above would lose what the plateau deleted gave it, and you want that plateau to keep it, fold by hand, in the files, with the plateau <code>to-be</code> and the plateau <code>later</code> above it (<code>later</code> overrides <code>to-be</code>; <code>archicode plateau fold to-be</code> does these steps and <code>--dry-run</code> prints them first, see <a href="#plateau-fold">Fold a plateau into the one above</a>):</p>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -5108,7 +5182,7 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 <div class="sect2">
 <h3 id="editor-compare">Comparing two plateaus</h3>
 <div class="paragraph">
-<p><strong>Compare with</strong>, on the band, compares the plateau that is drawn with another one (see <a href="#editor-band">The band of plateaus</a>): <em>Past</em> is the plateau it overrides, and the tree lists every other plateau, the one that overrides the plateau drawn (the <em>future</em> of the comparison), a sibling or a cousin included. With nothing compared, which is the default, the plateau is drawn alone, exactly as the editor always did. A comparison draws the plateau together with the other one: Applications, the diagrams of Elements and the page of a view in Stories tell what is new, what changed and what was removed (and, for the elements that say what they replace, what moved, was split or merged, see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>), with the same states as <code>archicode views generate</code> (see <a href="#plateau-comparison">Comparing two plateaus</a>). Like the plateau, the choice is remembered by this browser for this folder (not in the workspace), and it is ignored when the workspace no longer has that plateau. A plateau is never compared with itself. The address carries the plateau (<code>plateau=&lt;id&gt;</code>, when it is not <code>baseline</code>), and the comparison only next to the selection of a removed element (<code>compare=past</code>, <code>compare=future:&lt;id&gt;</code> or <code>compare=other:&lt;id&gt;</code>, see <a href="#editor-changes-address">The address and the trees</a>); a link that has <code>compare=</code> draws that comparison, and one that has none leaves the comparison as it is.</p>
+<p><strong>Compare with</strong>, on the band, compares the plateau that is drawn with another one (see <a href="#editor-band">The band of plateaus</a>): <em>Past</em> is the plateau it overrides, and the tree lists every other plateau, the one that overrides the plateau drawn (the <em>future</em> of the comparison), a sibling or a cousin included. With nothing compared, which is the default, the plateau is drawn alone, exactly as the editor always did. A comparison draws the plateau together with the other one: Applications, the diagrams of Elements and the page of a view in Stories tell what is new, what changed and what was removed (and, for the elements that say what they replace, what moved, was split or merged, see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>), with the same states as <code>archicode views generate</code> (see <a href="#plateau-comparison">Comparing two plateaus</a>). Like the plateau, the choice is remembered by this browser for this folder (not in the workspace), and it is ignored when the workspace no longer has that plateau. A plateau is never compared with itself. The address carries the plateau (<code>plateau=&lt;id&gt;</code>, when it is not <code>baseline</code>), and, in a workspace that has plateaus, the comparison on every page that draws a diagram (<code>compare=past</code>, <code>compare=future:&lt;id&gt;</code> or <code>compare=other:&lt;id&gt;</code>, empty for none; see <a href="#editor-link-carries">What a link carries</a>); a link that has <code>compare=</code> draws that comparison, and an older link that has none leaves the comparison as it is.</p>
 </div>
 <div class="paragraph">
 <p>The plateau compared with is <em>read</em>, not written: the editor resolves it from the manifests it has already read (there is no second folder to pick), keeps it apart from the plateau that is drawn, and an edit goes to the plateau drawn (see <a href="#editor-writing">Writing in a plateau</a>). Its elements are not in the trees of the plateau drawn, and what only it has is listed in the <strong>Changes</strong> panel and read in the panel on the right. A plateau that cannot be resolved cannot be compared, and the dialog of the mistakes (the button of the band) says why. The one write that is made for the comparison is <strong>Write replaces</strong> (see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>).</p>
@@ -5205,6 +5279,9 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 <p><strong>Previous change</strong> and <strong>Next change</strong> walk through the list, in the order of the list (the elements, then the relationships). They stop at the ends and do not wrap, and the panel says where you are (<code>3 of 12</code>). With no change selected, <strong>Next change</strong> goes to the first and <strong>Previous change</strong> to the last. The walk selects the change as a click on its row does, and leaves the list on screen (the <strong>Changes</strong> tab stays). Under the buttons the panel shows the <em>What changed</em> block of the change the walk is at (see <a href="#editor-what-changed">What changed</a>), so that the page Plateaus, and a story with no view drawn, where no box can be shown, still say what the change is; a click on a row there opens the element in <strong>Elements</strong>, as before.</p>
 </li>
 <li>
+<p>The walk row stays in view while the list scrolls. <strong>Previous change</strong>, <strong>Next change</strong>, the position (<code>3 of 12</code>) and <strong>Show all</strong> are one row under the tabs, sticky at the top of the panel, so a reader who walks with the mouse does not scroll back to the buttons after each press. A press brings the selected row into view with the nearest scroll (<code>block: nearest</code>) that shows it, below the sticky row: a row already in view does not move the list, and one that is below it moves the list just enough. At a window 360 pixels wide the row is measured as well, its height as a share of the panel&#8217;s height at 360 by 640 pixels, against the 35 percent limit of the design; above that limit the rows would have a box of their own and the buttons would stay outside it. The figure of that measure is in the record of the change (run 0201), not in this manual. The row was tested in Chromium and Firefox. Safari was not tested, so whether it keeps the row in view in the same way is not proved.</p>
+</li>
+<li>
 <p>The lists <strong>State</strong> (all, then the states that some row has, each with its count) and <strong>Layer</strong> (both, application, technology) narrow what is listed: the line then reads <code>12 of 167 changes</code>, each group says <code>n of N</code>, and <strong>Show all</strong> clears both. <code>contains-changes</code> is not a choice: it is the state of a box that holds a change, never of a row. A filter that leaves out the change you are at moves you to the nearest one that is shown.</p>
 </li>
 <li>
@@ -5250,16 +5327,63 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 <p>A change of the description alone is a change of wording, not of structure. The <strong>Changes</strong> panel counts them apart ("10 of the changed elements are changes of wording only") and keeps them visible by default; the checkbox <strong>Hide wording-only changes</strong> sets them aside in one click: those elements are drawn as unchanged (and a box that only they changed is no longer marked <code>contains-changes</code>, nor kept by <strong>Changes only</strong>), their rows leave the list, the counts of changed elements drop by their number and the panel says "10 wording-only changes hidden". Relationships are never set aside: a change of a label, a qualifier or a tag is structure.</p>
 </div>
 <div class="paragraph">
-<p>Both choices are yours and not the workspace&#8217;s: they are remembered per folder in this browser, like the plateau and the comparison, never written to <code>.archicode.yaml</code>, and they do nothing while nothing is compared.</p>
+<p>Both choices are yours and not the workspace&#8217;s: they are remembered per folder in this browser, like the plateau and the comparison, never written to <code>.archicode.yaml</code>, and they do nothing while nothing is compared. <strong>Changes only</strong> is also in the address while a comparison is on (<code>changes-only=1</code>), so that a link shows what its sender saw; opening such a link does not change what this browser remembers. <strong>Hide wording-only changes</strong> is not in the address.</p>
 </div>
 </div>
 <div class="sect3">
 <h4 id="editor-changes-address">The address and the trees</h4>
 <div class="paragraph">
-<p>The address of the page carries a selection, so that a reload or a shared link reopens it: <code>ref=</code> for an element, <code>link-from=</code> and <code>link-to=</code> for a link, as before, and <code>removed=</code> for a removed element (<code>removed-layer=technology</code> for one of the technology layer). A removed element exists only next to its comparison, so the address then also carries <code>compare=</code> (<code>past</code>, the past that follows the plateau drawn; <code>future:&lt;id&gt;</code>, a plateau that overrides the plateau drawn; or <code>other:&lt;id&gt;</code>, any other plateau of the tree: a choice in the tree of <strong>Compare with</strong> is written as one of the three; <code>compare=future</code> with no id is read as the future to choose, and shown as the disabled entry <em>Choose a future plateau</em> when several plateaus override the plateau drawn): opening such an address chooses that comparison, as if you had chosen it, even if this browser remembered another one. The other choices of the comparison are not in the address.</p>
+<p>The address of the page carries a selection, so that a reload or a shared link reopens it: <code>ref=</code> for an element, <code>link-from=</code> and <code>link-to=</code> for a link, as before, and <code>removed=</code> for a removed element (<code>removed-layer=technology</code> for one of the technology layer). A removed element exists only next to its comparison, so the address then also carries <code>compare=</code> (<code>past</code>, the past that follows the plateau drawn; <code>future:&lt;id&gt;</code>, a plateau that overrides the plateau drawn; or <code>other:&lt;id&gt;</code>, any other plateau of the tree: a choice in the tree of <strong>Compare with</strong> is written as one of the three; <code>compare=future</code> with no id is read as the future to choose, and shown as the disabled entry <em>Choose a future plateau</em> when several plateaus override the plateau drawn): opening such an address chooses that comparison, as if you had chosen it, even if this browser remembered another one. The page writes <code>compare=</code> on every diagram page of a workspace that has plateaus, with <strong>Changes only</strong> beside it (see <a href="#editor-link-carries">What a link carries</a>); the wording-only toggle is not in the address.</p>
 </div>
 <div class="paragraph">
 <p>While a comparison is on, a row of the tree of Elements and of the tree of the Map has a small mark after its name: <code>+</code> for a new element, <code>~</code> for a changed one, <code>→</code>, <code>⋔</code> or <code>⊕</code> for a moved, split or merged one, and <code>±</code> for one that did not change but has a change below it. The word is in its tooltip and is read by a screen reader. A removed element is not in these trees (it is not an element of the plateau drawn, so it can be neither pinned nor hidden nor edited): the <strong>Changes</strong> panel lists it and opens its panel.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="editor-link-carries">What a link carries</h4>
+<div class="paragraph">
+<p>A link copied from the address bar draws the diagram its sender saw: the same boxes, the same links, in the same places. The rule is that an option is in the address when it changes which boxes and links are drawn, or where, and is never there when it changes only the surroundings.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">What it carries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>layout=N</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the columns chosen in the toolbar (1 to 20), on the page of an element and on both Maps; never the value of a view or of the workspace, which are files</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>compare=</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the comparison (<code>past</code>, <code>future:&lt;id&gt;</code>, <code>other:&lt;id&gt;</code>, empty for none), on every diagram page of a workspace that has plateaus</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>changes-only=1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Changes only</strong>, while a comparison is on; with <code>compare=</code> and without it, the flag is off</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>open=</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the unfolded boxes of a Map, a list of references</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hide=</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the hidden elements of a Map, a list of references</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pin=</code>, <code>rel=</code>, <code>hl=</code>, <code>facet=</code>, <code>hide-unlinked</code>, <code>applications=0</code>, <code>relationships=0</code>, the names shown, <code>frame=fit</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">as before</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Three things are never in the address: the wording-only toggle, the open or folded key, and zoom and pan; nor is the selection of a box. A reference the workspace does not have, or a <code>layout</code> that is not a whole number from 1 to 20, is dropped and the page writes the address back without it. An address the page wrote earlier opens as before.</p>
 </div>
 </div>
 <div class="sect3">
@@ -6066,6 +6190,132 @@ after    4 REMOVE target shop.report  removed  application  shop.report.chart</c
 <p>A plateau that does not use <code>replaces</code> gets the table it always had, byte for byte. A difference is not an error: the exit code is 0, unless <code>--fail-on</code> asks otherwise (the exit code is then 3, see above). The command stops with an error (exit code 1) that says what to do when the workspace has no plateau, when the plateau is the root and <code>--against</code> names none, and when the plateau named by <code>--against</code> is unknown or is the plateau itself.</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="plateau-fold">Fold a plateau into the one above</h3>
+<div class="listingblock">
+<div class="title">Fold a plateau - The command line</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode plateau fold inhouse --dry-run   # read the plan, write nothing
+archicode plateau fold inhouse             # fold it</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>archicode plateau fold &lt;id&gt;</code> folds the plateau <code>&lt;id&gt;</code> into the plateau that overrides it: the elements the folded plateau declares become elements of the plateau above, its patches go in front of the patches of the plateau above, and its manifest is deleted. The plateau above then overrides what the folded plateau overrode. The command does what <a href="#fold-by-hand">[fold-by-hand]</a> does by hand, and then checks the result. With <code>--dry-run</code> it does everything but the write: it prepares the fold, checks it and prints the report, and the folder, its manifests and <code>.archicode.yaml</code> are the same afterwards, byte for byte. Run it first, and read the plan.</p>
+</div>
+<div class="paragraph">
+<p>A plateau that cannot be folded is refused with one line on the error output and exit code 1, and nothing on the standard output. The first six refusals are checked in this order, and the first one found is the only line:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">error: unknown plateau `saaz`: the plateaus of this workspace are `baseline`, `inhouse`, `marketplace` and `saas`
+error: the plateau `baseline` is the root of the plateaus: nothing is below it to fold it into
+error: the plateau `marketplace` is not overridden by any plateau, so there is no plateau above it to fold it into: to remove it, use Delete in the editor
+error: the plateau `inhouse` is overridden by `inhouse-alt` and `marketplace`, which do not stack: folding it into one would change the other. Keep it
+error: `settings.current` names the plateau `inhouse`: write another plateau in `.archicode.yaml` first (`marketplace` is the one above it)
+error: the plateau `inhouse` is named by the story `fork_tour` (`shared/story.fork_tour.yaml`) step 3 (`at`), step 4 (`at`) and step 5 (`against`), and the story `seller_journey` (`shared/story.seller_journey.yaml`) step 3 (`against`): change those steps first, none is rewritten for you</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The sentences name the plateaus of the layered Brightcart of the repository, a test fixture; on your workspace they name yours. There the two stories <code>fork_tour</code> and <code>seller_journey</code> name <code>inhouse</code>, so its fold is refused with the last sentence. Once those steps are changed (the test replaces each story by one step told at <code>baseline</code>), <code>archicode plateau fold inhouse --dry-run</code> prints:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">plateau fold inhouse into marketplace (dry run: nothing was written)
+
+after: `marketplace` overrides `baseline`; the plateaus that stay are `baseline` and `saas`
+
+files rewritten (they lose their comments, quotes and layout):
+  inhouse/application/accounts.yaml
+  inhouse/application/commerce.cart.yaml
+  inhouse/application/commerce.catalog.yaml
+  inhouse/application/commerce.checkout.yaml
+  inhouse/application/commerce.pricing.yaml
+  inhouse/application/commerce.search.yaml
+  inhouse/application/commerce.yaml
+  inhouse/application/orders.yaml
+  inhouse/application/payments.yaml
+  inhouse/technology/prod.cloud.yaml
+  inhouse/technology/staging.k8s.yaml
+  marketplace/application/discovery.yaml
+  marketplace/plateau.yaml
+
+files deleted:
+  inhouse/plateau.yaml (its name &quot;Build commerce services&quot; and its horizon &quot;2026-Q4&quot; are not kept)
+
+patches:
+  the 26 patches of `inhouse` go in front of the 23 of `marketplace`: 49
+
+replaces to compose:
+  discovery.search (marketplace/application/discovery.yaml): commerce.search -&gt; shop.app.search
+
+plateaus removed:
+  inhouse: a command line or a CI file that names it will fail
+  the default --against of `marketplace` changes from `inhouse` to `baseline`
+
+checked on a temporary copy before writing: the models of the 3 plateaus that remain and the 6 comparisons between them are the same before and after, but for the PLATEAU and PATCH columns of the cascade</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without <code>--dry-run</code> the report is the same text in the past tense: its first line ends in <code>(written)</code>, the title of the first block is <code>files rewritten (they lost their comments, quotes and layout):</code>, and two lines close it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">Read what changed with `git diff`, and run `archicode plateau list` and `archicode diff`</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Read the report as follows:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The first line says whether anything was written. The <code>after</code> line names the plateau above the folded one and the plateaus that stay.</p>
+</li>
+<li>
+<p><code>files rewritten</code> lists the files the fold rewrites: the manifests whose header names the folded plateau, and the manifest of the plateau above. A rewritten manifest keeps its format (a TOML manifest stays TOML, a JSON one stays JSON) but loses its comments, its quotes and its layout, as the editor does when it writes a file again from scratch.</p>
+</li>
+<li>
+<p><code>files deleted</code> lists the manifest of the folded plateau, and says what it takes with it: the <code>name</code> and the <code>horizon</code> of the folded plateau are not kept, and the plateau above keeps its own.</p>
+</li>
+<li>
+<p><code>patches</code> counts the patches of the folded plateau that go in front of those of the plateau above.</p>
+</li>
+<li>
+<p><code>replaces to compose</code> lists the entries of the plateau above that name an element of the folded plateau, with the file that holds them; the fold composes each one, as step 3 of <a href="#fold-by-hand">[fold-by-hand]</a> does.</p>
+</li>
+<li>
+<p><code>plateaus removed</code> says what names the folded plateau and breaks: a command line or a CI file, and the default <code>--against</code> of the plateau above.</p>
+</li>
+<li>
+<p>The last block says what was checked.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>What is checked.</strong> Before it writes anything, the command folds on a temporary copy and compares the plateaus that stay: the model of each plateau, and the table of changes of every pair of them, are read before and after. They must be the same, but for the PLATEAU and PATCH columns of the cascade of the removals, which name the folded plateau. The check runs in the dry run too. A fold that fails it is refused with one line that names the difference, and no file is written; nothing can force it, repair the cause the line names. Three more refusals come after the first six:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">error: the fold of `a` into `b` would leave the plateau `c` unreadable: &lt;the sentence of the loader&gt;: no file is written
+error: the fold of `a` into `b` would change the plateau `b`: before the fold it has application element extra.leg {&quot;id&quot;:&quot;leg&quot;,&quot;kind&quot;:&quot;container&quot;,&quot;name&quot;:&quot;Legacy&quot;}, after it application element extra.leg {&quot;description&quot;:&quot;Retired&quot;,&quot;id&quot;:&quot;leg&quot;,&quot;kind&quot;:&quot;container&quot;,&quot;name&quot;:&quot;Legacy&quot;}: no file is written
+error: the fold of `a` into `b` would change how the plateau `b` compares with `baseline`: &lt;line&gt; becomes &lt;line or nothing&gt;: no file is written</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The first is for a plateau that stays and does not load once the fold is made; the second is for a model that changes, here a patch of the folded plateau that selects by <code>json-path</code> and would, after the fold, reach an element of the plateau above too; the third is for a comparison that changes. A plateau that does not load as it is, before the fold, is refused with the sentence of the loader, as for every command:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">error: in the plateau `c`, `bad` has a relationship towards `nowhere`, which does not exist, in `c/bad.yaml` at `relationships[0].destination`</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>What the guarantee is.</strong> A fold writes all its files or none. The command writes each new file next to its target under the name <code>&lt;file&gt;.archicode-fold</code>, moves each over its target, and deletes the manifest of the folded plateau last. If a write fails, it puts back every file already moved and stops with <code>error: the fold stopped at `&lt;path&gt;</code> (&lt;the reason of the file system&gt;): every file is as it was`; if putting a file back fails too, the line lists the files that may be partly written, and says to restore them with git. A file that changed between the moment the command read it and the moment it writes is refused (<code>error: `marketplace/plateau.yaml</code> changed while the fold was prepared: no file is written, run the command again`). The guarantee is for a failure of a write, not for a process that is killed while it moves the files: then a file may be left as it was written last, and a <code>.archicode-fold</code> file may remain, which is no manifest and is read by nothing. Git is the safety net: fold in a clean tree, read <code>git diff</code>, and <code>git restore</code> what you do not want.</p>
+</div>
+<div class="paragraph">
+<p><strong>What it does not do.</strong> It folds into the plateau directly above and no further; it does not rewrite a story or a view that names the folded plateau (it refuses, and you change those steps first); it does not keep the name and the horizon of the folded plateau; and it does not keep the comments, the quotes and the layout of the files it rewrites. The editor has no button for it (see <a href="#plateau-limits">Limits of today</a>).</p>
 </div>
 </div>
 <div class="sect2">
@@ -8421,7 +8671,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">properties</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">any</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A custom object containing properties to drive the execution of the viewpoint and/or renderer service. The <code>map</code> viewpoint reads <code>pinned</code>, <code>hidden</code> and <code>opened</code> on the application layer, <code>links</code>, the relationships to draw (see <a href="#map-links">[map-links]</a>), <code>highlight</code>, the relationships to point at (see <a href="#map-highlight">[map-highlight]</a>), and, on the technology layer, the booleans <code>applications</code> and <code>relationships</code> (see <a href="#map-viewpoint">[map-viewpoint]</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A custom object containing properties to drive the execution of the viewpoint and/or renderer service. The <code>map</code> viewpoint reads <code>pinned</code>, <code>hidden</code> and <code>opened</code> on the application layer, <code>links</code>, the relationships to draw (see <a href="#map-links">[map-links]</a>), <code>highlight</code>, the relationships to point at (see <a href="#map-highlight">[map-highlight]</a>), and, on the technology layer, the booleans <code>applications</code> and <code>relationships</code> (see <a href="#map-viewpoint">[map-viewpoint]</a>). Any viewpoint may say <code>layout: {columns: N}</code>, the boxes per row the editor aims at, which the command line does not read (see <a href="#editor-layout">The boxes per row</a>).</p></td>
 </tr>
 </tbody>
 </table>
@@ -8634,7 +8884,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-29 03:12:01 UTC
+Last updated 2026-10-31 03:45:58 UTC
 </div>
 </div>
 </body>

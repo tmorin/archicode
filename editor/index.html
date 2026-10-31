@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- Which ArchiCode this page belongs to: "dev" here, the release in the copies that are published and served. -->
-<meta name="archicode-version" content="0.21.0">
+<meta name="archicode-version" content="0.22.0">
 <title>ArchiCode Editor</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6e5c'/%3E%3Cpath d='M9 22l7-12 7 12z' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
 <!-- The theme chosen in Settings, applied before the first paint so the page does not flash (the page script applies it again). Same key and values as the page script. -->
@@ -236,7 +236,7 @@ try {
   .cascade-effect { font-weight: 600; }
   .top-panel > .folder-name { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .help-wrap { position: relative; flex-shrink: 0; }
-  .top-actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; min-width: 0; max-width: 100%; }
+  .top-actions { display: flex; align-items: center; gap: 0.25rem 1rem; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; min-width: 0; max-width: 100%; }
   .top-actions > button, .top-actions > .button-group { flex-shrink: 0; }
   .top-panel .help-button { width: 2rem; padding: 0 !important; border-radius: 50% !important; flex-shrink: 0; font-weight: 600; }
   .top-panel .help-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
@@ -247,12 +247,13 @@ try {
   .workspace-wrap { position: relative; flex-shrink: 0; }
   .top-panel .workspace-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .workspace-menu { position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; width: min(21rem, calc(100vw - 2rem)); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
-  .workspace-menu .workspace-item { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; width: 100%; max-width: 100%; padding: 0.35rem 1rem; border: none; border-radius: 0; background: transparent; color: var(--accent); text-align: left; }
-  .workspace-menu .workspace-item:hover, .workspace-menu .workspace-item:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); outline: none; }
+  .workspace-menu .workspace-item { display: flex; height: auto; flex-direction: column; align-items: flex-start; gap: 0.1rem; width: 100%; max-width: 100%; padding: 0.35rem 1rem !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: var(--accent); text-align: left; white-space: normal; }
+  .workspace-menu .workspace-item:hover, .workspace-menu .workspace-item:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent) !important; outline: none; }
   .workspace-menu .workspace-item[aria-disabled="true"] { color: var(--muted); cursor: not-allowed; }
   .workspace-item-note { font-size: 0.8rem; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
   .workspace-ask { margin: 0; padding: 0.4rem 1rem; font-size: 0.85rem; line-height: 1.4; overflow-wrap: anywhere; }
   .workspace-ask-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.2rem 1rem 0.4rem; }
+  .workspace-menu .workspace-ask-actions button { height: auto; min-height: 2rem; padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; white-space: normal; }
   .workspace-ask-actions .workspace-reset { color: var(--danger); overflow-wrap: anywhere; }
   .help-note { margin: 0; padding: 0.4rem 1rem 0; font-size: 0.8rem; line-height: 1.4; color: var(--muted); border-top: 1px solid var(--border); }
   .help-note + .help-note { border-top: none; padding-top: 0.2rem; padding-bottom: 0.2rem; }
@@ -320,6 +321,8 @@ try {
   .changes-filter { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.75rem; color: var(--muted); flex: 1 1 8rem; min-width: 0; }
   .changes-filter select { font-size: 0.82rem; max-width: 100%; }
   .changes-shown { margin: 0; font-size: 0.82rem; font-weight: 600; }
+  .changes-walkbar { position: sticky; top: calc(-1rem + var(--right-tabs-h, 0px)); z-index: 2; background: var(--panel-bg); padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+  .right-panel { scroll-padding-top: calc(var(--right-tabs-h, 0px) + var(--right-walk-h, 0px)); }
   .changes-walk { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
   .changes-position { font-size: 0.8rem; color: var(--muted); }
   .changes-detail { padding: 0.4rem 0; }
@@ -575,6 +578,9 @@ try {
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
   /* a narrow centre: a group of the toolbar that is wider than the toolbar wraps inside it (it was cut on the left, and the buttons were out of reach) */
   .diagram-tools .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
+  .diagram-tools .diagram-columns { align-items: center; gap: 0.3rem; }
+  .diagram-tools .diagram-columns label { font-size: 0.8rem; }
+  .diagram-tools .diagram-columns select { height: 1.75rem; font-size: 0.8rem; }
   .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
   .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
@@ -997,6 +1003,9 @@ try {
      instead, each as wide as the window: the tree, then the centre, then the inspection, the page scrolling from one to the next. The sizes the user gave the panels
      (inline widths, by dragging) are for the wide layout: they do not apply here, and neither do the handles that set them. Wider windows are untouched. */
   @media (max-width: 40rem) {
+    /* The Workspace menu (wave 028, run 0205, #182): the bar wraps, so the menu is placed from the bar and not from a button that may have wrapped. */
+    .top-panel { position: relative; }
+    .workspace-wrap { position: static; }
     .timeline-item { margin-left: calc(var(--depth, 0) * 0.5rem); }
     #app { height: auto; min-height: 100vh; }
     .app-shell { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
@@ -5747,7 +5756,7 @@ function createInitialAppState() {
     layerUndrawable: false, // the plateau drawn has no graph (the kernel refused the patches of a layer): its index is empty
     plateauTree: null, // the tree of the layered plateaus the manifests write (see buildPlateauTree): { nodes, ids, problems, redeclared, warnings, layered }
     baseline: null, // the plateau compared with, read-only: { plateau, index, problem, undrawable }; null while nothing is compared (see syncLayers)
-    changesOnly: false, // run 0040: draw only what changed, with its context (the kernel's `only_changes`); a choice of whoever looks, remembered per folder (see rememberFlag)
+    changesOnly: false, // run 0040: draw only what changed, with its context (the kernel's `only_changes`); remembered per folder (see rememberFlag) and, with a comparison, written in the address as `changes-only=1` (run 0203), which a reader's page follows without remembering it
     hideWording: false, // run 0040: set the changes of wording only (description alone) aside: not marked, not listed, counted apart; remembered per folder
     selection: { kind: 'none', key: null, mode: 'view' },
     expanded: new Set(),
@@ -6088,7 +6097,8 @@ function rememberComparison(choice) {
   panelSizeStorage.set(key, choice);
 }
 
-// Two more choices of whoever looks (run 0040), remembered per folder like the comparison: `changes-only` and `hide-wording`, '1' or '0'.
+// Two flags (run 0040), remembered per folder like the comparison: `changes-only` and `hide-wording`, '1' or '0'. Only `hide-wording` is a choice of whoever looks that no address carries;
+// `changes-only` is in the address with a comparison (run 0203), but an address never writes this memory.
 const FLAG_STORAGE_PREFIX = 'archicode-standalone-editor:flag:';
 const chosenFlags = new Map(); // for a browser that refuses its storage: the choice then lasts as long as the page
 
@@ -7838,7 +7848,8 @@ function drawPlateau(id, options) {
  * Wave 015 (run 0096, W-8, #91): an address typed while the editor is open (or reached by Back and Forward) draws the plateau and the comparison it names, as the band
  * does, through `drawPlateau`: nothing is read from the disk and nothing is lost. The address is the whole say of the plateau: one that names none is the root (that is
  * what the page writes for it, so Back to such an address draws it), one that names a plateau that does not exist leaves the plateau drawn (the page writes its own
- * address back). `compare=` is read when the address has it (the page writes it with a removed element; a typed or kept link may carry it): empty is no comparison.
+ * address back). `compare=` is read when the address has it (run 0203: the page writes it on every diagram surface of a layered workspace and with a removed element; a typed or kept link may carry it): empty is no comparison.
+ * `drawPlateau` remembers the addressed comparison through `rememberLayerChoice`; the Changes only flag, read from `changes-only=` by the diagram reader, is not remembered from an address.
  * A write in flight, or a dialog that is open (a form of a plateau, the question of a write that other plateaus inherit), keeps the plateau it was opened in: the address is
  * not followed and the page writes back the address of what is drawn. Returns whether anything was drawn again.
  */
@@ -12484,6 +12495,7 @@ function resetUiState() {
   diagramFacet = null;
   diagramMaximized = false;
   diagramHideUnlinked = false;
+  diagramColumns = null;
   diagramScale = 'auto';
   diagramCenter = { x: 0, y: 0 };
   diagramCache = null;
@@ -13380,6 +13392,7 @@ function applyDiagramParamsFromHash() {
     selectedStoryId = storyParam && findStory(storyParam) ? storyParam : null;
     const viewParam = params.get('view');
     selectedViewId = viewParam && findSavedView(viewParam) ? viewParam : null;
+    changesOnlyFromParams(params);
     return;
   }
   // the story being walked through travels with the diagram it is showing
@@ -13393,16 +13406,21 @@ function applyDiagramParamsFromHash() {
     const tab = params.get('tab');
     elementTab = tab && Object.prototype.hasOwnProperty.call(ELEMENT_TABS, tab) ? tab : 'details';
   } else {
-    const pin = params.get('pin');
     const layer = id === 'environments' ? 'technology' : 'application';
     const state = mapStateOf(layer);
-    state.pinned = pin ? pin.split(',').filter((reference) => AppState.index[layer].has(reference)) : [];
+    // run 0203 (DEC-4, DEC-5, DEC-6): what the address does not say is reset; the open boxes are read before the pins, which open their ancestors
+    const open = referencesFromParam(params, 'open', (reference) => referenceIsKnownToOpen(reference, layer));
+    state.opened = open.length ? new Set(open) : null;
+    state.hidden = referencesFromParam(params, 'hide', (reference) => AppState.index[layer].has(reference));
+    state.pinned = referencesFromParam(params, 'pin', (reference) => AppState.index[layer].has(reference));
     state.pinned.forEach((reference) => expandParentsOf(reference, layer));
     if (layer === 'application') {
       mapLinks = mapLinksFromParams(params);
       mapHighlight = mapHighlightFromParams(params);
     }
   }
+  diagramColumns = layoutFromParams(params);
+  changesOnlyFromParams(params);
   const shown = {};
   for (const name of DIAGRAM_SHOW_NAMES)
     shown[name] = params.get(name) === '1' ? true : params.get(name) === '0' ? false : null;
@@ -13417,6 +13435,42 @@ function applyDiagramParamsFromHash() {
   else if (diagramScale === 'fit') diagramScale = 'auto';
   const facet = params.get('facet');
   diagramFacet = facet && AppState.workspace.settings.facets.customs.some((f) => f.name === facet) ? facet : null;
+}
+
+/** The references a list parameter of the address names (`pin=`, `open=`, `hide=`: comma joined, each quoted), the ones `keep` accepts, in the order written. */
+function referencesFromParam(params, name, keep) {
+  const text = params.get(name);
+  return text ? text.split(',').filter(keep) : [];
+}
+
+/** The address of a list of references: `name=a,b` with each quoted, or null for an empty list (nothing is written). */
+function listParam(name, references) {
+  return references.length ? name + '=' + references.map(encodeURIComponent).join(',') : null;
+}
+
+/**
+ * A box the address opens is kept when the layer drawn has the element or the plateau compared with does (a removed element is drawn, as a ghost, and can be opened;
+ * `currentMapState` keeps the same boxes, gap-003).
+ */
+function referenceIsKnownToOpen(reference, layer) {
+  return AppState.index[layer].has(reference) || comparisonHasElement(layer, reference);
+}
+
+/** The toolbar's columns the address names (`layout=N`, a whole number from 1 to `DIAGRAM_COLUMNS_MAX`), else null: an invalid value names nothing (run 0203, DEC-1, DEC-6). */
+function layoutFromParams(params) {
+  const text = params.get('layout');
+  if (text === null || !/^[0-9]+$/.test(text)) return null;
+  const columns = Number(text);
+  return columns >= 1 && columns <= DIAGRAM_COLUMNS_MAX ? columns : null;
+}
+
+/**
+ * Changes only, as the address says it (run 0203, DEC-2, gap-001): read only when the address names a comparison (a non-empty `compare=`), and then it is on exactly when
+ * `changes-only=1`; without a comparison the flag is left as the reader has it. It is never remembered from an address (no `rememberFlag`).
+ */
+function changesOnlyFromParams(params) {
+  if (!params.get('compare')) return;
+  AppState.changesOnly = params.get('changes-only') === '1';
 }
 
 /**
@@ -13575,6 +13629,11 @@ function pushFrameParam(params) {
   if (diagramScale === 'fit') params.push('frame=fit');
 }
 
+/** The toolbar's columns, for the URL: `layout=N` when the reader chose a number (the view's and the workspace's are in the files). */
+function pushLayoutParam(params) {
+  if (diagramColumns !== null) params.push('layout=' + diagramColumns);
+}
+
 /** A change of framing (Fit, Center, a zoom, a move) is in the address bar at once, without an entry in the history. */
 function diagramFramingChanged() {
   if (AppState.workspace && (currentPerspective === 'elements' || mapIsShown())) syncHashFromState();
@@ -13615,6 +13674,7 @@ function currentRouteHash() {
   const sel = elementSelection(); // a link selected in a diagram of Elements leaves the element, and so the URL, as it is
   const ref = sel.kind === 'element' || sel.kind === 'file' ? sel.key : null;
   const params = [];
+  let onDiagramSurface = false;
   if (ref) params.push('ref=' + encodeURIComponent(ref));
   // a reference that exists in both layers needs to say which one the selection is
   if (ref && sel.kind === 'element' && referenceIsInBothLayers(ref))
@@ -13630,19 +13690,32 @@ function currentRouteHash() {
     params.push('tab=' + (findElementRecord(ref) ? effectiveDiagramViewpoint(findElementRecord(ref)) : elementTab)); // what the tabs show, not what a leaf was asked
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
     pushShowParams(params, false);
+    pushLayoutParam(params);
     pushFrameParam(params);
+    onDiagramSurface = true;
   }
   if (mapIsShown()) {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
-    const pinned = mapStateOf().pinned;
-    if (pinned.length) params.push('pin=' + pinned.map(encodeURIComponent).join(','));
+    const state = mapStateOf();
+    // run 0203 (DEC-4, DEC-5): the pins as they were chosen, the open boxes and the hidden elements sorted; a long list is DEF-1
+    for (const param of [
+      listParam('pin', state.pinned),
+      listParam('open', Array.from(state.opened || []).sort()),
+      listParam('hide', Array.from(state.hidden).sort())
+    ])
+      if (param) params.push(param);
     if (mapLayer() === 'application') params.push(...mapLinkParams(mapLinks), ...mapHighlightParams(mapHighlight));
     pushShowParams(params, true);
+    pushLayoutParam(params);
     pushFrameParam(params);
+    onDiagramSurface = true;
   }
   if (currentPerspective === 'library') {
     if (libraryTab === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
-    if (libraryTab === 'views' && selectedViewId) params.push('view=' + encodeURIComponent(selectedViewId));
+    if (libraryTab === 'views' && selectedViewId) {
+      params.push('view=' + encodeURIComponent(selectedViewId));
+      onDiagramSurface = true; // the page of a saved view: its toolbar edits the file, so no layout, but the comparison is drawn
+    }
   }
   if ((currentPerspective === 'elements' || mapIsShown()) && activeStory && !storyPlayer) {
     // the player's `step=` is the one of the address while it is open (below)
@@ -13651,12 +13724,16 @@ function currentRouteHash() {
   const link = linkInRoute();
   if (link) params.push('link-from=' + encodeURIComponent(link.from), 'link-to=' + encodeURIComponent(link.to));
   // run 0040: a removed element picked on the Map or in Elements. It means something only next to the comparison it was picked in, so the address names that too;
-  // the other choices of the comparison (Changes only, the wording-only toggle) are a choice of whoever looks, remembered per folder, and are not in the address.
+  // run 0203: Changes only is in the address too (below, with the comparison); the wording-only toggle, the key, zoom and pan and the selection of a box are the exceptions and are not.
   const removed = removedPickForRoute();
   if (removed) {
     params.push('removed=' + encodeURIComponent(removed.reference));
     if (removed.layer === 'technology') params.push('removed-layer=technology');
+  }
+  // run 0203 (DEC-2, DEC-3): what is compared is part of what is drawn, so a layered workspace says it on every diagram surface (empty for none), and Changes only with it
+  if (removed || (onDiagramSurface && AppState.plateauTree && AppState.plateauTree.layered)) {
     params.push('compare=' + encodeURIComponent(layerCompareChoice()));
+    if (AppState.changesOnly && compareTargetPlateau()) params.push('changes-only=1');
   }
   // wave 014 (run 0080): the plateau of the band, when it is not the root
   if (
@@ -13863,6 +13940,9 @@ let diagramMaximized = false;
 
 /** Leaves out of the diagram the boxes that no link reaches (the focal one and what encloses a kept box stay). */
 let diagramHideUnlinked = false;
+
+/** Wave 027, run 0202 (DEC-4): the boxes per row chosen on the toolbar of the diagram on screen, or null (the view, then the workspace, decide). View state: never `modelsChanged()`. */
+let diagramColumns = null;
 
 const DIAGRAM_SHOW_NAMES = ['labels', 'qualifiers', 'descriptions', 'wrap'];
 
@@ -16979,7 +17059,13 @@ function readSettingsDraft() {
   const properties = Object.assign({}, AppState.workspace.settings.views.properties);
   for (const vp of VIEWPOINT_IDS) {
     const result = validateViewPropertiesJson(readViewPropertiesEditorText(vp));
-    if (!result.valid) fail('view-properties-error-' + vp, result.error);
+    if (!result.valid) {
+      fail('view-properties-error-' + vp, result.error);
+      continue;
+    }
+    // wave 027, run 0202 (DEC-1): the `layout` a viewpoint gives to every view is checked where it is typed, with the sentence of the load
+    const layoutProblem = columnsProblem(result.value.layout, '`settings.views.properties.' + vp + '.layout`');
+    if (layoutProblem) fail('view-properties-error-' + vp, layoutProblem);
     else properties[vp] = result.value;
   }
 
@@ -21095,7 +21181,8 @@ function renderChangesReadingHtml(rows, filter, shown, current) {
       ? shown.length + ' of ' + rows.length + ' changes'
       : rows.length + (rows.length === 1 ? ' change' : ' changes')) +
     '</p>' +
-    '<div class="changes-walk"><span class="button-group" role="group" aria-label="Walk the changes">' +
+    '</div>' +
+    '<div class="changes-walkbar" data-changes-walkbar><div class="changes-walk"><span class="button-group" role="group" aria-label="Walk the changes">' +
     '<button type="button" data-action="change-previous"' +
     (before ? '' : ' disabled') +
     ' aria-keyshortcuts="k" title="The change before this one in the list (shortcut: K)">Previous change</button>' +
@@ -21804,6 +21891,16 @@ function refreshRightPanel() {
   if (!panel) return;
   const html = currentPerspective === 'plateaus' ? withChangesPanel(null) : renderInspectionHtml(mapIsShown());
   if (html !== null) panel.innerHTML = html;
+}
+
+/** The heights of the sticky block of the right panel, set as `--right-tabs-h` and `--right-walk-h` on the panel (0 when absent), read by the style (wave 027, run 0201). */
+function syncRightPanelSticky() {
+  const panel = document.getElementById('panel-right');
+  if (!panel) return;
+  const tabs = panel.querySelector('.right-tabs');
+  const walk = panel.querySelector('[data-changes-walkbar]');
+  panel.style.setProperty('--right-tabs-h', (tabs ? tabs.offsetHeight : 0) + 'px');
+  panel.style.setProperty('--right-walk-h', (walk ? walk.offsetHeight : 0) + 'px');
 }
 
 /** The Selected | Changes tabs: the Changes tab shows the list while the selection is what it is now. */
@@ -23374,6 +23471,71 @@ function drawnLinkEntries(entries, indexes) {
   const models = indexes.filter(Boolean);
   return entries.filter((entry) => models.some((index) => linkEntryExists(entry, index)));
 }
+// Wave 027, run 0202 (W-2, issue #178, DEC-1 and DEC-2): `layout.columns`, the number of boxes per row a diagram aims at.
+// This part is the one place that knows the order of the four levels (the toolbar of the diagram on screen, then the saved view's
+// `properties.layout`, then `settings.views.properties.<viewpoint>.layout`, then none) and what an invalid value is.
+const DIAGRAM_COLUMNS_MAX = 20;
+const DIAGRAM_COLUMNS_CHOICES = [1, 2, 3, 4, 5, 6, 8, 12];
+
+/** The sentence for a `layout` value that is not `{columns: 1..20}`, or null when it is valid or not set. `where` is the place, told first. */
+function columnsProblem(layout, where) {
+  if (layout === undefined || layout === null) return null;
+  const lead = where + (String(where).startsWith('the view') ? ' has an invalid `layout`: ' : ' is invalid: ');
+  if (!isPlainObject(layout)) {
+    return lead + '`layout` is a mapping with the key `columns` (found `' + JSON.stringify(layout) + '`)';
+  }
+  const other = Object.keys(layout).find((key) => key !== 'columns');
+  if (other !== undefined) {
+    return lead + '`layout` is a mapping with the key `columns` (found the key `' + other + '`)';
+  }
+  const columns = layout.columns;
+  if (columns === undefined || columns === null) return null;
+  if (typeof columns === 'number' && Number.isInteger(columns) && columns >= 1 && columns <= DIAGRAM_COLUMNS_MAX) {
+    return null;
+  }
+  return (
+    lead +
+    '`columns` must be a whole number from 1 to ' +
+    DIAGRAM_COLUMNS_MAX +
+    ' (found `' +
+    JSON.stringify(columns) +
+    '`)'
+  );
+}
+
+/** `{ columns, from, problem }`: the first level that is set decides, valid or not; an invalid one is `columns: null` and its sentence. */
+function resolveDiagramColumns({ toolbar, view, settings, viewpoint } = {}) {
+  const none = { columns: null, from: null, problem: null };
+  if (toolbar !== undefined && toolbar !== null) return { columns: toolbar, from: 'toolbar', problem: null };
+  const viewLayout = view && view.properties ? view.properties.layout : null;
+  const levels = [
+    { from: 'view', layout: viewLayout, where: 'the view `' + (view && view.id) + '`' },
+    {
+      from: 'workspace',
+      layout:
+        settings && settings.views && settings.views.properties
+          ? (settings.views.properties[viewpoint] || {}).layout
+          : null,
+      where: '`settings.views.properties.' + viewpoint + '.layout`'
+    }
+  ];
+  for (const level of levels) {
+    const layout = level.layout;
+    if (layout === undefined || layout === null) continue;
+    const problem = columnsProblem(layout, level.where);
+    if (problem) return { columns: null, from: null, problem };
+    if (layout.columns === undefined || layout.columns === null) continue;
+    return { columns: layout.columns, from: level.from, problem: null };
+  }
+  return none;
+}
+
+/** The valid `layout.columns` a view says itself, or null: what the Columns list of its page and of its form show as the choice. */
+function ownColumnsOf(view) {
+  const layout = view && isPlainObject(view.properties) ? view.properties.layout : null;
+  if (columnsProblem(layout, 'the view') !== null || !isPlainObject(layout)) return null;
+  return typeof layout.columns === 'number' ? layout.columns : null;
+}
 // ---- The comparison of two plateaus (run 0039) ----
 
 /** The plateau drawn, as a plateau of the page: the one of the band. */
@@ -24013,6 +24175,37 @@ function diagramLinkText(link) {
   const qualifiers = Array.from(link.qualifiers || []);
   if (qualifiers.length) parts.push('[' + qualifiers.join(', ') + ']');
   return parts.join(' ');
+}
+
+/**
+ * The options of a Columns list (wave 027, run 0202, DEC-4): "Default (n)" or "Default (none)" first, then the usual choices, and the value in force
+ * when the list does not offer it (a 7 from a view, as an extra entry in its place); `invalid` is the entry of a `layout` the editor cannot read.
+ * `selected` is the choice (null: the Default), `inherited` the value the lower levels give.
+ */
+function columnsOptionsHtml(selected, inherited, invalid) {
+  const option = (value, label, on) =>
+    '<option value="' + value + '"' + (on ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+  const choices = DIAGRAM_COLUMNS_CHOICES.slice();
+  if (selected !== null && !choices.includes(selected)) choices.push(selected);
+  choices.sort((a, b) => a - b);
+  return (
+    option('', 'Default (' + (inherited === null ? 'none' : inherited) + ')', selected === null && !invalid) +
+    (invalid ? option('invalid', 'invalid', true) : '') +
+    choices.map((n) => option(String(n), String(n), n === selected && !invalid)).join('')
+  );
+}
+
+/** The list of the toolbar of a diagram: it chooses the boxes per row of the diagram on screen, or of the view on its page. */
+function renderColumnsToolHtml(record, host) {
+  const viewpoint = host ? host.viewpoint : record ? effectiveDiagramViewpoint(record) : 'map';
+  const selected = host ? ownColumnsOf(host.view) : diagramColumns;
+  return (
+    '<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">' +
+    '<label for="diagram-columns" title="The number of boxes the layout aims at in a row">Columns</label>' +
+    '<select id="diagram-columns" data-action="set-columns">' +
+    columnsOptionsHtml(selected, workspaceColumnsOf(viewpoint), false) +
+    '</select></span>'
+  );
 }
 // ---- Stereotypes and styles ----
 // The `styles` of the workspace give a stereotype its look (`by-tags` and `by-qualifiers`: the key is the stereotype, as
@@ -25035,13 +25228,13 @@ function buildElkGraph(result, options) {
       return {
         id: item.id,
         children: kids.map(toNode),
-        layoutOptions: {
+        layoutOptions: bound({
           'elk.padding': '[top=44,left=14,bottom=14,right=14]',
           'elk.nodeSize.constraints': 'MINIMUM_SIZE',
           // ELK's layered algorithm lays out left to right and turns the result for DOWN: this minimum is read as (height, width).
           // Written as (width, height) it made every box at least minWidth high, mostly empty space under its children.
           'elk.nodeSize.minimum': '(0, ' + minWidth + ')'
-        }
+        })
       };
     }
     let width = Math.max(
@@ -25070,9 +25263,18 @@ function buildElkGraph(result, options) {
     }
     edges.push(edge);
   });
+  const columns = options && options.columns !== undefined && options.columns !== null ? options.columns : null;
+  // wave 027, run 0202 (DEC-3): the layer bound, on the root and on every compound node (on the root alone the containers ignore it); a tendency, not a cap
+  const bound = (layoutOptions) => {
+    if (columns === null) return layoutOptions;
+    return Object.assign(layoutOptions, {
+      'elk.layered.layering.strategy': 'COFFMAN_GRAHAM',
+      'elk.layered.layering.coffmanGraham.layerBound': String(columns)
+    });
+  };
   return {
     id: 'root',
-    layoutOptions: {
+    layoutOptions: bound({
       'elk.algorithm': 'layered',
       // top to bottom: what comes in above, what goes out below. Left to right made overviews 5 times wider than high
       // (edge captions sit in every gap), which almost never fits a panel.
@@ -25082,7 +25284,7 @@ function buildElkGraph(result, options) {
       'elk.spacing.nodeNode': '28',
       'elk.layered.spacing.nodeNodeBetweenLayers': '56',
       'elk.spacing.edgeNode': '20'
-    },
+    }),
     children: roots.map(toNode),
     edges
   };
@@ -26840,6 +27042,7 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
         '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>'
       : '') +
     renderMapPartsToolHtml(record, host) +
+    renderColumnsToolHtml(record, host) +
     '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
     renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
     '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
@@ -27013,27 +27216,31 @@ function diagramCacheKey(recipe, comparison, viewKey) {
       ? 'technology'
       : 'application'
     : recipe.layer || layerOfReference(reference) || 'technology'; // as `buildKernelInput` settles it
-  return [
-    modelsKey(comparison, facet),
-    viewpoint,
-    layer,
-    reference,
-    isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
-    // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
-    isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
-    // wave 026 run 0200: the relationships drawn heavy; a map without one keeps the key it had
-    isMap && mapState.highlight && mapState.highlight.length
-      ? 'highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))
-      : '',
-    // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
-    isMap && layer === 'technology'
-      ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
-      : '',
-    hideUnlinked,
-    JSON.stringify(shows),
-    JSON.stringify(AppState.workspace.styles || null),
-    viewKey
-  ].join('|');
+  return (
+    [
+      modelsKey(comparison, facet),
+      viewpoint,
+      layer,
+      reference,
+      isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
+      // wave 026 run 0199: the relationships a Map is narrowed to; the key is the one it always was when there are none
+      isMap && mapState.links && mapState.links.length ? JSON.stringify(canonicalLinkEntries(mapState.links)) : '',
+      // wave 026 run 0200: the relationships drawn heavy; a map without one keeps the key it had
+      isMap && mapState.highlight && mapState.highlight.length
+        ? 'highlight:' + JSON.stringify(canonicalLinkEntries(mapState.highlight))
+        : '',
+      // issue #107: what a Map of the technology layer draws besides its elements is part of what is drawn
+      isMap && layer === 'technology'
+        ? JSON.stringify([recipePartsOf(recipe).applications, recipePartsOf(recipe).relationships])
+        : '',
+      hideUnlinked,
+      JSON.stringify(shows),
+      JSON.stringify(AppState.workspace.styles || null)
+    ]
+      // wave 027, run 0202 (DEC-6): only a diagram that has a value says it, so every other key is the string it was
+      .concat(recipe.columns ? ['cols:' + recipe.columns] : [], [viewKey])
+      .join('|')
+  );
 }
 
 /**
@@ -27132,8 +27339,15 @@ function mainDiagramRecipe(canvas) {
     mapState: isMap ? currentMapState() : null,
     parts: isMap ? mapPartsShown() : null,
     hideUnlinked: diagramHideUnlinked,
-    shows: diagramShows(isMap)
+    shows: diagramShows(isMap),
+    ...columnsOfRecipe(null, isMap ? 'map' : effectiveDiagramViewpoint(record), diagramColumns)
   };
+}
+
+/** `{ columns, layoutProblem }` of a diagram: the level in force (DEC-2). The toolbar's value is the editor's alone: a view or a step passes none. */
+function columnsOfRecipe(view, viewpoint, toolbar) {
+  const resolved = resolveDiagramColumns({ toolbar, view, settings: AppState.workspace.settings, viewpoint });
+  return { columns: resolved.columns, layoutProblem: resolved.problem };
 }
 
 function libraryPickFor(viewId) {
@@ -27164,7 +27378,11 @@ function mapPartsOf(view) {
 
 /** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view and the model, and nothing else: an edit of the view is an edit of the entry. */
 function libraryDiagramRecipe(view) {
-  if (!view || viewProblem(view)) return null;
+  if (!view) return null;
+  // an invalid `layout` is told in the diagram's own panel and the form stays on screen to correct it (wave 027, run 0202, DEC-7); any other problem leaves the view undrawn
+  const properties = Object.assign({}, isPlainObject(view.properties) ? view.properties : {});
+  delete properties.layout;
+  if (viewProblem(Object.assign({}, view, { properties }))) return null;
   return viewDiagramRecipe(view, AppState.index, 'library', AppState.baseline ? AppState.baseline.index : null);
 }
 
@@ -27223,6 +27441,8 @@ function viewDiagramRecipe(view, index, host, baselineIndex) {
     recipe.record = index[layer].get(properties.element);
     recipe.viewpoint = leafSafeViewpoint(view.viewpoint, recipe.record);
   }
+  // the player and the page of a view have no toolbar: the view, then the workspace (DEC-7)
+  Object.assign(recipe, columnsOfRecipe({ id: view.id, properties }, recipe.viewpoint, null));
   return recipe;
 }
 
@@ -27383,6 +27603,19 @@ function mountDiagramIfNeeded() {
  */
 async function computeDiagramScene(recipe, input, comparison, source, kernel, elk, viewKey, readonly) {
   const { isMap, reference, record, viewpoint, facet, shows, hideUnlinked } = recipe;
+  if (recipe.layoutProblem) {
+    return {
+      scene: buildDiagramScene(
+        viewKey,
+        '<div class="error-panel">' + escapeHtml(recipe.layoutProblem) + '</div>',
+        '',
+        '',
+        { width: 0, height: 0 },
+        null
+      ),
+      cacheable: false
+    };
+  }
   const result = isMap && facet ? computeMapThroughFacet(kernel, input) : kernel.compute(input);
   if (result.error) {
     const removed =
@@ -27485,6 +27718,7 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
           descriptions: shows.descriptions,
           wrap: shows.wrap,
           itemLayer: recipe.layer,
+          columns: recipe.columns,
           source
         })
       ),
@@ -28307,8 +28541,19 @@ function canonicalViewProperties(properties) {
   if (typeof source.facet === 'string' && source.facet) out.facet = source.facet;
   if (source['hide-unlinked'] === true) out['hide-unlinked'] = true;
   for (const name of MAP_PARTS) if (source[name] === false) out[name] = false; // drawn is the default, so only `false` is a choice (issue #107)
+  // wave 027, run 0202 (DEC-5): `layout.columns`, after the Map parts and before the texts; one the editor cannot read is left as written, it is not its to rewrite
+  if (isPlainObject(source.layout)) {
+    if (columnsProblem(source.layout, 'the view') !== null) out.layout = source.layout;
+    else if (source.layout.columns !== undefined && source.layout.columns !== null)
+      out.layout = { columns: source.layout.columns };
+  } else if (source.layout !== undefined && source.layout !== null) out.layout = source.layout;
   for (const name of DIAGRAM_SHOW_NAMES) if (typeof source[name] === 'boolean') out[name] = source[name];
   return out;
+}
+
+/** The `layout.columns` the workspace gives for a viewpoint (`settings.views.properties.<viewpoint>.layout`), or null: none, or one that is invalid. */
+function workspaceColumnsOf(viewpoint) {
+  return resolveDiagramColumns({ settings: AppState.workspace.settings, viewpoint }).columns;
 }
 
 function canonicalViewDefinition(view) {
@@ -28324,6 +28569,9 @@ function canonicalViewDefinition(view) {
     delete properties.links;
     delete properties.highlight;
   }
+  // a value the workspace gives for that viewpoint is the default of the view: it is not remembered
+  const inherited = workspaceColumnsOf(viewpoint);
+  if (properties.layout && inherited !== null && properties.layout.columns === inherited) delete properties.layout;
   if (viewpoint === 'map') delete properties.element; // a Map is about its pins, not about one element
   return { viewpoint, layer: viewLayerOf(view), properties };
 }
@@ -28344,7 +28592,8 @@ function currentViewDefinition() {
           links: mapLayer() === 'application' ? mapLinks : [],
           highlight: mapLayer() === 'application' ? mapHighlight : [],
           facet: facetName,
-          'hide-unlinked': diagramHideUnlinked
+          'hide-unlinked': diagramHideUnlinked,
+          layout: diagramColumns === null ? null : { columns: diagramColumns }
         },
         mapPartsShown(),
         diagramShowOverrides(true)
@@ -28358,7 +28607,12 @@ function currentViewDefinition() {
       viewpoint: effectiveDiagramViewpoint(record),
       layer: layerOfReference(sel.key, sel.layer),
       properties: Object.assign(
-        { element: sel.key, facet: facetName, 'hide-unlinked': diagramHideUnlinked },
+        {
+          element: sel.key,
+          facet: facetName,
+          'hide-unlinked': diagramHideUnlinked,
+          layout: diagramColumns === null ? null : { columns: diagramColumns }
+        },
         diagramShowOverrides(false)
       )
     });
@@ -28423,6 +28677,8 @@ function viewProblem(view, plateau, name, against) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const index = indexOfPlateau(plateau);
   const viewName = typeof name === 'string' ? name : view.id;
+  const layoutProblem = columnsProblem(properties.layout, 'the view `' + viewName + '`');
+  if (layoutProblem) return layoutProblem;
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = viewLayerOf(view);
@@ -28540,6 +28796,8 @@ function applySavedView(view) {
       : null;
   setDiagramShow(properties);
   diagramHideUnlinked = properties['hide-unlinked'] === true;
+  // the toolbar takes what the view says (viewProblem has refused an invalid one), else none: the value of the diagram before does not stay
+  diagramColumns = resolveDiagramColumns({ view }).columns;
   if (view.viewpoint === 'map') {
     const layer = viewLayerOf(view); // the page Environments draws the technology layer, the page Applications the application layer
     const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
@@ -28974,10 +29232,10 @@ function shownTextsOf(view) {
 }
 
 /** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
-const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'links', 'facet', 'hide-unlinked'].concat(
-  MAP_PARTS,
-  DIAGRAM_SHOW_NAMES
-);
+// `layout` (wave 027, run 0202) stands after the parts of a Map: the first array literal holds every key but the parts and the texts, as the guide's test reads it
+const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'links', 'facet', 'hide-unlinked', 'layout']
+  .flatMap((key) => (key === 'layout' ? MAP_PARTS.concat(key) : [key]))
+  .concat(DIAGRAM_SHOW_NAMES);
 
 /**
  * Writes a property of a view. One the view already has keeps its place; one it has not (a default that an earlier edit took out, written again)
@@ -29013,6 +29271,21 @@ function setViewShow(view, name, value) {
   }
   if (properties[name] === value) return false;
   putViewProperty(properties, name, value);
+  return true;
+}
+
+/** Sets the `layout.columns` of a view; none, or the value the workspace gives, takes the key out (a value equal to the default is not remembered). True when the view changed. */
+function setViewLayout(view, columns) {
+  const properties = view.properties;
+  const inherited = workspaceColumnsOf(String(view.viewpoint));
+  if (columns === null || columns === undefined || columns === inherited) {
+    if (!('layout' in properties)) return false;
+    delete properties.layout;
+    return true;
+  }
+  const current = properties.layout;
+  if (isPlainObject(current) && current.columns === columns && Object.keys(current).length === 1) return false;
+  putViewProperty(properties, 'layout', { columns });
   return true;
 }
 
@@ -29245,7 +29518,11 @@ function handleViewFieldChange(control, immediate) {
   else if (field === 'layer') apply((view) => setViewLayer(view, control.value));
   else if (field === 'element') apply((view) => setViewElement(view, control.value));
   else if (field === 'facet') apply((view) => setViewFacet(view, control.value));
-  else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
+  else if (field === 'layout:columns') {
+    if (control.value === 'invalid') return false; // the entry that says what the view holds, not a choice
+    const columns = control.value === '' ? null : Number(control.value);
+    if (columns === null || Number.isInteger(columns)) apply((view) => setViewLayout(view, columns));
+  } else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
   else if (field && field.startsWith('part:') && MAP_PARTS.includes(field.slice(5)))
     apply((view) => setViewMapPart(view, field.slice(5), !!control.checked));
   else if (field && field.startsWith('show:') && DIAGRAM_SHOW_NAMES.includes(field.slice(5)))
@@ -29274,8 +29551,30 @@ document.addEventListener('pointerdown', notePointer, true);
 document.addEventListener('pointerup', notePointer, true);
 document.addEventListener('pointercancel', notePointer, true);
 
+/**
+ * The Columns list of the toolbar (wave 027, run 0202, DEC-4): on the page of a view it edits the view, as the four texts do; elsewhere it sets the toolbar level of the diagram on screen.
+ * A choice equal to what the lower levels give is no choice (null). View state: no `modelsChanged()`.
+ */
+function chooseColumns(text) {
+  const columns = text === '' ? null : Number(text);
+  if (columns !== null && !Number.isInteger(columns)) return;
+  if (currentPerspective === 'library') {
+    editSavedView((view) => setViewLayout(view, columns));
+    return;
+  }
+  const record = mapIsShown() ? null : findElementRecord(elementSelection().key);
+  const viewpoint = mapIsShown() ? 'map' : record ? effectiveDiagramViewpoint(record) : null;
+  if (viewpoint === null) return;
+  diagramColumns = columns === workspaceColumnsOf(viewpoint) ? null : columns;
+  requestRedraw();
+}
+
 /** Delegated `change` listener: the form of a view on its page, the list of Settings. (The menu of the steps of a story is the player's, `handleStoryPlayerChange`.) */
 function handleAppChange(e) {
+  if (e.target && e.target.getAttribute && e.target.getAttribute('data-action') === 'set-columns') {
+    chooseColumns(e.target.value);
+    return;
+  }
   if (handleMapLinksControl(e.target)) return; // the kind and "Ticked only" of the list of relationships
   if (e.target.matches && e.target.matches('[data-story-step-highlight]')) {
     const chosen = e.target.value;
@@ -31901,6 +32200,16 @@ function renderViewFactsHtml(view) {
       'facet'
     );
   }
+  const layoutProblem = columnsProblem(properties.layout, 'the view `' + view.id + '`');
+  html += field(
+    'view-edit-columns',
+    'Columns',
+    '<select id="view-edit-columns" data-view-field="layout:columns">' +
+      columnsOptionsHtml(ownColumnsOf(view), workspaceColumnsOf(String(view.viewpoint)), layoutProblem !== null) +
+      '</select>' +
+      (layoutProblem ? '<div class="inline-error" role="alert">' + escapeHtml(layoutProblem) + '</div>' : ''),
+    'layout'
+  );
   const shows = shownTextsOf(view);
   const check = (id, fieldName, label, checked, title) =>
     '<label class="view-check" title="' +
@@ -34397,10 +34706,11 @@ function render() {
       el.scrollLeft = scrollBefore[id].left;
     }
   }
+  syncRightPanelSticky(); // the heights of the tabs and of the walk bar, before the row is scrolled to (wave 027, run 0201)
   if (scrollChangesToSelection) {
     scrollChangesToSelection = false;
     const selectedRow = document.querySelector('.change-row.selected');
-    if (selectedRow && selectedRow.scrollIntoView) selectedRow.scrollIntoView({ block: 'center' });
+    if (selectedRow && selectedRow.scrollIntoView) selectedRow.scrollIntoView({ block: 'nearest' });
   }
   // a selection that did not come from a click in the tree (a box of a diagram, a link, the URL) is brought into view in it
   if (scrollNavToSelection) {
@@ -34472,6 +34782,7 @@ window.addEventListener('codemirror-ready', () => {
 
 // the cap of the open key is 30 % of the diagram area, which a resize of the window changes (wave 019, run 0138, #137): view state, nothing is drawn again
 window.addEventListener('resize', syncDiagramKey);
+window.addEventListener('resize', syncRightPanelSticky); // the sticky block of the right panel wraps differently at another width (wave 027, run 0201)
 
 window.addEventListener('hashchange', () => {
   // the change came from the app itself (setPerspective writes the hash after it has set the state): the state is
