@@ -18,3 +18,6 @@ node_modules
 # skill or by Claude Code's built-in worktree tool. Local working copies of
 # branches that live in this same repository; never shared, never tracked.
 /.claude/worktrees/
+
+# The views that `views generate` writes beside the model of ArchiCode itself (docs/architecture); the saved views are manifests and are tracked.
+/docs/architecture/views*/

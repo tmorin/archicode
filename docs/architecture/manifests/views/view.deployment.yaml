@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "deployment"
+  name: "Deployment"
+  description: "The workstation and GitHub, with the applications deployed on them."
+  viewpoint: "map"
+  layer: "technology"
+  properties:
+    applications: true
+    opened: ["workstation", "github", "workstation.machine", "github.actions", "github.pages", "github.releases"]

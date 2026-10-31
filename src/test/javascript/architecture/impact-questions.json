@@ -1,0 +1,88 @@
+{
+  "questions": [
+    {
+      "id": "Q01",
+      "ask": "I change the kernel contract: what changes with it?",
+      "start": ["archicode.kernel.engine"],
+      "direction": "in",
+      "qualifiers": ["calls", "generated from"],
+      "depth": 1,
+      "expect": [
+        "archicode.contracts.couplings.kernel_wasm",
+        "archicode.commandline.viewpoint",
+        "archicode.commandline.workspace",
+        "archicode.editor.model",
+        "archicode.editor.application",
+        "archicode.editor.presentation"
+      ]
+    },
+    {
+      "id": "Q02",
+      "ask": "I change a sentence both tools say: which side validates it?",
+      "start": ["archicode.contracts.couplings.shared_cases"],
+      "direction": "out",
+      "qualifiers": ["validated by"],
+      "depth": 1,
+      "expect": ["archicode.commandline.workspace", "archicode.editor.application"]
+    },
+    {
+      "id": "Q03",
+      "ask": "I change standalone.html: who produces it and who serves it?",
+      "start": ["archicode.editor.page"],
+      "direction": "both",
+      "qualifiers": ["serves", "generated from"],
+      "depth": 1,
+      "expect": ["archicode.editor.composition", "archicode.commandline.commands.editor_serve"]
+    },
+    {
+      "id": "Q04",
+      "ask": "I change the editor model layer: which layers and what is generated from it?",
+      "start": ["archicode.editor.model"],
+      "direction": "in",
+      "qualifiers": ["uses", "generated from"],
+      "depth": null,
+      "expect": [
+        "archicode.editor.persistence",
+        "archicode.editor.application",
+        "archicode.editor.presentation",
+        "archicode.editor.composition",
+        "archicode.editor.page"
+      ]
+    },
+    {
+      "id": "Q05",
+      "ask": "I change READ_SCHEMA: whose twin must follow?",
+      "start": ["archicode.contracts.couplings.read_schema"],
+      "direction": "both",
+      "qualifiers": ["owns", "mirror of"],
+      "depth": 1,
+      "expect": ["archicode.editor.core", "archicode.commandline.resource"]
+    },
+    {
+      "id": "Q06",
+      "ask": "I change the manifest classes: which schema, which packages?",
+      "start": ["archicode.commandline.manifest"],
+      "direction": "in",
+      "qualifiers": ["generated from", "reads", "imports"],
+      "depth": 1,
+      "expect": [
+        "archicode.contracts.couplings.manifest_schema",
+        "archicode.commandline.commands",
+        "archicode.commandline.workspace"
+      ]
+    },
+    {
+      "id": "Q07",
+      "ask": "I change what the command line renders: which goldens, which callers?",
+      "start": ["archicode.commandline.rendering"],
+      "direction": "in",
+      "qualifiers": ["validated by", "imports"],
+      "depth": 1,
+      "expect": [
+        "archicode.contracts.couplings.goldens",
+        "archicode.commandline.commands",
+        "archicode.commandline.workspace"
+      ]
+    }
+  ]
+}

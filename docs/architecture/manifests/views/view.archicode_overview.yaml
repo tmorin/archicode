@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "archicode_overview"
+  name: "ArchiCode and its people"
+  description: "The systems and the people around ArchiCode."
+  viewpoint: "overview"
+  properties:
+    element: "archicode"
