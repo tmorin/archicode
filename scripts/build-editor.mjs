@@ -47,7 +47,7 @@ function partsOnDisk(editorDir) {
   const walk = (folder, prefix) => {
     for (const entry of readdirSync(folder, { withFileTypes: true })) {
       if (entry.isDirectory()) walk(join(folder, entry.name), `${prefix}${entry.name}/`);
-      else found.push(`${prefix}${entry.name}`);
+      else if (entry.name !== 'CLAUDE.md') found.push(`${prefix}${entry.name}`); // the notes for agents sit beside the parts and are not parts
     }
   };
   for (const name of LAYER_FOLDERS) {
