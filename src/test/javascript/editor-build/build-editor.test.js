@@ -203,6 +203,14 @@ test('refuses a part on disk that layers.json does not list', () => {
   refused(root, /the part `model\/extra\.js` is in src\/main\/editor but not in layers\.json/);
 });
 
+test('a CLAUDE.md beside the parts is a note for agents, not a part', () => {
+  const root = makeTree();
+  write(root, 'src/main/editor/model/CLAUDE.md', 'rules of this layer\n');
+  const result = run(root);
+  assert.equal(result.code, 0, result.err);
+  assert.equal(fs.readFileSync(path.join(root, PAGE), 'utf8'), expectedPage(), 'the page is the one without it');
+});
+
 test('refuses a part listed twice', () => {
   const layers = defaultLayers();
   layers.parts.push(layers.parts[0]);
