@@ -78,6 +78,8 @@ function applyDiagramScale() {
     label.textContent = Math.round(scale * 100) + '%';
     label.setAttribute('aria-label', 'Actual size (now ' + Math.round(scale * 100) + '%)');
   }
+  const frameZoom = document.querySelector('.tool-group-zoom');
+  if (frameZoom) frameZoom.textContent = Math.round(scale * 100) + '%';
   const fit = document.getElementById('diagram-fit-button');
   if (fit) fit.setAttribute('aria-pressed', String(diagramScale === 'fit'));
   const center = document.getElementById('diagram-center-button');
@@ -571,6 +573,17 @@ function handleDiagramKeydown(e) {
   if (!(e.target.closest && e.target.closest('.diagram-stage, .diagram-toolbar')) || e.ctrlKey || e.metaKey || e.altKey)
     return;
   const canvas = document.getElementById('diagram-canvas');
+  if (e.key === 'Escape') {
+    // an open group panel closes first, and its button takes the focus; with none open the Escape below is the old one
+    const group = currentToolPanelOpen();
+    if (group !== null) {
+      e.preventDefault();
+      toolPanelOpen = null;
+      pendingFocusSelector = '[data-action="toggle-tool-group"][data-group="' + group + '"]';
+      requestRedraw();
+      return;
+    }
+  }
   if (e.key === 'Enter' || e.key === ' ') {
     const actionable = e.target.closest('[data-action]');
     if (actionable && e.target.closest('#diagram-canvas') && actionable.tagName.toLowerCase() === 'g') {

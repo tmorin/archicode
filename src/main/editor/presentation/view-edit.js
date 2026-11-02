@@ -145,6 +145,22 @@ function setViewMapPart(view, part, drawn) {
   return true;
 }
 
+/** Writes the whole list of the open boxes of a Map view (Fold all writes none, Unfold all the union); sorted, and removed when empty. */
+function setViewOpened(view, references) {
+  if (view.viewpoint !== 'map') return false;
+  const properties = view.properties;
+  const wanted = Array.from(new Set(references.map(String))).sort();
+  const current = stringList(properties.opened);
+  if (!wanted.length) {
+    if (!('opened' in properties)) return false;
+    delete properties.opened;
+    return true;
+  }
+  if (current.length === wanted.length && current.every((reference, i) => reference === wanted[i])) return false;
+  putViewProperty(properties, 'opened', wanted);
+  return true;
+}
+
 function setViewFacet(view, name) {
   const properties = view.properties;
   if (!name) {
@@ -153,6 +169,8 @@ function setViewFacet(view, name) {
     return true;
   }
   if (properties.facet === name) return false;
+  if (!AppState.workspace.settings.facets.customs.some((facet) => facet.name === name))
+    return refuseViewEdit(view, 'facet', '“' + name + '” is not a facet of the workspace.', name);
   putViewProperty(properties, 'facet', name);
   return true;
 }

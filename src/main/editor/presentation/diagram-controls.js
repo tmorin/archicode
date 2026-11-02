@@ -227,18 +227,21 @@ function renderElementTabsHtml(record) {
 }
 
 /** The facet picker of the toolbar (Draw); absent when the workspace defines no facet. */
-function renderFacetSelectHtml() {
+function renderFacetSelectHtml(host) {
   const facets = AppState.workspace.settings.facets.customs;
   if (!facets.length) return '';
+  const chosen = host ? host.facetName : diagramFacet; // the page of a saved view shows the facet of the view
   let html =
-    '<select id="diagram-facet-select" aria-label="Facet" title="Draw the diagram as the CLI generates it for a facet: the relationships the facet removes are left out.">' +
+    '<select id="diagram-facet-select" aria-label="Facet"' +
+    (chosen ? ' data-on="true"' : '') +
+    ' title="Draw the diagram as the CLI generates it for a facet: the relationships the facet removes are left out.">' +
     '<option value="">Facet: none</option>';
   for (const facet of facets) {
     html +=
       '<option value="' +
       escapeHtml(facet.name) +
       '"' +
-      (facet.name === diagramFacet ? ' selected' : '') +
+      (facet.name === chosen ? ' selected' : '') +
       '>' +
       escapeHtml(facet.name) +
       '</option>';
@@ -290,7 +293,9 @@ function renderColumnsToolHtml(record, host) {
   return (
     '<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">' +
     '<label for="diagram-columns" title="The number of boxes the layout aims at in a row">Columns</label>' +
-    '<select id="diagram-columns" data-action="set-columns" title="Choose how many boxes the layout aims at in a row">' +
+    '<select id="diagram-columns" data-action="set-columns"' +
+    (selected !== null && selected !== undefined ? ' data-on="true"' : '') +
+    ' title="Choose how many boxes the layout aims at in a row">' +
     columnsOptionsHtml(selected, workspaceColumnsOf(viewpoint), false) +
     '</select></span>'
   );

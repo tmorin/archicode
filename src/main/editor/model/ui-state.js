@@ -138,6 +138,12 @@ let diagramHideUnlinked = false;
 /** Wave 027, run 0202 (DEC-4): the boxes per row chosen on the toolbar of the diagram on screen, or null (the view, then the workspace, decide). View state: never `modelsChanged()`. */
 let diagramColumns = null;
 
+/** The view or step the diagram on screen came from: `null | { perspective, element, name, properties }` (the toolbar keys it said). Session state: read through `currentDiagramOrigin()`, never stored. */
+let diagramOrigin = null;
+
+/** The group panel open under 40 rem: `null | { group, perspective, element }`. Session state: read through `currentToolPanelOpen()`, which forgets it when the page or the element is not the one it recorded. */
+let toolPanelOpen = null;
+
 const DIAGRAM_SHOW_NAMES = ['labels', 'qualifiers', 'descriptions', 'wrap'];
 
 /** The Map is dense: it starts without any of them. An element's diagram starts as the command line draws it (the descriptions apart). */

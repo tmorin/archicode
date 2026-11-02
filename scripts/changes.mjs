@@ -104,6 +104,12 @@ export const RULES = [
   },
   { id: 'R-16', patterns: ['package.json', 'package-lock.json'], jobs: [P, E], reason: 'npm ci in both' },
   {
+    id: 'R-17a',
+    patterns: ['src/test/javascript/viewpoint-kernel/toolbar-controls.json'],
+    jobs: [J, P, K, E],
+    reason: 'diagram-toolbar.spec.js reads it; before R-17'
+  },
+  {
     id: 'R-17',
     patterns: ['src/test/javascript/**/*.json'],
     jobs: [J, P, K],

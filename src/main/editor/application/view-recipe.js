@@ -261,39 +261,99 @@ function viewLacksInPlateau(references, layer, plateau) {
   );
 }
 
+const TOOLBAR_KEYS = ['opened', 'facet', 'hide-unlinked', ...MAP_PARTS, ...DIAGRAM_SHOW_NAMES, 'layout'];
+
+/** The keys of the toolbar (Draw, Texts, Layout) of a canonical view's properties; the pins, the hidden boxes, `links`, `highlight` and `element` are not among them. */
+function toolbarKeysOf(properties) {
+  const source = isPlainObject(properties) ? properties : {};
+  const out = {};
+  for (const key of TOOLBAR_KEYS) if (source[key] !== undefined) out[key] = source[key];
+  return out;
+}
+
+/**
+ * Sets the keys of the toolbar from `properties` (`{}` is the defaults) for the Map of `layer`; a key not given is its default. It never touches the scale, the centre, Changes only,
+ * the pins, the hidden boxes, `links`, `highlight` or the selection. A facet the workspace does not define is dropped. `drawsMap` false (an element's diagram) leaves the opened boxes and the parts alone.
+ * It returns the state of the Map of `layer` (null when `drawsMap` is false), so that the caller sets the rest of it without naming `mapStateOf` itself.
+ */
+function applyToolbarKeys(properties, layer, drawsMap) {
+  const source = isPlainObject(properties) ? properties : {};
+  diagramFacet =
+    typeof source.facet === 'string' &&
+    AppState.workspace.settings.facets.customs.some((facet) => facet.name === source.facet)
+      ? source.facet
+      : null;
+  setDiagramShow(source);
+  diagramHideUnlinked = source['hide-unlinked'] === true;
+  // the toolbar takes what the keys say (an invalid layout was refused by viewProblem), else none: the value of the diagram before does not stay
+  diagramColumns = isPlainObject(source.layout)
+    ? resolveDiagramColumns({ view: { properties: source } }).columns
+    : null;
+  if (drawsMap === false) return null;
+  const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
+  const map = mapStateOf(layer);
+  map.opened = new Set(known(source.opened));
+  if (layer === 'technology')
+    technologyMapParts = {
+      applications: source.applications !== false,
+      relationships: source.relationships !== false
+    }; // the keys say `false` for what they leave out, else it is drawn
+  return map;
+}
+
+/** The key of the element the page of an element draws, else '' (what the origin and the open panel record beside the page). */
+function toolbarElementKey() {
+  return currentPerspective === 'elements' && AppState.selection ? AppState.selection.key || '' : '';
+}
+
+/** The group whose panel is open while the page and the selected element are those it recorded; else null, and it is forgotten (the same rule as the origin's). */
+function currentToolPanelOpen() {
+  if (toolPanelOpen === null) return null;
+  if (toolPanelOpen.perspective !== currentPerspective || toolPanelOpen.element !== toolbarElementKey())
+    toolPanelOpen = null;
+  return toolPanelOpen ? toolPanelOpen.group : null;
+}
+
+/** The origin of the diagram on screen while the page and the selected element are those it recorded; else null, and it is forgotten (the one rule that clears it). */
+function currentDiagramOrigin() {
+  if (diagramOrigin === null) return null;
+  const element = toolbarElementKey();
+  if (diagramOrigin.perspective !== currentPerspective || diagramOrigin.element !== element) diagramOrigin = null;
+  return diagramOrigin;
+}
+
+/** True when the toolbar's keys of the diagram on screen are not its origin's (the defaults when it has none), compared as JSON text. */
+function diagramDiffersFromOrigin() {
+  const current = currentViewDefinition();
+  if (!current) return false;
+  const origin = currentDiagramOrigin();
+  return JSON.stringify(toolbarKeysOf(current.properties)) !== JSON.stringify(origin ? origin.properties : {});
+}
+
 /** Puts the editor where the view was saved. Returns why it cannot, or null once it is done (the caller redraws). */
 function applySavedView(view) {
   const problem = viewProblem(view);
   if (problem) return problem;
   const properties = isPlainObject(view.properties) ? view.properties : {};
-  diagramFacet =
-    typeof properties.facet === 'string' &&
-    AppState.workspace.settings.facets.customs.some((facet) => facet.name === properties.facet)
-      ? properties.facet
-      : null;
-  setDiagramShow(properties);
-  diagramHideUnlinked = properties['hide-unlinked'] === true;
-  // the toolbar takes what the view says (viewProblem has refused an invalid one), else none: the value of the diagram before does not stay
-  diagramColumns = resolveDiagramColumns({ view }).columns;
+  const isMap = view.viewpoint === 'map';
+  const layer = viewLayerOf(view);
+  const keys = toolbarKeysOf(canonicalViewDefinition(view).properties);
+  const map = applyToolbarKeys(keys, layer, isMap);
   if (view.viewpoint === 'map') {
-    const layer = viewLayerOf(view); // the page Environments draws the technology layer, the page Applications the application layer
+    // the page Environments draws the technology layer, the page Applications the application layer
     const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
-    const map = mapStateOf(layer);
     map.pinned = known(properties.pinned);
     map.hidden = known(properties.hidden);
-    map.opened = new Set(known(properties.opened));
     // issue #143: the relationships the view is narrowed to (the application layer's Map alone); a view with none gives the whole map
     if (layer === 'application')
       mapLinks = linkEntriesOf(properties.links).entries.map((link) => Object.assign({}, link)); // as the view says them: the model drawn is looked at when it is drawn
     if (layer === 'application')
       mapHighlight = linkEntriesOf(properties.highlight, 'highlight').entries.map((link) => Object.assign({}, link));
-    if (layer === 'technology') technologyMapParts = mapPartsOf(view); // the view says `false` for what it leaves out, else it is drawn
     map.pinned.forEach((reference) => expandParentsOf(reference, layer));
     mapSelectionCheck = true;
     currentPerspective = layer === 'technology' ? 'environments' : 'map';
     useDiagramHost('main');
   } else {
-    const layer = viewLayerOf(view);
     AppState.selection = { kind: 'element', key: properties.element, layer, mode: 'view' };
     elementTab = view.viewpoint;
     expandAncestorsOf(properties.element, layer);
@@ -301,6 +361,13 @@ function applySavedView(view) {
     currentPerspective = 'elements';
     useDiagramHost('main');
   }
+  // the origin: what the view says of the toolbar, for this page and this element; session state, never written anywhere
+  diagramOrigin = {
+    perspective: currentPerspective,
+    element: isMap ? '' : properties.element,
+    name: viewLabel(view),
+    properties: keys
+  };
   if (rawYamlEditDraft) rawYamlEditDraft = null;
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   return null;

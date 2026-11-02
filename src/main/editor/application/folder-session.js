@@ -40,6 +40,8 @@ function resetUiState() {
   diagramMaximized = false;
   diagramHideUnlinked = false;
   diagramColumns = null;
+  diagramOrigin = null;
+  toolPanelOpen = null;
   diagramScale = 'auto';
   diagramCenter = { x: 0, y: 0 };
   diagramCache = null;
