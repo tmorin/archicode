@@ -12,6 +12,13 @@
 - [Repository](https://github.com/tmorin/archicode): the source code
 - [Architecture of ArchiCode](https://github.com/tmorin/archicode/tree/main/docs/architecture): the ArchiCode model of ArchiCode
 
+## Reference and concepts
+
+- [Reference](https://tmorin.github.io/archicode/docs/#reference): the commands, the manifests and the editor, one by one
+- [Concepts](https://tmorin.github.io/archicode/docs/#concepts): the ideas behind the model, the layers and the plateaus
+- [Check the architecture in a build](https://tmorin.github.io/archicode/docs/#howto-ci): fail a build when a plateau changes what it must not change
+- [Work with an agent](https://tmorin.github.io/archicode/docs/#howto-agent): the guide, init, the loop and the schemas for an agent
+
 ## Optional
 
 - [Releases](https://github.com/tmorin/archicode/releases): the binaries of each version
