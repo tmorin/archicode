@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 030
-status: proposed
+status: planned
 date: 2026-11-01
 related:
   - docs/wav/wav-030-pages-ci-and-toolbar/wbc-030-pages-ci-and-toolbar.md
@@ -41,7 +41,7 @@ None blocks a run. Q1 and Q2 are answered below; Q3 is read at the start of W-6.
 wave_manifest:
   wave: 030
   slug: pages-ci-and-toolbar
-  status: proposed
+  status: planned
   sources:
     - '#192'
     - '#193'
@@ -95,7 +95,7 @@ wave_manifest:
     - id: W-2
       slug: homepage
       phase: P1
-      depends_on: []
+      depends_on: [W-1]
       run: null
       delegation: standard
       likely_paths:
@@ -106,7 +106,7 @@ wave_manifest:
     - id: W-3
       slug: manual-skeleton
       phase: P1
-      depends_on: []
+      depends_on: [W-2]
       run: null
       delegation: standard
       likely_paths:
@@ -134,7 +134,7 @@ wave_manifest:
     - id: W-6
       slug: generated-command-reference
       phase: P2
-      depends_on: [W-3]
+      depends_on: [W-5]
       run: null
       delegation: standard
       likely_paths:
@@ -177,8 +177,8 @@ wave_manifest:
 | # | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|------|------------|-------|-------|---------------|
 | W-1 | `ci-changes-filter` | — | a pull request that cannot reach the jar does not wait for the end-to-end suite (#192) | `scripts/changes.mjs` (the corrected map of the issue and a `--list` mode over `git ls-files`), a `Changes` job with a job summary and one output per job, an `if` on each job, `Build` accepting `skipped` only for a job whose output is `false`, a push, a tag and a dispatch running everything, `src/test/javascript/changes-map.test.js` over a list of example paths with the default *all*; `.github/CLAUDE.md` says it | the first two criteria of P1 |
-| W-2 | `homepage` | — | see what ArchiCode produces in the first screen, try it, find the way in as an agent (#195) | the six findings of #195 in `src/site/index.html`: the overview or a screenshot beside the hero, both samples explained and one button, *Context* and *Problem* folded and *Scope and limits* moved up, a block for agents (`init`, `guide`, `query graph`, `query schemas manifest`, a link to the model), *Get started* rewritten on `archicode init`, plateaus, `diff`, stories and `plateau fold` shown, a footer with the manual, the releases and the editor; title and description with C4, ArchiMate and PlantUML; one H1; the hero diagram with a text alternative; canonical, Open Graph, JSON-LD; `sitemap.xml`, `robots.txt`, `llms.txt` and the copy step in the Pages publish job; the redirect of old manual anchors kept; light and dark themes and 360 px checked | the third and fourth criteria of P1 |
-| W-3 | `manual-skeleton` | — | find a part of the manual by its kind of reading (#193 b) | `src/doc/README.adoc` reordered by Diátaxis (Start here, Tutorials, How-to guides, Reference, Concepts, Upgrading) with a two-level table of contents; the six upgrade blocks moved under Upgrading with their ids; the `//` draft lines deleted except the ArchiMate/C4 mapping kept as one paragraph; the stale intros fixed (the Commands intro lists the eight groups, Features stops promising extension points); no other prose change; every `[[id]]` and `<<id>>` kept; Asciidoctor warnings counted before and after; the record lists each paragraph it moved or changed | the last three criteria of P1 |
+| W-2 | `homepage` | W-1 | see what ArchiCode produces in the first screen, try it, find the way in as an agent (#195) | the six findings of #195 in `src/site/index.html`: the overview or a screenshot beside the hero, both samples explained and one button, *Context* and *Problem* folded and *Scope and limits* moved up, a block for agents (`init`, `guide`, `query graph`, `query schemas manifest`, a link to the model), *Get started* rewritten on `archicode init`, plateaus, `diff`, stories and `plateau fold` shown, a footer with the manual, the releases and the editor; title and description with C4, ArchiMate and PlantUML; one H1; the hero diagram with a text alternative; canonical, Open Graph, JSON-LD; `sitemap.xml`, `robots.txt`, `llms.txt` and the copy step in the Pages publish job; the redirect of old manual anchors kept; light and dark themes and 360 px checked | the third and fourth criteria of P1 |
+| W-3 | `manual-skeleton` | W-2 | find a part of the manual by its kind of reading (#193 b) | `src/doc/README.adoc` reordered by Diátaxis (Start here, Tutorials, How-to guides, Reference, Concepts, Upgrading) with a two-level table of contents; the six upgrade blocks moved under Upgrading with their ids; the `//` draft lines deleted except the ArchiMate/C4 mapping kept as one paragraph; the stale intros fixed (the Commands intro lists the eight groups, Features stops promising extension points); no other prose change; every `[[id]]` and `<<id>>` kept; Asciidoctor warnings counted before and after; the record lists each paragraph it moved or changed | the last three criteria of P1 |
 
 **Gate:** the seven criteria of P1 in the manifest.
 
@@ -188,7 +188,7 @@ wave_manifest:
 |---|------|------------|-------|-------|---------------|
 | W-4 | `manual-concepts-and-voice` | W-3 | read one page about plateaus, in a plain voice (#193 c1) | one *Concepts* page for plateaus instead of the two parts (the 265 lines under Domain/Workspace and the 550-line part); the voice of D3 (direct, second person, one idea per sentence, one word per thing: plateau, layer, view, viewpoint, sample, workspace); the filler intros rewritten; ids kept | the first criterion of P2 |
 | W-5 | `manual-missing-pages` | W-4, W-2 | set up CI and let an agent drive the tool (#193 c2) | a how-to for CI (`diff --fail-on`, exit codes 1, 2, 3) and one for an agent (`guide`, `init`, `query graph`, `query schemas manifest`, docs/architecture); the topics *Best Practices* promises are written or dropped as Q2 says; `src/site/llms.txt` updated to name the Reference and Concepts parts | the second, third and fifth criteria of P2 |
-| W-6 | `generated-command-reference` | W-3 | trust that the command reference is what the binary says (#199) | the command reference (the Commands part) generated from the real `--help` of every command or checked against it, in a way Q3 settles in the run's design; a test that fails when the page and the binary disagree, shown on a copy; no change to a command | the fourth criterion of P2 |
+| W-6 | `generated-command-reference` | W-5 | trust that the command reference is what the binary says (#199) | the command reference (the Commands part) generated from the real `--help` of every command or checked against it, in a way Q3 settles in the run's design; a test that fails when the page and the binary disagree, shown on a copy; no change to a command | the fourth criterion of P2 |
 
 **Gate:** the five criteria of P2 in the manifest.
 
