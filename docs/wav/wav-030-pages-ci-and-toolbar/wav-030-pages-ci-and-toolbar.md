@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 030
-status: planned
+status: completed
 date: 2026-11-01
 related:
   - docs/wav/wav-030-pages-ci-and-toolbar/wbc-030-pages-ci-and-toolbar.md
@@ -41,7 +41,7 @@ None blocks a run. Q1 and Q2 are answered below; Q3 is read at the start of W-6.
 wave_manifest:
   wave: 030
   slug: pages-ci-and-toolbar
-  status: planned
+  status: completed
   sources:
     - '#192'
     - '#193'
