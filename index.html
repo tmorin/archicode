@@ -3,9 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="archicode-version" content="0.23.0">
-<title>ArchiCode · Architecture as code</title>
-<meta name="description" content="Describe your systems and their relationships in YAML, in your repository. ArchiCode generates PlantUML views from that model.">
+<meta name="archicode-version" content="0.24.0">
+<title>ArchiCode · C4 and ArchiMate views as code, drawn with PlantUML</title>
+<meta name="description" content="Describe your systems and their relationships in YAML, in your repository. ArchiCode generates C4 and ArchiMate views as PlantUML from that model, with plateaus to compare states of the architecture.">
+<link rel="canonical" href="https://tmorin.github.io/archicode/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ArchiCode">
+<meta property="og:title" content="ArchiCode · C4 and ArchiMate views as code, drawn with PlantUML">
+<meta property="og:description" content="Describe your systems and their relationships in YAML, in your repository. ArchiCode generates C4 and ArchiMate views as PlantUML from that model, with plateaus to compare states of the architecture.">
+<meta property="og:url" content="https://tmorin.github.io/archicode/">
+<meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6e5c'/%3E%3Cpath d='M9 22l7-12 7 12z' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script>
 // Marks the page as scripted (the tabs of the diagrams need it). Also: the manual used to be at the root of this site. A
@@ -21,6 +28,19 @@
     if (!known) location.replace('docs/#' + hash);
   });
 })();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ArchiCode",
+  "description": "Describe your systems and their relationships in YAML, in your repository. ArchiCode generates C4 and ArchiMate views as PlantUML from that model, with plateaus to compare states of the architecture.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS",
+  "license": "https://mit-license.org",
+  "url": "https://tmorin.github.io/archicode/",
+  "sameAs": "https://github.com/tmorin/archicode"
+}
 </script>
 <style>
 :root {
@@ -132,6 +152,18 @@ pre code { background: none; padding: 0; font-size: inherit; }
 .start-grid { display: grid; gap: 1.25rem; margin-top: 1.25rem; }
 @media (min-width: 60rem) { .start-grid { grid-template-columns: repeat(3, 1fr); } }
 
+.hero-grid { display: grid; gap: 2rem; align-items: center; }
+@media (min-width: 56rem) { .hero-grid { grid-template-columns: 1.1fr 1fr; } }
+.hero-figure { margin: 0; border: 1px solid var(--line); border-radius: 10px; padding: 0.75rem; background: var(--bg); }
+.hero-figure svg { width: 100%; height: auto; display: block; }
+.hero-figure figcaption { margin: 0.5rem 0.25rem 0; font-size: 0.85rem; color: var(--muted); }
+.why { margin-top: 1.5rem; max-width: 38rem; color: var(--muted); }
+.two { display: grid; gap: 1rem; margin-top: 1.25rem; }
+@media (min-width: 52rem) { .two { grid-template-columns: 1fr 1fr; } }
+.two .card .note { flex: 1; }
+.section-alt { background: var(--bg-alt); }
+.plain-list { padding-left: 1.2rem; }
+
 footer { border-top: 1px solid var(--line); padding: 2rem 0 3rem; color: var(--muted); font-size: 0.9rem; }
 footer .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }
 footer a { color: var(--muted); }
@@ -158,40 +190,47 @@ footer a { color: var(--muted); }
 <main id="main">
 
 <section class="hero" id="top">
-  <div class="wrap">
-    <h1>Architecture as code</h1>
-    <p class="lead">Describe your systems and their relationships in YAML, in your repository. ArchiCode generates PlantUML views from that model.</p>
-    <div class="cta">
-      <a class="btn primary" href="editor/">Open the editor</a>
-      <a class="btn" href="editor/#/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart">Try the editor on a realistic project</a>
-      <a class="btn" href="#start">Get started</a>
+  <div class="wrap hero-grid">
+    <div>
+      <h1>Architecture as code</h1>
+      <p class="lead">Describe your systems and their relationships in YAML, in your repository. ArchiCode generates C4 and ArchiMate views as PlantUML from that model.</p>
+      <div class="cta">
+        <a class="btn primary" href="editor/#/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart">Try the editor on a realistic project</a>
+        <a class="btn" href="#start">Get started</a>
+      </div>
+      <p class="why">The architecture is rarely versioned and reviewed like the code: it lives in diagram files, slides or wiki pages. A diagram written as code still means one view at a time, and it cannot be asked a question. Here the model is data, and the views are drawn from it.</p>
+      <p class="hint">The editor runs in your browser, nothing to install: open the sample, create a workspace, or pick a folder where your browser allows it. Your files are not uploaded.</p>
     </div>
-    <p class="hint">The editor runs in your browser, nothing to install: open the sample, create a workspace, or pick a folder where your browser allows it. Your files are not uploaded.</p>
-  </div>
-</section>
-
-<section id="context">
-  <div class="wrap prose">
-    <h2>Context</h2>
-    <p>Code, infrastructure and pipelines are versioned and reviewed in pull requests. The architecture usually is not: it lives in diagram files, slides or wiki pages. Text-to-diagram tools such as PlantUML make a diagram cheap to write, and the C4 model gives a common vocabulary to describe a system at several levels.</p>
-  </div>
-</section>
-
-<section id="problem" class="problem">
-  <div class="wrap prose">
-    <h2>Problem</h2>
-    <p>Writing a diagram as code still means writing each view by hand. A system appears in the view of each level, and a change has to be repeated in each of them. Nothing checks that they agree.</p>
-    <p>A diagram is also a picture, not data. You cannot ask it what depends on the payment gateway.</p>
+    <figure class="hero-figure" role="group" aria-label="The overview of EcommercePlatform that ArchiCode draws: the User uses EcommercePlatform, which uses SocialIdentityProvider and PaymentGateway.">
+      <svg viewBox="0 0 640 300" aria-hidden="true">
+              <defs><marker id="ah-hero" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-head"/></marker></defs>
+              <rect class="d-person" x="20" y="115" width="120" height="64" rx="32"/>
+              <text class="d-t" x="80" y="144">User</text><text class="d-k" x="80" y="162">[person]</text>
+              <rect class="d-box" x="215" y="115" width="170" height="64" rx="6"/>
+              <text class="d-t" x="300" y="144">EcommercePlatform</text><text class="d-k" x="300" y="162">[solution]</text>
+              <rect class="d-box" x="480" y="40" width="150" height="64" rx="6"/>
+              <text class="d-t" x="555" y="69">SocialIdentityProvider</text><text class="d-k" x="555" y="87">[system]</text>
+              <rect class="d-box" x="480" y="190" width="150" height="64" rx="6"/>
+              <text class="d-t" x="555" y="219">PaymentGateway</text><text class="d-k" x="555" y="237">[system]</text>
+              <path class="d-edge" marker-end="url(#ah-hero)" d="M140 147H213"/>
+              <path class="d-edge" marker-end="url(#ah-hero)" d="M385 135C430 135 430 82 478 78"/>
+              <path class="d-edge" marker-end="url(#ah-hero)" d="M385 160C430 160 430 214 478 218"/>
+              <text class="d-cap" x="148" y="140">uses</text>
+              <text class="d-cap" x="418" y="104">uses</text>
+              <text class="d-cap" x="418" y="196">uses</text>
+            </svg>
+      <figcaption>Generated from a short YAML file: the person uses the platform, which uses an identity provider and a payment gateway.</figcaption>
+    </figure>
   </div>
 </section>
 
 <section id="solution">
   <div class="wrap">
-    <h2>Solution</h2>
+    <h2>What it produces</h2>
     <p class="prose">ArchiCode keeps the model (elements and relationships) apart from the views. You edit the model, and the views are generated from it.</p>
 
     <h3>Model</h3>
-    <p class="prose">The workspace is a YAML, TOML or JSON file, optionally completed by manifests: more files in the same formats. Each element has a kind and an id, and optionally relationships. A JSON Schema (<code>archicode query schemas workspace</code>) lets your IDE validate and complete the files. To start, <code>archicode init</code> writes a small workspace, and <code>archicode guide</code> prints a guide, made for an agent that writes the files, with the kinds and the commands generated from the code (<a href="docs/#guide">how</a>).</p>
+    <p class="prose">The workspace is a YAML, TOML or JSON file, optionally completed by manifests: more files in the same formats. Each element has a kind and an id, and optionally relationships. A JSON Schema (<code>archicode query schemas workspace</code>) lets your IDE validate and complete the files.</p>
     <div class="pair">
       <div class="card">
         <header><span>.archicode.yaml</span></header>
@@ -229,7 +268,6 @@ footer a { color: var(--muted); }
     - <span class="k">kind</span>: <span class="s">"system"</span>
       <span class="k">id</span>: <span class="s">"PaymentGateway"</span></code></pre>
       </div>
-
       <div class="card">
         <header>
           <span>generated from it</span>
@@ -295,10 +333,6 @@ footer a { color: var(--muted); }
       </div>
     </div>
 
-    <h3>Editor, online</h3>
-    <p class="prose">Browse and edit your workspace in the browser: the elements as a tree, with their details and their diagrams, and a map of the whole application layer and another of the technology layer, with the applications deployed on its nodes. Pick the folder that holds your <code>.archicode.yaml</code>, edit, save.</p>
-    <p><a class="btn primary" href="editor/">Open the editor</a> <a class="btn" href="editor/#/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart">Try the editor on a realistic project</a></p>
-
     <h3>Views</h3>
     <p class="prose">A viewpoint is a set of rules that extracts one perspective from the model: <code>overview</code> shows what an element exchanges with the outside, <code>detailed</code> its children and what they exchange, <code>deep</code> the same for all its descendants. The command generates every view of every viewpoint as PlantUML files in <code>views/</code>. Rendering them to images is up to your PlantUML tooling.</p>
     <pre><code><span class="prompt">archicode views generate</span>
@@ -309,43 +343,59 @@ footer a { color: var(--muted); }
     <pre><code><span class="c"># what depends on PaymentGateway?</span>
 <span class="prompt">archicode query graph | jq -r '.relationships[] | select(.relationship.destination=="PaymentGateway") | .source'</span>
 <span class="c">EcommercePlatform.OrderProcessing</span></code></pre>
-
   </div>
 </section>
 
-<section id="start" class="start">
+<section id="plateau-states" class="section-alt">
   <div class="wrap">
-    <h2>Get started</h2>
-    <p class="prose">Start with an empty folder.</p>
-    <div class="start-grid">
+    <h2>Plateaus and stories</h2>
+    <p class="prose">A plateau is a state of the architecture, layered on the one it overrides: a baseline, a target, what comes after. Compare two states, fail a build on a change, fold a plateau into the one above it, and draw the steps of a story. See <a href="docs/#plateaus">plateaus</a>, <a href="docs/#plateau-list">plateau list</a>, <a href="docs/#diff">diff</a> and <a href="docs/#stories">stories</a> in the manual.</p>
+<pre><code><span class="c"># the plateaus of the workspace and the line they form</span>
+<span class="prompt">archicode plateau list</span>
+<span class="c"># new, changed and removed elements between two states</span>
+<span class="prompt">archicode diff --plateau target --against baseline</span>
+<span class="c"># a check for a build: exit code 3 on a new or removed element</span>
+<span class="prompt">archicode diff --fail-on new,removed</span>
+<span class="c"># fold a plateau into the one above it, writing nothing</span>
+<span class="prompt">archicode plateau fold target --dry-run</span>
+<span class="c"># draw the steps of the stories</span>
+<span class="prompt">archicode stories generate</span></code></pre>
+  </div>
+</section>
+
+<section id="agents">
+  <div class="wrap">
+    <h2>For agents</h2>
+    <p class="prose">An agent that has only the program starts here: <code>archicode init</code> writes a small workspace that loads and is drawn, <code>archicode guide</code> prints a versioned guide in Markdown that loads no workspace, <code>archicode query graph</code> checks that the files load and prints the resolved model as JSON, and <code>archicode query schemas manifest</code> gives the exact keys of each kind.</p>
+<pre><code><span class="c"># a first workspace</span>
+<span class="prompt">archicode init my-architecture</span>
+<span class="c"># how to write the files, generated from the code</span>
+<span class="prompt">archicode guide</span>
+<span class="c"># check that the workspace loads</span>
+<span class="prompt">archicode query graph</span>
+<span class="c"># the keys of a manifest</span>
+<span class="prompt">archicode query schemas manifest</span></code></pre>
+    <p class="prose">The model of ArchiCode itself is a workspace an agent can read: <a href="editor/#/timeline/applications?sample=archicode">the ArchiCode model in the editor</a>, or <a href="https://github.com/tmorin/archicode/tree/main/docs/architecture">its folder in the repository</a>. A short summary for agents is in <a href="llms.txt">llms.txt</a>.</p>
+  </div>
+</section>
+
+<section id="try" class="section-alt">
+  <div class="wrap">
+    <h2>Try it in the editor, online</h2>
+    <p class="prose">Browse and edit a workspace in the browser: the elements as a tree, with their details and their diagrams, a map of the application layer and another of the technology layer. Nothing to install and nothing uploaded.</p>
+    <div class="two">
       <div class="card">
-        <header>1 · Write a workspace</header>
-<pre><code><span class="c"># .archicode.yaml</span>
-<span class="k">application</span>:
-  <span class="k">elements</span>:
-    - <span class="k">kind</span>: <span class="s">"person"</span>
-      <span class="k">id</span>: <span class="s">"User"</span>
-      <span class="k">relationships</span>:
-        - <span class="k">destination</span>: <span class="s">"Shop"</span>
-    - <span class="k">kind</span>: <span class="s">"system"</span>
-      <span class="k">id</span>: <span class="s">"Shop"</span></code></pre>
-        <p class="note">Kinds and relationships: <a href="docs/#domain">the domain chapter</a>.</p>
+        <header>Brightcart</header>
+        <p class="note">A layered workspace with plateaus and stories: compare the states of a marketplace and play its stories.</p>
+        <p class="note"><a class="btn" href="editor/#/timeline/applications?plateau=marketplace&amp;compare=past&amp;sample=brightcart">Open the Brightcart sample</a></p>
       </div>
       <div class="card">
-        <header>2 · Open it in the online editor</header>
-        <p class="note grow">Open it in the online editor, or run <code>archicode editor serve</code> (<a href="docs/#serve-the-editor">how</a>).</p>
-        <p class="note"><a class="btn primary" href="editor/">Open the editor</a></p>
-      </div>
-      <div class="card">
-        <header>3 · Or generate the views with Docker</header>
-<pre><code><span class="prompt">docker run \
-  -u "$(id -u):$(id -g)" \
-  -v "$(pwd):/workdir" -w /workdir \
-  --rm ghcr.io/tmorin/archicode \
-  views generate</span></code></pre>
-        <p class="note">The PlantUML files are written to <code>views/</code>. No Docker? The release page has a <a href="docs/#install">native program</a> for Linux and macOS.</p>
+        <header>ArchiCode</header>
+        <p class="note">The as-is model of ArchiCode itself, which engineers and agents can browse and query.</p>
+        <p class="note"><a class="btn" href="editor/#/timeline/applications?sample=archicode">Open the model of ArchiCode</a></p>
       </div>
     </div>
+    <p class="hint">Your own files: <a href="editor/">open the editor</a> and pick the folder that holds your <code>.archicode.yaml</code>, edit, save.</p>
   </div>
 </section>
 
@@ -360,12 +410,43 @@ footer a { color: var(--muted); }
   </div>
 </section>
 
+<section id="start" class="start">
+  <div class="wrap">
+    <h2>Get started</h2>
+    <p class="prose">Install, write a first workspace, draw it, open it.</p>
+    <div class="start-grid">
+      <div class="card">
+        <header>1 · Install</header>
+        <p class="note grow">Download the <a href="https://github.com/tmorin/archicode/releases">native program</a> of a release for Linux or macOS (<a href="docs/#install">how, with the checksum</a>), or use Docker.</p>
+<pre><code><span class="prompt">docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w /workdir \
+  --rm ghcr.io/tmorin/archicode \
+  init my-architecture</span></code></pre>
+      </div>
+      <div class="card">
+        <header>2 · Write a workspace</header>
+<pre><code><span class="prompt">archicode init my-architecture</span></code></pre>
+        <p class="note grow">It writes a person, a system and a view that load and are drawn. Kinds and relationships: <a href="docs/#domain">the domain chapter</a>; the first steps: <a href="docs/#init">init</a>.</p>
+      </div>
+      <div class="card">
+        <header>3 · Draw it, then open it</header>
+<pre><code><span class="prompt">cd my-architecture</span>
+<span class="prompt">archicode views generate -i shop_overview</span></code></pre>
+        <p class="note grow">The PlantUML file is written to <code>views/</code>. To browse the workspace, run <code>archicode editor serve</code> (<a href="docs/#serve-the-editor">how</a>), or open it in the <a href="editor/">online editor</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <footer>
   <div class="wrap">
-    <span>ArchiCode · MIT License<span id="version"></span></span>
+    <span>ArchiCode · MIT License<span id="site-version"></span></span>
     <span class="links">
+      <a href="docs/">Manual</a>
+      <a href="https://github.com/tmorin/archicode/releases">Releases</a>
       <a href="https://github.com/tmorin/archicode/pkgs/container/archicode">Container image</a>
     </span>
   </div>
@@ -376,7 +457,7 @@ footer a { color: var(--muted); }
   // The release stamps the version into the meta tag; the file of the repository says "dev".
   var meta = document.querySelector('meta[name="archicode-version"]');
   var version = meta && meta.getAttribute('content');
-  if (version && version !== 'dev') document.getElementById('version').textContent = ' · v' + version;
+  if (version && version !== 'dev') document.getElementById('site-version').textContent = ' · v' + version;
 
   // Without this script both views are shown, one after the other.
   var views = document.querySelectorAll('.diagram .view');
