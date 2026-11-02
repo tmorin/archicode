@@ -1,6 +1,6 @@
 ---
 type: prg
-status: active
+status: completed
 run: 0218
 wave: 030
 ---
@@ -27,6 +27,8 @@ wave: 030
 
 - 2026-11-02: implement workflow stopped, state awaiting-operator: task-013 not started by their agent, nothing written, the tasks stay pending. Read the reasons, fix the cause, then regenerate. [{"task":"task-013","title":"Prove the whole run","reason":"Check 5 (npx playwright test) fails on Chromium and Firefox: src/test/e2e/diagram-columns.spec.js:287 expects the Columns list visible inline at 360 px, but this run moved it into the closed Layout group panel. The spec needs to open that panel first, which is outside this task's brief."}]
 
+- 2026-11-02: Stage 11 verified every criterion of the pln on the working copy (JDK 25 for Maven, byte-identity and Playwright): editor:build twice stable, editor:check, format:check, lint, test:unit (3,510 tests, 0 fail), test:coverage, sample:check, `./mvnw verify`, manual tests, byte-identity (0 unexpected) and `npx playwright test` (186 passed, three projects) exit 0, address specs have 0 removed lines, `data-lit` 0; toolbar height at 360 by 740 is 101 px (under 148); pln execution_manifest status done, run completed, prg completed; canonical impact none (CI-arc-1 verified by ArchitectureDriftTest); the first Playwright try failed 137 tests only because the shell JVM was 21 (class file version 69), rerun with JDK 25 passed; gate-001 review (look of the collapsed toolbar, wording of the titles) done under the autonomy override, measures in task-009 entry, not checked in Firefox and WebKit by eye; no blocker.
+
 ## Findings
 
 Stage 5 review of the TDD (C scan referent: the working copy of `src/main/editor`, `scripts/`, `src/test/e2e`, run 0217's TDD; every C finding names both sides). To apply, most important first:
@@ -45,6 +47,8 @@ Stage 5 review of the TDD (C scan referent: the working copy of `src/main/editor
 
 - Task-001 of run 0218 also applied the Stage 9 amendments: group button title in CTR-1, DEC-8 check names (a: to h:, check i (F1) kept, i: to o: new), six surfaces and a story step, DEC-9 and IMP-1 move the whole prefix (about 225 lines).
 
+- Task-013 proof (2026-11-02, JDK 25): 1 editor:build twice, git status identical, editor:check 0 (ratchet 98 of 99). 2 test:unit 0 (3,510 tests, 3,509 pass, 1 skipped), test:coverage 0 (93.15 % lines), format:check 0, lint 0, `grep -rc data-lit` 0. 3 playwright 186 passed (chromium, firefox, webkit). 4 address specs: 0 removed lines against ff3bacd. 5 byte-identity 0. 6 `./mvnw verify` 0 (includes ManualExamplesTest and ArchitectureDriftTest), manual node tests 19 pass. 7 sample:check 0. Heights: 165 px at 1280 by 800, 101 px at 360 by 740 (task-009). Not proved: Firefox and WebKit look by eye, the panel over an ELK diagram, Prettier on style.css.
+
 ## Lessons Learnt
 
-- Nothing yet.
+- Playwright starts the jar with the shell `java`: run it with JAVA_HOME of JDK 25 or every test that starts `editor serve` fails with class file version 69.

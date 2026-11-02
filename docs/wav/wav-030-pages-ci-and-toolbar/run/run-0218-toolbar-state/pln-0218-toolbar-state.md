@@ -1,6 +1,6 @@
 ---
 title: Execution Plan — The diagram toolbar, state
-status: pending
+status: done
 date: 2026-11-01
 related:
   - docs/wav/wav-030-pages-ci-and-toolbar/run/run-0218-toolbar-state/tdd-0218-toolbar-state.md
@@ -36,7 +36,7 @@ This run operates under the autonomy override of `complete-run`: no task stops f
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'A reader sees on the toolbar what a saved view keeps (a dot on Draw, Texts and Layout), undoes the changes to those three groups with one Reset, uses the toolbar on a 360 px window as one button per group with a count, and finds Fold all, Unfold all and Facet on the page of a saved view.'
   technical_approach: 'One origin snapshot recorded by applySavedView and one key setter shared with Reset; the group markup gains a head, a dot and a count read from its own markup, and CSS decides label or button under 40 rem; the page of a saved view gets three controls that edit the view; one table, toolbar-controls.json, drives a node test per surface and an e2e spec runs in three browsers.'
   total_tasks: 13
@@ -257,7 +257,7 @@ execution_graph:
       risk: 'low'
       confidence: 80
     - id: task-013
-      status: 'pending'
+      status: 'done'
       title: 'Prove the whole run'
       depends_on: [task-011, task-012]
       produces:
@@ -695,6 +695,7 @@ task_catalog:
         - 'A check fails for a reason this run did not cause: list it and leave it'
         - 'A browser or the pane is not available: record not run, never passed'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -1372,7 +1373,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 13
