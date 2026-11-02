@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 030
-status: proposed
+status: planned
 date: 2026-11-01
 related:
   - docs/wav/wav-027-editor-layout-and-walk/rfc/rfc-002-diagram-toolbar.md
