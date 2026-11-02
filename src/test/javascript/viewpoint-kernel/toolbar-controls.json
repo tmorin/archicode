@@ -1,39 +1,104 @@
 {
-  "comment": "The controls of the diagram toolbar by surface (TDD-0217 CTR-2). A control is its data-action, plus ':' and its data-show, data-part or data-dir where the action is shared, or its id for a select. The table lists every control a surface can show: Facet needs a facet in the workspace, Changes only needs a comparison. Wave 030 W-8 adds Reset and the dot.",
+  "comment": "The controls of the diagram toolbar by surface (run 0217 CTR-2, run 0218 CTR-4). A control is its data-action, plus ':' and its data-show, data-part or data-dir where the action is shared, or its id for a select. `key` is the one fact about what a saved view keeps: the view property the control edits, or null for a control that is the session's (Compare and Frame). The table lists every control a surface can show: Facet needs a facet in the workspace, Changes only needs a comparison. `actions` are the controls outside the five groups (Reset, which acts on three groups); `absent` says why a control that could be expected is not on a surface (a control is absent only when it can never apply).",
   "groupOrder": ["Draw", "Texts", "Layout", "Compare", "Frame"],
   "surfaces": {
     "element": {
       "groups": [
         {
           "name": "Draw",
-          "controls": ["toggle-hide-unlinked", "diagram-facet-select"]
+          "controls": [
+            {
+              "id": "toggle-hide-unlinked",
+              "key": "hide-unlinked"
+            },
+            {
+              "id": "diagram-facet-select",
+              "key": "facet"
+            }
+          ]
         },
         {
           "name": "Texts",
           "controls": [
-            "toggle-show:labels",
-            "toggle-show:qualifiers",
-            "toggle-show:descriptions",
-            "toggle-show:wrap"
+            {
+              "id": "toggle-show:labels",
+              "key": "labels"
+            },
+            {
+              "id": "toggle-show:qualifiers",
+              "key": "qualifiers"
+            },
+            {
+              "id": "toggle-show:descriptions",
+              "key": "descriptions"
+            },
+            {
+              "id": "toggle-show:wrap",
+              "key": "wrap"
+            }
           ]
         },
         {
           "name": "Layout",
-          "controls": ["diagram-columns"]
+          "controls": [
+            {
+              "id": "diagram-columns",
+              "key": "layout"
+            }
+          ]
         },
         {
           "name": "Compare",
-          "controls": ["set-changes-only"]
+          "controls": [
+            {
+              "id": "set-changes-only",
+              "key": null
+            }
+          ]
         },
         {
           "name": "Frame",
           "controls": [
-            "diagram-zoom:out",
-            "diagram-zoom:reset",
-            "diagram-zoom:in",
-            "diagram-recenter",
-            "diagram-zoom:fit"
+            {
+              "id": "diagram-zoom:out",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:reset",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:in",
+              "key": null
+            },
+            {
+              "id": "diagram-recenter",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:fit",
+              "key": null
+            }
           ]
+        }
+      ],
+      "actions": ["diagram-reset"],
+      "absent": [
+        {
+          "id": "fold-all",
+          "why": "folding is for the Map: an element is drawn as the command line draws it"
+        },
+        {
+          "id": "unfold-all",
+          "why": "folding is for the Map: an element is drawn as the command line draws it"
+        },
+        {
+          "id": "toggle-map-part:applications",
+          "why": "the applications and the relationships are drawn by the Map of the technology layer alone"
+        },
+        {
+          "id": "toggle-map-part:relationships",
+          "why": "the applications and the relationships are drawn by the Map of the technology layer alone"
         }
       ]
     },
@@ -42,38 +107,98 @@
         {
           "name": "Draw",
           "controls": [
-            "fold-all",
-            "unfold-all",
-            "toggle-hide-unlinked",
-            "diagram-facet-select"
+            {
+              "id": "fold-all",
+              "key": "opened"
+            },
+            {
+              "id": "unfold-all",
+              "key": "opened"
+            },
+            {
+              "id": "toggle-hide-unlinked",
+              "key": "hide-unlinked"
+            },
+            {
+              "id": "diagram-facet-select",
+              "key": "facet"
+            }
           ]
         },
         {
           "name": "Texts",
           "controls": [
-            "toggle-show:labels",
-            "toggle-show:qualifiers",
-            "toggle-show:descriptions",
-            "toggle-show:wrap"
+            {
+              "id": "toggle-show:labels",
+              "key": "labels"
+            },
+            {
+              "id": "toggle-show:qualifiers",
+              "key": "qualifiers"
+            },
+            {
+              "id": "toggle-show:descriptions",
+              "key": "descriptions"
+            },
+            {
+              "id": "toggle-show:wrap",
+              "key": "wrap"
+            }
           ]
         },
         {
           "name": "Layout",
-          "controls": ["diagram-columns"]
+          "controls": [
+            {
+              "id": "diagram-columns",
+              "key": "layout"
+            }
+          ]
         },
         {
           "name": "Compare",
-          "controls": ["set-changes-only"]
+          "controls": [
+            {
+              "id": "set-changes-only",
+              "key": null
+            }
+          ]
         },
         {
           "name": "Frame",
           "controls": [
-            "diagram-zoom:out",
-            "diagram-zoom:reset",
-            "diagram-zoom:in",
-            "diagram-recenter",
-            "diagram-zoom:fit"
+            {
+              "id": "diagram-zoom:out",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:reset",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:in",
+              "key": null
+            },
+            {
+              "id": "diagram-recenter",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:fit",
+              "key": null
+            }
           ]
+        }
+      ],
+      "actions": ["diagram-reset"],
+      "absent": [
+        {
+          "id": "toggle-map-part:applications",
+          "why": "the applications and the relationships are drawn by the Map of the technology layer alone"
+        },
+        {
+          "id": "toggle-map-part:relationships",
+          "why": "the applications and the relationships are drawn by the Map of the technology layer alone"
         }
       ]
     },
@@ -82,75 +207,201 @@
         {
           "name": "Draw",
           "controls": [
-            "fold-all",
-            "unfold-all",
-            "toggle-hide-unlinked",
-            "toggle-map-part:applications",
-            "toggle-map-part:relationships",
-            "diagram-facet-select"
+            {
+              "id": "fold-all",
+              "key": "opened"
+            },
+            {
+              "id": "unfold-all",
+              "key": "opened"
+            },
+            {
+              "id": "toggle-hide-unlinked",
+              "key": "hide-unlinked"
+            },
+            {
+              "id": "toggle-map-part:applications",
+              "key": "applications"
+            },
+            {
+              "id": "toggle-map-part:relationships",
+              "key": "relationships"
+            },
+            {
+              "id": "diagram-facet-select",
+              "key": "facet"
+            }
           ]
         },
         {
           "name": "Texts",
           "controls": [
-            "toggle-show:labels",
-            "toggle-show:qualifiers",
-            "toggle-show:descriptions",
-            "toggle-show:wrap"
+            {
+              "id": "toggle-show:labels",
+              "key": "labels"
+            },
+            {
+              "id": "toggle-show:qualifiers",
+              "key": "qualifiers"
+            },
+            {
+              "id": "toggle-show:descriptions",
+              "key": "descriptions"
+            },
+            {
+              "id": "toggle-show:wrap",
+              "key": "wrap"
+            }
           ]
         },
         {
           "name": "Layout",
-          "controls": ["diagram-columns"]
+          "controls": [
+            {
+              "id": "diagram-columns",
+              "key": "layout"
+            }
+          ]
         },
         {
           "name": "Compare",
-          "controls": ["set-changes-only"]
+          "controls": [
+            {
+              "id": "set-changes-only",
+              "key": null
+            }
+          ]
         },
         {
           "name": "Frame",
           "controls": [
-            "diagram-zoom:out",
-            "diagram-zoom:reset",
-            "diagram-zoom:in",
-            "diagram-recenter",
-            "diagram-zoom:fit"
+            {
+              "id": "diagram-zoom:out",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:reset",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:in",
+              "key": null
+            },
+            {
+              "id": "diagram-recenter",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:fit",
+              "key": null
+            }
           ]
         }
-      ]
+      ],
+      "actions": ["diagram-reset"],
+      "absent": []
     },
     "view-element": {
       "groups": [
         {
           "name": "Draw",
-          "controls": ["toggle-hide-unlinked"]
+          "controls": [
+            {
+              "id": "toggle-hide-unlinked",
+              "key": "hide-unlinked"
+            },
+            {
+              "id": "diagram-facet-select",
+              "key": "facet"
+            }
+          ]
         },
         {
           "name": "Texts",
           "controls": [
-            "toggle-show:labels",
-            "toggle-show:qualifiers",
-            "toggle-show:descriptions",
-            "toggle-show:wrap"
+            {
+              "id": "toggle-show:labels",
+              "key": "labels"
+            },
+            {
+              "id": "toggle-show:qualifiers",
+              "key": "qualifiers"
+            },
+            {
+              "id": "toggle-show:descriptions",
+              "key": "descriptions"
+            },
+            {
+              "id": "toggle-show:wrap",
+              "key": "wrap"
+            }
           ]
         },
         {
           "name": "Layout",
-          "controls": ["diagram-columns"]
+          "controls": [
+            {
+              "id": "diagram-columns",
+              "key": "layout"
+            }
+          ]
         },
         {
           "name": "Compare",
-          "controls": ["set-changes-only"]
+          "controls": [
+            {
+              "id": "set-changes-only",
+              "key": null
+            }
+          ]
         },
         {
           "name": "Frame",
           "controls": [
-            "diagram-zoom:out",
-            "diagram-zoom:reset",
-            "diagram-zoom:in",
-            "diagram-recenter",
-            "diagram-zoom:fit"
+            {
+              "id": "diagram-zoom:out",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:reset",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:in",
+              "key": null
+            },
+            {
+              "id": "diagram-recenter",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:fit",
+              "key": null
+            }
           ]
+        }
+      ],
+      "actions": [],
+      "absent": [
+        {
+          "id": "fold-all",
+          "why": "folding is for the Map: an element is drawn as the command line draws it"
+        },
+        {
+          "id": "unfold-all",
+          "why": "folding is for the Map: an element is drawn as the command line draws it"
+        },
+        {
+          "id": "toggle-map-part:applications",
+          "why": "the applications and the relationships are drawn by the Map of the technology layer alone"
+        },
+        {
+          "id": "toggle-map-part:relationships",
+          "why": "the applications and the relationships are drawn by the Map of the technology layer alone"
+        },
+        {
+          "id": "diagram-reset",
+          "why": "the page of a saved view edits the view, and the view is its own origin: there is nothing to put back"
         }
       ]
     },
@@ -158,34 +409,103 @@
       "groups": [
         {
           "name": "Draw",
-          "controls": ["toggle-hide-unlinked"]
+          "controls": [
+            {
+              "id": "fold-all",
+              "key": "opened"
+            },
+            {
+              "id": "unfold-all",
+              "key": "opened"
+            },
+            {
+              "id": "toggle-hide-unlinked",
+              "key": "hide-unlinked"
+            },
+            {
+              "id": "diagram-facet-select",
+              "key": "facet"
+            }
+          ]
         },
         {
           "name": "Texts",
           "controls": [
-            "toggle-show:labels",
-            "toggle-show:qualifiers",
-            "toggle-show:descriptions",
-            "toggle-show:wrap"
+            {
+              "id": "toggle-show:labels",
+              "key": "labels"
+            },
+            {
+              "id": "toggle-show:qualifiers",
+              "key": "qualifiers"
+            },
+            {
+              "id": "toggle-show:descriptions",
+              "key": "descriptions"
+            },
+            {
+              "id": "toggle-show:wrap",
+              "key": "wrap"
+            }
           ]
         },
         {
           "name": "Layout",
-          "controls": ["diagram-columns"]
+          "controls": [
+            {
+              "id": "diagram-columns",
+              "key": "layout"
+            }
+          ]
         },
         {
           "name": "Compare",
-          "controls": ["set-changes-only"]
+          "controls": [
+            {
+              "id": "set-changes-only",
+              "key": null
+            }
+          ]
         },
         {
           "name": "Frame",
           "controls": [
-            "diagram-zoom:out",
-            "diagram-zoom:reset",
-            "diagram-zoom:in",
-            "diagram-recenter",
-            "diagram-zoom:fit"
+            {
+              "id": "diagram-zoom:out",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:reset",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:in",
+              "key": null
+            },
+            {
+              "id": "diagram-recenter",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:fit",
+              "key": null
+            }
           ]
+        }
+      ],
+      "actions": [],
+      "absent": [
+        {
+          "id": "toggle-map-part:applications",
+          "why": "the applications and the relationships are drawn by the Map of the technology layer alone"
+        },
+        {
+          "id": "toggle-map-part:relationships",
+          "why": "the applications and the relationships are drawn by the Map of the technology layer alone"
+        },
+        {
+          "id": "diagram-reset",
+          "why": "the page of a saved view edits the view, and the view is its own origin: there is nothing to put back"
         }
       ]
     },
@@ -194,37 +514,102 @@
         {
           "name": "Draw",
           "controls": [
-            "toggle-hide-unlinked",
-            "toggle-map-part:applications",
-            "toggle-map-part:relationships"
+            {
+              "id": "fold-all",
+              "key": "opened"
+            },
+            {
+              "id": "unfold-all",
+              "key": "opened"
+            },
+            {
+              "id": "toggle-hide-unlinked",
+              "key": "hide-unlinked"
+            },
+            {
+              "id": "toggle-map-part:applications",
+              "key": "applications"
+            },
+            {
+              "id": "toggle-map-part:relationships",
+              "key": "relationships"
+            },
+            {
+              "id": "diagram-facet-select",
+              "key": "facet"
+            }
           ]
         },
         {
           "name": "Texts",
           "controls": [
-            "toggle-show:labels",
-            "toggle-show:qualifiers",
-            "toggle-show:descriptions",
-            "toggle-show:wrap"
+            {
+              "id": "toggle-show:labels",
+              "key": "labels"
+            },
+            {
+              "id": "toggle-show:qualifiers",
+              "key": "qualifiers"
+            },
+            {
+              "id": "toggle-show:descriptions",
+              "key": "descriptions"
+            },
+            {
+              "id": "toggle-show:wrap",
+              "key": "wrap"
+            }
           ]
         },
         {
           "name": "Layout",
-          "controls": ["diagram-columns"]
+          "controls": [
+            {
+              "id": "diagram-columns",
+              "key": "layout"
+            }
+          ]
         },
         {
           "name": "Compare",
-          "controls": ["set-changes-only"]
+          "controls": [
+            {
+              "id": "set-changes-only",
+              "key": null
+            }
+          ]
         },
         {
           "name": "Frame",
           "controls": [
-            "diagram-zoom:out",
-            "diagram-zoom:reset",
-            "diagram-zoom:in",
-            "diagram-recenter",
-            "diagram-zoom:fit"
+            {
+              "id": "diagram-zoom:out",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:reset",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:in",
+              "key": null
+            },
+            {
+              "id": "diagram-recenter",
+              "key": null
+            },
+            {
+              "id": "diagram-zoom:fit",
+              "key": null
+            }
           ]
+        }
+      ],
+      "actions": [],
+      "absent": [
+        {
+          "id": "diagram-reset",
+          "why": "the page of a saved view edits the view, and the view is its own origin: there is nothing to put back"
         }
       ]
     }

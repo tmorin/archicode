@@ -257,6 +257,10 @@
       "layer": "presentation"
     },
     {
+      "file": "presentation/diagram-toolbar.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/diagram-page.js",
       "layer": "presentation"
     },

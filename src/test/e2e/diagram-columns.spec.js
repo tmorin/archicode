@@ -284,23 +284,23 @@ test('on the page of a Map the toolbar value beats the workspace value and Defau
   await expect.poll(async () => (await positionsOf(page)).join('|')).toBe(workspaceValue.join('|'));
 });
 
-test('at 360 px the Columns list is inside the box of the toolbar', async ({ page, serve }) => {
+test('at 360 px the Columns list is in the Layout panel, inside the window', async ({ page, serve }) => {
   const server = await serve(null, brightcart());
   await page.setViewportSize({ width: 360, height: 740 });
   await goTo(page, server, MAP_ADDRESS);
   const list = columnsList(page);
+  await expect(list, 'the list is in the closed Layout group').toBeHidden();
+  await page.locator('.tool-group-button[data-group="layout"]').click();
   await expect(list).toBeVisible();
   const box = await list.boundingBox();
-  const bar = await page
-    .locator('.diagram-columns')
-    .first()
-    .locator('xpath=ancestor::*[contains(@class, "diagram-tools") or contains(@class, "diagram-toolbar")][1]')
-    .boundingBox();
-  expect(bar, 'the toolbar of the diagram').not.toBeNull();
-  expect(box.x).toBeGreaterThanOrEqual(bar.x - 1);
-  expect(box.x + box.width).toBeLessThanOrEqual(bar.x + bar.width + 1);
-  expect(box.y).toBeGreaterThanOrEqual(bar.y - 1);
-  expect(box.y + box.height).toBeLessThanOrEqual(bar.y + bar.height + 1);
+  const panel = await page.locator('.tool-group[data-group="layout"] .tool-group-controls').boundingBox();
+  expect(panel, 'the panel of the Layout group').not.toBeNull();
+  expect(box.x).toBeGreaterThanOrEqual(panel.x - 1);
+  expect(box.x + box.width).toBeLessThanOrEqual(panel.x + panel.width + 1);
+  expect(box.y).toBeGreaterThanOrEqual(panel.y - 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(panel.y + panel.height + 1);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(360);
 });
 
 // RISK-2: the time of the layout with and without the value, from the page being asked for to the drawing standing still.

@@ -568,6 +568,13 @@ function handleAppClick(e) {
       render();
       break;
     case 'fold-all':
+      if (currentPerspective === 'library') {
+        // the page of a saved view: the press edits the view (its `opened`), not the Map of the session
+        const view = libraryPageView();
+        if (view && view.viewpoint === 'map' && libraryDiagramRecipe(view))
+          editSavedView((entry) => setViewOpened(entry, []));
+        break;
+      }
       if (mapIsShown()) {
         mapStateOf().opened = defaultMapOpened();
         mapSelectionCheck = true;
@@ -575,6 +582,32 @@ function handleAppClick(e) {
       }
       break;
     case 'unfold-all':
+      if (currentPerspective === 'library') {
+        const view = libraryPageView();
+        const recipe = view && view.viewpoint === 'map' ? libraryDiagramRecipe(view) : null;
+        // the scene says which boxes may open; before the first drawing there is none and the press does nothing
+        const more = recipe && diagramScene && Array.isArray(diagramScene.expandable) ? diagramScene.expandable : null;
+        if (!more) break;
+        const own = stringList(view.properties.opened);
+        const boxes = mapBoxesIfOpened(more, {
+          opened: own,
+          hidden: recipe.mapState.hidden,
+          layer: recipe.layer,
+          applications: !recipe.parts || recipe.parts.applications !== false
+        });
+        if (
+          boxes > MAP_UNFOLD_CONFIRM_BOXES &&
+          typeof window.confirm === 'function' &&
+          !window.confirm(
+            'Unfolding one more level draws about ' +
+              boxes +
+              ' boxes, which can be slow and hard to read. Unfold anyway?'
+          )
+        )
+          break;
+        editSavedView((entry) => setViewOpened(entry, own.concat(more)));
+        break;
+      }
       if (mapIsShown()) {
         // one more level each time; a big map asks first
         const more = (diagramScene && diagramScene.expandable) || [];
@@ -627,6 +660,27 @@ function handleAppClick(e) {
       pushDiagramHistory();
       technologyMapParts[part] = !technologyMapParts[part];
       mapSelectionCheck = true; // the boxes of the applications go with their toggle: a selection the redraw no longer draws is dropped
+      render();
+      break;
+    }
+    case 'toggle-tool-group': {
+      // under 40 rem a group is a button: it opens its controls as a panel, a second press closes it, another group replaces it
+      const group = target.getAttribute('data-group');
+      toolPanelOpen =
+        !group || currentToolPanelOpen() === group
+          ? null
+          : { group, perspective: currentPerspective, element: toolbarElementKey() };
+      pendingFocusSelector = group ? '[data-action="toggle-tool-group"][data-group="' + group + '"]' : null;
+      render();
+      break;
+    }
+    case 'diagram-reset': {
+      // aria-disabled, not disabled (the button keeps the focus): while the diagram equals its origin a press does nothing
+      if (target.getAttribute('aria-disabled') === 'true' || currentPerspective === 'library') break;
+      const origin = currentDiagramOrigin();
+      pushDiagramHistory();
+      applyToolbarKeys(origin ? origin.properties : {}, mapLayer(), mapIsShown());
+      mapSelectionCheck = true;
       render();
       break;
     }

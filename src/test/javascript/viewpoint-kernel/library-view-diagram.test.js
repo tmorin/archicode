@@ -376,8 +376,9 @@ test('the page keeps Open on diagram, Rename, Delete, the facts and the steps th
     assert.ok(html.includes('data-show="' + name + '"'), name);
   assert.match(html, /data-format="png"[^]*data-format="svg"/);
   assert.match(html, /id="diagram-status"/);
-  // what the page does not offer: folding, a facet picker, Maximize, the Map's chips
-  for (const absent of ['fold-all', 'unfold-all', 'diagram-facet-select', 'map-chips', 'toggle-fold'])
+  // the facet of the view is edited on the page of every saved view; what the page of an element view does not offer: folding, Maximize, the Map's chips
+  assert.ok(html.includes('id="diagram-facet-select"'), 'the facet list is on the page of a saved view');
+  for (const absent of ['fold-all', 'unfold-all', 'map-chips', 'toggle-fold'])
     assert.ok(!html.includes(absent), absent + ' is not on this page');
   assert.match(
     html,

@@ -181,6 +181,12 @@ function handleAppInput(e) {
     return;
   }
   if (e.target.id === 'diagram-facet-select') {
+    if (currentPerspective === 'library') {
+      // the page of a saved view: the select edits the view, as the box of its form does
+      const name = e.target.value || '';
+      editSavedView((entry) => setViewFacet(entry, name));
+      return;
+    }
     pushDiagramHistory();
     diagramFacet = e.target.value || null;
     mapSelectionCheck = true;

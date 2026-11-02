@@ -71,6 +71,7 @@ function headerControlSelector(el) {
     'data-dir',
     'data-perspective',
     'data-show',
+    'data-group',
     'data-format',
     'data-plateau',
     'data-value'
@@ -142,13 +143,18 @@ function currentMapState() {
   return mapState;
 }
 
-/** How many boxes the map would draw once `extra` more elements are open, children of open boxes being all drawn. */
-function mapBoxesIfOpened(extra) {
-  const opened = new Set(currentMapOpened());
+/**
+ * How many boxes the map would draw once `extra` more elements are open, children of open boxes being all drawn. `from` is the map asked about, `{ opened, hidden, layer,
+ * applications }` (the page of a saved view gives its own); the map of the session is the default.
+ */
+function mapBoxesIfOpened(extra, from) {
+  const layer = from ? from.layer : mapLayer();
+  const drawsApplications = from ? from.applications : technologyMapParts.applications;
+  const opened = new Set(from ? from.opened : currentMapOpened());
   for (const reference of extra) opened.add(reference);
-  const hidden = new Set(mapStateOf().hidden);
+  const hidden = new Set(from ? from.hidden : mapStateOf().hidden);
   let count = 0;
-  for (const record of AppState.index[mapLayer()].values()) {
+  for (const record of AppState.index[layer].values()) {
     const parts = record.reference.split('.');
     let shown = true;
     for (let i = 1; i < parts.length && shown; i++) shown = opened.has(parts.slice(0, i).join('.'));
@@ -156,7 +162,7 @@ function mapBoxesIfOpened(extra) {
     if (shown) {
       count++;
       // issue #107: the applications deployed on a node that is open are boxes too (once each, however many nodes host them)
-      if (mapLayer() === 'technology' && technologyMapParts.applications && opened.has(record.reference))
+      if (layer === 'technology' && drawsApplications && opened.has(record.reference))
         count += new Set(kernelStringsOf(record.applications)).size;
     }
   }

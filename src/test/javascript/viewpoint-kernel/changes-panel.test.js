@@ -723,7 +723,8 @@ test('Changes only is among the tools of the diagram, not on the band, only whil
   const off = await open('');
   assert.doesNotMatch(
     off.sandbox.renderDiagramCanvasHtml(null, '', null),
-    /Changes only|set-changes-only/,
+    // the title of the Reset button now names "Changes only" among what stays, so the control is told by its button text
+    /<button[^>]*>Changes only<\/button>|set-changes-only/,
     'nothing is compared: nothing to choose'
   );
   assert.doesNotMatch(off.sandbox.renderPlateauBandHtml(), /Changes only|set-changes-only/);

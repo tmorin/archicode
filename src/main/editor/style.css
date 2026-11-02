@@ -571,6 +571,18 @@
   .diagram-toolbar .tool-group-name { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
   .diagram-toolbar .tool-group-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
   .diagram-toolbar .button-group { justify-content: flex-start; }
+  /* the head of a group: the name, the dot of a group a view keeps, and the button that opens the controls under 40 rem (hidden above it) */
+  .diagram-toolbar .tool-group-head { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
+  .diagram-toolbar .tool-group-button { display: none; }
+  .diagram-toolbar .tool-group-dot { color: var(--accent); font-size: 0.7rem; line-height: 1; }
+  .diagram-toolbar .tool-group-count:empty { display: none; }
+  .diagram-toolbar .tool-group-count, .diagram-toolbar .tool-group-zoom { color: var(--muted); font-size: 0.7rem; }
+  .diagram-toolbar .tool-group-button[aria-expanded="true"] .tool-group-count, .diagram-toolbar .tool-group-button[aria-expanded="true"] .tool-group-zoom { color: inherit; }
+  /* Reset: muted while the diagram equals its origin, a dot while it differs; the legend explains the dot of the groups */
+  .diagram-toolbar .tool-reset { align-self: flex-end; position: relative; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
+  .diagram-toolbar .tool-reset[aria-disabled="true"] { color: var(--muted); cursor: default; opacity: 0.7; }
+  .diagram-toolbar .reset-dot { display: inline-block; width: 0.45rem; height: 0.45rem; margin-left: 0.3rem; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+  .diagram-toolbar .tool-legend { align-self: flex-end; color: var(--muted); font-size: 0.7rem; white-space: nowrap; }
   .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
     color: var(--muted); font-size: 0.8rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
   #diagram-hint { flex: none; max-width: 100%; color: var(--accent); }
@@ -1023,4 +1035,16 @@
     .map-link-row label { padding: 0.5rem 0.75rem; }
     .map-link-row input { min-width: 1.25rem; min-height: 1.25rem; }
     .map-links-controls input[type="search"], .map-links-controls select { min-height: 2.25rem; }
+    /* The toolbar (run 0218): one or two rows of compact buttons; the controls of a group open as a panel over the canvas, which does not move. The dot stays in the head. */
+    .diagram-toolbar { position: relative; align-items: center; gap: 0.25rem 0.4rem; margin: 0 -0.75rem; padding: 0.25rem 0.75rem; }
+    .diagram-toolbar .tool-group { position: static; flex-direction: row; }
+    .diagram-toolbar .tool-group + .tool-group { padding-left: 0; border-left: 0; }
+    .diagram-toolbar .tool-group-name { display: none; }
+    .diagram-toolbar .tool-group-button { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .diagram-toolbar .tool-group-controls { display: none; }
+    .diagram-toolbar .tool-group[data-open="true"] > .tool-group-controls { display: flex; position: absolute; left: 0; right: 0; top: 100%; z-index: 20; padding: 0.4rem 0.75rem; background: var(--panel-bg); border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); }
+    .diagram-toolbar .tool-group[data-group="compare"] > .tool-group-controls { display: flex; position: static; padding: 0; background: none; border: 0; box-shadow: none; }
+    .diagram-toolbar .tool-group[data-group="compare"] .tool-group-head { display: none; }
+    .diagram-toolbar .tool-legend { display: none; }
+    .diagram-toolbar .tool-reset { max-width: 9rem; }
   }

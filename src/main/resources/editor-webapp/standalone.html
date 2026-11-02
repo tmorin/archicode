@@ -590,6 +590,18 @@ try {
   .diagram-toolbar .tool-group-name { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
   .diagram-toolbar .tool-group-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
   .diagram-toolbar .button-group { justify-content: flex-start; }
+  /* the head of a group: the name, the dot of a group a view keeps, and the button that opens the controls under 40 rem (hidden above it) */
+  .diagram-toolbar .tool-group-head { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
+  .diagram-toolbar .tool-group-button { display: none; }
+  .diagram-toolbar .tool-group-dot { color: var(--accent); font-size: 0.7rem; line-height: 1; }
+  .diagram-toolbar .tool-group-count:empty { display: none; }
+  .diagram-toolbar .tool-group-count, .diagram-toolbar .tool-group-zoom { color: var(--muted); font-size: 0.7rem; }
+  .diagram-toolbar .tool-group-button[aria-expanded="true"] .tool-group-count, .diagram-toolbar .tool-group-button[aria-expanded="true"] .tool-group-zoom { color: inherit; }
+  /* Reset: muted while the diagram equals its origin, a dot while it differs; the legend explains the dot of the groups */
+  .diagram-toolbar .tool-reset { align-self: flex-end; position: relative; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
+  .diagram-toolbar .tool-reset[aria-disabled="true"] { color: var(--muted); cursor: default; opacity: 0.7; }
+  .diagram-toolbar .reset-dot { display: inline-block; width: 0.45rem; height: 0.45rem; margin-left: 0.3rem; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+  .diagram-toolbar .tool-legend { align-self: flex-end; color: var(--muted); font-size: 0.7rem; white-space: nowrap; }
   .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
     color: var(--muted); font-size: 0.8rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
   #diagram-hint { flex: none; max-width: 100%; color: var(--accent); }
@@ -1042,6 +1054,18 @@ try {
     .map-link-row label { padding: 0.5rem 0.75rem; }
     .map-link-row input { min-width: 1.25rem; min-height: 1.25rem; }
     .map-links-controls input[type="search"], .map-links-controls select { min-height: 2.25rem; }
+    /* The toolbar (run 0218): one or two rows of compact buttons; the controls of a group open as a panel over the canvas, which does not move. The dot stays in the head. */
+    .diagram-toolbar { position: relative; align-items: center; gap: 0.25rem 0.4rem; margin: 0 -0.75rem; padding: 0.25rem 0.75rem; }
+    .diagram-toolbar .tool-group { position: static; flex-direction: row; }
+    .diagram-toolbar .tool-group + .tool-group { padding-left: 0; border-left: 0; }
+    .diagram-toolbar .tool-group-name { display: none; }
+    .diagram-toolbar .tool-group-button { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .diagram-toolbar .tool-group-controls { display: none; }
+    .diagram-toolbar .tool-group[data-open="true"] > .tool-group-controls { display: flex; position: absolute; left: 0; right: 0; top: 100%; z-index: 20; padding: 0.4rem 0.75rem; background: var(--panel-bg); border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); }
+    .diagram-toolbar .tool-group[data-group="compare"] > .tool-group-controls { display: flex; position: static; padding: 0; background: none; border: 0; box-shadow: none; }
+    .diagram-toolbar .tool-group[data-group="compare"] .tool-group-head { display: none; }
+    .diagram-toolbar .tool-legend { display: none; }
+    .diagram-toolbar .tool-reset { max-width: 9rem; }
   }
 </style>
 </head>
@@ -12503,6 +12527,8 @@ function resetUiState() {
   diagramMaximized = false;
   diagramHideUnlinked = false;
   diagramColumns = null;
+  diagramOrigin = null;
+  toolPanelOpen = null;
   diagramScale = 'auto';
   diagramCenter = { x: 0, y: 0 };
   diagramCache = null;
@@ -13950,6 +13976,12 @@ let diagramHideUnlinked = false;
 
 /** Wave 027, run 0202 (DEC-4): the boxes per row chosen on the toolbar of the diagram on screen, or null (the view, then the workspace, decide). View state: never `modelsChanged()`. */
 let diagramColumns = null;
+
+/** The view or step the diagram on screen came from: `null | { perspective, element, name, properties }` (the toolbar keys it said). Session state: read through `currentDiagramOrigin()`, never stored. */
+let diagramOrigin = null;
+
+/** The group panel open under 40 rem: `null | { group, perspective, element }`. Session state: read through `currentToolPanelOpen()`, which forgets it when the page or the element is not the one it recorded. */
+let toolPanelOpen = null;
 
 const DIAGRAM_SHOW_NAMES = ['labels', 'qualifiers', 'descriptions', 'wrap'];
 
@@ -19481,6 +19513,12 @@ function handleAppInput(e) {
     return;
   }
   if (e.target.id === 'diagram-facet-select') {
+    if (currentPerspective === 'library') {
+      // the page of a saved view: the select edits the view, as the box of its form does
+      const name = e.target.value || '';
+      editSavedView((entry) => setViewFacet(entry, name));
+      return;
+    }
     pushDiagramHistory();
     diagramFacet = e.target.value || null;
     mapSelectionCheck = true;
@@ -22766,6 +22804,7 @@ function headerControlSelector(el) {
     'data-dir',
     'data-perspective',
     'data-show',
+    'data-group',
     'data-format',
     'data-plateau',
     'data-value'
@@ -22837,13 +22876,18 @@ function currentMapState() {
   return mapState;
 }
 
-/** How many boxes the map would draw once `extra` more elements are open, children of open boxes being all drawn. */
-function mapBoxesIfOpened(extra) {
-  const opened = new Set(currentMapOpened());
+/**
+ * How many boxes the map would draw once `extra` more elements are open, children of open boxes being all drawn. `from` is the map asked about, `{ opened, hidden, layer,
+ * applications }` (the page of a saved view gives its own); the map of the session is the default.
+ */
+function mapBoxesIfOpened(extra, from) {
+  const layer = from ? from.layer : mapLayer();
+  const drawsApplications = from ? from.applications : technologyMapParts.applications;
+  const opened = new Set(from ? from.opened : currentMapOpened());
   for (const reference of extra) opened.add(reference);
-  const hidden = new Set(mapStateOf().hidden);
+  const hidden = new Set(from ? from.hidden : mapStateOf().hidden);
   let count = 0;
-  for (const record of AppState.index[mapLayer()].values()) {
+  for (const record of AppState.index[layer].values()) {
     const parts = record.reference.split('.');
     let shown = true;
     for (let i = 1; i < parts.length && shown; i++) shown = opened.has(parts.slice(0, i).join('.'));
@@ -22851,7 +22895,7 @@ function mapBoxesIfOpened(extra) {
     if (shown) {
       count++;
       // issue #107: the applications deployed on a node that is open are boxes too (once each, however many nodes host them)
-      if (mapLayer() === 'technology' && technologyMapParts.applications && opened.has(record.reference))
+      if (layer === 'technology' && drawsApplications && opened.has(record.reference))
         count += new Set(kernelStringsOf(record.applications)).size;
     }
   }
@@ -24154,18 +24198,21 @@ function renderElementTabsHtml(record) {
 }
 
 /** The facet picker of the toolbar (Draw); absent when the workspace defines no facet. */
-function renderFacetSelectHtml() {
+function renderFacetSelectHtml(host) {
   const facets = AppState.workspace.settings.facets.customs;
   if (!facets.length) return '';
+  const chosen = host ? host.facetName : diagramFacet; // the page of a saved view shows the facet of the view
   let html =
-    '<select id="diagram-facet-select" aria-label="Facet" title="Draw the diagram as the CLI generates it for a facet: the relationships the facet removes are left out.">' +
+    '<select id="diagram-facet-select" aria-label="Facet"' +
+    (chosen ? ' data-on="true"' : '') +
+    ' title="Draw the diagram as the CLI generates it for a facet: the relationships the facet removes are left out.">' +
     '<option value="">Facet: none</option>';
   for (const facet of facets) {
     html +=
       '<option value="' +
       escapeHtml(facet.name) +
       '"' +
-      (facet.name === diagramFacet ? ' selected' : '') +
+      (facet.name === chosen ? ' selected' : '') +
       '>' +
       escapeHtml(facet.name) +
       '</option>';
@@ -24217,7 +24264,9 @@ function renderColumnsToolHtml(record, host) {
   return (
     '<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">' +
     '<label for="diagram-columns" title="The number of boxes the layout aims at in a row">Columns</label>' +
-    '<select id="diagram-columns" data-action="set-columns" title="Choose how many boxes the layout aims at in a row">' +
+    '<select id="diagram-columns" data-action="set-columns"' +
+    (selected !== null && selected !== undefined ? ' data-on="true"' : '') +
+    ' title="Choose how many boxes the layout aims at in a row">' +
     columnsOptionsHtml(selected, workspaceColumnsOf(viewpoint), false) +
     '</select></span>'
   );
@@ -26213,6 +26262,8 @@ function applyDiagramScale() {
     label.textContent = Math.round(scale * 100) + '%';
     label.setAttribute('aria-label', 'Actual size (now ' + Math.round(scale * 100) + '%)');
   }
+  const frameZoom = document.querySelector('.tool-group-zoom');
+  if (frameZoom) frameZoom.textContent = Math.round(scale * 100) + '%';
   const fit = document.getElementById('diagram-fit-button');
   if (fit) fit.setAttribute('aria-pressed', String(diagramScale === 'fit'));
   const center = document.getElementById('diagram-center-button');
@@ -26706,6 +26757,17 @@ function handleDiagramKeydown(e) {
   if (!(e.target.closest && e.target.closest('.diagram-stage, .diagram-toolbar')) || e.ctrlKey || e.metaKey || e.altKey)
     return;
   const canvas = document.getElementById('diagram-canvas');
+  if (e.key === 'Escape') {
+    // an open group panel closes first, and its button takes the focus; with none open the Escape below is the old one
+    const group = currentToolPanelOpen();
+    if (group !== null) {
+      e.preventDefault();
+      toolPanelOpen = null;
+      pendingFocusSelector = '[data-action="toggle-tool-group"][data-group="' + group + '"]';
+      requestRedraw();
+      return;
+    }
+  }
   if (e.key === 'Enter' || e.key === ' ') {
     const actionable = e.target.closest('[data-action]');
     if (actionable && e.target.closest('#diagram-canvas') && actionable.tagName.toLowerCase() === 'g') {
@@ -27040,25 +27102,97 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
   );
 }
 
-/** One group of the toolbar (TDD-0217 DEC-3): named, with a stable `data-group`; a group with no control is not drawn. */
-function renderToolGroupHtml(name, controlsHtml) {
+/** The groups a view keeps (TDD-0218 DEC-4): the ones that carry the dot. Equal to the groups with a keyed control in `toolbar-controls.json`. */
+const SAVED_GROUPS = ['Draw', 'Texts', 'Layout'];
+
+/** The groups that are not part of a view: their title says so. */
+const GROUP_NOT_IN_VIEW = 'Not part of a view';
+
+/** The number of controls on in a piece of markup: a button with `aria-pressed="true"`, a select with `data-on="true"` (TDD-0218 DEC-5). */
+function countOnControls(controlsHtml) {
+  let count = 0;
+  for (const tag of String(controlsHtml).matchAll(/<(?:button|select)\b[^>]*>/g))
+    if (/\saria-pressed="true"|\sdata-on="true"/.test(tag[0])) count++;
+  return count;
+}
+
+/**
+ * One group of the toolbar (TDD-0217 DEC-3, TDD-0218 CTR-1): named, with a stable `data-group`; a group with no control is not drawn. Its head holds the name, the dot
+ * (a group a view keeps) and, but for Compare (one control, inline), the button that opens the controls under 40 rem, with the count of the controls that are on.
+ * `buttonDetail` is what the button shows after the name (Frame: the zoom), else the count.
+ */
+function renderToolGroupHtml(name, controlsHtml, buttonDetail) {
   if (!controlsHtml) return '';
+  const key = name.toLowerCase();
+  const saved = SAVED_GROUPS.includes(name);
+  const hasButton = name !== 'Compare';
+  const open = hasButton && currentToolPanelOpen() === key;
+  const dot = saved
+    ? '<span class="tool-group-dot" role="img" aria-label="Saved with the view" title="Kept when you name the view">●</span>'
+    : '';
+  const button = hasButton
+    ? '<button type="button" class="tool-group-button" data-action="toggle-tool-group" data-group="' +
+      key +
+      '" aria-expanded="' +
+      open +
+      '" aria-controls="tool-panel-' +
+      key +
+      '" title="Show the ' +
+      name +
+      ' controls">' +
+      name +
+      ' ' +
+      (buttonDetail || '<span class="tool-group-count">' + (saved ? countOnControls(controlsHtml) : '') + '</span>') +
+      '</button>'
+    : '';
   return (
     '<div class="tool-group" role="group" aria-label="' +
     name +
     '" data-group="' +
-    name.toLowerCase() +
-    '"><span class="tool-group-name" aria-hidden="true">' +
+    key +
+    '"' +
+    (hasButton ? ' data-open="' + open + '"' : '') +
+    (saved ? '' : ' title="' + GROUP_NOT_IN_VIEW + '"') +
+    '><div class="tool-group-head"><span class="tool-group-name" aria-hidden="true">' +
     name +
-    '</span><span class="tool-group-controls">' +
+    '</span>' +
+    dot +
+    button +
+    '</div><span class="tool-group-controls"' +
+    (hasButton ? ' id="tool-panel-' + key + '"' : '') +
+    '>' +
     controlsHtml +
     '</span></div>'
   );
 }
 
 /**
- * The toolbar of a diagram, docked before the canvas (TDD-0217 DEC-1): five groups, Draw, Texts, Layout, Compare and Frame, each control in one.
- * `host` is only given by the page of a view in the Library (see `renderDiagramCanvasHtml`): it has no folding and no Facet.
+ * Reset (TDD-0218 CTR-2): puts Draw, Texts and Layout back to the origin of the diagram (the view or step it came from, else the defaults). `aria-disabled` while the
+ * diagram equals its origin, a dot while it differs. Only on the pages that draw a diagram of the session.
+ */
+function renderResetHtml() {
+  const differs = diagramDiffersFromOrigin();
+  const origin = currentDiagramOrigin();
+  const name = origin ? origin.name : '';
+  const target = origin ? '"' + escapeHtml(diagramTruncate(name, 24)) + '"' : 'defaults';
+  const titleTarget = origin ? '&quot;' + escapeHtml(name) + '&quot;' : 'the defaults'; // in an attribute: the quotes are entities
+  return (
+    '<button type="button" id="diagram-reset-button" class="tool-reset" data-action="diagram-reset"' +
+    (differs ? '' : ' aria-disabled="true"') +
+    ' title="Put Draw, Texts and Layout back to ' +
+    titleTarget +
+    '; Changes only, the zoom and the pins stay.' +
+    (differs ? ' The diagram differs from ' + titleTarget + '.' : '') +
+    '">Reset to ' +
+    target +
+    (differs ? '<span class="reset-dot" aria-hidden="true"></span>' : '') +
+    '</button><span class="tool-legend" aria-hidden="true">● kept in a named view</span>'
+  );
+}
+
+/**
+ * The toolbar of a diagram, docked before the canvas (TDD-0217 DEC-1): five groups, Draw, Texts, Layout, Compare and Frame, each control in one, and Reset after Layout.
+ * `host` is only given by the page of a view in the Library (see `renderDiagramCanvasHtml`): it has no folding and no Facet, and no Reset.
  */
 function renderDiagramToolbarHtml(record, host) {
   return (
@@ -27069,8 +27203,9 @@ function renderDiagramToolbarHtml(record, host) {
       renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined)
     ) +
     renderToolGroupHtml('Layout', renderColumnsToolHtml(record, host)) +
+    (host ? '' : renderResetHtml()) +
     renderToolGroupHtml('Compare', renderCompareToolsHtml()) +
-    renderToolGroupHtml('Frame', renderFrameToolsHtml()) +
+    renderToolGroupHtml('Frame', renderFrameToolsHtml(), '<span class="tool-group-zoom">100%</span>') +
     '</div>'
   );
 }
@@ -27080,7 +27215,7 @@ function renderDrawToolsHtml(record, host) {
   const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
   return (
     // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
-    (record || host
+    (record || (host && !host.isMap)
       ? ''
       : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
         '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
@@ -27089,7 +27224,7 @@ function renderDrawToolsHtml(record, host) {
     hideUnlinked +
     '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
     renderMapPartsToolHtml(record, host) +
-    (host ? '' : renderFacetSelectHtml())
+    renderFacetSelectHtml(host)
   );
 }
 
@@ -27467,6 +27602,7 @@ function viewDiagramRecipe(view, index, host, baselineIndex) {
     layer,
     viewpoint: 'map',
     facet,
+    facetName: typeof properties.facet === 'string' ? properties.facet : '',
     mapState: null,
     parts: isMap ? mapPartsOf(view) : null,
     hideUnlinked: properties['hide-unlinked'] === true,
@@ -27804,7 +27940,8 @@ async function computeDiagramScene(recipe, input, comparison, source, kernel, el
     scene.drawnApps = new Set(
       drawn.items.filter((item) => !item.ghost && item.id !== item.reference).map((item) => item.reference)
     );
-  if (isMap && !readonly) Object.assign(scene, diagramFoldTargets(shownResult, reference));
+  // the page of a view draws no fold buttons, but its Unfold all reads the boxes that may open from the same scene as the Map's
+  if (isMap) Object.assign(scene, diagramFoldTargets(shownResult, reference));
   return { scene, cacheable: true };
 }
 
@@ -28843,39 +28980,99 @@ function viewLacksInPlateau(references, layer, plateau) {
   );
 }
 
+const TOOLBAR_KEYS = ['opened', 'facet', 'hide-unlinked', ...MAP_PARTS, ...DIAGRAM_SHOW_NAMES, 'layout'];
+
+/** The keys of the toolbar (Draw, Texts, Layout) of a canonical view's properties; the pins, the hidden boxes, `links`, `highlight` and `element` are not among them. */
+function toolbarKeysOf(properties) {
+  const source = isPlainObject(properties) ? properties : {};
+  const out = {};
+  for (const key of TOOLBAR_KEYS) if (source[key] !== undefined) out[key] = source[key];
+  return out;
+}
+
+/**
+ * Sets the keys of the toolbar from `properties` (`{}` is the defaults) for the Map of `layer`; a key not given is its default. It never touches the scale, the centre, Changes only,
+ * the pins, the hidden boxes, `links`, `highlight` or the selection. A facet the workspace does not define is dropped. `drawsMap` false (an element's diagram) leaves the opened boxes and the parts alone.
+ * It returns the state of the Map of `layer` (null when `drawsMap` is false), so that the caller sets the rest of it without naming `mapStateOf` itself.
+ */
+function applyToolbarKeys(properties, layer, drawsMap) {
+  const source = isPlainObject(properties) ? properties : {};
+  diagramFacet =
+    typeof source.facet === 'string' &&
+    AppState.workspace.settings.facets.customs.some((facet) => facet.name === source.facet)
+      ? source.facet
+      : null;
+  setDiagramShow(source);
+  diagramHideUnlinked = source['hide-unlinked'] === true;
+  // the toolbar takes what the keys say (an invalid layout was refused by viewProblem), else none: the value of the diagram before does not stay
+  diagramColumns = isPlainObject(source.layout)
+    ? resolveDiagramColumns({ view: { properties: source } }).columns
+    : null;
+  if (drawsMap === false) return null;
+  const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
+  const map = mapStateOf(layer);
+  map.opened = new Set(known(source.opened));
+  if (layer === 'technology')
+    technologyMapParts = {
+      applications: source.applications !== false,
+      relationships: source.relationships !== false
+    }; // the keys say `false` for what they leave out, else it is drawn
+  return map;
+}
+
+/** The key of the element the page of an element draws, else '' (what the origin and the open panel record beside the page). */
+function toolbarElementKey() {
+  return currentPerspective === 'elements' && AppState.selection ? AppState.selection.key || '' : '';
+}
+
+/** The group whose panel is open while the page and the selected element are those it recorded; else null, and it is forgotten (the same rule as the origin's). */
+function currentToolPanelOpen() {
+  if (toolPanelOpen === null) return null;
+  if (toolPanelOpen.perspective !== currentPerspective || toolPanelOpen.element !== toolbarElementKey())
+    toolPanelOpen = null;
+  return toolPanelOpen ? toolPanelOpen.group : null;
+}
+
+/** The origin of the diagram on screen while the page and the selected element are those it recorded; else null, and it is forgotten (the one rule that clears it). */
+function currentDiagramOrigin() {
+  if (diagramOrigin === null) return null;
+  const element = toolbarElementKey();
+  if (diagramOrigin.perspective !== currentPerspective || diagramOrigin.element !== element) diagramOrigin = null;
+  return diagramOrigin;
+}
+
+/** True when the toolbar's keys of the diagram on screen are not its origin's (the defaults when it has none), compared as JSON text. */
+function diagramDiffersFromOrigin() {
+  const current = currentViewDefinition();
+  if (!current) return false;
+  const origin = currentDiagramOrigin();
+  return JSON.stringify(toolbarKeysOf(current.properties)) !== JSON.stringify(origin ? origin.properties : {});
+}
+
 /** Puts the editor where the view was saved. Returns why it cannot, or null once it is done (the caller redraws). */
 function applySavedView(view) {
   const problem = viewProblem(view);
   if (problem) return problem;
   const properties = isPlainObject(view.properties) ? view.properties : {};
-  diagramFacet =
-    typeof properties.facet === 'string' &&
-    AppState.workspace.settings.facets.customs.some((facet) => facet.name === properties.facet)
-      ? properties.facet
-      : null;
-  setDiagramShow(properties);
-  diagramHideUnlinked = properties['hide-unlinked'] === true;
-  // the toolbar takes what the view says (viewProblem has refused an invalid one), else none: the value of the diagram before does not stay
-  diagramColumns = resolveDiagramColumns({ view }).columns;
+  const isMap = view.viewpoint === 'map';
+  const layer = viewLayerOf(view);
+  const keys = toolbarKeysOf(canonicalViewDefinition(view).properties);
+  const map = applyToolbarKeys(keys, layer, isMap);
   if (view.viewpoint === 'map') {
-    const layer = viewLayerOf(view); // the page Environments draws the technology layer, the page Applications the application layer
+    // the page Environments draws the technology layer, the page Applications the application layer
     const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
-    const map = mapStateOf(layer);
     map.pinned = known(properties.pinned);
     map.hidden = known(properties.hidden);
-    map.opened = new Set(known(properties.opened));
     // issue #143: the relationships the view is narrowed to (the application layer's Map alone); a view with none gives the whole map
     if (layer === 'application')
       mapLinks = linkEntriesOf(properties.links).entries.map((link) => Object.assign({}, link)); // as the view says them: the model drawn is looked at when it is drawn
     if (layer === 'application')
       mapHighlight = linkEntriesOf(properties.highlight, 'highlight').entries.map((link) => Object.assign({}, link));
-    if (layer === 'technology') technologyMapParts = mapPartsOf(view); // the view says `false` for what it leaves out, else it is drawn
     map.pinned.forEach((reference) => expandParentsOf(reference, layer));
     mapSelectionCheck = true;
     currentPerspective = layer === 'technology' ? 'environments' : 'map';
     useDiagramHost('main');
   } else {
-    const layer = viewLayerOf(view);
     AppState.selection = { kind: 'element', key: properties.element, layer, mode: 'view' };
     elementTab = view.viewpoint;
     expandAncestorsOf(properties.element, layer);
@@ -28883,6 +29080,13 @@ function applySavedView(view) {
     currentPerspective = 'elements';
     useDiagramHost('main');
   }
+  // the origin: what the view says of the toolbar, for this page and this element; session state, never written anywhere
+  diagramOrigin = {
+    perspective: currentPerspective,
+    element: isMap ? '' : properties.element,
+    name: viewLabel(view),
+    properties: keys
+  };
   if (rawYamlEditDraft) rawYamlEditDraft = null;
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   return null;
@@ -29374,6 +29578,22 @@ function setViewMapPart(view, part, drawn) {
   return true;
 }
 
+/** Writes the whole list of the open boxes of a Map view (Fold all writes none, Unfold all the union); sorted, and removed when empty. */
+function setViewOpened(view, references) {
+  if (view.viewpoint !== 'map') return false;
+  const properties = view.properties;
+  const wanted = Array.from(new Set(references.map(String))).sort();
+  const current = stringList(properties.opened);
+  if (!wanted.length) {
+    if (!('opened' in properties)) return false;
+    delete properties.opened;
+    return true;
+  }
+  if (current.length === wanted.length && current.every((reference, i) => reference === wanted[i])) return false;
+  putViewProperty(properties, 'opened', wanted);
+  return true;
+}
+
 function setViewFacet(view, name) {
   const properties = view.properties;
   if (!name) {
@@ -29382,6 +29602,8 @@ function setViewFacet(view, name) {
     return true;
   }
   if (properties.facet === name) return false;
+  if (!AppState.workspace.settings.facets.customs.some((facet) => facet.name === name))
+    return refuseViewEdit(view, 'facet', '“' + name + '” is not a facet of the workspace.', name);
   putViewProperty(properties, 'facet', name);
   return true;
 }
@@ -33350,6 +33572,13 @@ function handleAppClick(e) {
       render();
       break;
     case 'fold-all':
+      if (currentPerspective === 'library') {
+        // the page of a saved view: the press edits the view (its `opened`), not the Map of the session
+        const view = libraryPageView();
+        if (view && view.viewpoint === 'map' && libraryDiagramRecipe(view))
+          editSavedView((entry) => setViewOpened(entry, []));
+        break;
+      }
       if (mapIsShown()) {
         mapStateOf().opened = defaultMapOpened();
         mapSelectionCheck = true;
@@ -33357,6 +33586,32 @@ function handleAppClick(e) {
       }
       break;
     case 'unfold-all':
+      if (currentPerspective === 'library') {
+        const view = libraryPageView();
+        const recipe = view && view.viewpoint === 'map' ? libraryDiagramRecipe(view) : null;
+        // the scene says which boxes may open; before the first drawing there is none and the press does nothing
+        const more = recipe && diagramScene && Array.isArray(diagramScene.expandable) ? diagramScene.expandable : null;
+        if (!more) break;
+        const own = stringList(view.properties.opened);
+        const boxes = mapBoxesIfOpened(more, {
+          opened: own,
+          hidden: recipe.mapState.hidden,
+          layer: recipe.layer,
+          applications: !recipe.parts || recipe.parts.applications !== false
+        });
+        if (
+          boxes > MAP_UNFOLD_CONFIRM_BOXES &&
+          typeof window.confirm === 'function' &&
+          !window.confirm(
+            'Unfolding one more level draws about ' +
+              boxes +
+              ' boxes, which can be slow and hard to read. Unfold anyway?'
+          )
+        )
+          break;
+        editSavedView((entry) => setViewOpened(entry, own.concat(more)));
+        break;
+      }
       if (mapIsShown()) {
         // one more level each time; a big map asks first
         const more = (diagramScene && diagramScene.expandable) || [];
@@ -33409,6 +33664,27 @@ function handleAppClick(e) {
       pushDiagramHistory();
       technologyMapParts[part] = !technologyMapParts[part];
       mapSelectionCheck = true; // the boxes of the applications go with their toggle: a selection the redraw no longer draws is dropped
+      render();
+      break;
+    }
+    case 'toggle-tool-group': {
+      // under 40 rem a group is a button: it opens its controls as a panel, a second press closes it, another group replaces it
+      const group = target.getAttribute('data-group');
+      toolPanelOpen =
+        !group || currentToolPanelOpen() === group
+          ? null
+          : { group, perspective: currentPerspective, element: toolbarElementKey() };
+      pendingFocusSelector = group ? '[data-action="toggle-tool-group"][data-group="' + group + '"]' : null;
+      render();
+      break;
+    }
+    case 'diagram-reset': {
+      // aria-disabled, not disabled (the button keeps the focus): while the diagram equals its origin a press does nothing
+      if (target.getAttribute('aria-disabled') === 'true' || currentPerspective === 'library') break;
+      const origin = currentDiagramOrigin();
+      pushDiagramHistory();
+      applyToolbarKeys(origin ? origin.properties : {}, mapLayer(), mapIsShown());
+      mapSelectionCheck = true;
       render();
       break;
     }
