@@ -17,8 +17,11 @@ const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { inPlateau, layeredFiles, compareWith } = require('./layered-folders');
+const { compactStyle } = require('./stylesheet-support');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = compactStyle(
+  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
+);
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart/layered');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));

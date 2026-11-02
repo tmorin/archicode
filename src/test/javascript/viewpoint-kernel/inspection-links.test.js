@@ -10,9 +10,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { openFixture } = require('./harness');
+const { compactStyle } = require('./stylesheet-support');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = compactStyle(
+  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
+);
 const CSS_NO_COMMENTS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
 const NONE = { kind: 'none', key: null, mode: 'view' };
 const plain = (value) => JSON.parse(JSON.stringify(value));

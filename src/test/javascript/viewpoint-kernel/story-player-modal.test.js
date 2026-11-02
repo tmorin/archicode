@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('./library-page');
 const { waitFor } = require('./harness');
+const { compactStyle } = require('./stylesheet-support');
 const {
   REPO,
   LAYERED,
@@ -901,7 +902,7 @@ test('the bar over the editing diagram has no Previous, Next, menu or Read; it k
 });
 
 test('the page of the player: a title for the dialog, no horizontal scroll rules left out, a layout that never grows past the window', () => {
-  const html = fs.readFileSync(PAGE, 'utf8');
+  const html = compactStyle(fs.readFileSync(PAGE, 'utf8'));
   const css = html.slice(html.indexOf('.story-player[hidden]'), html.indexOf('.player-words.muted') + 80);
   assert.match(css, /\.story-player \{ position: fixed; inset: 0;/);
   assert.match(

@@ -11,8 +11,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
+const { compactStyle } = require('./stylesheet-support');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = compactStyle(
+  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
+);
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 
@@ -96,7 +99,7 @@ test('the rules of the page: folded hides the sentences and the note, open is ca
   assert.match(CSS, /\.dg-legend-compare\.dg-key-open \{ max-height: var\(--dg-key-max, 30vh\); overflow-y: auto; \}/);
   assert.match(
     CSS,
-    /@media \(max-width: 700px\) \{ \.dg-legend-compare:not\(\.dg-key-open\) \{ flex-wrap: nowrap; overflow-x: auto;/
+    /@media \(max-width: 700px\) \{\s+\.dg-legend-compare:not\(\.dg-key-open\) \{ flex-wrap: nowrap; overflow-x: auto;/
   );
   assert.match(CSS, /\.dg-legend-toggle\[aria-expanded="true"\]/);
 });
