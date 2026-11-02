@@ -753,7 +753,7 @@ test('full screen: the button is there when the browser can, a refusal says so a
   playerClick(granting, 'fullscreen');
   await waitFor(() => asked === 1, 'the request');
   for (const fn of granting.sandbox.__documentListeners.fullscreenchange || []) fn();
-  assert.match(granting.root.innerHTML, /aria-pressed="true"[^>]*>Exit full screen</);
+  assert.match(granting.root.innerHTML, /aria-pressed="true"[^>]*>Full screen</);
   press(granting, 'Escape');
   assert.equal(left, 1, 'closing leaves full screen');
 });

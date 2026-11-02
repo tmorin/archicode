@@ -46,7 +46,7 @@ function renderStoryBarHtml() {
     '<button type="button" data-action="story-bar-edit" aria-pressed="' +
     storyBarEditing +
     '" title="Type the words of this step (they are also in Edit story)">' +
-    (storyBarEditing ? 'Done' : 'Edit text') +
+    'Edit text' +
     '</button>' +
     '<button type="button" data-action="story-edit" title="Reorder the steps, rename the story">Edit story</button>' +
     '<button type="button" data-action="story-exit" title="Leave the story: the diagram stays as it is">Leave story</button>' +

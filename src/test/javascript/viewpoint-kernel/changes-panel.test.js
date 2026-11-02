@@ -740,18 +740,21 @@ test('Changes only is among the tools of the diagram, not on the band, only whil
   ]) {
     assert.ok(
       tools.indexOf('data-action="toggle-hide-unlinked"') < tools.indexOf('data-action="set-changes-only"') &&
-        tools.indexOf('data-action="set-changes-only"') < tools.indexOf('aria-label="Show"'),
-      'in the toolbar, after Hide unlinked'
+        tools.indexOf('data-action="set-changes-only"') < tools.indexOf('data-action="diagram-zoom"'),
+      // run 0217: the Texts group is named "Texts" (it was "Show"), so the end of the Compare group is now the first control of Frame
+      'in the toolbar, after Hide unlinked and before Frame'
     );
+    // run 0217 (REQ-3): one toggle, no Everything button; data-value is the value a click sets
     assert.match(
       tools,
-      /<span class="button-group changes-switch" role="group" aria-label="What the diagram draws of the comparison"><button type="button" data-action="set-changes-only" data-value="0" aria-pressed="true"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="false"[^>]*>Changes only<\/button><\/span>/
+      /<button type="button" id="diagram-changes-only-button" data-action="set-changes-only" data-value="1" aria-pressed="false"[^>]*>Changes only<\/button>/
     );
+    assert.doesNotMatch(tools, />Everything</);
   }
   click(sandbox, { 'data-action': 'set-changes-only', 'data-value': '1' });
   assert.match(
     sandbox.renderDiagramCanvasHtml(null, '', null),
-    /data-value="0" aria-pressed="false"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="true"/
+    /data-action="set-changes-only" data-value="0" aria-pressed="true"[^>]*>Changes only<\/button>/
   );
   assert.match(
     sandbox.renderDiagramCanvasHtml(null, '', {

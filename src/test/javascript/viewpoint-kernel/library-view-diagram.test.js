@@ -546,7 +546,7 @@ for (const perspective of ['map', 'elements']) {
             click(page.sandbox, attributes);
             await page.drawn().catch(() => null);
           }
-          const stage = { closest: (selector) => (selector === '.diagram-stage' ? {} : null) };
+          const stage = { closest: (selector) => (selector === '.diagram-stage, .diagram-toolbar' ? {} : null) };
           for (const key of ['m', 'M', 'Escape', 'f', 'c', '+', '-', '0'])
             page.sandbox.handleDiagramKeydown({
               key,
@@ -864,7 +864,7 @@ test('M and Escape on the page maximize and restore the page, and never the Map'
   const page = await startPage();
   const view = addView(page, { id: 'kb', name: 'KB', viewpoint: 'deep', properties: { element: 'shop' } });
   await openView(page, view);
-  const stage = { closest: (selector) => (selector === '.diagram-stage' ? {} : null) };
+  const stage = { closest: (selector) => (selector === '.diagram-stage, .diagram-toolbar' ? {} : null) };
   const press = (key) =>
     page.sandbox.handleDiagramKeydown({
       key,

@@ -233,7 +233,7 @@ test('the arrow keys still go to the neighbouring box and Enter still opens it, 
     };
     const inner = target.closest;
     target.closest = (selector) =>
-      selector === '.diagram-stage'
+      selector === '.diagram-stage, .diagram-toolbar'
         ? stage
         : selector === '#diagram-canvas'
           ? canvas

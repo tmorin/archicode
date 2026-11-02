@@ -94,20 +94,21 @@ const QUERY = (rem) => '@container center (max-width: ' + rem + 'rem)';
 
 // ============================================================ 1-3. the markup of each header
 
-test('the actions of the Elements diagram header: Facet, the "⋯" and its overflow, then Maximize; the rare controls are in the overflow', async () => {
+test('the actions of the Elements diagram header: the "⋯" and its overflow, then Maximize; the rare controls are in the overflow; the Facet is in the toolbar', async () => {
   const { center } = await elementsPage('overview');
   const { actions } = headerOf(center());
-  const facet = actions.indexOf('id="diagram-facet-select"');
+  // run 0217 (REQ-1): the Facet select left the header for the Draw group of the toolbar, so it is not in the row any more
+  assert.equal(actions.indexOf('id="diagram-facet-select"'), -1, 'the Facet is not in the header');
+  const facet = center().indexOf('id="diagram-facet-select"');
+  assert.ok(facet !== -1, 'and it is in the page, in the toolbar');
+
   const more = actions.indexOf('class="header-more"');
   const moreButton = actions.indexOf(dataAction('toggle-header-menu'));
   const overflow = actions.indexOf('<div class="header-overflow" id="header-overflow"');
   const maximize = actions.indexOf(dataAction('toggle-maximize'));
-  for (const [name, at] of Object.entries({ facet, more, moreButton, overflow, maximize }))
+  for (const [name, at] of Object.entries({ more, moreButton, overflow, maximize }))
     assert.notEqual(at, -1, name + ' is in the row');
-  assert.ok(
-    facet < more && more < moreButton && moreButton < overflow,
-    'Facet, then the holder with the "⋯" button, then the overflow'
-  );
+  assert.ok(more < moreButton && moreButton < overflow, 'the holder with the "⋯" button, then the overflow');
   const closed = overflowOf(actions);
   assert.ok(closed.end < maximize, 'Maximize comes after the overflow closes: it stays in the row');
   assert.equal(
@@ -115,7 +116,6 @@ test('the actions of the Elements diagram header: Facet, the "⋯" and its overf
     maximize,
     'and there is no Maximize inside the overflow'
   );
-  assert.ok(facet < closed.start, 'Facet is before the overflow');
 
   const inside = closed.inner;
   assert.equal(count(inside, dataAction('show-on-map')), 1, 'Show on map is in the overflow');
@@ -134,7 +134,7 @@ test('the actions of the Elements diagram header: Facet, the "⋯" and its overf
   ]) {
     assert.ok(!inside.includes(absent), 'the overflow does not hold ' + absent);
   }
-  // the row outside the overflow holds nothing but Facet, the "⋯" holder and Maximize
+  // the row outside the overflow holds nothing but the "⋯" holder and Maximize
   const rest = actions.slice(0, closed.start) + actions.slice(closed.end);
   assert.deepEqual(
     buttons(rest).map((b) => b.match(/data-action="([^"]+)"/)[1]),
@@ -145,11 +145,15 @@ test('the actions of the Elements diagram header: Facet, the "⋯" and its overf
 test('the actions of the Map header have the same structure; the way to the other perspective follows the selection', async () => {
   const selected = await mapPage(true);
   const { actions } = headerOf(selected.center());
-  const facet = actions.indexOf('id="diagram-facet-select"');
+  assert.equal(
+    actions.indexOf('id="diagram-facet-select"'),
+    -1,
+    'run 0217: the Facet is in the toolbar, not in the header'
+  );
+  assert.ok(selected.center().includes('id="diagram-facet-select"'), 'the Map page has it in the toolbar');
   const moreButton = actions.indexOf(dataAction('toggle-header-menu'));
   const overflow = actions.indexOf('<div class="header-overflow" id="header-overflow"');
   const maximize = actions.indexOf(dataAction('toggle-maximize'));
-  assert.ok(facet !== -1 && facet < actions.indexOf('class="header-more"'));
   assert.ok(actions.indexOf('class="header-more"') < moreButton && moreButton < overflow);
   const closed = overflowOf(actions);
   assert.ok(closed.end < maximize, 'Maximize is after the overflow');
@@ -172,10 +176,7 @@ test('the actions of the Map header have the same structure; the way to the othe
   assert.equal(count(bareOverflow.inner, dataAction('name-view')), 1, 'Story is still in the overflow');
   assert.equal(count(bareOverflow.inner, dataAction('add-to-story')), 1);
   assert.equal(count(bareOverflow.inner, dataAction('diagram-export')), 2, 'and so is Download');
-  assert.ok(
-    bare.indexOf('id="diagram-facet-select"') < bare.indexOf('class="header-more"') &&
-      bareOverflow.end < bare.indexOf(dataAction('toggle-maximize'))
-  );
+  assert.ok(bareOverflow.end < bare.indexOf(dataAction('toggle-maximize')));
 });
 
 test('every control of a diagram header is in the page once: no copy for the narrow state', async () => {
@@ -195,7 +196,9 @@ test('every control of a diagram header is in the page once: no copy for the nar
     assert.equal(count(header, dataAction('diagram-export')), 2, label + ': png and svg');
     assert.equal(count(header, dataAction('diagram-export') + ' data-format="png"'), 1, label + ': png');
     assert.equal(count(header, dataAction('diagram-export') + ' data-format="svg"'), 1, label + ': svg');
-    assert.equal(count(header, 'id="diagram-facet-select"'), 1, label + ': the facet');
+    // run 0217: the Facet select is in the page once, in the toolbar, and not in the header
+    assert.equal(count(header, 'id="diagram-facet-select"'), 0, label + ': no facet in the header');
+    assert.equal(count(html, 'id="diagram-facet-select"'), 1, label + ': the facet, once, in the toolbar');
     assert.equal(count(header, 'id="header-overflow"'), 1, label + ': the overflow');
     assert.equal(count(header, 'class="header-more"'), 1, label + ': the holder');
   }
@@ -289,10 +292,11 @@ test('a control that loses its word in the compact state keeps its name: with-ic
   assert.equal(labelOfMaximize(elements.center()), 'Maximize');
   run(elements.sandbox, 'diagramMaximized = true');
   const restored = elements.center();
-  assert.equal(labelOfMaximize(restored), 'Restore', 'maximized: the word says Restore');
+  // run 0217 (REQ-4): the word does not change, `aria-pressed` says the state
+  assert.equal(labelOfMaximize(restored), 'Maximize', 'maximized: the word stays Maximize');
   assert.match(
     buttons(restored).find((b) => b.includes(dataAction('toggle-maximize'))),
-    /aria-label="Restore"/
+    /aria-pressed="true"[^>]*aria-label="Maximize"/
   );
 });
 
@@ -816,10 +820,12 @@ test('a narrow centre: the groups of the diagram toolbar wrap inside it, and the
     assert.ok(m, selector + ' has a rule');
     return m[1];
   };
-  const group = rule('.diagram-tools .button-group');
-  assert.match(group, /flex-wrap: wrap/, 'four buttons of "Show" were 262 px in a toolbar of 238');
+  // run 0217: the rule now lists the toolbar docked above the canvas next to the floating one
+  const group = rule('.diagram-tools .button-group, .diagram-toolbar .button-group');
+  assert.match(group, /flex-wrap: wrap/, 'four buttons of "Texts" were 262 px in a toolbar of 238');
   assert.match(group, /max-width: 100%/, 'a group is never wider than the toolbar');
   assert.match(rule('.diagram-tools'), /flex-wrap: wrap/, 'the toolbar itself wraps (unchanged)');
+  assert.match(rule('.diagram-toolbar'), /flex-wrap: wrap/, 'and so does the docked toolbar');
   assert.match(
     rule('#diagram-hint'),
     /max-width: 100%/,

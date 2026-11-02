@@ -577,12 +577,19 @@ try {
   .inspection-open { align-self: flex-start; margin-top: 0.25rem; }
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
   /* a narrow centre: a group of the toolbar that is wider than the toolbar wraps inside it (it was cut on the left, and the buttons were out of reach) */
-  .diagram-tools .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
-  .diagram-tools .diagram-columns { align-items: center; gap: 0.3rem; }
-  .diagram-tools .diagram-columns label { font-size: 0.8rem; }
-  .diagram-tools .diagram-columns select { height: 1.75rem; font-size: 0.8rem; }
-  .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
-  .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .diagram-tools .button-group, .diagram-toolbar .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
+  .diagram-tools .diagram-columns, .diagram-toolbar .diagram-columns { align-items: center; gap: 0.3rem; }
+  .diagram-tools .diagram-columns label, .diagram-toolbar .diagram-columns label { font-size: 0.8rem; }
+  .diagram-tools .diagram-columns select, .diagram-toolbar .diagram-columns select { height: 1.75rem; font-size: 0.8rem; }
+  .diagram-tools button, .diagram-toolbar button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
+  .diagram-tools button[aria-pressed="true"], .diagram-toolbar button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  /* the toolbar docked before the canvas (run 0217): full width like the status line, in the flow, five named groups that wrap */
+  .diagram-toolbar { flex: none; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.35rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; background: var(--panel-bg); border-bottom: 1px solid var(--border); }
+  .diagram-toolbar .tool-group { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; max-width: 100%; }
+  .diagram-toolbar .tool-group + .tool-group { padding-left: 1rem; border-left: 1px solid var(--border); }
+  .diagram-toolbar .tool-group-name { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .diagram-toolbar .tool-group-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+  .diagram-toolbar .button-group { justify-content: flex-start; }
   .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
     color: var(--muted); font-size: 0.8rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
   #diagram-hint { flex: none; max-width: 100%; color: var(--accent); }
@@ -22746,7 +22753,7 @@ function headerControlSelector(el) {
   const control =
     el && el.closest
       ? el.closest(
-          '.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button'
+          '.element-header button, .element-header select, .diagram-tools button, .diagram-toolbar button, .diagram-toolbar select, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button'
         )
       : null;
   if (!control) return null;
@@ -23963,18 +23970,18 @@ function libraryDiagramShown() {
 
 /** Hides (or brings back) the panels around the diagram; `panels`: what it hides (the element tree of the Map and Elements). */
 function renderMaximizeButtonHtml(panels) {
-  // the label says the state, so the button is not also "pressed"; in a narrow header the icon stays and the word goes (the title has it)
-  const label = diagramMaximized ? 'Restore' : 'Maximize';
+  // the label does not change: `aria-pressed` says the state; in a narrow header the icon stays and the word goes (the title has it)
+  const label = 'Maximize';
   const what = panels || 'the element tree';
   return (
-    '<button type="button" class="maximize-button with-icon" data-action="toggle-maximize" aria-label="' +
+    '<button type="button" class="maximize-button with-icon" data-action="toggle-maximize" aria-pressed="' +
+    diagramMaximized +
+    '" aria-label="' +
     label +
-    '" title="' +
-    (diagramMaximized ? 'Bring back ' + what + ' (Esc)' : 'Hide ' + what + ' to give the diagram all the room (M)') +
-    '">' +
-    controlIconHtml(
-      diagramMaximized ? 'M6 3v3H3M10 3v3h3M6 13v-3H3M10 13v-3h3' : 'M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3'
-    ) +
+    '" title="Hide ' +
+    what +
+    ' to give the diagram all the room (M). Esc brings it back">' +
+    controlIconHtml('M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3') +
     '<span class="control-label">' +
     label +
     '</span></button>'
@@ -24003,11 +24010,10 @@ const CONTROL_ICON_PATHS = {
  * perspective, Story, Download) sits in `.header-overflow`, which is part of the row in a wide header and the menu of
  * the "⋯" button in a narrow one (see the container queries of the stylesheet). The same buttons in both cases: they
  * are in the page once, so their data-actions, the download state and the focus need no second copy to keep in step.
- * Facet and Maximize stay in the row at every width.
+ * Maximize stays in the row at every width; the Facet is in the toolbar (Draw).
  */
 function renderDiagramHeaderActionsHtml(openerHtml) {
   return (
-    renderFacetSelectHtml() +
     '<span class="header-more">' +
     '<button type="button" class="header-more-button" data-action="toggle-header-menu" aria-haspopup="true" aria-expanded="' +
     headerMenuOpen +
@@ -24147,7 +24153,7 @@ function renderElementTabsHtml(record) {
   );
 }
 
-/** The facet picker of the header; absent when the workspace defines no facet. */
+/** The facet picker of the toolbar (Draw); absent when the workspace defines no facet. */
 function renderFacetSelectHtml() {
   const facets = AppState.workspace.settings.facets.customs;
   if (!facets.length) return '';
@@ -24211,7 +24217,7 @@ function renderColumnsToolHtml(record, host) {
   return (
     '<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">' +
     '<label for="diagram-columns" title="The number of boxes the layout aims at in a row">Columns</label>' +
-    '<select id="diagram-columns" data-action="set-columns">' +
+    '<select id="diagram-columns" data-action="set-columns" title="Choose how many boxes the layout aims at in a row">' +
     columnsOptionsHtml(selected, workspaceColumnsOf(viewpoint), false) +
     '</select></span>'
   );
@@ -26168,11 +26174,9 @@ function diagramFrameCenter(view, drawing, focal, scale) {
   };
 }
 
-/** The part of the canvas the drawing is framed in: the toolbar floats over the bottom, so that strip does not count. */
+/** The part of the canvas the drawing is framed in: all of it, the toolbar is docked before the canvas and covers nothing. */
 function diagramViewSize(canvas) {
-  const tools = canvas.parentElement && canvas.parentElement.querySelector('.diagram-tools');
-  const covered = tools ? tools.offsetHeight + 16 : 0;
-  return { width: canvas.clientWidth, height: Math.max(1, canvas.clientHeight - covered) };
+  return { width: canvas.clientWidth, height: Math.max(1, canvas.clientHeight) };
 }
 
 /** The scale actually applied: 'auto' and 'fit' are worked out for the canvas as it is now. */
@@ -26212,7 +26216,7 @@ function applyDiagramScale() {
   const fit = document.getElementById('diagram-fit-button');
   if (fit) fit.setAttribute('aria-pressed', String(diagramScale === 'fit'));
   const center = document.getElementById('diagram-center-button');
-  if (center) center.setAttribute('data-lit', String(diagramScale === 'auto')); // an action that is lit while its framing holds, not a toggle
+  if (center) center.setAttribute('aria-pressed', String(diagramScale === 'auto'));
   // the opening view stops at a readable size: say what is left out, and how to see it
   const hint = document.getElementById('diagram-hint');
   if (hint) {
@@ -26699,7 +26703,8 @@ function diagramNeighbor(from, key) {
 
 /** Keyboard on the diagram: arrows move between boxes, Enter opens, + - 0 F zoom. */
 function handleDiagramKeydown(e) {
-  if (!(e.target.closest && e.target.closest('.diagram-stage')) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!(e.target.closest && e.target.closest('.diagram-stage, .diagram-toolbar')) || e.ctrlKey || e.metaKey || e.altKey)
+    return;
   const canvas = document.getElementById('diagram-canvas');
   if (e.key === 'Enter' || e.key === ' ') {
     const actionable = e.target.closest('[data-action]');
@@ -27023,51 +27028,96 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
       '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' +
       (record ? escapeHtml(record.reference) : '') +
       '"';
-  const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
   return (
+    renderDiagramToolbarHtml(record, host) +
     '<div class="diagram-stage">' +
     (overlayHtml || '') +
     '<div class="diagram-canvas" id="diagram-canvas"' +
     canvasAttributes +
-    '><span class="muted">Computing the diagram…</span></div>' +
-    '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
+    '><span class="muted">Computing the diagram…</span></div></div>' +
+    // under the drawing: what it is (its status), the hint, and the key to the lines
+    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>'
+  );
+}
+
+/** One group of the toolbar (TDD-0217 DEC-3): named, with a stable `data-group`; a group with no control is not drawn. */
+function renderToolGroupHtml(name, controlsHtml) {
+  if (!controlsHtml) return '';
+  return (
+    '<div class="tool-group" role="group" aria-label="' +
+    name +
+    '" data-group="' +
+    name.toLowerCase() +
+    '"><span class="tool-group-name" aria-hidden="true">' +
+    name +
+    '</span><span class="tool-group-controls">' +
+    controlsHtml +
+    '</span></div>'
+  );
+}
+
+/**
+ * The toolbar of a diagram, docked before the canvas (TDD-0217 DEC-1): five groups, Draw, Texts, Layout, Compare and Frame, each control in one.
+ * `host` is only given by the page of a view in the Library (see `renderDiagramCanvasHtml`): it has no folding and no Facet.
+ */
+function renderDiagramToolbarHtml(record, host) {
+  return (
+    '<div class="diagram-toolbar" role="toolbar" aria-label="Diagram tools">' +
+    renderToolGroupHtml('Draw', renderDrawToolsHtml(record, host)) +
+    renderToolGroupHtml(
+      'Texts',
+      renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined)
+    ) +
+    renderToolGroupHtml('Layout', renderColumnsToolHtml(record, host)) +
+    renderToolGroupHtml('Compare', renderCompareToolsHtml()) +
+    renderToolGroupHtml('Frame', renderFrameToolsHtml()) +
+    '</div>'
+  );
+}
+
+/** Draw: what the diagram draws of the model: folding (Maps), unlinked boxes, the parts of the technology Map, the Facet (not on the page of a view). */
+function renderDrawToolsHtml(record, host) {
+  const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
+  return (
     // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
     (record || host
       ? ''
       : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
         '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
-        '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>') +
+        '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children one more level each time">Unfold all</button></span>') +
     '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' +
     hideUnlinked +
     '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
-    // wave 015 (run 0097, W-9, #98): what the diagram draws of a comparison is the diagram's choice, not the band's; only while a plateau is compared
-    (layerCompareOther()
-      ? '<span class="button-group changes-switch" role="group" aria-label="What the diagram draws of the comparison">' +
-        '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' +
-        !AppState.changesOnly +
-        '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
-        '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' +
-        AppState.changesOnly +
-        '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>'
-      : '') +
     renderMapPartsToolHtml(record, host) +
-    renderColumnsToolHtml(record, host) +
-    '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
-    renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
-    '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
+    (host ? '' : renderFacetSelectHtml())
+  );
+}
+
+/** Compare: one toggle, only while a plateau is compared (wave 015, run 0097, #98); `data-value` is the value a click sets. */
+function renderCompareToolsHtml() {
+  if (!layerCompareOther()) return '';
+  return (
+    '<button type="button" id="diagram-changes-only-button" data-action="set-changes-only" data-value="' +
+    (AppState.changesOnly ? '0' : '1') +
+    '" aria-pressed="' +
+    AppState.changesOnly +
+    '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it; press again to draw the whole plateau">Changes only</button>'
+  );
+}
+
+/** Frame: zoom, back to how the diagram opens, fit. */
+function renderFrameToolsHtml() {
+  return (
     '<span class="button-group" role="group" aria-label="Zoom">' +
-    '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
-    '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
-    '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
-    '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' +
+    '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Make the diagram smaller (-)">−</button>' +
+    '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Draw the diagram at its actual size (0)">100%</button>' +
+    '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Make the diagram larger (+)">+</button></span>' +
+    '<button type="button" id="diagram-center-button" data-action="diagram-recenter" aria-pressed="' +
     (diagramScale === 'auto') +
-    '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
+    '" title="Go back to how the diagram opens: this element in the middle, at a readable size (C)">Center</button>' +
     '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' +
     (diagramScale === 'fit') +
-    '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
-    '</div></div>' +
-    // under the drawing: what it is (its status), the hint, and the key to the lines
-    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>'
+    '" title="Fit the whole diagram in the panel (F)">Fit</button>'
   );
 }
 
@@ -27159,12 +27209,12 @@ function renderDiagramShowGroupHtml(isMap, drawn) {
       'Descriptions',
       'The description of each element that does not contain others, up to ' +
         DIAGRAM_DESCRIPTION_LINES +
-        ' lines (all of it with Wrap)'
+        ' lines, all of it with Wrap'
     ) +
     tool(
       'wrap',
       'Wrap',
-      'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis (a box that contains others still cuts its kind), and show the whole of a long link label (otherwise cut after four lines)'
+      'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis except the kind of a box that contains others, and show the whole of a long link label instead of cutting it after four lines'
     ) +
     '</span>'
   );
@@ -31263,9 +31313,9 @@ function renderStoryPlayerHtml() {
       ? '<button type="button" data-player-action="fullscreen" aria-pressed="' +
         isFull +
         '" title="' +
-        (isFull ? 'Leave full screen' : 'Take the whole screen') +
+        'Take the whole screen. Esc brings it back' +
         '">' +
-        (isFull ? 'Exit full screen' : 'Full screen') +
+        'Full screen' +
         '</button>'
       : '') +
     '<button type="button" data-player-action="close" aria-keyshortcuts="Escape" title="Close the player and go back to the editor, as it was (Esc)">Close</button>' +
@@ -31282,7 +31332,7 @@ function renderStoryPlayerHtml() {
         '<button type="button" data-player-action="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>' +
         '<button type="button" id="player-zoom-label" data-player-action="zoom-reset" aria-label="Actual size" title="Actual size">100%</button>' +
         '<button type="button" data-player-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button></span>' +
-        '<button type="button" id="player-center-button" data-player-action="center" data-lit="true" title="Back to how the step opens: at a readable size, in the middle">Center</button>' +
+        '<button type="button" id="player-center-button" data-player-action="center" aria-pressed="true" title="Back to how the step opens: at a readable size, in the middle">Center</button>' +
         '<button type="button" id="player-fit-button" data-player-action="fit" aria-pressed="false" title="Fit the whole diagram in the window">Fit</button></div>'
       : '') +
     '</div>' +
@@ -31498,7 +31548,7 @@ function applyPlayerFraming() {
   const fit = document.getElementById('player-fit-button');
   if (fit) fit.setAttribute('aria-pressed', String(framing.scale === 'fit'));
   const center = document.getElementById('player-center-button');
-  if (center) center.setAttribute('data-lit', String(framing.scale === 'auto'));
+  if (center) center.setAttribute('aria-pressed', String(framing.scale === 'auto'));
   // the opening view stops at a readable size: say what is left out, and how to see it (as the editor's diagram does)
   const hint = document.getElementById('player-hint');
   if (hint) {
@@ -31659,7 +31709,7 @@ function renderStoryBarHtml() {
     '<button type="button" data-action="story-bar-edit" aria-pressed="' +
     storyBarEditing +
     '" title="Type the words of this step (they are also in Edit story)">' +
-    (storyBarEditing ? 'Done' : 'Edit text') +
+    'Edit text' +
     '</button>' +
     '<button type="button" data-action="story-edit" title="Reorder the steps, rename the story">Edit story</button>' +
     '<button type="button" data-action="story-exit" title="Leave the story: the diagram stays as it is">Leave story</button>' +

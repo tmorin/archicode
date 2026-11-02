@@ -64,7 +64,7 @@ wave_manifest:
       name: Prose, missing pages and generated reference
       gate:
         criteria:
-          - '`grep -ciE ''journey|prowess|delve|unlock'' src/doc/README.adoc` prints 0, and under Concepts exactly one section is titled Plateaus (`grep -c ''^=\+ Plateaus$'' src/doc/README.adoc` prints 1) while every anchor of `git show ff3bacd:src/doc/README.adoc` is still defined'
+          - '`node --test src/test/javascript/manual-voice.test.js` passes (the four words are absent outside listings and code spans; the plain `grep -ciE ''journey|prowess|delve|unlock'' src/doc/README.adoc` printed 36 before the wave and prints 7 after it, all in code spans or listings: quoted program output and fixture ids), and under Concepts exactly one section is titled Plateaus (`grep -c ''^=\+ Plateaus$'' src/doc/README.adoc` prints 1) while every anchor of `git show ff3bacd:src/doc/README.adoc` is still defined'
           - 'src/doc/README.adoc has a How-to guide for CI that names `diff --fail-on` and the exit codes 1, 2 and 3, and a How-to guide for an agent that names `archicode guide`, `archicode init`, `query graph` and docs/architecture; `./mvnw test -Dtest=ManualExamplesTest` exits 0'
           - 'the Features section no longer promises an extension point the command line lacks (`grep -c ''Pluggable Viewpoint Service'' src/doc/README.adoc` prints 0), and the topics dropped from Best Practices under Q2 are named in the record of W-5'
           - 'a test fails when the command reference of the manual and the `--help` of the application disagree: it names every command that `java -jar target/quarkus-app/quarkus-run.jar --help` lists, recursively, and the reference in src/doc lists all of them; the run edits a copy to show the test fails, and `./mvnw test` exits 0'
@@ -125,7 +125,7 @@ wave_manifest:
       slug: manual-missing-pages
       phase: P2
       depends_on: [W-4, W-2]
-      run: null
+      run: 0215
       delegation: standard
       likely_paths:
         - 'src/doc/README.adoc'
@@ -135,7 +135,7 @@ wave_manifest:
       slug: generated-command-reference
       phase: P2
       depends_on: [W-5]
-      run: null
+      run: 0216
       delegation: standard
       likely_paths:
         - 'src/doc/**'
@@ -148,7 +148,7 @@ wave_manifest:
       slug: toolbar-structure
       phase: P3
       depends_on: []
-      run: null
+      run: 0217
       delegation: standard
       likely_paths:
         - 'src/main/editor/**'

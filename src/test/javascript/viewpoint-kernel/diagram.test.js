@@ -374,7 +374,11 @@ test('maximizing the diagram hides the tree, and only on a diagram', async () =>
   run(sandbox, 'diagramMaximized = true;');
   const maximized = sandbox.renderElementsPerspectiveHtml();
   assert.equal(maximized.left, null);
-  assert.match(maximized.center, /data-action="toggle-maximize"[^>]*>.*<span class="control-label">Restore<\/span>/);
+  // run 0217 (REQ-4): the label is constant, `aria-pressed` says the state
+  assert.match(
+    maximized.center,
+    /data-action="toggle-maximize" aria-pressed="true"[^>]*>.*<span class="control-label">Maximize<\/span>/
+  );
 
   run(sandbox, "elementTab = 'details';");
   assert.ok(sandbox.renderElementsPerspectiveHtml().left, 'the page of an element always has its tree');
@@ -504,12 +508,12 @@ test('Center and Fit are lit while the diagram is framed that way, and only then
   const { sandbox } = await openFixture();
   const record = sandbox.findElementRecord('shop.web.api');
   const html = () => sandbox.renderDiagramCanvasHtml(record, false);
-  assert.match(html(), /id="diagram-center-button"[^>]*data-lit="true"/, 'a diagram opens framed on its element');
+  assert.match(html(), /id="diagram-center-button"[^>]*aria-pressed="true"/, 'a diagram opens framed on its element');
   assert.match(html(), /id="diagram-fit-button"[^>]*aria-pressed="false"/);
   sandbox.eval
     ? sandbox.eval("diagramScale = 'fit'")
     : require('node:vm').runInContext("diagramScale = 'fit'", sandbox);
-  assert.match(html(), /id="diagram-center-button"[^>]*data-lit="false"/);
+  assert.match(html(), /id="diagram-center-button"[^>]*aria-pressed="false"/);
   assert.match(html(), /id="diagram-fit-button"[^>]*aria-pressed="true"/);
 });
 
@@ -819,16 +823,17 @@ test('the toolbars of Elements say what their controls are, keep the focus acros
   state.selection = { kind: 'element', key: 'shop', mode: 'view' };
   const page = sandbox.renderElementsPerspectiveHtml().center;
   assert.match(page, /role="group" aria-label="View of this element"/, 'the tabs are a group of views, said honestly');
-  assert.match(page, /data-action="toggle-maximize" aria-label="Maximize"/);
-  assert.doesNotMatch(
+  assert.match(page, /data-action="toggle-maximize" aria-pressed="false" aria-label="Maximize"/);
+  // run 0217 (REQ-4): the reverse of what was asserted here. Every toggle has `aria-pressed` and a label that does not change, Maximize and Center included
+  assert.match(
     page.match(/<button[^>]*toggle-maximize[^>]*>/)[0],
-    /aria-pressed/,
-    'the label says the state, the button is not also pressed'
+    /aria-pressed="false"/,
+    'the label is constant, the state is aria-pressed'
   );
-  assert.doesNotMatch(
+  assert.match(
     page.match(/<button[^>]*diagram-center-button[^>]*>/)[0],
-    /aria-pressed/,
-    'Center is an action, lit while its framing holds'
+    /aria-pressed="(true|false)"/,
+    'Center says by aria-pressed whether its framing holds (data-lit is gone)'
   );
   assert.match(page, /id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size"/);
   assert.match(
@@ -1229,7 +1234,8 @@ test('the tabs of an element are on the left of its header, on every tab, so tha
   const unpressed = (html) => left(html).replace(/ aria-pressed="(true|false)"/g, '');
   assert.equal(unpressed(details), unpressed(deep), 'the left of the header does not depend on the tab');
   assert.ok(
-    right(details).includes('toggle-element-edit') && right(deep).includes('diagram-facet-select'),
+    // run 0217: the Facet select left the header for the toolbar (Draw group); what the diagram tab adds on the right is Maximize
+    right(details).includes('toggle-element-edit') && right(deep).includes('toggle-maximize'),
     'what differs is on the right'
   );
 });

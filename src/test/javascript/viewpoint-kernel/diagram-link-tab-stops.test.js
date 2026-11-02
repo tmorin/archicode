@@ -334,7 +334,7 @@ function press(sandbox, target, key, extra) {
   const stage = {};
   const inner = target.closest;
   target.closest = (selector) =>
-    selector === '.diagram-stage' ? stage : selector === '#diagram-canvas' ? {} : inner(selector);
+    selector === '.diagram-stage, .diagram-toolbar' ? stage : selector === '#diagram-canvas' ? {} : inner(selector);
   sandbox.handleDiagramKeydown(event);
   target.closest = inner;
   return event;

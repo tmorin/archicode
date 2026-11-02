@@ -1863,7 +1863,7 @@ test('the story bar shows the words to read, and a box to type in only on reques
   assert.match(sandbox.renderStoryBarHtml(), /class="story-bar-words">The API answers\./);
   click('story-bar-edit');
   assert.match(sandbox.renderStoryBarHtml(), /<textarea class="story-bar-text"[^>]*>The API answers\./);
-  assert.match(sandbox.renderStoryBarHtml(), />Done</);
+  assert.match(sandbox.renderStoryBarHtml(), />Edit text</);
   // the line about what was done lasts until the next action
   assert.equal(ev(sandbox, 'storyBarNotice'), null);
 });

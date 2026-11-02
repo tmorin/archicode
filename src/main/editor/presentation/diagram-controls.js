@@ -43,18 +43,18 @@ function libraryDiagramShown() {
 
 /** Hides (or brings back) the panels around the diagram; `panels`: what it hides (the element tree of the Map and Elements). */
 function renderMaximizeButtonHtml(panels) {
-  // the label says the state, so the button is not also "pressed"; in a narrow header the icon stays and the word goes (the title has it)
-  const label = diagramMaximized ? 'Restore' : 'Maximize';
+  // the label does not change: `aria-pressed` says the state; in a narrow header the icon stays and the word goes (the title has it)
+  const label = 'Maximize';
   const what = panels || 'the element tree';
   return (
-    '<button type="button" class="maximize-button with-icon" data-action="toggle-maximize" aria-label="' +
+    '<button type="button" class="maximize-button with-icon" data-action="toggle-maximize" aria-pressed="' +
+    diagramMaximized +
+    '" aria-label="' +
     label +
-    '" title="' +
-    (diagramMaximized ? 'Bring back ' + what + ' (Esc)' : 'Hide ' + what + ' to give the diagram all the room (M)') +
-    '">' +
-    controlIconHtml(
-      diagramMaximized ? 'M6 3v3H3M10 3v3h3M6 13v-3H3M10 13v-3h3' : 'M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3'
-    ) +
+    '" title="Hide ' +
+    what +
+    ' to give the diagram all the room (M). Esc brings it back">' +
+    controlIconHtml('M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3') +
     '<span class="control-label">' +
     label +
     '</span></button>'
@@ -83,11 +83,10 @@ const CONTROL_ICON_PATHS = {
  * perspective, Story, Download) sits in `.header-overflow`, which is part of the row in a wide header and the menu of
  * the "⋯" button in a narrow one (see the container queries of the stylesheet). The same buttons in both cases: they
  * are in the page once, so their data-actions, the download state and the focus need no second copy to keep in step.
- * Facet and Maximize stay in the row at every width.
+ * Maximize stays in the row at every width; the Facet is in the toolbar (Draw).
  */
 function renderDiagramHeaderActionsHtml(openerHtml) {
   return (
-    renderFacetSelectHtml() +
     '<span class="header-more">' +
     '<button type="button" class="header-more-button" data-action="toggle-header-menu" aria-haspopup="true" aria-expanded="' +
     headerMenuOpen +
@@ -227,7 +226,7 @@ function renderElementTabsHtml(record) {
   );
 }
 
-/** The facet picker of the header; absent when the workspace defines no facet. */
+/** The facet picker of the toolbar (Draw); absent when the workspace defines no facet. */
 function renderFacetSelectHtml() {
   const facets = AppState.workspace.settings.facets.customs;
   if (!facets.length) return '';
@@ -291,7 +290,7 @@ function renderColumnsToolHtml(record, host) {
   return (
     '<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">' +
     '<label for="diagram-columns" title="The number of boxes the layout aims at in a row">Columns</label>' +
-    '<select id="diagram-columns" data-action="set-columns">' +
+    '<select id="diagram-columns" data-action="set-columns" title="Choose how many boxes the layout aims at in a row">' +
     columnsOptionsHtml(selected, workspaceColumnsOf(viewpoint), false) +
     '</select></span>'
   );

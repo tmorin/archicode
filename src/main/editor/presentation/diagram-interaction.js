@@ -39,11 +39,9 @@ function diagramFrameCenter(view, drawing, focal, scale) {
   };
 }
 
-/** The part of the canvas the drawing is framed in: the toolbar floats over the bottom, so that strip does not count. */
+/** The part of the canvas the drawing is framed in: all of it, the toolbar is docked before the canvas and covers nothing. */
 function diagramViewSize(canvas) {
-  const tools = canvas.parentElement && canvas.parentElement.querySelector('.diagram-tools');
-  const covered = tools ? tools.offsetHeight + 16 : 0;
-  return { width: canvas.clientWidth, height: Math.max(1, canvas.clientHeight - covered) };
+  return { width: canvas.clientWidth, height: Math.max(1, canvas.clientHeight) };
 }
 
 /** The scale actually applied: 'auto' and 'fit' are worked out for the canvas as it is now. */
@@ -83,7 +81,7 @@ function applyDiagramScale() {
   const fit = document.getElementById('diagram-fit-button');
   if (fit) fit.setAttribute('aria-pressed', String(diagramScale === 'fit'));
   const center = document.getElementById('diagram-center-button');
-  if (center) center.setAttribute('data-lit', String(diagramScale === 'auto')); // an action that is lit while its framing holds, not a toggle
+  if (center) center.setAttribute('aria-pressed', String(diagramScale === 'auto'));
   // the opening view stops at a readable size: say what is left out, and how to see it
   const hint = document.getElementById('diagram-hint');
   if (hint) {
@@ -570,7 +568,8 @@ function diagramNeighbor(from, key) {
 
 /** Keyboard on the diagram: arrows move between boxes, Enter opens, + - 0 F zoom. */
 function handleDiagramKeydown(e) {
-  if (!(e.target.closest && e.target.closest('.diagram-stage')) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!(e.target.closest && e.target.closest('.diagram-stage, .diagram-toolbar')) || e.ctrlKey || e.metaKey || e.altKey)
+    return;
   const canvas = document.getElementById('diagram-canvas');
   if (e.key === 'Enter' || e.key === ' ') {
     const actionable = e.target.closest('[data-action]');

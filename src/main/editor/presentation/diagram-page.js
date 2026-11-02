@@ -28,51 +28,96 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
       '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' +
       (record ? escapeHtml(record.reference) : '') +
       '"';
-  const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
   return (
+    renderDiagramToolbarHtml(record, host) +
     '<div class="diagram-stage">' +
     (overlayHtml || '') +
     '<div class="diagram-canvas" id="diagram-canvas"' +
     canvasAttributes +
-    '><span class="muted">Computing the diagram…</span></div>' +
-    '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
+    '><span class="muted">Computing the diagram…</span></div></div>' +
+    // under the drawing: what it is (its status), the hint, and the key to the lines
+    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>'
+  );
+}
+
+/** One group of the toolbar (TDD-0217 DEC-3): named, with a stable `data-group`; a group with no control is not drawn. */
+function renderToolGroupHtml(name, controlsHtml) {
+  if (!controlsHtml) return '';
+  return (
+    '<div class="tool-group" role="group" aria-label="' +
+    name +
+    '" data-group="' +
+    name.toLowerCase() +
+    '"><span class="tool-group-name" aria-hidden="true">' +
+    name +
+    '</span><span class="tool-group-controls">' +
+    controlsHtml +
+    '</span></div>'
+  );
+}
+
+/**
+ * The toolbar of a diagram, docked before the canvas (TDD-0217 DEC-1): five groups, Draw, Texts, Layout, Compare and Frame, each control in one.
+ * `host` is only given by the page of a view in the Library (see `renderDiagramCanvasHtml`): it has no folding and no Facet.
+ */
+function renderDiagramToolbarHtml(record, host) {
+  return (
+    '<div class="diagram-toolbar" role="toolbar" aria-label="Diagram tools">' +
+    renderToolGroupHtml('Draw', renderDrawToolsHtml(record, host)) +
+    renderToolGroupHtml(
+      'Texts',
+      renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined)
+    ) +
+    renderToolGroupHtml('Layout', renderColumnsToolHtml(record, host)) +
+    renderToolGroupHtml('Compare', renderCompareToolsHtml()) +
+    renderToolGroupHtml('Frame', renderFrameToolsHtml()) +
+    '</div>'
+  );
+}
+
+/** Draw: what the diagram draws of the model: folding (Maps), unlinked boxes, the parts of the technology Map, the Facet (not on the page of a view). */
+function renderDrawToolsHtml(record, host) {
+  const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
+  return (
     // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
     (record || host
       ? ''
       : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
         '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
-        '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>') +
+        '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children one more level each time">Unfold all</button></span>') +
     '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' +
     hideUnlinked +
     '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
-    // wave 015 (run 0097, W-9, #98): what the diagram draws of a comparison is the diagram's choice, not the band's; only while a plateau is compared
-    (layerCompareOther()
-      ? '<span class="button-group changes-switch" role="group" aria-label="What the diagram draws of the comparison">' +
-        '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' +
-        !AppState.changesOnly +
-        '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
-        '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' +
-        AppState.changesOnly +
-        '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>'
-      : '') +
     renderMapPartsToolHtml(record, host) +
-    renderColumnsToolHtml(record, host) +
-    '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
-    renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
-    '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
+    (host ? '' : renderFacetSelectHtml())
+  );
+}
+
+/** Compare: one toggle, only while a plateau is compared (wave 015, run 0097, #98); `data-value` is the value a click sets. */
+function renderCompareToolsHtml() {
+  if (!layerCompareOther()) return '';
+  return (
+    '<button type="button" id="diagram-changes-only-button" data-action="set-changes-only" data-value="' +
+    (AppState.changesOnly ? '0' : '1') +
+    '" aria-pressed="' +
+    AppState.changesOnly +
+    '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it; press again to draw the whole plateau">Changes only</button>'
+  );
+}
+
+/** Frame: zoom, back to how the diagram opens, fit. */
+function renderFrameToolsHtml() {
+  return (
     '<span class="button-group" role="group" aria-label="Zoom">' +
-    '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
-    '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
-    '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
-    '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' +
+    '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Make the diagram smaller (-)">−</button>' +
+    '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Draw the diagram at its actual size (0)">100%</button>' +
+    '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Make the diagram larger (+)">+</button></span>' +
+    '<button type="button" id="diagram-center-button" data-action="diagram-recenter" aria-pressed="' +
     (diagramScale === 'auto') +
-    '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
+    '" title="Go back to how the diagram opens: this element in the middle, at a readable size (C)">Center</button>' +
     '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' +
     (diagramScale === 'fit') +
-    '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
-    '</div></div>' +
-    // under the drawing: what it is (its status), the hint, and the key to the lines
-    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>'
+    '" title="Fit the whole diagram in the panel (F)">Fit</button>'
   );
 }
 
@@ -164,12 +209,12 @@ function renderDiagramShowGroupHtml(isMap, drawn) {
       'Descriptions',
       'The description of each element that does not contain others, up to ' +
         DIAGRAM_DESCRIPTION_LINES +
-        ' lines (all of it with Wrap)'
+        ' lines, all of it with Wrap'
     ) +
     tool(
       'wrap',
       'Wrap',
-      'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis (a box that contains others still cuts its kind), and show the whole of a long link label (otherwise cut after four lines)'
+      'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis except the kind of a box that contains others, and show the whole of a long link label instead of cutting it after four lines'
     ) +
     '</span>'
   );

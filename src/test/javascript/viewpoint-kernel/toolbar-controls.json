@@ -1,0 +1,232 @@
+{
+  "comment": "The controls of the diagram toolbar by surface (TDD-0217 CTR-2). A control is its data-action, plus ':' and its data-show, data-part or data-dir where the action is shared, or its id for a select. The table lists every control a surface can show: Facet needs a facet in the workspace, Changes only needs a comparison. Wave 030 W-8 adds Reset and the dot.",
+  "groupOrder": ["Draw", "Texts", "Layout", "Compare", "Frame"],
+  "surfaces": {
+    "element": {
+      "groups": [
+        {
+          "name": "Draw",
+          "controls": ["toggle-hide-unlinked", "diagram-facet-select"]
+        },
+        {
+          "name": "Texts",
+          "controls": [
+            "toggle-show:labels",
+            "toggle-show:qualifiers",
+            "toggle-show:descriptions",
+            "toggle-show:wrap"
+          ]
+        },
+        {
+          "name": "Layout",
+          "controls": ["diagram-columns"]
+        },
+        {
+          "name": "Compare",
+          "controls": ["set-changes-only"]
+        },
+        {
+          "name": "Frame",
+          "controls": [
+            "diagram-zoom:out",
+            "diagram-zoom:reset",
+            "diagram-zoom:in",
+            "diagram-recenter",
+            "diagram-zoom:fit"
+          ]
+        }
+      ]
+    },
+    "map-application": {
+      "groups": [
+        {
+          "name": "Draw",
+          "controls": [
+            "fold-all",
+            "unfold-all",
+            "toggle-hide-unlinked",
+            "diagram-facet-select"
+          ]
+        },
+        {
+          "name": "Texts",
+          "controls": [
+            "toggle-show:labels",
+            "toggle-show:qualifiers",
+            "toggle-show:descriptions",
+            "toggle-show:wrap"
+          ]
+        },
+        {
+          "name": "Layout",
+          "controls": ["diagram-columns"]
+        },
+        {
+          "name": "Compare",
+          "controls": ["set-changes-only"]
+        },
+        {
+          "name": "Frame",
+          "controls": [
+            "diagram-zoom:out",
+            "diagram-zoom:reset",
+            "diagram-zoom:in",
+            "diagram-recenter",
+            "diagram-zoom:fit"
+          ]
+        }
+      ]
+    },
+    "map-technology": {
+      "groups": [
+        {
+          "name": "Draw",
+          "controls": [
+            "fold-all",
+            "unfold-all",
+            "toggle-hide-unlinked",
+            "toggle-map-part:applications",
+            "toggle-map-part:relationships",
+            "diagram-facet-select"
+          ]
+        },
+        {
+          "name": "Texts",
+          "controls": [
+            "toggle-show:labels",
+            "toggle-show:qualifiers",
+            "toggle-show:descriptions",
+            "toggle-show:wrap"
+          ]
+        },
+        {
+          "name": "Layout",
+          "controls": ["diagram-columns"]
+        },
+        {
+          "name": "Compare",
+          "controls": ["set-changes-only"]
+        },
+        {
+          "name": "Frame",
+          "controls": [
+            "diagram-zoom:out",
+            "diagram-zoom:reset",
+            "diagram-zoom:in",
+            "diagram-recenter",
+            "diagram-zoom:fit"
+          ]
+        }
+      ]
+    },
+    "view-element": {
+      "groups": [
+        {
+          "name": "Draw",
+          "controls": ["toggle-hide-unlinked"]
+        },
+        {
+          "name": "Texts",
+          "controls": [
+            "toggle-show:labels",
+            "toggle-show:qualifiers",
+            "toggle-show:descriptions",
+            "toggle-show:wrap"
+          ]
+        },
+        {
+          "name": "Layout",
+          "controls": ["diagram-columns"]
+        },
+        {
+          "name": "Compare",
+          "controls": ["set-changes-only"]
+        },
+        {
+          "name": "Frame",
+          "controls": [
+            "diagram-zoom:out",
+            "diagram-zoom:reset",
+            "diagram-zoom:in",
+            "diagram-recenter",
+            "diagram-zoom:fit"
+          ]
+        }
+      ]
+    },
+    "view-map-application": {
+      "groups": [
+        {
+          "name": "Draw",
+          "controls": ["toggle-hide-unlinked"]
+        },
+        {
+          "name": "Texts",
+          "controls": [
+            "toggle-show:labels",
+            "toggle-show:qualifiers",
+            "toggle-show:descriptions",
+            "toggle-show:wrap"
+          ]
+        },
+        {
+          "name": "Layout",
+          "controls": ["diagram-columns"]
+        },
+        {
+          "name": "Compare",
+          "controls": ["set-changes-only"]
+        },
+        {
+          "name": "Frame",
+          "controls": [
+            "diagram-zoom:out",
+            "diagram-zoom:reset",
+            "diagram-zoom:in",
+            "diagram-recenter",
+            "diagram-zoom:fit"
+          ]
+        }
+      ]
+    },
+    "view-map-technology": {
+      "groups": [
+        {
+          "name": "Draw",
+          "controls": [
+            "toggle-hide-unlinked",
+            "toggle-map-part:applications",
+            "toggle-map-part:relationships"
+          ]
+        },
+        {
+          "name": "Texts",
+          "controls": [
+            "toggle-show:labels",
+            "toggle-show:qualifiers",
+            "toggle-show:descriptions",
+            "toggle-show:wrap"
+          ]
+        },
+        {
+          "name": "Layout",
+          "controls": ["diagram-columns"]
+        },
+        {
+          "name": "Compare",
+          "controls": ["set-changes-only"]
+        },
+        {
+          "name": "Frame",
+          "controls": [
+            "diagram-zoom:out",
+            "diagram-zoom:reset",
+            "diagram-zoom:in",
+            "diagram-recenter",
+            "diagram-zoom:fit"
+          ]
+        }
+      ]
+    }
+  }
+}

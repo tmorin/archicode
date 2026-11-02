@@ -327,9 +327,9 @@ function renderStoryPlayerHtml() {
       ? '<button type="button" data-player-action="fullscreen" aria-pressed="' +
         isFull +
         '" title="' +
-        (isFull ? 'Leave full screen' : 'Take the whole screen') +
+        'Take the whole screen. Esc brings it back' +
         '">' +
-        (isFull ? 'Exit full screen' : 'Full screen') +
+        'Full screen' +
         '</button>'
       : '') +
     '<button type="button" data-player-action="close" aria-keyshortcuts="Escape" title="Close the player and go back to the editor, as it was (Esc)">Close</button>' +
@@ -346,7 +346,7 @@ function renderStoryPlayerHtml() {
         '<button type="button" data-player-action="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>' +
         '<button type="button" id="player-zoom-label" data-player-action="zoom-reset" aria-label="Actual size" title="Actual size">100%</button>' +
         '<button type="button" data-player-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button></span>' +
-        '<button type="button" id="player-center-button" data-player-action="center" data-lit="true" title="Back to how the step opens: at a readable size, in the middle">Center</button>' +
+        '<button type="button" id="player-center-button" data-player-action="center" aria-pressed="true" title="Back to how the step opens: at a readable size, in the middle">Center</button>' +
         '<button type="button" id="player-fit-button" data-player-action="fit" aria-pressed="false" title="Fit the whole diagram in the window">Fit</button></div>'
       : '') +
     '</div>' +
@@ -562,7 +562,7 @@ function applyPlayerFraming() {
   const fit = document.getElementById('player-fit-button');
   if (fit) fit.setAttribute('aria-pressed', String(framing.scale === 'fit'));
   const center = document.getElementById('player-center-button');
-  if (center) center.setAttribute('data-lit', String(framing.scale === 'auto'));
+  if (center) center.setAttribute('aria-pressed', String(framing.scale === 'auto'));
   // the opening view stops at a readable size: say what is left out, and how to see it (as the editor's diagram does)
   const hint = document.getElementById('player-hint');
   if (hint) {

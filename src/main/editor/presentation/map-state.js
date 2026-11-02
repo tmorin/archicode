@@ -58,7 +58,7 @@ function headerControlSelector(el) {
   const control =
     el && el.closest
       ? el.closest(
-          '.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button'
+          '.element-header button, .element-header select, .diagram-tools button, .diagram-toolbar button, .diagram-toolbar select, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button'
         )
       : null;
   if (!control) return null;
