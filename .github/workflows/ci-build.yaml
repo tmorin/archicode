@@ -34,11 +34,41 @@ jobs:
   # The wall-clock time of the pipeline is the slowest part and not the sum of the parts; each part has the steps and the
   # commands it had as one job. Not on a dispatch (see the comment of the trigger above): Build would publish.
   # A part reads the repository only: `contents: read`, the token it gets on a pull request from a fork too.
+  # A job Changes comes first and says which of the four a pull request needs, from the files it changes (the filter is in
+  # the workflow, as skipped jobs, never on the `on:` trigger). A push to main, a tag and a dispatch are never filtered:
+  # only a pull request is. Build compares each part's answer with what the part did.
+
+  Changes:
+    # Which of the four checks a pull request needs, from the files it changes (scripts/changes.mjs holds the map and its
+    # reasons; `node scripts/changes.mjs --list` shows every tracked path with its rule). A push, a tag and a dispatch
+    # never get here filtered: the script answers "everything" for any event but a pull request.
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: read
+    outputs:
+      java: ${{ steps.map.outputs.java }}
+      page: ${{ steps.map.outputs.page }}
+      kernel: ${{ steps.map.outputs.kernel }}
+      e2e: ${{ steps.map.outputs.e2e }}
+    steps:
+      - uses: "actions/checkout@v7"
+        with:
+          # the merge-base of the pull request needs the history; the other events do not read it
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+      - name: "Work out which parts apply"
+        id: map
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/changes.mjs --event "$EVENT" --base "$BASE_SHA" --head "$HEAD_SHA"
 
   Java:
     # `./mvnw verify`: the Java tests, the integration tests of the jar are not in it (skipITs), the coverage floors and the
     # manual (asciidoctor, which draws with graphviz)
-    if: ${{ github.event_name != 'workflow_dispatch' }}
+    needs: Changes
+    if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.java == 'true' }}
     runs-on: "ubuntu-latest"
     permissions:
       contents: read
@@ -92,7 +122,8 @@ jobs:
   Page:
     # The editor page and the scripts: Prettier, ESLint, the node unit suite with the coverage of the editor script, and the
     # time budget of the kernel. Needs Node.js only (the kernel is the committed .wasm).
-    if: ${{ github.event_name != 'workflow_dispatch' }}
+    needs: Changes
+    if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.page == 'true' }}
     runs-on: "ubuntu-latest"
     permissions:
       contents: read
@@ -163,7 +194,8 @@ jobs:
     # The viewpoint kernel (Rust compiled to WebAssembly): tests, format, lint, line coverage, and the check that the
     # committed .wasm is the one the sources build. Needs rustup (on the runner) and python3, nothing else: rustup installs
     # the toolchain, the components and the wasm target of rust-toolchain.toml at the first cargo command.
-    if: ${{ github.event_name != 'workflow_dispatch' }}
+    needs: Changes
+    if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.kernel == 'true' }}
     runs-on: "ubuntu-latest"
     permissions:
       contents: read
@@ -199,7 +231,8 @@ jobs:
     # jar (`./mvnw package` without the tests and the manual: about a minute) instead of waiting for the one `Java` builds,
     # which would put this job after Java's five minutes; its own Maven cache, apart from Java's (a cache of what a build
     # without tests needs must not take the place of the one `verify` needs).
-    if: ${{ github.event_name != 'workflow_dispatch' }}
+    needs: Changes
+    if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.e2e == 'true' }}
     runs-on: "ubuntu-latest"
     permissions:
       contents: read
@@ -269,13 +302,13 @@ jobs:
           retention-days: 7
 
   Build:
-    # The name other things rely on (the check a pull request may require, the `needs` of Release): green when the four
-    # parts are, and it publishes. `!cancelled()` so that the job RUNS when a part failed and says so, red: a job that
-    # needs a failed one is skipped by default, and a skipped job is a passing check, for a branch protection and for
+    # The name other things rely on (the check a pull request may require, the `needs` of Release): green when each of the
+    # four parts did what Changes asked (a part the filter skipped counts), and it publishes. `!cancelled()` so that the
+    # job RUNS when a part failed and says so, red: a job that needs a failed one is skipped by default, and a skipped job is a passing check, for a branch protection and for
     # Release (which accepts a skipped Build, a dispatch). The first step is the check; the steps after it do not run
     # when it fails. Not on a dispatch: its publishing steps test the ref, not the event, and a dispatch from main would
     # publish a snapshot (a dispatch from a tag, the website).
-    needs: [Java, Page, Kernel, E2E]
+    needs: [Changes, Java, Page, Kernel, E2E]
     if: ${{ !cancelled() && github.event_name != 'workflow_dispatch' }}
     runs-on: "ubuntu-latest"
     # What the steps below write, and nothing else, and on this job only: the website goes to the gh-pages branch
@@ -290,17 +323,29 @@ jobs:
       # request nothing below the check runs, not even the checkout
       PUBLISHES: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
     steps:
-      - name: "Check that the four parts passed"
+      - name: "Check that every part ran or was skipped by the filter"
+        # For each part, what Changes asked (the output) and what the part did (the result) must agree: `true/success` or
+        # `false/skipped`. A part skipped though it was asked, one that ran though it was not, one that failed or was
+        # cancelled, an empty output (Changes failed, so the four were skipped) and a failed Changes all fail here.
         env:
-          JAVA: ${{ needs.Java.result }}
-          PAGE: ${{ needs.Page.result }}
-          KERNEL: ${{ needs.Kernel.result }}
-          E2E: ${{ needs.E2E.result }}
+          CHANGES: ${{ needs.Changes.result }}
+          JAVA_WANTED: ${{ needs.Changes.outputs.java }}
+          JAVA_RESULT: ${{ needs.Java.result }}
+          PAGE_WANTED: ${{ needs.Changes.outputs.page }}
+          PAGE_RESULT: ${{ needs.Page.result }}
+          KERNEL_WANTED: ${{ needs.Changes.outputs.kernel }}
+          KERNEL_RESULT: ${{ needs.Kernel.result }}
+          E2E_WANTED: ${{ needs.Changes.outputs.e2e }}
+          E2E_RESULT: ${{ needs.E2E.result }}
         run: |
           status=0
-          for part in "Java=${JAVA}" "Page=${PAGE}" "Kernel=${KERNEL}" "E2E=${E2E}"; do
-            if [ "${part#*=}" != "success" ]; then
-              echo "::error::the job ${part%%=*} did not succeed (${part#*=}): nothing is published"
+          if [ "${CHANGES}" != "success" ]; then
+            echo "::error::the job Changes did not succeed (${CHANGES}): nothing is published"
+            status=1
+          fi
+          for part in "Java=${JAVA_WANTED}/${JAVA_RESULT}" "Page=${PAGE_WANTED}/${PAGE_RESULT}" "Kernel=${KERNEL_WANTED}/${KERNEL_RESULT}" "E2E=${E2E_WANTED}/${E2E_RESULT}"; do
+            if [ "${part#*=}" != "true/success" ] && [ "${part#*=}" != "false/skipped" ]; then
+              echo "::error::the job ${part%%=*} was asked or skipped as ${part#*=} (asked/result): it must be true/success or false/skipped, nothing is published"
               status=1
             fi
           done
@@ -367,7 +412,7 @@ jobs:
           path: target/generated-docs
       - name: "Assemble website"
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        # The presentation page at the root, the manual at /docs/ and the editor at /editor/. The presentation page and
+        # The presentation page at the root with robots.txt, sitemap.xml and llms.txt beside it, the manual at /docs/ and the editor at /editor/. The presentation page and
         # the editor are those of the tag, stamped with its release (copies: the files of the repository keep "dev").
         # Only the latest release is published, as the manual is.
         run: |
