@@ -84,7 +84,7 @@ wave_manifest:
       slug: ci-changes-filter
       phase: P1
       depends_on: []
-      run: null
+      run: 0211
       delegation: hard_judgment
       delegation_reason: 'changes the Build job that gates the publish and release jobs (live capability); provable only on the run of main and on a tag'
       likely_paths:
@@ -96,7 +96,7 @@ wave_manifest:
       slug: homepage
       phase: P1
       depends_on: [W-1]
-      run: null
+      run: 0212
       delegation: standard
       likely_paths:
         - 'src/site/**'
@@ -107,7 +107,7 @@ wave_manifest:
       slug: manual-skeleton
       phase: P1
       depends_on: [W-2]
-      run: null
+      run: 0213
       delegation: standard
       likely_paths:
         - 'src/doc/**'
@@ -116,7 +116,7 @@ wave_manifest:
       slug: manual-concepts-and-voice
       phase: P2
       depends_on: [W-3]
-      run: null
+      run: 0214
       delegation: standard
       likely_paths:
         - 'src/doc/README.adoc'

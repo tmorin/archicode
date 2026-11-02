@@ -30,8 +30,10 @@ function prose(lines) {
 
 const PROSE = prose(LINES);
 
-function hits(regex) {
-  return PROSE.flatMap((line, index) => (regex.test(line) ? [`${index + 1}: ${LINES[index].slice(0, 70)}`] : []));
+function hits(regex, exempt) {
+  return PROSE.flatMap((line, index) =>
+    regex.test(line) && !exempt?.test(line) ? [`${index + 1}: ${LINES[index].slice(0, 70)}`] : []
+  );
 }
 
 /** The line index of the explicit id, at the start of a line or inline, or -1. */

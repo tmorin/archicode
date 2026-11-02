@@ -92,7 +92,7 @@ Use pre-defined viewpoints to generate views that communicate your architectural
 ArchiCode's viewpoints smartly manage relationships, providing a clear representation of how components interact within your architecture.
 
 .CI/CD Integration
-Run ArchiCode in your CI/CD pipelines to keep the architecture checked throughout your development lifecycle.
+Run ArchiCode in your CI/CD pipelines to keep the architecture checked throughout your development lifecycle (see <<howto-ci>>).
 
 .Plateaus
 A plateau is one layer of the architecture, as it is or as it should be, over the plateau it overrides. You write it as the manifests that say `plateau: <id>` in their header, over the plateau they override, with patches (`REMOVE`, `SET`, `ADD`, `MERGE`) for what they change. ArchiCode computes what is new, changed and removed from one plateau to another and draws it, in the views and in the editor, with marks that never rely on colour. An element can say what it replaces (`replaces`), so that a move, a split or a merge is one change and not a removal plus an addition; the editor proposes the matches it finds and writes the hint in one click, and moves an element under another parent without breaking a reference (see <<plateaus-overview>>).
@@ -873,21 +873,122 @@ new      element  application  shop.search    -        name: "Search"
 
 = How-to guides
 
+[[howto-ci]]
+== Check the architecture in a build
+
+A build can fail when a plateau changes what you said it must not change. The check compares one plateau with another one: the `to-be` plateau must not remove or move what the `baseline` plateau has. A comparison with an earlier commit of the same plateau is not offered; keep the plateau you guard against as a plateau of its own (see <<plateaus-overview>>). The examples below use `domain_plateaus`, the bookshop of the tutorial, and run in the folder of its `.archicode.yaml`.
+
+*First, load the workspace.* `archicode query graph` reads every manifest and prints the graph. It exits with 1 and one `error:` line per problem when a reference dangles or a manifest is wrong, so the build stops before the comparison does. There is no `validate` command; this is the check.
+
+----
+archicode query graph > /dev/null
+----
+
+*Then, compare.* `diff --fail-on` takes the states that fail the build, separated by commas: `new`, `changed`, `removed`, `moved`, `split`, `merged`, `contains-changes` or `any` (see <<diff>> for what each means). List the states you refuse. `any` fails on every change, which is a review and not a guard.
+
+----
+archicode diff --plateau to-be --against baseline --fail-on removed,moved
+----
+
+*Read the exit code.* A script tells three situations apart, and the codes are defined once, in <<errors-and-warnings>>.
+
+[cols="1,4"]
+|===
+| Code | What it says
+
+| 0
+| Nothing of a listed state changed, or the comparison was not asked to fail.
+
+| 1
+| The check could not run: the workspace is wrong, or a plateau or a state is unknown. One `error:` line on the error output.
+
+| 2
+| The check could not run: a usage error, such as an option that does not exist.
+
+| 3
+| The comparison holds a change of a listed state: the architecture changed.
+|===
+
+Treat 3 as "the architecture changed" and 1 and 2 as "the check could not run".
+
+*Show the changes in the pull request.* `--format markdown` prints the table as Markdown, and `--no-wording` leaves out the changes that only reword a text. Write it to a file and post it with the tool of your service.
+
+----
+archicode diff --plateau to-be --against baseline --format markdown --no-wording > changes.md
+----
+
+*The job.* This job of GitHub Actions runs both commands from the OCI image, which needs no Java on the runner (without the image, the program needs Java 25 or the native file, see <<install>>). The job only reads files: it holds no secret and no deploy step. Pin the image to a release tag, as for any build tool: the release image is tagged with the version of the project, the number `archicode --version` prints, as the release workflow sets it (the registry was not checked for this page). The name without a tag is the latest build of the main branch, not a release.
+
+[source,yaml]
+----
+jobs:
+  architecture:
+    runs-on: ubuntu-latest # runner
+    env:
+      ARCHICODE_VERSION: "0.0.0" # replace with the release you use
+    steps:
+      - uses: actions/checkout@v4 # runner
+      - run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/workdir" -w /workdir ghcr.io/tmorin/archicode:${ARCHICODE_VERSION} query graph
+      - run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/workdir" -w /workdir ghcr.io/tmorin/archicode:${ARCHICODE_VERSION} diff --plateau to-be --against baseline --fail-on removed,moved
+----
+
+The lines marked `# runner` belong to GitHub Actions, as do `jobs`, `env`, `steps`, `uses` and `run`. The arguments after the image name are ArchiCode's: the same two commands as above. For another service, run the same two commands and read the exit code as the table says.
+
+[[howto-agent]]
+== Work with an agent
+
+This page is for an agent (a program that reads text and writes files) that has the program and nothing else, and for whoever starts one. It gives the order of use. The guide holds the content; this page does not copy it.
+
+*Read the guide once.* `archicode guide` prints a Markdown guide on the standard output. Its first line, `archicode guide <version>`, tells which version of the tool it describes. It is self-contained and needs no workspace (see <<guide>>).
+
+----
+archicode guide
+----
+
+*Start from a workspace that works.* `archicode init` writes a small workspace that loads and is drawn, and never overwrites a file (see <<init>>).
+
+----
+archicode init my-architecture
+----
+
+*Loop: write, load, draw.* Write or change a manifest, load the workspace with `archicode query graph`, then draw with `archicode views generate`. Each problem is one `error:` line on the error output, and only the first one found is reported, so fix it and run the command again. There is no `validate` command: loading the workspace is the check. The exit codes are in <<errors-and-warnings>>.
+
+----
+archicode query graph -w my-architecture/.archicode.yaml > /dev/null
+archicode views generate -w my-architecture/.archicode.yaml
+----
+
+*Ask for the exact shape of a kind.* `archicode query schemas manifest` prints one JSON object. The content of a kind is in `kinds[<header.kind>].content`. What a schema cannot say is in the guide (see <<manifest-schema>>).
+
+----
+archicode query schemas manifest
+----
+
+*Read a model before writing one.* The folder `docs/architecture` of a clone of the repository is the ArchiCode model of ArchiCode. Load it, then follow the `relationships` of an element by their `source` and `destination` and by their `qualifiers`.
+
+----
+archicode query graph -w docs/architecture/.archicode.yaml
+----
+
+The same model opens in the editor: https://tmorin.github.io/archicode/editor/#/timeline/applications?sample=archicode[the ArchiCode model in the editor].
+
+*Ask the tool before the code.* To know what depends on an element, query the graph instead of searching the files. This line lists what has a relationship to `PaymentGateway`:
+
+----
+archicode query graph | jq '.relationships[] | select(.relationship.destination=="PaymentGateway") | .source'
+----
+
+To check that a change did not remove or move what a plateau holds, use `diff --fail-on` (see <<howto-ci>>).
+
 == Best Practices
 
 The Best Practices part holds the guidelines below, from the design of a model to the organization of its source code.
 
-- Design Guidelines: Discover the art of shaping architectural solutions through structured design guidelines. Learn how to create cohesive, effective, and aesthetically pleasing designs that embody architectural excellence.
+- Design Guidelines: how to shape a model that stays cohesive and readable.
 
-- Source Code Organization: Uncover strategies for maintaining a well-organized source code that mirrors the intricacies of your architectural vision. Efficient source code organization fosters clarity, modularity, and ease of collaboration.
+- Source Code Organization: how to organize the manifests so that the source mirrors the architecture and stays easy to share.
 
-- Diagrams Styling: Dive into the world of diagrams styling, where visual aesthetics meet informative clarity. Explore techniques to create diagrams that are not only visually appealing but also convey complex architectural concepts with precision.
-
-- Label Formatting: Master the art of label formatting, transforming textual elements into powerful conveyors of architectural information. Learn how to structure labels to enhance comprehension and create meaningful visual cues.
-
-- Viewpoint Utilization: Harness the full potential of viewpoints to construct insightful architectural narratives. Explore the strategic utilization of viewpoints to effectively communicate various aspects of your architecture to different stakeholders.
-
-- CI/CD Integration: Seamlessly integrate ArchiCode into your Continuous Integration/Continuous Deployment (CI/CD) pipeline. Learn how to make architectural design an integral part of your development lifecycle, ensuring consistent and aligned practices.
+To check the architecture in a build or to work with an agent, see <<howto-ci>> and <<howto-agent>>.
 
 === Design Guidelines
 
@@ -962,6 +1063,7 @@ Organizing your source code well is a cornerstone of successful architectural wo
 <4> The directory containing the NPM module importing the other manifests.
 <5> The `.archicode.yaml` must declare both directories `manifests` and `node_modules/<MODULE_NAME>` to be able to discover all manifests
 
+[[reference]]
 = Reference
 
 [[domain]]
@@ -2316,7 +2418,7 @@ The choice is a preference of the browser, not of the workspace. It is remembere
 
 == Commands
 
-ArchiCode has eight commands, run as `archicode <command>`:
+ArchiCode runs as `archicode <command>`; the usage of every command, with all its options, is in <<command-reference>>. These are the commands of the first level:
 
 - `views`: Manage the views of the workspace (see <<generate-views>>).
 - `query`: Query the ArchiCode data model (see Query views and Query graph below).
@@ -2501,7 +2603,7 @@ archicode views generate --engine=kubernetes-network-policies
 .Generate Views - Fine-Tuned View Properties
 [source,shell]
 ----
-archicode views generate --properties='{ "key" : "value" }'
+archicode views generate --properties-content='{ "key" : "value" }'
 ----
 
 *The same workspace gives the same files.*
@@ -2863,6 +2965,361 @@ The schema describes one file, and the loader checks the whole workspace. What a
 
 - IDE Integration and Coding: By integrating the generated JSON Schema into your Integrated Development Environment (IDE), your coding experience is enriched. The schema offers autocompletion and validation, which improve your coding accuracy and efficiency.
 
+[[command-reference]]
+=== Every command and option
+
+Each listing below is the usage of one command, in the text the program prints for `--help`, with `archicode` for its name.
+The first is `archicode` itself, then each command in the order of its group; a command that holds others comes before them.
+
+:command-reference-begin: BEGIN generated by CommandReferenceTest, do not edit
+.archicode
+----
+Usage: archicode [-hV] [-w=<workspace file>] [COMMAND]
+ArchiCode provides features to support architecture work with an as-code
+approach.
+  -h, --help      Display this help message.
+  -V, --version   Print the version of ArchiCode and exit.
+  -w, --workspace=<workspace file>
+                  The workspace file.
+Commands:
+  views    Manage the views of the workspace.
+  query    Query the ArchiCode data model.
+  editor   Manage the local manifest editor server.
+  plateau  Manage the plateaus of the workspace.
+  stories  Manage the stories of the workspace.
+  diff     Compare a plateau with another one: the elements and the
+             relationships that are new, changed or removed, and what changed
+             in each, as a table.
+  guide    Print the guide to ArchiCode for an agent that has only this program.
+  init     Write a small workspace (.archicode.yaml, a person, a system with a
+             container, a relationship and a view) that loads and is drawn.
+----
+
+.archicode views
+----
+Usage: archicode views [-h] [-w=<workspace file>] [COMMAND]
+Manage the views of the workspace.
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+Commands:
+  generate  Generate the views of the workspace.
+----
+
+.archicode views generate
+----
+Usage: archicode views generate [-h] [--only-changes] [--against=PLATEAU_ID]
+                                [-e=ENGINE] [-o=PATH] [-p=PATH]
+                                [--plateau=PLATEAU_ID]
+                                [--properties-content=PROPERTIES]
+                                [--properties-format=FORMAT] [-w=<workspace
+                                file>] [-i[=VIEW_ID...]]... [-v
+                                [=VIEWPOINT_NAME...]]...
+Generate the views of the workspace.
+      --against=PLATEAU_ID   The plateau to compare the plateau with, any
+                               plateau of the workspace (siblings too).
+                               Default: the plateau it overrides. 'baseline' is
+                               the root of the plateaus.
+  -e, --engine=ENGINE        The name of the rendering engine.
+                               Default: plantuml
+  -h, --help                 Display this help message.
+  -i, --view[=VIEW_ID...]    When specified, render only views matching the
+                               given identifier.
+  -o, --output=PATH          The output directory: relative to the folder of
+                               the workspace file, or absolute. For a workspace
+                               with plateaus, the beginning of the name of the
+                               folder of each plateau: PATH-<plateau>, and
+                               PATH-<plateau>-vs-<against> for a comparison.
+                               Default: null
+      --only-changes         In the views of a comparison
+                               (PATH-<plateau>-vs-<against>), draw only what
+                               changed: the new, changed, removed, moved, split
+                               and merged elements and relationships, the ends
+                               of their links, the elements that hold a change,
+                               and what encloses them; the context is kept and
+                               greyed. The views of the plateau itself are
+                               drawn in full, and so is the table of changes.
+                               It needs a comparison: a plateau that overrides
+                               another one, or --against.
+  -p, --properties-path=PATH The path to optional properties of the views.
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+      --properties-content=PROPERTIES
+                             Optional properties of the views.
+      --properties-format=FORMAT
+                             The format of the view properties.
+                               Default: json
+  -v, --viewpoint[=VIEWPOINT_NAME...]
+                             When specified, render only views matching the
+                               given viewpoint name.
+  -w, --workspace=<workspace file>
+                             The workspace file.
+----
+
+.archicode query
+----
+Usage: archicode query [-h] [-w=<workspace file>] [COMMAND]
+Query the ArchiCode data model.
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+Commands:
+  schemas  Get JSON schemas related to the ArchiCode data model.
+  views    List and filter the views of the workspace.
+  graph    Print the resolved element/relationship graph of the workspace as
+             JSON.
+----
+
+.archicode query schemas
+----
+Usage: archicode query schemas [-h] [-w=<workspace file>] TYPE
+Get JSON schemas related to the ArchiCode data model.
+      TYPE     The type of the JSON Schema.
+                 Default: workspace
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+----
+
+.archicode query views
+----
+Usage: archicode query views [-h] [-f=FORMAT] [--plateau=PLATEAU_ID] [-q=QUERY]
+                             [-t=TEMPLATE] [-w=<workspace file>]
+List and filter the views of the workspace.
+  -f, --output-format=FORMAT The output format.
+                               Default: yaml
+  -h, --help                 Display this help message.
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+  -q, --query=QUERY          The query in JSON Path.
+  -t, --template=TEMPLATE    The template in Velocity with access to data in
+                               JSON Path.
+  -w, --workspace=<workspace file>
+                             The workspace file.
+----
+
+.archicode query graph
+----
+Usage: archicode query graph [-h] [--plateau=PLATEAU_ID] [-w=<workspace file>]
+Print the resolved element/relationship graph of the workspace as JSON.
+  -h, --help                 Display this help message.
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+  -w, --workspace=<workspace file>
+                             The workspace file.
+----
+
+.archicode editor
+----
+Usage: archicode editor [-h] [-w=<workspace file>] [COMMAND]
+Manage the local manifest editor server.
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+Commands:
+  serve  Serve the editor, with the workspace folder opened in it.
+----
+
+.archicode editor serve
+----
+Usage: archicode editor serve [-h] [--host=<host>] [-p=<port>] [-w=<workspace
+                              file>] [--allowed-host=<name>]...
+Serve the editor, with the workspace folder opened in it.
+      --allowed-host=<name>
+                      A host name, besides localhost, 127.0.0.1 and [::1], that
+                        a request may be addressed to.
+                      Repeat it for several. Only for a server reached by name
+                        from another machine.
+  -h, --help          Display this help message.
+      --host=<host>   The address to bind to.
+                      Must stay 0.0.0.0 (the default) for a Docker -p mapping
+                        to forward traffic at all.
+                      Requests are only accepted when addressed to localhost,
+                        127.0.0.1 or [::1] (see --allowed-host) and when they
+                        carry the token of this server (printed in the URL to
+                        open): control exposure with the host-side port mapping
+                        (e.g. `-p 127.0.0.1:48080:48080`).
+                        Default: 0.0.0.0
+  -p, --port=<port>   The TCP port to listen on.
+                        Default: 48080
+  -w, --workspace=<workspace file>
+                      The workspace file.
+----
+
+.archicode plateau
+----
+Usage: archicode plateau [-h] [-w=<workspace file>] [COMMAND]
+Manage the plateaus of the workspace.
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+Commands:
+  list  List the plateaus of the workspace, in the order of the tree: baseline,
+          then what overrides it, each plateau followed by what overrides it.
+  fold  Fold a plateau into the plateau above it: the files are rewritten or
+          deleted, the patches merged and the replaces composed, then the
+          plateaus that remain are read before and after on a temporary copy
+          and the folder is written only if they read the same.
+----
+
+.archicode plateau list
+----
+Usage: archicode plateau list [-h] [-w=<workspace file>]
+List the plateaus of the workspace, in the order of the tree: baseline, then
+what overrides it, each plateau followed by what overrides it.
+One line each: the id, the plateau it overrides (- for baseline, the root),
+where its existence comes from (a manifest of kind plateau, or headers only:
+manifests whose header says plateau: <id> and no Plateau manifest, or implicit
+for baseline), its name and its horizon (- when it has none).
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+----
+
+.archicode plateau fold
+----
+Usage: archicode plateau fold [-h] [--dry-run] [-w=<workspace file>] <plateau>
+Fold a plateau into the plateau above it: the files are rewritten or deleted,
+the patches merged and the replaces composed, then the plateaus that remain are
+read before and after on a temporary copy and the folder is written only if
+they read the same.
+--dry-run says what the fold would do and writes nothing. A plateau that cannot
+be folded is one error line and the folder is not changed.
+      <plateau>   The plateau to fold.
+      --dry-run   Say what the fold would do and write nothing.
+  -h, --help      Display this help message.
+  -w, --workspace=<workspace file>
+                  The workspace file.
+----
+
+.archicode stories
+----
+Usage: archicode stories [-h] [-w=<workspace file>] [COMMAND]
+Manage the stories of the workspace.
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+Commands:
+  generate  Draw the steps of the stories of the workspace.
+----
+
+.archicode stories generate
+----
+Usage: archicode stories generate [-h] [-e=ENGINE] [-o=PATH]
+                                  [--plateau=PLATEAU_ID] [-w=<workspace file>]
+                                  [-s=STORY_ID]...
+Draw the steps of the stories of the workspace.
+Each step is drawn from the plateau it is told at (at; default: --plateau, else
+settings.current, else the last plateau when they form one line) and, when it
+says against, compared with that plateau, as views generate draws the views of
+a comparison.
+The files are written to <views path>-stories/<story>/<NN>-<view>/. A name that
+the plateau of a step lacks is a warning and the step is skipped.
+  -e, --engine=ENGINE        The name of the rendering engine.
+                               Default: plantuml
+  -h, --help                 Display this help message.
+  -o, --output=PATH          The beginning of the name of the output folder, as
+                               for views generate: PATH-stories, relative to
+                               the folder of the workspace file, or absolute.
+                               Default: the views path of the settings.
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+  -s, --story=STORY_ID       Draw only this story, by its identifier; the
+                               option may be repeated. Without it every story
+                               is drawn.
+  -w, --workspace=<workspace file>
+                             The workspace file.
+----
+
+.archicode diff
+----
+Usage: archicode diff [-h] [--no-wording] [--against=PLATEAU_ID] [-f=FORMAT]
+                      [--plateau=PLATEAU_ID] [-w=<workspace file>]
+                      [--width=COLUMNS] [--fail-on=STATE[,STATE...]]...
+Compare a plateau with another one: the elements and the relationships that are
+new, changed or removed, and what changed in each, as a table.
+The plateau is the one --plateau names (default: settings.current, else the
+last one when the plateaus form one line); it is compared with the --against
+plateau, any plateau of the workspace, siblings included (default: the plateau
+it overrides). A difference is not an error: the exit code is 0, unless
+--fail-on asks otherwise.
+--fail-on makes the command a check for a build: it exits with code 3 (1 is an
+error, 2 a usage error) when the comparison holds a change of one of the states
+listed, and the table is printed as it is without it.
+The cascade of the REMOVE patches the plateau adds is listed after the table.
+--width wraps the text table to a number of columns.
+      --against=PLATEAU_ID   The plateau to compare the plateau with, any
+                               plateau of the workspace (siblings too).
+                               Default: the plateau it overrides. 'baseline' is
+                               the root of the plateaus.
+  -f, --format=FORMAT        The format of the table: text, markdown or json.
+                               Default: text
+      --fail-on=STATE[,STATE...]
+                             Exit with code 3 when the comparison holds a
+                               change of one of these states, a list separated
+                               by commas (the option may be repeated): new,
+                               changed, removed, moved, split, merged,
+                               contains-changes, or any (any of the first six).
+                               Without it the exit code is 0 whatever the
+                               comparison holds. With --no-wording, a
+                               description that is the only thing that changed
+                               does not count.
+  -h, --help                 Display this help message.
+      --no-wording           Leave out of the table the elements whose
+                               description is the only thing that changed, and
+                               say how many are left out.
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+  -w, --workspace=<workspace file>
+                             The workspace file.
+      --width=COLUMNS        Wrap the text table to this many columns, so that
+                               a long reference or a long cell does not make it
+                               unreadable: a cell wraps at the spaces, a
+                               reference without any is cut after a dot or a
+                               slash, then where the line ends. Without it the
+                               table is as wide as its longest cell. The
+                               markdown and json formats are not wrapped.
+----
+
+.archicode guide
+----
+Usage: archicode guide [-h] [-w=<workspace file>]
+Print the guide to ArchiCode for an agent that has only this program.
+It holds the kinds of manifests and their keys, the commands and the
+conventions, with a small workspace to start from.
+It is Markdown on the standard output, versioned (the first line is `archicode
+guide <version>`), the same from any folder, and it loads no workspace.
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+----
+
+.archicode init
+----
+Usage: archicode init [-h] [-w=<workspace file>] [<folder>]
+Write a small workspace (.archicode.yaml, a person, a system with a container,
+a relationship and a view) that loads and is drawn.
+FOLDER is created if it does not exist; the default is the current folder.
+Nothing is overwritten: a folder that already has .archicode.yaml is refused.
+      [<folder>]   The folder to write the workspace in (default: the current
+                     folder).
+  -h, --help       Display this help message.
+  -w, --workspace=<workspace file>
+                   The workspace file.
+----
+
+:command-reference-end: END generated by CommandReferenceTest
+
 == Appendix
 
 === Data Structures
@@ -3200,6 +3657,7 @@ An item of the `patches` of a Plateau (see <<plateau-patches>>).
 
 |===
 
+[[concepts]]
 = Concepts
 
 [[plateaus]]
@@ -3291,7 +3749,6 @@ You declare a reference once in a plateau and in all the plateaus it stands on (
 
 [[plateau-untied]]
 *Views and stories belong to no plateau.* Only the elements, the patches and the plateaus are layers. A view and a story exist whatever plateau is drawn: the same view or story is the one of every plateau, and nothing patches it. You declare each once in the whole workspace (the error of <<duplicate-references>>, between plateaus that do not stand on each other as well). A `plateau:` in the header of a view or of a story is accepted and means nothing: no tool reads it and no tool says anything about it (it is no warning and no error, whatever the text is). It does not make a workspace of plateaus either: a plateau that only a story names is no plateau. A header carries the key for every kind, and that is all there is to it.
-*Views and stories belong to no plateau.* Only the elements, the patches and the plateaus are layers. A view and a story exist whatever plateau is drawn: the same view or story is the one of every plateau, nothing patches them, and each is declared once in the whole workspace (the error of <<duplicate-references>>, between plateaus that do not stand on each other as well). A `plateau:` in the header of a view or of a story is accepted and means nothing: no tool reads it, no tool says anything about it (it is no warning and no error, whatever the text is), and it does not make a workspace of plateaus (a plateau that only a story names is no plateau). A header carries the key for every kind, and that is all there is to it.
 
 ArchiCode looks at what a view or a story names without a plateau, once the layers are read. Every element it names must exist in at least one plateau, else it is an error, whichever plateau is asked for. A workspace without plateaus is not checked, and a view is looked at when it is drawn. A name that another plateau has and the plateau drawn lacks is no mistake of the view: that view cannot be drawn in that plateau (see <<plateau-views-lacking>>).
 
@@ -3307,7 +3764,7 @@ ArchiCode looks at what a view or a story names without a plateau, once the laye
 | `patches` | Optional. What the plateau changes in what it inherits, applied in order (see <<plateau-patches>>).
 |===
 
-The manifest of the example, with all its patches, is in step 3 of the tutorial (see <<plateaus-overview>>).
+The manifest of the example, with all its patches, is in step 3 of the tutorial (see <<_a_tutorial_from_one_workspace_to_a_review_of_the_changes,A tutorial: from one workspace to a review of the changes>>).
 
 === Mistakes and warnings
 
@@ -3482,7 +3939,6 @@ A path of `manifests.paths` is relative to the folder of `.archicode.yaml`, belo
 
 [[plateau-comparison]]
 === Comparing two plateaus
-
 
 What a plateau _changes_ is the difference between it and another plateau. ArchiCode compares the two and tells you what is new, what changed and what was removed, for elements and for relationships. It compares a plateau with the one `--against` names, else with the plateau it overrides. The root, `baseline`, overrides nothing, so it is compared with nothing unless `--against` names a plateau. You can name any plateau of the tree, a sibling or a plateau of the future too (`archicode diff --plateau inhouse --against saas` compares two alternatives). The comparison is made on the two plateaus as they are resolved, whatever their relation.
 
