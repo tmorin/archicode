@@ -13,6 +13,7 @@ const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { click } = require('./library-page');
+const { compactStyle } = require('./stylesheet-support');
 
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
 const LAYERED = path.join(BRIGHTCART, 'layered');
@@ -1110,9 +1111,8 @@ test('Settings has no plateau section for a layered or a plateau-less workspace'
 // ---- the layout ----
 
 test('the bar of the pages and the Plateaus page hold the width: they wrap, and the helper for the third row of the shell exists', async () => {
-  const html = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
-    'utf8'
+  const html = compactStyle(
+    fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
   );
   assert.match(html, /\.page-tabs \{[^}]*flex-wrap: wrap;[^}]*min-width: 0;[^}]*max-width: 100%;/);
   assert.match(html, /\.timeline-item \{[^}]*min-width: 0;[^}]*margin-left: calc\(var\(--depth, 0\) \* 1rem\);/);

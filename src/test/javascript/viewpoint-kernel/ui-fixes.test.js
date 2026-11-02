@@ -7,9 +7,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, openFixture } = require('./harness');
+const { compactStyle } = require('./stylesheet-support');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = compactStyle(
+  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
+);
 
 /** A layout shaped like ELK's answer, without ELK (see diagram.test.js). */
 function fakeLayout(graph) {

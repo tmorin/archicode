@@ -16,8 +16,11 @@ const vm = require('node:vm');
 const { createApp, openFixture } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { inPlateau, layeredFiles, openLayered, compareWith, bandOf } = require('./layered-folders');
+const { compactStyle } = require('./stylesheet-support');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = compactStyle(
+  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
+);
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
