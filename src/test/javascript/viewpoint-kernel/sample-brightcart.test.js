@@ -78,7 +78,10 @@ test('the address of the site button draws marketplace compared with inhouse, wi
 
 test('the button of the presentation page links to the address that the drawing case uses', () => {
   const page = fs.readFileSync(path.join(REPO, 'src/site/index.html'), 'utf8');
-  const hrefs = [...page.matchAll(/href="editor\/(#[^"]*)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+  // The page also links the other sample (sample=archicode); only the Brightcart links are the drawing case's address.
+  const hrefs = [...page.matchAll(/href="editor\/(#[^"]*sample=brightcart[^"]*)"/g)].map((m) =>
+    m[1].replace(/&amp;/g, '&')
+  );
   assert.ok(hrefs.length >= 1);
   for (const href of hrefs) assert.equal(href, ADDRESS);
 });

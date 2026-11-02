@@ -422,6 +422,15 @@ jobs:
           mkdir -p target/site/docs target/site/editor
           cp -r target/generated-docs/. target/site/docs/
           sed "${stamp}" src/site/index.html > target/site/index.html
+          cp src/site/robots.txt target/site/robots.txt
+          test -f target/site/robots.txt
+          cmp src/site/robots.txt target/site/robots.txt
+          cp src/site/sitemap.xml target/site/sitemap.xml
+          test -f target/site/sitemap.xml
+          cmp src/site/sitemap.xml target/site/sitemap.xml
+          cp src/site/llms.txt target/site/llms.txt
+          test -f target/site/llms.txt
+          cmp src/site/llms.txt target/site/llms.txt
           sed "${stamp}" src/main/resources/editor-webapp/standalone.html > target/site/editor/index.html
           mkdir -p target/site/editor/samples
           cp -r src/main/resources/editor-webapp/samples/. target/site/editor/samples/

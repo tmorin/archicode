@@ -1,0 +1,17 @@
+# ArchiCode
+
+> ArchiCode is a command line tool and a browser editor for architecture as code: it reads a workspace of YAML manifests and renders C4 and ArchiMate views.
+
+## Start here
+
+- [Manual](https://tmorin.github.io/archicode/docs/): the full documentation of the command line and the manifests
+- [Guide](https://tmorin.github.io/archicode/docs/#guide): how to describe an architecture and draw its views
+- [Init](https://tmorin.github.io/archicode/docs/#init): create a first workspace with `archicode init`
+- [Install](https://tmorin.github.io/archicode/docs/#install): install the binary
+- [Editor](https://tmorin.github.io/archicode/editor/): the editor in the browser, no install
+- [Repository](https://github.com/tmorin/archicode): the source code
+- [Architecture of ArchiCode](https://github.com/tmorin/archicode/tree/main/docs/architecture): the ArchiCode model of ArchiCode
+
+## Optional
+
+- [Releases](https://github.com/tmorin/archicode/releases): the binaries of each version
