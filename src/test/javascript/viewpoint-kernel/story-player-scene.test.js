@@ -570,6 +570,16 @@ test(
         /<span class="button-group diagram-columns" role="group" aria-label="Boxes per row">.*?<\/select><\/span>/g,
         ''
       );
+    // and, wave 030 (run 0217, W-7), the toolbar: the tag has it inside the stage (`div.diagram-tools`, closed with the stage), now it is a sibling before the stage
+    // (`div.diagram-toolbar`, in five groups). Both are cut out of both sides, so what is compared is the stage and the status line, which did not move.
+    const withoutToolbar = (text) =>
+      text
+        .replace(/<div class="diagram-tools" role="toolbar".*?<\/div><\/div>(?=<div class="diagram-status")/g, '</div>')
+        .replace(/<div class="diagram-toolbar" role="toolbar".*?(?=<div class="diagram-stage">)/g, '')
+        // and, from the same run, the two controls of the header of a diagram that this run moves or renames: the Facet select leaves the header for the toolbar, and
+        // Maximize keeps its word and says its state with aria-pressed (the tag swaps Maximize and Restore)
+        .replace(/<select id="diagram-facet-select".*?<\/select>/g, '')
+        .replace(/<button[^>]*data-action="toggle-maximize"[^>]*>.*?<\/button>/g, '');
     let compared = 0;
     for (const { story, dir } of SHIPPED) {
       const files = shippedFiles(dir);
@@ -580,13 +590,13 @@ test(
         old.goToStoryStep(story, step);
         now.goToStoryStep(story, step);
         assert.equal(
-          withoutColumns(now.renderShellHtml()),
-          asNow(old.renderShellHtml()),
+          withoutToolbar(withoutColumns(now.renderShellHtml())),
+          withoutToolbar(asNow(old.renderShellHtml())),
           story + ' step ' + (step + 1) + ': the shell'
         );
         assert.equal(
-          withoutColumns(now.renderDiagramCanvasHtml(null, '')),
-          old.renderDiagramCanvasHtml(null, ''),
+          withoutToolbar(withoutColumns(now.renderDiagramCanvasHtml(null, ''))),
+          withoutToolbar(old.renderDiagramCanvasHtml(null, '')),
           story + ' step ' + (step + 1) + ': the diagram and its tools'
         );
         assert.doesNotMatch(
@@ -601,8 +611,8 @@ test(
         run(sandbox, "currentPerspective = 'library';");
       }
       assert.equal(
-        withoutColumns(now.renderShellHtml()),
-        asNow(old.renderShellHtml()),
+        withoutToolbar(withoutColumns(now.renderShellHtml())),
+        withoutToolbar(asNow(old.renderShellHtml())),
         story + ': the page of the stories'
       );
       assert.match(now.renderShellHtml(), /data-action="story-player-open" data-story="/, 'Play opens the player');

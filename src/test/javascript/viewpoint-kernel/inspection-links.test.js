@@ -623,7 +623,7 @@ test('Escape in the diagram deselects a link, and still leaves Maximize first', 
   sandbox.render = () => {
     renders++;
   };
-  const stage = { closest: (selector) => (selector === '.diagram-stage' ? {} : null) };
+  const stage = { closest: (selector) => (selector === '.diagram-stage, .diagram-toolbar' ? {} : null) };
   const key = () => ({ key: 'Escape', target: stage, preventDefault() {} });
   state.selection = linkSelection('customer', 'shop');
   sandbox.handleDiagramKeydown(key());
@@ -644,7 +644,7 @@ test('Enter on a focused link is a click: the handler that already did it for bo
         ? link
         : selector === '#diagram-canvas'
           ? {}
-          : selector === '.diagram-stage'
+          : selector === '.diagram-stage, .diagram-toolbar'
             ? {}
             : null
   };

@@ -321,6 +321,10 @@ test('the longest address of the application Map and of the technology Map is re
   console.log(`ADDRESS_LENGTH application ${page.url().length} ${page.url()}`);
   expect(page.url().length).toBeLessThan(600);
 
+  // the first half left Changes only on and the folder remembers it; the toolbar's one toggle has no button that sets it when it is on, so the second half starts from the page's default
+  await page.evaluate(() => {
+    for (const key of Object.keys(localStorage)) if (key.includes('changes-only')) localStorage.removeItem(key);
+  });
   await goTo(page, server, '#/timeline/environments?plateau=marketplace');
   await compareWithPast(page);
   await changesOnly(page);

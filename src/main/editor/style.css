@@ -558,12 +558,19 @@
   .inspection-open { align-self: flex-start; margin-top: 0.25rem; }
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
   /* a narrow centre: a group of the toolbar that is wider than the toolbar wraps inside it (it was cut on the left, and the buttons were out of reach) */
-  .diagram-tools .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
-  .diagram-tools .diagram-columns { align-items: center; gap: 0.3rem; }
-  .diagram-tools .diagram-columns label { font-size: 0.8rem; }
-  .diagram-tools .diagram-columns select { height: 1.75rem; font-size: 0.8rem; }
-  .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
-  .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .diagram-tools .button-group, .diagram-toolbar .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
+  .diagram-tools .diagram-columns, .diagram-toolbar .diagram-columns { align-items: center; gap: 0.3rem; }
+  .diagram-tools .diagram-columns label, .diagram-toolbar .diagram-columns label { font-size: 0.8rem; }
+  .diagram-tools .diagram-columns select, .diagram-toolbar .diagram-columns select { height: 1.75rem; font-size: 0.8rem; }
+  .diagram-tools button, .diagram-toolbar button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
+  .diagram-tools button[aria-pressed="true"], .diagram-toolbar button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  /* the toolbar docked before the canvas (run 0217): full width like the status line, in the flow, five named groups that wrap */
+  .diagram-toolbar { flex: none; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.35rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; background: var(--panel-bg); border-bottom: 1px solid var(--border); }
+  .diagram-toolbar .tool-group { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; max-width: 100%; }
+  .diagram-toolbar .tool-group + .tool-group { padding-left: 1rem; border-left: 1px solid var(--border); }
+  .diagram-toolbar .tool-group-name { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .diagram-toolbar .tool-group-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+  .diagram-toolbar .button-group { justify-content: flex-start; }
   .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
     color: var(--muted); font-size: 0.8rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
   #diagram-hint { flex: none; max-width: 100%; color: var(--accent); }

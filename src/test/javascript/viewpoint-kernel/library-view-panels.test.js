@@ -392,7 +392,7 @@ test("selecting a link on the page does not leave anything for the Map: the link
 test('the cross of the panel, Escape and another view give the selection up; the same view keeps it while the reader is on the Map', async () => {
   const page = await startPage();
   const a = await viewWith(page, { viewpoint: 'deep', properties: { element: 'shop' } });
-  const stage = { closest: (selector) => (selector === '.diagram-stage' ? {} : null) };
+  const stage = { closest: (selector) => (selector === '.diagram-stage, .diagram-toolbar' ? {} : null) };
   const press = (key) =>
     page.sandbox.handleDiagramKeydown({
       key,
@@ -433,7 +433,7 @@ test('the cross of the panel, Escape and another view give the selection up; the
 test('Escape restores a maximized page first and then gives the selection up; and with nothing selected it does nothing', async () => {
   const page = await startPage();
   await viewWith(page, { viewpoint: 'deep', properties: { element: 'shop' } });
-  const stage = { closest: (selector) => (selector === '.diagram-stage' ? {} : null) };
+  const stage = { closest: (selector) => (selector === '.diagram-stage, .diagram-toolbar' ? {} : null) };
   const press = (key) =>
     page.sandbox.handleDiagramKeydown({
       key,
@@ -516,7 +516,8 @@ test('Maximize gives the diagram the room of the list and of the panel; Restore 
   await viewWith(page, { viewpoint: 'deep', properties: { element: 'shop' } });
   assert.match(
     page.html(),
-    /data-action="toggle-maximize" aria-label="Maximize" title="Hide the list of views and the panel to give the diagram all the room \(M\)"/
+    // run 0217 (REQ-4): `aria-pressed` before the constant label, and the title ends with the way back
+    /data-action="toggle-maximize" aria-pressed="false" aria-label="Maximize" title="Hide the list of views and the panel to give the diagram all the room \(M\)\. Esc brings it back"/
   );
   assert.ok(page.sandbox.renderLibraryPerspectiveHtml().left && page.right());
   click(page.sandbox, { 'data-action': 'toggle-maximize' });
@@ -531,7 +532,8 @@ test('Maximize gives the diagram the room of the list and of the panel; Restore 
   );
   assert.match(
     page.html(),
-    /data-action="toggle-maximize" aria-label="Restore" title="Bring back the list of views and the panel \(Esc\)"/
+    // the label stays Maximize and the title is the same: the button is pressed (run 0217, REQ-4)
+    /data-action="toggle-maximize" aria-pressed="true" aria-label="Maximize" title="Hide the list of views and the panel to give the diagram all the room \(M\)\. Esc brings it back"/
   );
   await page.go('map');
   assert.equal(run(page.sandbox, 'diagramMaximized'), false, 'the Map is not maximized');
