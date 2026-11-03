@@ -31,7 +31,7 @@ None open: the shape of the three outputs is decided on #184, #189 and #187. One
 
 ## Open questions
 
-- **Q1. Is `--through deployments` of `query impact` part of this wave?** #189 and #187 say the command crosses deployments "later, through an explicit option", once both exist. This wave makes both exist. Recommended: yes, as the last task of W-3 (the two oracle questions on deployment then use the command, and the walk in test code can go). If the author prefers not, W-3 ends on relationships only and a ticket follows. W-3 starts without it and the plan reads its answer at its start.
+- **Q1 (answered by the author, 2026-11-02: yes, as recommended). `--through deployments` of `query impact` is part of this wave.** #189 and #187 say the command crosses deployments "later, through an explicit option"; this wave makes both exist, so the option is the last task of W-3: the two oracle questions on deployment (Q08, Q09) then use the command and the walk in test code can go.
 
 ## Wave Manifest
 
@@ -64,7 +64,7 @@ wave_manifest:
           - 'ArchitectureImpactTest answers Q01 to Q07 through `query impact`, and the `expect` lists of Q01 to Q07 in src/test/javascript/architecture/impact-questions.json equal those of the commit ff3bacd (`git diff ff3bacd -- src/test/javascript/architecture/impact-questions.json` shows no changed line inside Q01 to Q07)'
           - '`query impact nowhere -w docs/architecture/.archicode.yaml` prints one line starting `error:` on the error output and exits 1; `--depth 0` and `--depth -1` are refused the same way'
           - 'src/main/resources/META-INF/native-image/io.morin.archicode/archicode/reflect-config.json names the class of the new command, and an integration test next to src/test/java/io/morin/archicode/it/AgentWalkIT.java runs `query impact` on the packaged jar'
-          - 'src/site/index.html and src/site/llms.txt name `archicode query impact` in their block for agents (the page and the file exist after wave 030)'
+          - 'the section `agents` of src/site/index.html and src/site/llms.txt (next to its line "Work with an agent") name `archicode query impact`; both exist since wave 030'
           - 'CLAUDE.md tells to run `archicode query impact` and no longer tells to follow the relationships by hand; `git diff` of CLAUDE.md for the wave touches only that paragraph'
           - 'src/doc/README.adoc has a section for `query impact`, and `./mvnw verify -DskipITs=false`, `npm run test:unit`, `npm run format:check`, `npm run lint` all exit 0, and `npm run sample:build` leaves `git status --short` unchanged'
   runs:
@@ -134,7 +134,7 @@ wave_manifest:
 
 | # | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|------|------------|-------|-------|---------------|
-| W-3 | `query-impact` | W-2 | ask "what does a change to X touch" with one command | `workspace/Impact` as a plain Java class (no Picocli, no CDI, like `Fold`) and `cli/ImpactQuery` thin, built on a graph builder shared with `query graph`; `archicode query impact <reference> [--direction in\|out\|both] [--depth n] [--qualifier Q]...` (repeatable, any of) with `--plateau` through the mixin; containment (a reached element covers its descendants by reference prefix, `ref` or `ref.`, and the start and its descendants are left out; said in the manual); each element once at its shortest distance; `--depth` unbounded by default, 0 or negative refused; an unknown reference one `error:` line; JSON `{start, direction, depth, reached: [{reference, distance, via: {source, destination, qualifiers, label}}]}` sorted by distance then reference, `via` the first path found; `ArchitectureImpactTest` answers its seven questions through the command and keeps the old walk as a second oracle for one run; `GuideTest` and its golden, `reflect-config.json`, an integration test beside `AgentWalkIT`, the manual, the pointer in `CLAUDE.md`, the block for agents of `src/site/index.html` and `src/site/llms.txt` (wave 030 makes them), `docs/architecture` kept true (`npm run sample:build` if it changes); `--through deployments` as the last task if Q1 is answered yes | the gate of P2 |
+| W-3 | `query-impact` | W-2 | ask "what does a change to X touch" with one command | `workspace/Impact` as a plain Java class (no Picocli, no CDI, like `Fold`) and `cli/ImpactQuery` thin, built on a graph builder shared with `query graph`; `archicode query impact <reference> [--direction in\|out\|both] [--depth n] [--qualifier Q]...` (repeatable, any of) with `--plateau` through the mixin; containment (a reached element covers its descendants by reference prefix, `ref` or `ref.`, and the start and its descendants are left out; said in the manual); each element once at its shortest distance; `--depth` unbounded by default, 0 or negative refused; an unknown reference one `error:` line; JSON `{start, direction, depth, reached: [{reference, distance, via: {source, destination, qualifiers, label}}]}` sorted by distance then reference, `via` the first path found; `ArchitectureImpactTest` answers its seven questions through the command and keeps the old walk as a second oracle for one run; `GuideTest` and its golden, `reflect-config.json`, an integration test beside `AgentWalkIT`, the manual, the pointer in `CLAUDE.md`, the section `agents` of `src/site/index.html` and `src/site/llms.txt` (they exist since wave 030), and the how-to "Work with an agent" of the manual, `docs/architecture` kept true (`npm run sample:build` if it changes); `--through deployments` as the last task (Q1 answered yes), which lets Q08 and Q09 of the oracle use the command | the gate of P2 |
 
 **Gate:** the seven criteria of P2 in the manifest.
 
@@ -161,4 +161,4 @@ A straight line: W-2 uses the harness mechanism W-1 builds; W-3 is built on the 
 - The three issues #184, #189 and #187 are closed by the wave's pull request (or the progress log says why one stays open, as for the fallback `--saved`).
 - `./mvnw verify -DskipITs=false`, `npm run test:unit`, `npm run format:check` and `npm run lint` pass.
 - `scripts/byte-identity.sh` passes with every changed output declared.
-- Q1 is answered and the progress log says which way.
+- `query impact --through deployments` answers Q08 and Q09 of the oracle (Q1).
