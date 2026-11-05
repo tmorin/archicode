@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 031
-status: proposed
+status: completed
 date: 2026-11-01
 related:
   - docs/wav/wav-031-graph-answers-impact/wbc-031-graph-answers-impact.md
@@ -39,7 +39,7 @@ None open: the shape of the three outputs is decided on #184, #189 and #187. One
 wave_manifest:
   wave: 031
   slug: graph-answers-impact
-  status: proposed
+  status: completed
   sources:
     - '#184'
     - '#189'
@@ -72,7 +72,7 @@ wave_manifest:
       slug: views-saved-marker-and-stdout-harness
       phase: P1
       depends_on: []
-      run: null
+      run: 0219
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/GetViewsQuery.java'
@@ -87,7 +87,7 @@ wave_manifest:
       slug: graph-deployments
       phase: P1
       depends_on: [W-1]
-      run: null
+      run: 0220
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/GetGraphQuery.java'
@@ -104,7 +104,7 @@ wave_manifest:
       slug: query-impact
       phase: P2
       depends_on: [W-2]
-      run: null
+      run: 0221
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/workspace/Impact*.java'

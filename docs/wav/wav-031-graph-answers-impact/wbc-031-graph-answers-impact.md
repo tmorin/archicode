@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 031
-status: proposed
+status: completed
 date: 2026-11-01
 related:
   - docs/wav/wav-029-archicode-self-model/wav-029-archicode-self-model.md
