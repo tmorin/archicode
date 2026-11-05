@@ -18,9 +18,11 @@ archicode views generate -i shop_overview
 ## The loop
 
 1. Write or change a manifest under `manifests/`.
-2. `archicode query graph` loads everything and prints the resolved elements and relationships as one line of JSON (`{"elements":[{"reference":...}],"relationships":[...]}`; exit 0 when the workspace is valid), for `jq` or any JSON reader; without a tool, `archicode query graph | grep -o '"reference"' | wc -l` counts the elements. It is the cheapest check.
+2. `archicode query graph` loads everything and prints the resolved elements and relationships as one line of JSON (`{"elements":[{"reference":...}],"relationships":[...]}`, then `"deployments":[{"node":...,"application":...}]` when a node hosts applications; exit 0 when the workspace is valid), for `jq` or any JSON reader; without a tool, `archicode query graph | grep -o '"reference"' | wc -l` counts the elements. It is the cheapest check.
 3. `archicode views generate` draws: for every element the `overview`, `detailed` and `deep` views, into `views/plantuml/<layer>/<reference>-<viewpoint>.puml` (a `.` of the reference becomes `_`; with plateaus the folder is `views-<plateau>`). A saved view (a manifest of kind view) is drawn only when named: `views generate -i <view id>`.
 4. Plateaus: `archicode plateau list`, then `archicode diff` to see what a plateau changes (it compares the plateau drawn with `--against <id>`, default the plateau it overrides; the root `baseline` has none, so `diff` on it is one `error:` line: name one with `--against`). To fold a plateau into the one above it, run `archicode plateau fold <id>`: it rewrites or deletes the files (the files it rewrites lose their comments, quotes and layout), merges the patches and composes the `replaces`, reads the remaining plateaus before and after on a temporary copy, and writes the folder only if they read the same; a plateau it cannot fold is one `error:` line and nothing changes. `archicode plateau fold <id> --dry-run` says what it would do and writes nothing.
+
+To ask what a change to an element touches, run `archicode query impact <reference>` (a reference as `query graph` lists it): one line of JSON, `{"start":...,"direction":...,"depth":...,"reached":[{"reference":...,"distance":...,"via":{...}}]}`, sorted by distance then reference, where `via` is the first coupling that reached the element. `--direction in|out|both` (default `in`: the elements that point at it; `out`: the elements it points at), `--depth <n>` (1 or more, default no bound), `--qualifier <q>` (repeatable; follows only the relationships that carry one of them; it filters relationships only), `--through relationships|deployments` (repeatable, default `relationships`; `deployments` also follows an application onto its node) and `--plateau <id>` (as everywhere). An element covers its descendants: an element reached is named once, at its shortest distance, and the start and its descendants are never in `reached`. A reference that is no element, or a depth below 1, is one `error:` line and exit 1.
 
 Output and exit codes:
 
@@ -221,6 +223,12 @@ Every command takes `-h`/`--help` and `-w`/`--workspace=<workspace file>` (defau
 - `archicode query`: Query the ArchiCode data model.
 - `archicode query graph`: Print the resolved element/relationship graph of the workspace as JSON.
   - `--plateau=PLATEAU_ID`: The plateau to read, by its id (a plateau: key of a header or a Plateau manifest).
+- `archicode query impact` `<reference>`: Print what a change to an element touches, as one line of JSON: the elements reached, their distance in hops and the first coupling that reached them.
+  - `--plateau=PLATEAU_ID`: The plateau to read, by its id (a plateau: key of a header or a Plateau manifest).
+  - `--direction=in|out|both`: Which way the couplings are followed: in (the elements that point at it), out (the elements it points at) or both.
+  - `--depth=n`: The number of hops at most, 1 or more.
+  - `--qualifier=qualifier`: Follow only the relationships that carry this qualifier; repeatable, any of them.
+  - `--through=relationships|deployments`: The couplings followed, repeatable: relationships or deployments (an application on its node).
 - `archicode query schemas` `TYPE`: Get JSON schemas related to the ArchiCode data model.
 - `archicode query views`: List and filter the views of the workspace.
   - `--plateau=PLATEAU_ID`: The plateau to read, by its id (a plateau: key of a header or a Plateau manifest).

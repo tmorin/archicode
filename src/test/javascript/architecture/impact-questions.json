@@ -83,6 +83,26 @@
         "archicode.commandline.commands",
         "archicode.commandline.workspace"
       ]
+    },
+    {
+      "id": "Q08",
+      "ask": "I take github.pages down: which applications go with it?",
+      "start": ["github.pages"],
+      "direction": "out",
+      "qualifiers": [],
+      "through": ["deployments"],
+      "depth": 1,
+      "expect": ["archicode.editor"]
+    },
+    {
+      "id": "Q09",
+      "ask": "I move archicode.editor: where is it deployed and what shares those nodes?",
+      "start": ["archicode.editor"],
+      "direction": "both",
+      "qualifiers": [],
+      "through": ["deployments"],
+      "depth": 2,
+      "expect": ["github.actions", "github.pages", "workstation.machine", "archicode.commandline"]
     }
   ]
 }

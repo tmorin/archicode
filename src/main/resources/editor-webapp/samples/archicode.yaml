@@ -15,7 +15,7 @@ content:
   relationships:
     - destination: "archicode.commandline"
       label: "asks the graph of"
-      qualifiers: ["query graph"]
+      qualifiers: ["query graph", "query impact"]
 --- # file: manifests/archicode.yaml
 header:
   kind: "archicode.morin.io/solution"

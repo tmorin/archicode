@@ -1,6 +1,8 @@
 package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -16,6 +18,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.SneakyThrows;
@@ -44,6 +48,90 @@ class GetGraphQueryTest {
         val queryGroup = new QueryGroup();
         queryGroup.archiCode = archiCodeFor(workspacePath);
         getGraphQuery.queryGroup = queryGroup;
+    }
+
+    @SneakyThrows
+    private String printed(String workspacePath) {
+        bind(workspacePath);
+        val originalOut = System.out;
+        val capturedOut = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(capturedOut, true, StandardCharsets.UTF_8));
+            assertDoesNotThrow(getGraphQuery::run);
+        } finally {
+            System.setOut(originalOut);
+        }
+        return capturedOut.toString(StandardCharsets.UTF_8);
+    }
+
+    @SneakyThrows
+    private List<String> pairsOf(JsonNode deployments) {
+        val pairs = new ArrayList<String>();
+        for (val entry : deployments) {
+            val names = new ArrayList<String>();
+            entry.fieldNames().forEachRemaining(names::add);
+            assertEquals(List.of("node", "application"), names, "an entry has exactly node and application");
+            pairs.add(entry.get("node").asText() + "->" + entry.get("application").asText());
+        }
+        return pairs;
+    }
+
+    @SneakyThrows
+    @Test
+    void shouldPrintDeploymentsByNodeThenAsWritten() {
+        val tree = mapperFactory
+            .create(MapperFormat.JSON)
+            .readTree(printed("src/test/workspaces/case_graph_deployments.yaml"));
+
+        val deployments = tree.get("deployments");
+        assertTrue(deployments != null && deployments.isArray(), "expected a top-level deployments list");
+        assertEquals(
+            List.of("env.alpha->sol.sys_a", "env.alpha.inner->sol.sys_b", "env.beta->sol.sys_b", "env.beta->sol.sys_a"),
+            pairsOf(deployments)
+        );
+    }
+
+    @SneakyThrows
+    @Test
+    void shouldWriteDeploymentsAsTheLastKey() {
+        val json = printed("src/test/workspaces/case_graph_deployments.yaml");
+        val tree = mapperFactory.create(MapperFormat.JSON).readTree(json);
+
+        val names = new ArrayList<String>();
+        tree.fieldNames().forEachRemaining(names::add);
+        assertEquals(List.of("elements", "relationships", "deployments"), names);
+        assertTrue(json.trim().endsWith("]}"), "the line ends with the deployments list");
+    }
+
+    @SneakyThrows
+    @Test
+    void shouldPrintTheSameBytesTwice() {
+        assertEquals(
+            printed("src/test/workspaces/case_graph_deployments.yaml"),
+            printed("src/test/workspaces/case_graph_deployments.yaml")
+        );
+    }
+
+    @SneakyThrows
+    @Test
+    void shouldNotWriteDeploymentsWhenNothingIsDeployed() {
+        val json = printed("src/test/workspaces/case_graph_ok.yaml");
+        val tree = mapperFactory.create(MapperFormat.JSON).readTree(json);
+
+        assertFalse(tree.has("deployments"));
+        assertFalse(json.contains("deployments"));
+    }
+
+    @SneakyThrows
+    @Test
+    void shouldCopyADanglingHostedApplicationWhenThereIsNoPlateau() {
+        val tree = mapperFactory
+            .create(MapperFormat.JSON)
+            .readTree(printed("src/test/workspaces/case_graph_deployments_dangling.yaml"));
+
+        val deployments = tree.get("deployments");
+        assertTrue(deployments != null, "expected the deployments key");
+        assertEquals(List.of("env.node_a->sol.sys_missing"), pairsOf(deployments));
     }
 
     @SneakyThrows
@@ -88,7 +176,7 @@ class GetGraphQueryTest {
             Map.of()
         );
 
-        val graph = getGraphQuery.buildGraph(workspace);
+        val graph = GetGraphQuery.buildGraph(workspace);
 
         assertTrue(graph.getRelationships().isEmpty());
         assertTrue(

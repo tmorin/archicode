@@ -51,6 +51,7 @@ class ArchitectureImpactTest {
         List<String> start,
         String direction,
         List<String> qualifiers,
+        List<String> through,
         Integer depth,
         List<String> expect
     ) {}
@@ -67,6 +68,7 @@ class ArchitectureImpactTest {
                     texts(q.get("start")),
                     q.get("direction").asText(),
                     texts(q.get("qualifiers")),
+                    q.has("through") ? texts(q.get("through")) : List.of(),
                     q.get("depth").isNull() ? null : q.get("depth").asInt(),
                     texts(q.get("expect"))
                 )
@@ -112,6 +114,33 @@ class ArchitectureImpactTest {
         return false;
     }
 
+    /** A coupling the walk follows: a relationship of the question's qualifiers, or a deployment when it asks. */
+    record Edge(String source, String destination) {}
+
+    private static List<Edge> edges(JsonNode graph, Question q) {
+        val edges = new ArrayList<Edge>();
+        for (val relationship : graph.get("relationships")) {
+            if (carriesOne(relationship, q.qualifiers())) {
+                edges.add(
+                    new Edge(
+                        relationship.get("source").asText(),
+                        relationship.get("relationship").get("destination").asText()
+                    )
+                );
+            }
+        }
+        if (q.through().contains("deployments")) {
+            assertTrue(
+                graph.has("deployments"),
+                q.id() + " goes through deployments, and `query graph` prints no `deployments`"
+            );
+            for (val deployment : graph.get("deployments")) {
+                edges.add(new Edge(deployment.get("node").asText(), deployment.get("application").asText()));
+            }
+        }
+        return edges;
+    }
+
     /** The references the question answers, sorted; fails when a start is not in the graph. */
     static Set<String> impact(JsonNode graph, Question q) {
         val known = elementReferences(graph);
@@ -123,22 +152,18 @@ class ArchitectureImpactTest {
         val starts = new HashSet<>(q.start());
         val visited = new HashSet<>(starts);
         val answer = new TreeSet<String>();
+        val edges = edges(graph, q);
         var frontier = new ArrayDeque<>(q.start());
         var hop = 0;
         while (!frontier.isEmpty() && (q.depth() == null || hop < q.depth())) {
             hop++;
             val next = new ArrayDeque<String>();
-            for (val relationship : graph.get("relationships")) {
-                if (!carriesOne(relationship, q.qualifiers())) {
-                    continue;
+            for (val edge : edges) {
+                if (out && coveredByAny(new HashSet<>(frontier), edge.source())) {
+                    reach(edge.destination(), visited, starts, answer, next);
                 }
-                val source = relationship.get("source").asText();
-                val destination = relationship.get("relationship").get("destination").asText();
-                if (out && coveredByAny(new HashSet<>(frontier), source)) {
-                    reach(destination, visited, starts, answer, next);
-                }
-                if (in && coveredByAny(new HashSet<>(frontier), destination)) {
-                    reach(source, visited, starts, answer, next);
+                if (in && coveredByAny(new HashSet<>(frontier), edge.destination())) {
+                    reach(edge.source(), visited, starts, answer, next);
                 }
             }
             frontier = next;
@@ -164,7 +189,7 @@ class ArchitectureImpactTest {
     }
 
     static void check(JsonNode graph, Question q) {
-        assertFalse(q.qualifiers().isEmpty(), q.id() + " must say which couplings it follows");
+        assertFalse(q.qualifiers().isEmpty() && q.through().isEmpty(), q.id() + " must say which couplings it follows");
         assertFalse(q.expect().isEmpty(), q.id() + " expects nothing: an empty answer proves nothing");
         val expected = new TreeSet<>(q.expect());
         val actual = impact(graph, q);
@@ -191,9 +216,9 @@ class ArchitectureImpactTest {
     }
 
     @Test
-    void shouldAskSixToEightQuestionsWithDistinctIds() {
+    void shouldAskNineQuestionsWithDistinctIds() {
         val ids = questions().stream().map(Question::id).toList();
-        assertTrue(ids.size() >= 6 && ids.size() <= 8, "6 to 8 questions: " + ids);
+        assertEquals(9, ids.size(), "9 questions: " + ids);
         assertEquals(ids.size(), new HashSet<>(ids).size(), "distinct ids: " + ids);
     }
 
@@ -203,6 +228,31 @@ class ArchitectureImpactTest {
         return questions()
             .stream()
             .map(q -> DynamicTest.dynamicTest(q.id() + " " + q.ask(), () -> check(graph, q)));
+    }
+
+    /** The command answers each question with its expected elements, and as the walk does (the second oracle). */
+    @TestFactory
+    Stream<DynamicTest> shouldAnswerEveryQuestionThroughTheCommand() {
+        val graph = graph();
+        return questions()
+            .stream()
+            .map(q ->
+                DynamicTest.dynamicTest(q.id() + " " + q.ask(), () -> {
+                    assertEquals(1, q.start().size(), q.id() + " has one start");
+                    val answered = ArchitectureGraph.impact(
+                        WORKSPACE,
+                        factory,
+                        errorOutput,
+                        q.start().get(0),
+                        q.direction(),
+                        q.depth(),
+                        q.qualifiers(),
+                        q.through()
+                    );
+                    assertEquals(new TreeSet<>(q.expect()), answered, q.id() + " `query impact` against expect");
+                    assertEquals(impact(graph, q), answered, q.id() + " `query impact` against the walk");
+                })
+            );
     }
 
     /** Sabotage (b): without the calls of the presentation layer towards the kernel, Q01 must change. */
@@ -261,6 +311,22 @@ class ArchitectureImpactTest {
             .orElseThrow();
         assertNotEquals(new TreeSet<>(q05.expect()), impact(graph, q05), "Q05 must notice the missing owner");
         assertThrowsAssertion(() -> check(graph, q05));
+    }
+
+    /** Sabotage (c): without the deployments of the graph, Q08 and Q09 must fail. */
+    @Test
+    void shouldFailQ08AndQ09WhenTheGraphHasNoDeployments() {
+        val graph = graph().deepCopy();
+        assertTrue(graph.has("deployments"), "the model has deployments");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) graph).remove("deployments");
+        for (val id : List.of("Q08", "Q09")) {
+            val question = questions()
+                .stream()
+                .filter(q -> id.equals(q.id()))
+                .findFirst()
+                .orElseThrow();
+            assertThrowsAssertion(() -> check(graph, question));
+        }
     }
 
     private static void assertThrowsAssertion(Runnable run) {

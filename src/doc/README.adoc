@@ -978,6 +978,12 @@ The same model opens in the editor: https://tmorin.github.io/archicode/editor/#/
 archicode query graph | jq '.relationships[] | select(.relationship.destination=="PaymentGateway") | .source'
 ----
 
+To ask what a change to one element touches, use `query impact` (see <<query-impact>>). It lists the elements that point at `PaymentGateway`, with their distance, in one call:
+
+----
+archicode query impact PaymentGateway
+----
+
 To check that a change did not remove or move what a plateau holds, use `diff --fail-on` (see <<howto-ci>>).
 
 == Best Practices
@@ -2439,7 +2445,7 @@ The choice is a preference of the browser, not of the workspace. It is remembere
 ArchiCode runs as `archicode <command>`; the usage of every command, with all its options, is in <<command-reference>>. These are the commands of the first level:
 
 - `views`: Manage the views of the workspace (see <<generate-views>>).
-- `query`: Query the ArchiCode data model (see Query views and Query graph below).
+- `query`: Query the ArchiCode data model (see <<query-views>>, <<query-graph>> and <<query-impact>>).
 - `editor`: Manage the local manifest editor server (see <<serve-the-editor>>).
 - `plateau`: Manage the plateaus of the workspace (see <<plateau-list>>).
 - `stories`: Manage the stories of the workspace (see <<stories-generate>>).
@@ -2632,6 +2638,7 @@ What the author writes in an order keeps it: the qualifiers of an element and th
 Only a new version of ArchiCode rewrites files that the workspace did not change: the order of the stereotypes of a box changed in 0.10.0 and in 0.11.0, and the order of two links that only differ by the node they end on changed in 0.12.0 (it used to depend on the JVM). A saved map of the technology layer draws more since 0.15.0 (see <<map-technology>>). A comparison of two plateaus several layers apart reads the `replaces` of the layers in between since 0.16.0 (see <<plateau-replaces>>).
 A test (`DeterministicGenerationTest`) generates a workspace twice, with the manifests, the elements, the relationships and the tags declared in the reverse order and in another folder, and compares the files.
 
+[[query-views]]
 === Query views
 
 .Query Views - The command line
@@ -2676,8 +2683,17 @@ archicode query views -f custom -t '$d.e("$.[*].id")'
 
 - Sorted Output: the views come sorted, by identifier and then by layer (application before technology), in every output format and before the JSON Path query is applied, so that `$.[0]` is always the same view. Two runs, on the same machine or not, and two builds of the same version give the same output byte for byte, which lets you diff it or keep it in git. Before 0.14.0 the order of the views was not defined and changed from one build to another; the set of views did not. The order of your scripts' results changes once, when you upgrade; if a script relies on the position of a view, select it by its `id` instead.
 
+- Saved or derived: every entry ends with the key `saved`, `true` for a view the workspace saves in a manifest and `false` for a view the tool derives (the built-in view of each element). The key is in every output format and is there before the JSON Path query is applied, so a query can select on it. When a saved view and a derived one are alike, the saved one comes first.
+
+.Query Views - Only the saved views
+[source,shell]
+----
+archicode query views -q '$.[?(@.saved==true)]'
+----
+
 - TOML Output: a TOML document is a table, so `-f toml` writes the list of views under the key `views`, as `views = [{ id = '...', ... }, ...]`; a JSON Path query that selects one view writes that view as a table, and one that selects anything else (a list of identifiers, say) is written under `views` too. Before 0.14.0 the list was written as an assignment without a key, which no TOML parser reads. The TOML output changes once, when you upgrade; the YAML, JSON and custom outputs did not change.
 
+[[query-graph]]
 === Query graph
 
 .Query Graph - The command line
@@ -2696,6 +2712,47 @@ archicode query graph
 ----
 
 - Sorted Output: the elements come by layer (application, then technology) and, in a layer, by reference; the relationships come by the reference of their source in the same order and, for one source, as the author wrote them. Two runs and two builds of the same version give the same output byte for byte, which lets you diff it or keep it in git. Before 0.14.0 the elements came in the hash order of their references: the same for one workspace and one JDK, but not a promised one. The order of the output changes once, when you upgrade; the elements and the relationships did not change.
+
+- Deployments: when a node of the technology layer hosts applications, the output ends with the key `deployments`, a list of `{"node":"<reference of the node>","application":"<reference as the node wrote it>"}`, one entry for each pair the author wrote. The entries come by the reference of the node and, for one node, as the author wrote the applications. A workspace in which no node hosts an application has no `deployments` key. An entry copies the reference of the application and does not check it: a hosted application that does not exist is an error only in a workspace with plateaus, as before. `archicode query graph | jq '.deployments[] | select(.node=="github.actions")'` lists what a node hosts.
+
+[[query-impact]]
+=== Query impact
+
+.Query Impact - The command line
+[source,shell]
+----
+archicode query impact --help
+----
+
+.Query Impact - What touches the kernel of ArchiCode, one hop away
+[source,shell]
+----
+archicode query impact archicode.kernel --depth 1 -w docs/architecture/.archicode.yaml
+----
+
+The command answers "what does a change to this element touch?" in one call, from the same graph as `query graph`. It takes the reference of one element, prints one line of JSON on the standard output and exits with the code 0. On the model of ArchiCode (the folder `docs/architecture` of a clone of the repository) the call above prints:
+
+----
+{"start":"archicode.kernel","direction":"in","depth":1,"reached":[{"reference":"archicode.commandline.viewpoint","distance":1,"via":{"source":"archicode.commandline.viewpoint","destination":"archicode.kernel.engine.compute","qualifiers":["calls"],"label":"draws with"}},{"reference":"archicode.commandline.workspace","distance":1,"via":{"source":"archicode.commandline.workspace","destination":"archicode.kernel.engine.patches","qualifiers":["calls"],"label":"applies the patches of a layer"}},{"reference":"archicode.contracts.couplings.kernel_wasm","distance":1,"via":{"source":"archicode.contracts.couplings.kernel_wasm","destination":"archicode.kernel.engine","qualifiers":["generated from"],"label":"is generated from"}},{"reference":"archicode.editor.application","distance":1,"via":{"source":"archicode.editor.application","destination":"archicode.kernel.engine.patches","qualifiers":["calls"],"label":"loads the kernel before the patches"}},{"reference":"archicode.editor.model","distance":1,"via":{"source":"archicode.editor.model","destination":"archicode.kernel.engine.compute","qualifiers":["calls"],"label":"calls the kernel"}},{"reference":"archicode.editor.presentation","distance":1,"via":{"source":"archicode.editor.presentation","destination":"archicode.kernel.engine.compute","qualifiers":["calls"],"label":"draws with"}}]}
+----
+
+- Answer: `start` is the reference asked, `direction` and `depth` are what was asked (`depth` is `null` when there is no bound), and `reached` lists the elements touched. An entry has the `reference` of the element, its `distance` in hops from the start and `via`, the first coupling that reached it: for a relationship the `source`, the `destination`, the `qualifiers` and the `label` as the author wrote them, for a deployment `deployment: true` in place of the qualifiers and the label.
+
+- Direction: `--direction in` (the default) follows the couplings backwards and lists the elements that point at the start, which are the ones a change to it can break; `out` lists what the start points at; `both` follows the two.
+
+- Depth: `--depth <n>` stops after `n` hops; `n` is 1 or more, and a smaller value is one `error:` line (exit 1). Without it the walk goes as far as the couplings go.
+
+- Qualifiers: `--qualifier <qualifier>`, repeatable, keeps the relationships that carry any of the qualifiers named. It filters relationships only; a deployment is not filtered by it.
+
+- Through: `--through relationships` (the default) follows the relationships. `--through deployments` follows an application on the node that hosts it (see <<query-graph>>), and `--through relationships --through deployments` follows both. A node that hosts an application is the source of the coupling, so with `--direction out` an environment's node reaches its applications and with `in` an application reaches its nodes.
+
+- Descendants: an element covers its descendants, so a coupling that ends on a descendant touches the element. A reached element is named once, at its shortest distance. The start and its descendants are never listed.
+
+- Sorted Output: the entries come by distance and then by reference, so two runs and two builds of the same version give the same output byte for byte.
+
+- Errors: a reference that is no element of the graph is one `error:` line on the error output (exit 1), like a workspace that does not load. Like `query graph`, the command takes `--plateau <id>` (see <<plateau-choose>>).
+
+`archicode query impact archicode.kernel | jq -r '.reached[].reference'` lists the elements a change to the kernel can break.
 
 [[stories-generate]]
 === Draw the stories
@@ -3088,6 +3145,9 @@ Commands:
   views    List and filter the views of the workspace.
   graph    Print the resolved element/relationship graph of the workspace as
              JSON.
+  impact   Print what a change to an element touches, as one line of JSON: the
+             elements reached, their distance in hops and the first coupling
+             that reached them.
 ----
 
 .archicode query schemas
@@ -3129,6 +3189,43 @@ Print the resolved element/relationship graph of the workspace as JSON.
                                a header or a Plateau manifest). Default:
                                settings.current, else the last plateau when
                                they form one line.
+  -w, --workspace=<workspace file>
+                             The workspace file.
+----
+
+.archicode query impact
+----
+Usage: archicode query impact [-h] [--depth=<n>] [--direction=<in|out|both>]
+                              [--plateau=PLATEAU_ID] [-w=<workspace file>]
+                              [--qualifier=<qualifier>]...
+                              [--through=<relationships|deployments>]...
+                              <reference>
+Print what a change to an element touches, as one line of JSON: the elements
+reached, their distance in hops and the first coupling that reached them.
+An element covers its descendants: a reached element is named once, at its
+shortest distance, and the start and its descendants are left out. A reference
+that is no element, or a depth below 1, is one error line.
+      <reference>            The reference of the element a change is made to,
+                               as `archicode query graph` lists them.
+      --depth=<n>            The number of hops at most, 1 or more. Default: no
+                               bound.
+      --direction=<in|out|both>
+                             Which way the couplings are followed: in (the
+                               elements that point at it), out (the elements it
+                               points at) or both. Default: IN.
+  -h, --help                 Display this help message.
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+      --qualifier=<qualifier>
+                             Follow only the relationships that carry this
+                               qualifier; repeatable, any of them. It filters
+                               relationships only.
+      --through=<relationships|deployments>
+                             The couplings followed, repeatable: relationships
+                               or deployments (an application on its node).
+                               Default: relationships.
   -w, --workspace=<workspace file>
                              The workspace file.
 ----
@@ -4157,6 +4254,13 @@ Nothing is to be changed in the manifests themselves: their format is the one it
 . *The order of the warnings.* The facets are read in the order of the file, so the warnings that name them, and the creation of their folders, come in that order.
 . *Folders of a comparison.* A folder that holds both `gap.json` and `gap.md` is left out of a `+/**+` read, whichever command wrote it (see <<manifests-folders>>).
 . *The editor.* The pages are Plateaus, Applications, Environments, Elements, Stories, Files and Settings (see <<editor-pages>>); the band has two lists; Files has no choice of what it lists.
+
+[[upgrade-0-24]]
+*What changes for a reader who knows 0.24.0.* These are the changes after the release 0.24.0; they are in the release 0.25.0. Nothing breaks. One command is new, `archicode query impact`, and two outputs grow: `archicode query views` prints one more key, `saved`, last on every entry, and `archicode query graph` prints one more key, `deployments`, last, when a node hosts an application. A workspace that loaded in 0.24.0 loads in 0.25.0, every other command prints what it printed, and `query graph` on a workspace in which no node hosts an application, writes what 0.24.0 wrote for it.
+
+. *`query views` says whether a view is saved* (Changed, see <<query-views>>). Every entry ends with `saved: true` for a view of the workspace and `saved: false` for a view the tool derives. A script that read a whole entry now sees this key; a script that reads a field by name is not affected. `-q '$.[?(@.saved==true)]'` keeps the saved views.
+. *`query graph` says what each node hosts* (Changed, see <<query-graph>>). The output ends with `deployments`, a list of `node` and `application` pairs, when the workspace has a deployment. A script that read a whole `query graph` output now sees one more key; the elements and the relationships did not change, and a script that reads `elements` or `relationships` by key is not affected.
+. *`query impact` says what a change touches* (New, see <<query-impact>>). `archicode query impact <reference>` prints the elements that point at an element, or that it points at, with their distance and the first coupling that reached them; `--direction`, `--depth`, `--qualifier` and `--through` choose the walk. It adds a command and changes no output of another.
 
 [[upgrade-0-23]]
 *What changes for a reader who knows 0.23.0.* These are the changes after the release 0.23.0; they are in the release 0.24.0. Nothing breaks: the controls of a diagram move into a toolbar of five groups, and the manual is sorted by the kind of reading it is. A workspace that loaded in 0.23.0 loads in 0.24.0 and the command line writes the same files for it; no command and no option changes.

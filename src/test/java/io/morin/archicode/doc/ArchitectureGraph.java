@@ -9,6 +9,10 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import lombok.SneakyThrows;
 import lombok.val;
 import picocli.CommandLine;
@@ -55,5 +59,42 @@ final class ArchitectureGraph {
             }
         }
         return graph;
+    }
+
+    /**
+     * {@code query impact} of the workspace file: the references reached, sorted. {@code through} is what the question
+     * says; with qualifiers, deployments are added to the relationships, and without, they are the only coupling.
+     */
+    @SneakyThrows
+    static SortedSet<String> impact(
+        Path workspace,
+        CommandLine.IFactory factory,
+        ErrorOutput errorOutput,
+        String start,
+        String direction,
+        Integer depth,
+        List<String> qualifiers,
+        List<String> through
+    ) {
+        val args = new ArrayList<String>(List.of("-w", workspace.toString(), "query", "impact", start));
+        args.addAll(List.of("--direction", direction));
+        if (depth != null) {
+            args.addAll(List.of("--depth", depth.toString()));
+        }
+        qualifiers.forEach(q -> args.addAll(List.of("--qualifier", q)));
+        if (!through.isEmpty() && !qualifiers.isEmpty()) {
+            args.addAll(List.of("--through", "relationships"));
+        }
+        through.forEach(t -> args.addAll(List.of("--through", t)));
+        val result = run(factory, errorOutput, args.toArray(String[]::new));
+        if (result.exit() != 0 || !result.err().isEmpty()) {
+            throw new AssertionError("query impact " + args + " exited " + result.exit() + ": " + result.err());
+        }
+        val answer = new TreeSet<String>();
+        new ObjectMapper()
+            .readTree(result.out())
+            .get("reached")
+            .forEach(r -> answer.add(r.get("reference").asText()));
+        return answer;
     }
 }

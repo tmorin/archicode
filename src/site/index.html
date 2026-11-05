@@ -366,13 +366,15 @@ footer a { color: var(--muted); }
 <section id="agents">
   <div class="wrap">
     <h2>For agents</h2>
-    <p class="prose">An agent that has only the program starts here: <code>archicode init</code> writes a small workspace that loads and is drawn, <code>archicode guide</code> prints a versioned guide in Markdown that loads no workspace, <code>archicode query graph</code> checks that the files load and prints the resolved model as JSON, and <code>archicode query schemas manifest</code> gives the exact keys of each kind.</p>
+    <p class="prose">An agent that has only the program starts here: <code>archicode init</code> writes a small workspace that loads and is drawn, <code>archicode guide</code> prints a versioned guide in Markdown that loads no workspace, <code>archicode query graph</code> checks that the files load and prints the resolved model as JSON, <code>archicode query impact</code> lists what a change to an element touches, and <code>archicode query schemas manifest</code> gives the exact keys of each kind.</p>
 <pre><code><span class="c"># a first workspace</span>
 <span class="prompt">archicode init my-architecture</span>
 <span class="c"># how to write the files, generated from the code</span>
 <span class="prompt">archicode guide</span>
 <span class="c"># check that the workspace loads</span>
 <span class="prompt">archicode query graph</span>
+<span class="c"># what a change to an element touches</span>
+<span class="prompt">archicode query impact PaymentGateway</span>
 <span class="c"># the keys of a manifest</span>
 <span class="prompt">archicode query schemas manifest</span></code></pre>
     <p class="prose">The model of ArchiCode itself is a workspace an agent can read: <a href="editor/#/timeline/applications?sample=archicode">the ArchiCode model in the editor</a>, or <a href="https://github.com/tmorin/archicode/tree/main/docs/architecture">its folder in the repository</a>. A short summary for agents is in <a href="llms.txt">llms.txt</a>.</p>

@@ -2,6 +2,7 @@ package io.morin.archicode.cli;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jayway.jsonpath.JsonPath;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -12,6 +13,7 @@ import io.morin.archicode.workspace.ElementIndex;
 import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -71,8 +73,16 @@ public class GetViewsQuery implements Runnable {
     String template;
 
     @SneakyThrows
-    private String filterViews(@NonNull List<View> allViews) {
+    private String filterViews(@NonNull List<Entry> entries) {
         val jsonMapper = mapperFactory.create(MapperFormat.JSON);
+        val allViews = entries
+            .stream()
+            .map(entry -> {
+                val node = (ObjectNode) jsonMapper.valueToTree(entry.view());
+                node.put(SAVED_KEY, entry.saved());
+                return node;
+            })
+            .toList();
         val isQuery = Objects.nonNull(query) && !query.isBlank();
         if (isQuery) {
             val allViewsAsJson = jsonMapper.writeValueAsString(allViews);
@@ -90,11 +100,13 @@ public class GetViewsQuery implements Runnable {
             null,
             plateauOption.plateauId
         );
-        val allViews = new HashSet<>(workspace.getViews());
-        allViews.addAll(getBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION));
-        allViews.addAll(getBuiltinViews(workspace, workspace.techIndex, View.Layer.TECHNOLOGY));
+        val entries = new ArrayList<Entry>();
+        new HashSet<>(workspace.getViews()).forEach(view -> entries.add(new Entry(view, true)));
+        val derived = new HashSet<>(getBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION));
+        derived.addAll(getBuiltinViews(workspace, workspace.techIndex, View.Layer.TECHNOLOGY));
+        derived.forEach(view -> entries.add(new Entry(view, false)));
 
-        val resultAsJson = filterViews(sortViews(allViews));
+        val resultAsJson = filterViews(sortEntries(entries));
 
         if (OutputFormat.CUSTOM.equals(outputFormat)) {
             val resultAsString = QueryOutputWriter.TemplateUtilities.render(template, resultAsJson);
@@ -124,6 +136,29 @@ public class GetViewsQuery implements Runnable {
         .thenComparing(View::getName, Comparator.nullsFirst(Comparator.naturalOrder()))
         .thenComparing(View::getDescription, Comparator.nullsFirst(Comparator.naturalOrder()))
         .thenComparing(view -> Objects.toString(view.getProperties(), ""));
+
+    /**
+     * The last key of every entry: true for a view of the workspace, false for a view the tool derives.
+     */
+    static final String SAVED_KEY = "saved";
+
+    /**
+     * A view listed by the command and whether the workspace saves it.
+     */
+    record Entry(View view, boolean saved) {}
+
+    /**
+     * The order of the entries: the order of the views, then, for a saved view and a derived one that are alike, the
+     * saved one first.
+     */
+    private static final Comparator<Entry> ENTRY_ORDER = Comparator.comparing(Entry::view, VIEW_ORDER).thenComparing(
+        Entry::saved,
+        Comparator.reverseOrder()
+    );
+
+    static List<Entry> sortEntries(@NonNull Collection<Entry> entries) {
+        return entries.stream().sorted(ENTRY_ORDER).toList();
+    }
 
     /**
      * The key of the table that holds the result of the command in TOML, see {@link #asTomlDocument(JsonNode)}.

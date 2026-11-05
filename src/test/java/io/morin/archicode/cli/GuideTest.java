@@ -96,6 +96,36 @@ class GuideTest {
         assertEquals(List.of(), missing);
     }
 
+    @Test
+    void theHandWrittenPartNamesQueryImpactItsOptionsAndTheContainmentRule() throws Exception {
+        // the generated list of commands names every option; the paragraph an agent reads first is the resource itself
+        val written = Files.readString(Path.of("src/main/resources/guide/guide.md"));
+        val impact = commandLine.getSubcommands().get("query").getSubcommands().get("impact").getCommandSpec();
+        val missing = new ArrayList<String>();
+        if (!written.contains("archicode query impact")) {
+            missing.add("command archicode query impact");
+        }
+        for (val option : impact.options()) {
+            if (
+                option.inherited() ||
+                option.usageHelp() ||
+                option.versionHelp() ||
+                "--workspace".equals(option.longestName())
+            ) {
+                continue; // said once, for every command
+            }
+            for (val name : option.names()) {
+                if (!written.contains("`" + name + " ") && !written.contains("`" + name + "`")) {
+                    missing.add("option " + name + " of archicode query impact");
+                }
+            }
+        }
+        if (!written.contains("covers its descendants")) {
+            missing.add("the containment rule");
+        }
+        assertEquals(List.of(), missing);
+    }
+
     private static void collect(CommandLine.Model.CommandSpec spec, String path, String text, List<String> missing) {
         if (!text.contains("`" + path + "`") && !text.contains("`" + path + "` `")) {
             missing.add("command " + path);

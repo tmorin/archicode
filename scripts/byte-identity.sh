@@ -24,6 +24,10 @@
 #   --new-files FILE    the files whose difference is the feature (default: scripts/byte-identity-new-files.txt): one extended
 #                       regular expression per line on the path of a written file; a matching file is accepted when it exists in
 #                       both copies and differs; any other difference is reported as before
+#   --stdout-changes FILE  the declared changes of standard output (default: scripts/byte-identity-stdout-changes.txt): one rule
+#                       per line, `LABEL_REGEX<TAB>SED_SCRIPT` (`#` starts a comment); a pair is accepted when only the standard
+#                       output differs, a rule whose regex matches the label (`<name>: query views`) applies, and `sed -E` of its
+#                       script on the new output gives the base output byte for byte
 #   --base-tag TAG      the tag of the base program (default: archicode-0.19.0)
 #   --base-dir DIR      where the base program is built and kept (default: ~/.cache/archicode-byte-identity/<tag>)
 #   --no-build          use target/quarkus-app as it is (else `./mvnw -o package -DskipTests -DskipITs` first)
@@ -38,6 +42,7 @@ set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXCEPTIONS="$ROOT/scripts/byte-identity-exceptions.txt"
 NEWFILES="$ROOT/scripts/byte-identity-new-files.txt"
+STDOUT_CHANGES="$ROOT/scripts/byte-identity-stdout-changes.txt"
 TAG="archicode-0.19.0"
 BASE_DIR=""
 BUILD=1
@@ -49,6 +54,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --exceptions) EXCEPTIONS="$2"; shift 2 ;;
     --new-files) NEWFILES="$2"; shift 2 ;;
+    --stdout-changes) STDOUT_CHANGES="$2"; shift 2 ;;
     --base-tag) TAG="$2"; shift 2 ;;
     --base-dir) BASE_DIR="$2"; shift 2 ;;
     --no-build) BUILD=0; shift ;;
@@ -142,6 +148,20 @@ files_accepted() { # base_ws new_ws list
   return 0
 }
 
+# the standard output of a pair is accepted when a rule of the file, whose label regex matches the label, turns the new output into the base one
+stdout_accepted() { # base_out new_out rules label
+  local base="$1" new="$2" rules="$3" label="$4" rl rs
+  [ -s "$rules" ] || return 1
+  while IFS="$(printf '\t')" read -r rl rs; do
+    case "$rl" in ''|'#'*) continue ;; esac
+    [ -n "$rs" ] || continue
+    if printf '%s\n' "$label" | grep -Eq -- "$rl"; then
+      if sed -E "$rs" "$new" | cmp -s - "$base"; then return 0; fi
+    fi
+  done <"$rules"
+  return 1
+}
+
 compare() { # label src rules args...
   local label="$1" src="$2" rules="$3"; shift 3
   local b="$WORK/run/base" n="$WORK/run/new"
@@ -167,6 +187,11 @@ compare() { # label src rules args...
   if [ $files_same = 1 ] && [ $out_same = 1 ] && [ $exit_same = 1 ] && lines_accepted "$b/err.n" "$n/err.n" "$rules"; then
     ACCEPTED=$((ACCEPTED + 1))
     { echo "ACCEPTED  $label"; diff "$b/err.n" "$n/err.n" | sed 's/^/    /'; } >>"$REPORT"
+    return 0
+  fi
+  if [ $files_same = 1 ] && [ $out_same = 0 ] && [ $exit_same = 1 ] && [ $err_same = 1 ] && stdout_accepted "$b/out.n" "$n/out.n" "$STDOUT_CHANGES" "$label"; then
+    ACCEPTED=$((ACCEPTED + 1))
+    echo "ACCEPTED  $label (declared change of standard output)" >>"$REPORT"
     return 0
   fi
   UNEXPECTED=$((UNEXPECTED + 1))
@@ -250,6 +275,26 @@ if [ "$SELF_CHECK" = 1 ]; then
   if files_accepted "$NF/a" "$NF/b" "$NEWFILES"; then echo "SELF-CHECK FAILED: a file the list does not name was accepted" >&2; SELF_FAIL=1; fi
   rm -rf "$NF/a/views-stories/other" "$NF/b/views-stories/other"
   if ! files_accepted "$NF/a" "$NF/b" "$NEWFILES"; then echo "SELF-CHECK FAILED: a listed file was not accepted" >&2; SELF_FAIL=1; fi
+fi
+
+# the declared change of standard output has teeth: a new output that adds a `saved:` line is accepted with the real rules only
+if [ "$SELF_CHECK" = 1 ]; then
+  SO="$WORK/so"; rm -rf "$SO"; mkdir -p "$SO"
+  printf -- '- id: a\n  layer: application\n- id: b\n  layer: technology\n' >"$SO/base"
+  printf -- '- id: a\n  layer: application\n  saved: true\n- id: b\n  layer: technology\n  saved: false\n' >"$SO/new"
+  printf -- '- id: a\n  layer: technology\n  saved: true\n- id: b\n  layer: technology\n  saved: false\n' >"$SO/new-other"
+  : >"$SO/no-rules"
+  if ! stdout_accepted "$SO/base" "$SO/new" "$STDOUT_CHANGES" "shop: query views"; then echo "SELF-CHECK FAILED: a declared change of standard output was not accepted" >&2; SELF_FAIL=1; fi
+  if stdout_accepted "$SO/base" "$SO/new" "$SO/no-rules" "shop: query views"; then echo "SELF-CHECK FAILED: a change of standard output was accepted with no rule" >&2; SELF_FAIL=1; fi
+  if stdout_accepted "$SO/base" "$SO/new-other" "$STDOUT_CHANGES" "shop: query views"; then echo "SELF-CHECK FAILED: a change of standard output beyond the declared one was accepted" >&2; SELF_FAIL=1; fi
+  if stdout_accepted "$SO/base" "$SO/new" "$STDOUT_CHANGES" "shop: query elements"; then echo "SELF-CHECK FAILED: a change of standard output was accepted under a label no rule matches" >&2; SELF_FAIL=1; fi
+  # query graph: the one-line object grows a last key, deployments
+  printf '{"elements":[{"reference":"a"}],"relationships":[]}\n' >"$SO/g-base"
+  printf '{"elements":[{"reference":"a"}],"relationships":[],"deployments":[{"node":"n","application":"a"}]}\n' >"$SO/g-new"
+  printf '{"elements":[{"reference":"b"}],"relationships":[],"deployments":[{"node":"n","application":"a"}]}\n' >"$SO/g-new-other"
+  if ! stdout_accepted "$SO/g-base" "$SO/g-new" "$STDOUT_CHANGES" "shop: query graph"; then echo "SELF-CHECK FAILED: the declared change of query graph was not accepted" >&2; SELF_FAIL=1; fi
+  if stdout_accepted "$SO/g-base" "$SO/g-new-other" "$STDOUT_CHANGES" "shop: query graph"; then echo "SELF-CHECK FAILED: a changed elements of query graph was accepted" >&2; SELF_FAIL=1; fi
+  if stdout_accepted "$SO/g-base" "$SO/g-new" "$STDOUT_CHANGES" "shop: query views"; then echo "SELF-CHECK FAILED: the query graph change was accepted under an undeclared command" >&2; SELF_FAIL=1; fi
 fi
 
 echo
