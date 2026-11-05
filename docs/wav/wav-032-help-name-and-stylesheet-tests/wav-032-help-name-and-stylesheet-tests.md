@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 032
-status: proposed
+status: completed
 date: 2026-11-02
 related:
   - docs/wav/wav-032-help-name-and-stylesheet-tests/wbc-032-help-name-and-stylesheet-tests.md
@@ -31,7 +31,7 @@ None: the shape of both changes is decided on #201 and #203.
 wave_manifest:
   wave: 032
   slug: help-name-and-stylesheet-tests
-  status: proposed
+  status: completed
   sources:
     - '#201'
     - '#203'
@@ -45,14 +45,14 @@ wave_manifest:
           - 'a test under src/test/java/io/morin/archicode/it holds the string `Usage: archicode` (none does on the starting repository) and `./mvnw verify -DskipITs=false` exits 0'
           - '`grep -rl compactStyle src/test` prints nothing (15 files on the starting repository, the helper included) and src/test/javascript/viewpoint-kernel/stylesheet-support.js does not exist'
           - 'a fresh agent reads the 13 test files that wrapped the page in `compactStyle` (list in #203; `git show` of the first commit of the wave for the list) and finds no assertion whose pattern holds a CSS rule or a media query and no cut of the stylesheet by position (`indexOf`, `slice`, `substring` on the text of the style); a shared reader `rule(selector, at)` over a parsed stylesheet exists and the kept assertions use it'
-          - 'the commits of the second run list each deleted test with the end-to-end spec of src/test/e2e that covers it (`git log --format=%B` over the wave), and `git diff --name-status` of src/test/e2e for the wave shows only added files or added tests, and nothing under src/main/editor'
+          - 'the section "Commit record" of the document of the second run (docs/wav/wav-032-help-name-and-stylesheet-tests/run/run-0223-*/run-0223-*.md) lists each deleted test with the end-to-end spec of src/test/e2e that covers it (the commit message of the wave copies this list when the work is committed, which happens after the gate), and `git status --short src/test/e2e` shows only added files (`??`), and `git diff --name-status -- src/main/editor` prints nothing'
           - '`npm run test:unit`, `npm run test:coverage`, `npm run format:check` and `npm run lint` exit 0, and `npm run editor:build` and `npm run sample:build` leave `git status --short` unchanged'
   runs:
     - id: W-1
       slug: help-usage-name
       phase: P1
       depends_on: []
-      run: null
+      run: 0222
       delegation: standard
       profile: single-document
       likely_paths:
@@ -66,7 +66,7 @@ wave_manifest:
       slug: stylesheet-tests-on-a-parsed-stylesheet
       phase: P1
       depends_on: []
-      run: null
+      run: 0223
       delegation: standard
       likely_paths:
         - 'src/test/javascript/viewpoint-kernel/**'

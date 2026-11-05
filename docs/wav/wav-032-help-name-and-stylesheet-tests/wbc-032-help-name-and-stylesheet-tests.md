@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 032
-status: proposed
+status: completed
 date: 2026-11-02
 related:
   - docs/wav/wav-030-pages-ci-and-toolbar/wav-030-pages-ci-and-toolbar.md
