@@ -18,6 +18,7 @@
 - [Concepts](https://tmorin.github.io/archicode/docs/#concepts): the ideas behind the model, the layers and the plateaus
 - [Check the architecture in a build](https://tmorin.github.io/archicode/docs/#howto-ci): fail a build when a plateau changes what it must not change
 - [Work with an agent](https://tmorin.github.io/archicode/docs/#howto-agent): the guide, init, the loop and the schemas for an agent
+- [Impact of a change](https://tmorin.github.io/archicode/docs/#howto-agent): `archicode query impact <element>` lists the elements a change touches, with their distance
 
 ## Optional
 

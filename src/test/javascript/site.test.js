@@ -229,6 +229,7 @@ test('[commands] every archicode command on the page starts with a command of th
     'diff',
     'views generate',
     'query graph',
+    'query impact',
     'query schemas',
     'query views',
     'editor serve',

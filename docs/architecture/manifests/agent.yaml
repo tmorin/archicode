@@ -8,4 +8,4 @@ content:
   relationships:
     - destination: "archicode.commandline"
       label: "asks the graph of"
-      qualifiers: ["query graph"]
+      qualifiers: ["query graph", "query impact"]

@@ -81,18 +81,18 @@ class ArchitectureModelTest {
 
     @Test
     @SneakyThrows
-    void shouldListFourOrFiveSavedViews() {
+    void shouldListFiveSavedViews() {
         val result = run("-w", WORKSPACE.toString(), "query", "views", "-f", "json");
         assertEquals(0, result.exit(), result.err());
         assertEquals("", result.err(), "no warning, no error");
         val ids = new ArrayList<String>();
         for (val view : new ObjectMapper().readTree(result.out())) {
-            // the query also lists the views the tool derives for every element; only a saved view has a name
-            if (view.has("name")) {
+            // the query also lists the views the tool derives for every element; the marker tells the saved ones
+            if (view.get("saved").asBoolean()) {
                 ids.add(view.get("id").asText());
             }
         }
-        assertTrue(ids.size() >= 4 && ids.size() <= 5, "the model has 4 or 5 saved views: " + ids);
+        assertEquals(5, ids.size(), "the model has 5 saved views: " + ids);
     }
 
     @Test

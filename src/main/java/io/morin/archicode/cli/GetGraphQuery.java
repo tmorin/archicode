@@ -5,6 +5,7 @@ import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Relationship;
+import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.workspace.ElementIndex;
 import io.morin.archicode.workspace.Workspace;
@@ -79,14 +80,26 @@ public class GetGraphQuery implements Runnable {
      * @param workspace the already-indexed workspace ({@link io.morin.archicode.workspace.WorkspaceFactory}'s output)
      * @return the resolved graph
      */
-    public Graph buildGraph(@NonNull Workspace workspace) {
+    public static Graph buildGraph(@NonNull Workspace workspace) {
         val elements = new ArrayList<ElementEntry>();
         val relationships = new ArrayList<RelationshipEntry>();
 
         collect(workspace, workspace.appIndex, View.Layer.APPLICATION, elements, relationships);
         collect(workspace, workspace.techIndex, View.Layer.TECHNOLOGY, elements, relationships);
 
-        return Graph.builder().elements(elements).relationships(relationships).build();
+        // The hosted applications are copied as written, not resolved: the nodes come in the order of their references.
+        val deployments = new ArrayList<DeploymentEntry>();
+        for (val entry : elements) {
+            if (entry.getLayer() == View.Layer.TECHNOLOGY && entry.getElement() instanceof Node node) {
+                for (val application : node.getApplications()) {
+                    deployments.add(
+                        DeploymentEntry.builder().node(entry.getReference()).application(application).build()
+                    );
+                }
+            }
+        }
+
+        return Graph.builder().elements(elements).relationships(relationships).deployments(deployments).build();
     }
 
     /**
@@ -105,7 +118,7 @@ public class GetGraphQuery implements Runnable {
      * @param elements      the collected element entries, appended in place
      * @param relationships the collected relationship entries, appended in place
      */
-    private void collect(
+    private static void collect(
         @NonNull Workspace workspace,
         @NonNull ElementIndex index,
         @NonNull View.Layer layer,
@@ -141,6 +154,18 @@ public class GetGraphQuery implements Runnable {
         List<ElementEntry> elements;
 
         List<RelationshipEntry> relationships;
+
+        // Last key: the harness rule of the output relies on it. Empty is not written.
+        List<DeploymentEntry> deployments;
+    }
+
+    @Value
+    @Builder
+    public static class DeploymentEntry {
+
+        String node;
+
+        String application;
     }
 
     @Value

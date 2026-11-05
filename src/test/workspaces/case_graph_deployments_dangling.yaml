@@ -1,0 +1,16 @@
+application:
+  elements:
+    - kind: "solution"
+      id: "sol"
+      elements:
+        - kind: "system"
+          id: "sys_a"
+technology:
+  elements:
+    - kind: "environment"
+      id: "env"
+      elements:
+        - kind: "node"
+          id: "node_a"
+          applications:
+            - "sol.sys_missing"

@@ -1,0 +1,8 @@
+# Declared changes of standard output. One rule per line: LABEL_REGEX <TAB> SED_SCRIPT. Read by scripts/byte-identity.sh.
+# A pair is accepted when only the standard output differs and the sed script, run on the new output, gives the base output.
+
+# W-1 (run 0219): query views prints one more key, saved, last on every entry; the key sits at two spaces under the list dash
+: query views( --plateau .+)?$	/^  saved: (true|false)$/d
+
+# W-2 (run 0220): query graph prints one more key, deployments, last on the one-line object, when a node hosts an application
+: query graph( --plateau .+)?$	s/,"deployments":\[.*\]\}$/}/
