@@ -19,80 +19,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { compactStyle } = require('./stylesheet-support');
+const { styleOf, rulesOf, declarationsOf } = require('./stylesheet');
 
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-
-// ---------- the stylesheet, as a list of rules ----------
-
-const styleOf = (html) =>
-  html.slice(html.indexOf('<style>') + '<style>'.length, html.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
-
-/** The rules of a stylesheet, nested at-rules (@media, @container, @supports...) flattened: `{ selector, body, at }` where `at` lists the at-rules around it, outermost first. */
-function rulesOf(css, at = []) {
-  const rules = [];
-  let i = 0;
-  while (i < css.length) {
-    const open = css.indexOf('{', i);
-    if (open < 0) break;
-    let depth = 1;
-    let j = open + 1;
-    while (j < css.length && depth > 0) {
-      if (css[j] === '{') depth++;
-      else if (css[j] === '}') depth--;
-      j++;
-    }
-    const head = css.slice(i, open).trim();
-    const body = css.slice(open + 1, j - 1);
-    if (head.startsWith('@')) {
-      if (/^@(media|container|supports|layer|scope|starting-style|keyframes|-webkit-keyframes)\b/.test(head))
-        rules.push(...rulesOf(body, at.concat(head)));
-      else rules.push({ selector: head, body, at, atRule: true }); // @font-face, @property: declarations with no element to select
-    } else if (head) {
-      rules.push({ selector: head, body, at });
-    }
-    i = j;
-  }
-  return rules;
-}
-
-/** The declarations of a rule body, as `[property, value]`: split on the `;` that sit outside parentheses and quotes. */
-function declarationsOf(body) {
-  const out = [];
-  let depth = 0;
-  let quote = null;
-  let start = 0;
-  const push = (end) => {
-    const text = body.slice(start, end).trim();
-    const colon = text.indexOf(':');
-    if (text && colon > 0)
-      out.push([
-        text.slice(0, colon).trim(),
-        text
-          .slice(colon + 1)
-          .replace(/!important\s*$/, '')
-          .trim()
-      ]);
-  };
-  for (let k = 0; k < body.length; k++) {
-    const c = body[k];
-    if (quote) {
-      if (c === quote) quote = null;
-      continue;
-    }
-    if (c === '"' || c === "'") quote = c;
-    else if (c === '(') depth++;
-    else if (c === ')') depth--;
-    else if (c === ';' && depth === 0) {
-      push(k);
-      start = k + 1;
-    }
-  }
-  push(body.length);
-  return out;
-}
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 
 // ---------- colours ----------
 
@@ -679,13 +608,22 @@ test('the classes of waves 015 and 016 are in the stylesheet, drawn with the var
 
 /** A copy of the page in which `from` is replaced by `to` in the stylesheet; the replacement has to happen exactly once, so that a change of the page cannot turn a mutation into a no-op. */
 function mutated(from, to) {
-  const at = HTML.indexOf(from);
+  // the page keeps its rules spread over lines: any run of whitespace in `from` matches any run of whitespace of the page
+  const pattern = new RegExp(
+    from
+      .trim()
+      .split(/\s+/)
+      .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('\\s+'),
+    'g'
+  );
+  const found = [...HTML.matchAll(pattern)];
   assert.ok(
-    at > HTML.indexOf('<style>') && at < HTML.indexOf('</style>'),
+    found.length > 0 && found[0].index > HTML.indexOf('<style>') && found[0].index < HTML.indexOf('</style>'),
     'the text to change is in the stylesheet: ' + from
   );
-  assert.equal(HTML.indexOf(from, at + 1), -1, 'the text to change is there once: ' + from);
-  return HTML.slice(0, at) + to + HTML.slice(at + from.length);
+  assert.equal(found.length, 1, 'the text to change is there once: ' + from);
+  return HTML.slice(0, found[0].index) + to + HTML.slice(found[0].index + found[0][0].length);
 }
 
 test('a copy of the page where a class of wave 015 gets a literal colour fails the audit (the copies are built in memory, the page is not touched)', () => {
@@ -742,7 +680,7 @@ test('a copy where a variable is missing, misspelt or one-sided fails the audit'
     ).some((p) => /literal colour `#666666`/.test(p))
   );
   // a variable that only a dark block defines: the light theme has no value for it
-  const onlyDark = HTML.replace(
+  const onlyDark = mutated(
     '--chg-merged: #9fd3f2;\n    }\n  }',
     '--chg-merged: #9fd3f2;\n      --only-dark: #ffffff;\n    }\n  }'
   );
@@ -752,8 +690,8 @@ test('a copy where a variable is missing, misspelt or one-sided fails the audit'
   );
   // a variable the forced dark theme does not redefine while the system's dark does (and the other way round)
   const noForced = mutated(
-    '    --chg-new: #3ddc97;\n    --chg-changed: #ffb454;\n    --chg-removed: #a0a0a0;\n    --chg-removed-text: #b0b0b0;\n    --chg-contains: #8db4d8;\n    --chg-moved: #56b4e9;\n    --chg-split: #e69ac4;\n    --chg-merged: #9fd3f2;\n  }',
-    '    --chg-changed: #ffb454;\n    --chg-removed: #a0a0a0;\n    --chg-removed-text: #b0b0b0;\n    --chg-contains: #8db4d8;\n    --chg-moved: #56b4e9;\n    --chg-split: #e69ac4;\n    --chg-merged: #9fd3f2;\n  }'
+    '--chg-new: #3ddc97;\n    --chg-changed: #ffb454;\n    --chg-removed: #a0a0a0;\n    --chg-removed-text: #b0b0b0;\n    --chg-contains: #8db4d8;\n    --chg-moved: #56b4e9;\n    --chg-split: #e69ac4;\n    --chg-merged: #9fd3f2;\n  }\n  html, body {',
+    '--chg-changed: #ffb454;\n    --chg-removed: #a0a0a0;\n    --chg-removed-text: #b0b0b0;\n    --chg-contains: #8db4d8;\n    --chg-moved: #56b4e9;\n    --chg-split: #e69ac4;\n    --chg-merged: #9fd3f2;\n  }\n  html, body {'
   );
   assert.ok(
     auditPage(noForced).some((p) =>
@@ -762,7 +700,7 @@ test('a copy where a variable is missing, misspelt or one-sided fails the audit'
     JSON.stringify(auditPage(noForced))
   );
   // a dark block that gives another value than the other
-  const differs = HTML.replace('--danger: #ff6b6b;\n      --panel-bg', '--danger: #ff6b6c;\n      --panel-bg');
+  const differs = HTML.replace(/--danger: #ff6b6b;(\s+--panel-bg)/, '--danger: #ff6b6c;$1'); // the first one: the system's dark block\n      --panel-bg');
   assert.notEqual(differs, HTML);
   assert.ok(
     auditPage(differs).some((p) =>
@@ -795,7 +733,7 @@ test('a colour that is not redefined for the dark themes, or redefined to someth
 });
 
 test('a rule of its own under the dark media query, or a theme decided elsewhere, fails the audit', () => {
-  const own = HTML.replace(
+  const own = mutated(
     '  :root[data-theme="light"] { color-scheme: light; }',
     '  @media (prefers-color-scheme: dark) { .band-flag { color: #ff6b6b; } }\n  :root[data-theme="light"] { color-scheme: light; }'
   );
@@ -809,7 +747,7 @@ test('a rule of its own under the dark media query, or a theme decided elsewhere
     problems.some((p) => /`\.band-flag` writes the literal colour `#ff6b6b`/.test(p)),
     'and the literal is told too'
   );
-  const decided = HTML.replace(
+  const decided = mutated(
     '  :root[data-theme="light"] { color-scheme: light; }',
     '  :root[data-theme="dark"] .band-flag { opacity: 0.9; }\n  :root[data-theme="light"] { color-scheme: light; }'
   );
@@ -844,7 +782,7 @@ test('a stale entry of the allowed literals fails the audit: the list is not all
 
 test('the holes a review of this audit found are closed: each of these copies of the page fails it', () => {
   const css = (extra) =>
-    HTML.replace(
+    mutated(
       '  :root[data-theme="light"] { color-scheme: light; }',
       extra + '\n  :root[data-theme="light"] { color-scheme: light; }'
     );
@@ -876,16 +814,13 @@ test('the holes a review of this audit found are closed: each of these copies of
   says(css('html.dark .band-flag { opacity: 0.9; }'), /`html\.dark \.band-flag` decides a theme/);
   says(css('.a { -webkit-text-fill-color: blue; }'), /`\.a` writes the literal colour `blue`/);
   // a ground or a colour variable the audit cannot read is told, not skipped
+  says(mutated('--bg: #ffffff;', '--bg: rgb(255, 255, 255);'), /`--bg` is `rgb\(255, 255, 255\)` in the light theme/);
   says(
-    HTML.replace('--bg: #ffffff;', '--bg: rgb(255, 255, 255);'),
-    /`--bg` is `rgb\(255, 255, 255\)` in the light theme/
-  );
-  says(
-    HTML.replace('--bg: #ffffff;', '--bg: rgb(255, 255, 255);'),
+    mutated('--bg: #ffffff;', '--bg: rgb(255, 255, 255);'),
     /the light theme has no readable `--bg` and `--panel-bg`/
   );
   says(
-    HTML.replace('--fg: #1a1a1a;', '--fg: rgb(26, 26, 26);\n    --pale: hsl(0 0% 90%);'),
+    mutated('--fg: #1a1a1a;', '--fg: rgb(26, 26, 26);\n    --pale: hsl(0 0% 90%);'),
     /`--pale` is `hsl\(0 0% 90%\)` in the light theme/
   );
   // the text colour on the danger ground, and the accent read as text
@@ -900,7 +835,7 @@ test('the holes a review of this audit found are closed: each of these copies of
   // a variable that only the script is said to set, and a rule that stops using it
   says(
     mutated('fill: var(--ov-text);', 'fill: var(--ov-texte);'),
-    /`\.dg-over-fill \.dg-title, \.dg-over-fill \.dg-sub` uses `var\(--ov-texte\)`/
+    /`\.dg-over-fill \.dg-title,\s+\.dg-over-fill \.dg-sub` uses `var\(--ov-texte\)`/
   );
   says(
     mutated('fill: var(--ov-text);', 'fill: var(--fg);'),

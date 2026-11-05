@@ -2,7 +2,7 @@
 // What the editor does with the `styles` of the workspace (run 0017): the colour of a stereotype read from the YAML, the text
 // colour computed from it (not themed), the look of a list of stereotypes, the boxes and their badges in the SVG, the layout
 // that makes room for them, the rows of both trees, the legend, the CSS of the export and of the page, and the guard against
-// a value of `.archicode.yaml` that reaches the markup. The look itself is checked in a browser; here, markup, numbers and CSS text.
+// a value of `.archicode.yaml` that reaches the markup. The look itself is checked in a browser; here, markup, numbers and the parsed stylesheet.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,12 +10,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { openFixture } = require('./harness');
-const { compactStyle } = require('./stylesheet-support');
+const reader = require('./stylesheet');
+const { loadStylesheet, rulesOf, declarationsOf } = reader;
 
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+const PAGE = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const sheet = loadStylesheet(PAGE);
+/** The stylesheet that the export carries (a string made by the script), read like the one of the page. */
+const exportSheet = (css) => loadStylesheet('<style>' + css + '</style>');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 /** Values from the sandbox live in another realm: copied, they can be compared with deepStrictEqual. */
@@ -866,7 +867,7 @@ test('a row of the Elements tree carries the badges after its label, said in its
   assert.ok(row.indexOf('stereotype-badge') < row.indexOf('modified-dot'));
   assert.ok(!/class="stereotype-badge[^>]*modified/.test(row), 'a badge never says modified');
   assert.equal((row.match(/modified-dot/g) || []).length, 1);
-  assert.equal(CSS.includes('.modified-dot'), true);
+  assert.equal(sheet.has('.modified-dot'), true);
   // without unsaved changes: the badges, no dot
   state.dirtyReferences.clear();
   const clean = sandbox.renderTreeNodeHtml(state.index.application.get('mailer'), 1);
@@ -1080,34 +1081,27 @@ test('the CSS of the export carries the styled rules, read from the inline varia
   };
   for (const theme of ['light', 'dark']) {
     const css = cssOf(theme);
+    const exported = exportSheet(css);
     const t = themes[theme];
-    assert.ok(
-      css.includes(
-        '.dg-styled>.dg-box{fill:var(--st-fill,' + t['--bg'] + ');stroke:var(--st-stroke,' + t['--border'] + ');'
-      ),
-      theme
-    );
-    assert.ok(css.includes('.dg-styled>.dg-stack{fill:var(--st-fill,' + t['--panel-bg'] + ')}'), theme);
-    assert.ok(
-      css.includes('.dg-styled>.dg-group{fill:var(--st-fill,none);stroke:var(--st-stroke,' + t['--muted'] + ');'),
-      theme
-    );
-    assert.ok(css.includes('.dg-styled .dg-title{fill:var(--st-text,' + t['--fg'] + ')'), theme);
-    assert.ok(css.includes('.dg-styled .dg-sub,.dg-styled .dg-desc{fill:var(--st-text,' + t['--muted'] + ')'), theme);
-    assert.ok(
-      css.includes(
-        '.dg-badge rect{fill:var(--st-fill,' + t['--panel-bg'] + ');stroke:var(--st-stroke,' + t['--border'] + ')'
-      ),
-      theme
-    );
-    assert.ok(css.includes('.dg-badge text{fill:var(--st-text,' + t['--fg'] + ')'), theme);
-    assert.match(css, /\.dg-shadow>\.dg-box,\.dg-shadow>\.dg-group\{filter:drop-shadow\(/);
-    // the variables must come before the outlines that have to win over a custom stroke
-    assert.ok(css.indexOf('.dg-styled>.dg-box') < css.indexOf('.dg-focal .dg-box'), theme + ': styled before focal');
-    assert.ok(css.indexOf('.dg-styled>.dg-group') < css.indexOf('.dg-focal .dg-box'));
-    assert.ok(css.indexOf('.dg-shadow') < css.indexOf('.dg-focal .dg-box'));
-    assert.ok(css.indexOf('.dg-box{fill:') < css.indexOf('.dg-styled>.dg-box'), 'after the plain rule it overrides');
-    assert.ok(css.indexOf('.dg-title{fill:') < css.indexOf('.dg-styled .dg-title'));
+    const decl = (selector, property) => exported.decl(selector, property);
+    assert.equal(decl('.dg-styled>.dg-box', 'fill'), 'var(--st-fill,' + t['--bg'] + ')', theme);
+    assert.equal(decl('.dg-styled>.dg-box', 'stroke'), 'var(--st-stroke,' + t['--border'] + ')', theme);
+    assert.equal(decl('.dg-styled>.dg-stack', 'fill'), 'var(--st-fill,' + t['--panel-bg'] + ')', theme);
+    assert.equal(decl('.dg-styled>.dg-group', 'fill'), 'var(--st-fill,none)', theme);
+    assert.equal(decl('.dg-styled>.dg-group', 'stroke'), 'var(--st-stroke,' + t['--muted'] + ')', theme);
+    assert.equal(decl('.dg-styled .dg-title', 'fill'), 'var(--st-text,' + t['--fg'] + ')', theme);
+    assert.equal(decl('.dg-styled .dg-sub,.dg-styled .dg-desc', 'fill'), 'var(--st-text,' + t['--muted'] + ')', theme);
+    assert.equal(decl('.dg-badge rect', 'fill'), 'var(--st-fill,' + t['--panel-bg'] + ')', theme);
+    assert.equal(decl('.dg-badge rect', 'stroke'), 'var(--st-stroke,' + t['--border'] + ')', theme);
+    assert.equal(decl('.dg-badge text', 'fill'), 'var(--st-text,' + t['--fg'] + ')', theme);
+    assert.match(decl('.dg-shadow>.dg-box,.dg-shadow>.dg-group', 'filter'), /^drop-shadow\(/, theme);
+    // the variables must come before the outlines that have to win over a custom stroke (rules of one specificity)
+    const focal = '.dg-focal .dg-box,.dg-focal .dg-group';
+    assert.ok(exported.order('.dg-styled>.dg-box', focal), theme + ': styled before focal');
+    assert.ok(exported.order('.dg-styled>.dg-group', focal));
+    assert.ok(exported.order('.dg-shadow>.dg-box,.dg-shadow>.dg-group', focal));
+    assert.ok(exported.order('.dg-box', '.dg-styled>.dg-box'), 'after the plain rule it overrides');
+    assert.ok(exported.order('.dg-title', '.dg-styled .dg-title'));
     assert.doesNotMatch(
       css,
       /var\(--(bg|border|fg|muted|panel-bg|accent|danger)\b/,
@@ -1183,89 +1177,89 @@ test('an exported document keeps the inline --st-* of the boxes and holds the CS
 
 // ---- 12. The CSS text of the page ----
 
-/** The text of the block that opens at `start` (the index of its `{`), braces balanced. */
-function blockAt(text, start) {
-  let depth = 0;
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') depth++;
-    else if (text[i] === '}' && --depth === 0) return text.slice(start, i + 1);
-  }
-  throw new Error('unbalanced block');
-}
+// The two blocks of the dark theme: the one a system in the dark applies, and the one a forced theme applies.
+const DARK_BLOCKS = [
+  [':root:not([data-theme="light"])', ['@media (prefers-color-scheme: dark)']],
+  [':root[data-theme="dark"]', []]
+];
+const variablesOf = (selector, at) =>
+  sheet
+    .rule(selector, at)
+    .map(([name]) => name)
+    .filter((name) => name.startsWith('--'));
 
-test('in the stylesheet the styled rules come before the outlines of focus, selection and focal, which have to win', () => {
-  const at = (needle) => {
-    const i = CSS.indexOf(needle);
-    assert.ok(i > 0, needle + ' is in the stylesheet');
-    return i;
-  };
-  const focal = at('.dg-focal .dg-box');
-  for (const needle of [
+test('the styled rules come before the outlines of focus, selection and focal (one specificity, so the later wins), and the plain look before them', () => {
+  const focal = '.dg-focal .dg-box, .dg-focal .dg-group, .dg-selected .dg-box, .dg-selected .dg-group';
+  for (const selector of [
     '.dg-styled > .dg-box',
     '.dg-styled > .dg-stack',
     '.dg-styled > .dg-group',
-    '.dg-shadow > .dg-box'
+    '.dg-shadow > .dg-box, .dg-shadow > .dg-group'
   ]) {
-    assert.ok(at(needle) < focal, needle + ' before .dg-focal .dg-box');
+    assert.ok(sheet.order(selector, focal), selector + ' before the focal and selected rule');
   }
-  assert.ok(at('\n  .dg-box {') < at('.dg-styled > .dg-box'), 'the plain look first, the styled one overrides it');
-  assert.match(
-    CSS,
-    /\.dg-focal \.dg-box, \.dg-focal \.dg-group, \.dg-selected \.dg-box, \.dg-selected \.dg-group \{ stroke: var\(--accent\)/,
-    'one rule for focal and selected, still the accent'
-  );
-  assert.ok(at('.dg-styled > .dg-box') < at('.dg-ghost .dg-box'), 'a ghost is still dashed red');
-  // the usual look is the fallback of every variable
-  assert.match(
-    CSS,
-    /\.dg-styled > \.dg-box \{ fill: var\(--st-fill, var\(--bg\)\); stroke: var\(--st-stroke, var\(--border\)\);/
-  );
-  assert.match(CSS, /\.dg-styled > \.dg-group \{ fill: var\(--st-fill, none\);/);
-  assert.match(
-    CSS,
-    /\.dg-styled > \.dg-group \{[^}]*pointer-events: visibleStroke/,
+  assert.ok(sheet.order('.dg-box', '.dg-styled > .dg-box'), 'the plain look first, the styled one overrides it');
+  assert.equal(sheet.decl(focal, 'stroke'), 'var(--accent)', 'one rule for focal and selected, still the accent');
+  assert.ok(sheet.order('.dg-styled > .dg-box', '.dg-ghost .dg-box'), 'a ghost is still dashed red');
+  assert.ok(sheet.order('.dg-styled > .dg-group', focal), 'the faded outline of a group yields to the focal one');
+});
+
+test('the usual look is the fallback of every variable of the styled rules', () => {
+  assert.equal(sheet.decl('.dg-styled > .dg-box', 'fill'), 'var(--st-fill, var(--bg))');
+  assert.equal(sheet.decl('.dg-styled > .dg-box', 'stroke'), 'var(--st-stroke, var(--border))');
+  assert.equal(sheet.decl('.dg-styled > .dg-group', 'fill'), 'var(--st-fill, none)');
+  assert.equal(
+    sheet.decl('.dg-styled > .dg-group', 'pointer-events'),
+    'visibleStroke',
     'a filled group does not swallow the pan of the canvas'
   );
-  assert.match(CSS, /\.dg-styled \.dg-title \{ fill: var\(--st-text, var\(--fg\)\)/);
-  assert.match(CSS, /\.dg-badge rect \{ fill: var\(--st-fill, var\(--panel-bg\)\)/);
-  assert.match(CSS, /\.dg-badge text \{ fill: var\(--st-text, var\(--fg\)\)/);
+  assert.equal(sheet.decl('.dg-styled .dg-title', 'fill'), 'var(--st-text, var(--fg))');
+  assert.equal(sheet.decl('.dg-badge rect', 'fill'), 'var(--st-fill, var(--panel-bg))');
+  assert.equal(sheet.decl('.dg-badge text', 'fill'), 'var(--st-text, var(--fg))');
 });
 
 test('the dark theme was given no --st- variable: the text colour is computed, not themed', () => {
-  const declared = (block) => Array.from(block.matchAll(/(--[\w-]+)\s*:/g), (m) => m[1]);
-  const system = blockAt(CSS, CSS.indexOf('{', CSS.indexOf('prefers-color-scheme: dark')));
-  assert.ok(system.includes(':root:not([data-theme="light"])'));
-  const forced = CSS.match(/:root\[data-theme="dark"\] \{([^}]*)\}/)[1];
-  assert.ok(declared(system).length >= 9 && declared(forced).length >= 9, 'they are the theme blocks');
-  assert.deepEqual(
-    declared(system).filter((v) => v.startsWith('--st-')),
-    []
-  );
-  assert.deepEqual(
-    declared(forced).filter((v) => v.startsWith('--st-')),
-    []
-  );
-  // and no :root block anywhere declares one
-  for (const m of CSS.matchAll(/:root[^{]*\{([^}]*)\}/g))
+  for (const [selector, at] of DARK_BLOCKS) {
+    assert.ok(variablesOf(selector, at).length >= 9, 'they are the theme blocks: ' + selector);
     assert.deepEqual(
-      declared(m[1]).filter((v) => v.startsWith('--st-')),
-      []
+      variablesOf(selector, at).filter((name) => name.startsWith('--st-')),
+      [],
+      selector
+    );
+  }
+  const all = rulesOf(reader.styleOf(PAGE));
+  // and no :root block anywhere declares one
+  for (const rule of all.filter((one) => one.selector.startsWith(':root')))
+    assert.deepEqual(
+      declarationsOf(rule.body).filter(([name]) => name.startsWith('--st-')),
+      [],
+      rule.selector
     );
   // no rule is written for a styled box in a theme
-  assert.doesNotMatch(CSS, /data-theme[^{]*(dg-styled|dg-badge|stereotype-badge)/);
-  assert.doesNotMatch(system, /dg-styled|dg-badge|stereotype-badge/);
+  const styledLook = /dg-styled|dg-badge|stereotype-badge/;
+  assert.deepEqual(
+    all.filter((one) => /data-theme/.test(one.selector) && styledLook.test(one.selector)).map((one) => one.selector),
+    []
+  );
+  assert.deepEqual(
+    all
+      .filter(
+        (one) => one.at.some((head) => head.includes('prefers-color-scheme: dark')) && styledLook.test(one.selector)
+      )
+      .map((one) => one.selector),
+    []
+  );
 });
 
 test('the badge of a tree row has its rule, reading the variables of its style', () => {
-  const rule = /\.stereotype-badge \{([^}]*)\}/.exec(CSS);
-  assert.ok(rule, '.stereotype-badge exists');
-  assert.match(rule[1], /var\(--st-fill/);
-  assert.match(rule[1], /var\(--st-stroke/);
-  assert.match(rule[1], /var\(--st-text/);
-  assert.match(rule[1], /text-overflow: ellipsis/);
-  assert.ok(CSS.indexOf('.stereotype-badge {') > CSS.indexOf('.tree-node-kind {'), 'next to the kind of the row');
-  assert.match(CSS, /\.map-scope-row \.stereotype-badge/);
-  assert.match(CSS, /\.dg-legend-stereotypes \{/);
+  assert.ok(sheet.has('.stereotype-badge'), '.stereotype-badge exists');
+  assert.match(sheet.decl('.stereotype-badge', 'background'), /var\(--st-fill/);
+  assert.match(sheet.decl('.stereotype-badge', 'border'), /var\(--st-stroke/);
+  assert.match(sheet.decl('.stereotype-badge', 'color'), /var\(--st-text/);
+  assert.equal(sheet.decl('.stereotype-badge', 'text-overflow'), 'ellipsis');
+  assert.ok(sheet.order('.tree-node-kind', '.stereotype-badge'), 'next to the kind of the row');
+  assert.ok(sheet.has('.map-scope-row .stereotype-badge'));
+  assert.ok(sheet.has('.dg-legend-stereotypes'));
 });
 
 // ---- 13. The cache ----
@@ -1312,7 +1306,7 @@ test('the chevron of a styled box is drawn in the colour of its text, so that it
   assert.ok(at > 0, 'a styled box that can be opened has its button');
   const tag = svg.slice(svg.lastIndexOf('<g class="dg-fold"', at), svg.indexOf('<title>', at));
   assert.match(tag, /style="--st-text:#000000"/, 'black on the pale fill');
-  assert.match(CSS, /\.dg-fold-glyph \{[^}]*stroke: var\(--st-text, var\(--fg\)\)/);
+  assert.equal(sheet.decl('.dg-fold-glyph', 'stroke'), 'var(--st-text, var(--fg))');
   // an unstyled box keeps the plain button
   state.workspace.styles = {};
   const plainSvg = sandbox.renderDiagramSvg(
@@ -1366,16 +1360,16 @@ test('a compound box with no fill of its own, inside one that has, reads its tit
 
 test('the title of a box on a fill is drawn from --ov-text on the page and in the export, after the rules it must win over', async () => {
   const { sandbox } = await openFixture();
-  assert.match(CSS, /\.dg-over-fill \.dg-title, \.dg-over-fill \.dg-sub \{ fill: var\(--ov-text\); \}/);
-  assert.ok(
-    CSS.indexOf('.dg-over-fill .dg-title') > CSS.indexOf('.dg-styled .dg-title'),
-    'after the styled rule of the same specificity'
-  );
-  assert.ok(CSS.indexOf('.dg-over-fill .dg-title') > CSS.indexOf('.dg-title { fill: var(--fg)'));
+  const over = '.dg-over-fill .dg-title, .dg-over-fill .dg-sub';
+  assert.equal(sheet.decl(over, 'fill'), 'var(--ov-text)');
+  assert.ok(sheet.order('.dg-styled .dg-title', over), 'after the styled rule of the same specificity');
+  assert.ok(sheet.order('.dg-title', over));
   sandbox.getComputedStyle = () => ({ getPropertyValue: () => ' #123456 ' });
   const css = sandbox.diagramExportCss();
-  assert.ok(css.includes('.dg-over-fill .dg-title,.dg-over-fill .dg-sub{fill:var(--ov-text)}'));
-  assert.ok(css.indexOf('.dg-over-fill') > css.indexOf('.dg-styled .dg-title'));
+  const exported = exportSheet(css);
+  const exportedOver = '.dg-over-fill .dg-title,.dg-over-fill .dg-sub';
+  assert.equal(exported.decl(exportedOver, 'fill'), 'var(--ov-text)');
+  assert.ok(exported.order('.dg-styled .dg-title', exportedOver));
 });
 
 // ---- 13. The outline derived from a fill (run 0032) ----
@@ -1541,28 +1535,26 @@ test('the pill of a stereotype is outlined from its own fill unless its style ha
 test('the derived outline is a variable of the box: the page and the export read it the same way, and the focal and selected outlines still win', async () => {
   const { sandbox } = await openFixture();
   // the page
-  assert.match(CSS, /\.dg-styled > \.dg-box \{[^}]*stroke: var\(--st-stroke, var\(--border\)\)/);
-  assert.match(
-    CSS,
-    /\.dg-styled > \.dg-group \{[^}]*stroke: var\(--st-stroke, var\(--muted\)\); stroke-opacity: var\(--st-stroke-opacity, 0\.55\)/,
+  const focal = '.dg-focal .dg-box, .dg-focal .dg-group, .dg-selected .dg-box, .dg-selected .dg-group';
+  assert.equal(sheet.decl('.dg-styled > .dg-box', 'stroke'), 'var(--st-stroke, var(--border))');
+  assert.equal(
+    sheet.decl('.dg-styled > .dg-group', 'stroke'),
+    'var(--st-stroke, var(--muted))',
     'the faded outline is the fallback of a compound box with no colour'
   );
-  assert.ok(CSS.indexOf('.dg-styled > .dg-group') < CSS.indexOf('.dg-focal .dg-box'));
-  assert.match(
-    CSS,
-    /\.dg-focal \.dg-box, \.dg-focal \.dg-group, \.dg-selected \.dg-box, \.dg-selected \.dg-group \{ stroke: var\(--accent\)/
-  );
+  assert.equal(sheet.decl('.dg-styled > .dg-group', 'stroke-opacity'), 'var(--st-stroke-opacity, 0.55)');
+  assert.ok(sheet.order('.dg-styled > .dg-group', focal));
+  assert.equal(sheet.decl(focal, 'stroke'), 'var(--accent)');
   // the export: the same rules (it has no stylesheet of the page), the variable inline on the box
   sandbox.getComputedStyle = () => ({ getPropertyValue: () => ' #123456 ' });
-  const css = sandbox.diagramExportCss();
+  const exported = exportSheet(sandbox.diagramExportCss());
+  assert.equal(exported.decl('.dg-styled>.dg-group', 'fill'), 'var(--st-fill,none)');
+  assert.equal(exported.decl('.dg-styled>.dg-group', 'stroke'), 'var(--st-stroke,#123456)');
+  assert.equal(exported.decl('.dg-styled>.dg-group', 'stroke-opacity'), 'var(--st-stroke-opacity,.55)');
+  assert.equal(exported.decl('.dg-styled>.dg-box', 'fill'), 'var(--st-fill,#123456)');
+  assert.equal(exported.decl('.dg-styled>.dg-box', 'stroke'), 'var(--st-stroke,#123456)');
   assert.ok(
-    css.includes(
-      '.dg-styled>.dg-group{fill:var(--st-fill,none);stroke:var(--st-stroke,#123456);stroke-opacity:var(--st-stroke-opacity,.55);'
-    )
-  );
-  assert.ok(css.includes('.dg-styled>.dg-box{fill:var(--st-fill,#123456);stroke:var(--st-stroke,#123456);'));
-  assert.ok(
-    css.indexOf('.dg-styled>.dg-group') < css.indexOf('.dg-focal .dg-box'),
+    exported.order('.dg-styled>.dg-group', '.dg-focal .dg-box,.dg-focal .dg-group'),
     'the focal outline wins in the export too'
   );
 });

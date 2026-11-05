@@ -7,12 +7,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, openFixture } = require('./harness');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet, rulesOf, styleOf } = require('./stylesheet');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const sheet = loadStylesheet(HTML);
 
 /** A layout shaped like ELK's answer, without ELK (see diagram.test.js). */
 function fakeLayout(graph) {
@@ -428,41 +427,42 @@ const contrast = (a, b) => {
 };
 
 test('the text of the badges is readable (4.5:1) in the light and in the dark scheme', () => {
-  const css = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
-  const light = css.match(/:root \{([^}]*)\}/)[1];
-  const dark = css.match(/prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([^}]*)\}/)[1];
-  const vars = (block) =>
-    Object.fromEntries(Array.from(block.matchAll(/--([\w-]+):\s*(#[0-9a-f]{6})/gi), (m) => [m[1], m[2]]));
-  const scheme = { light: vars(light), dark: Object.assign(vars(light), vars(dark)) };
-  scheme.light = vars(light);
+  const vars = (pairs) =>
+    Object.fromEntries(pairs.filter(([name, value]) => name.startsWith('--') && /^#[0-9a-f]{6}$/i.test(value)));
+  const light = vars(sheet.rule(':root'));
+  const darkMedia = vars(sheet.rule(':root:not([data-theme="light"])', ['@media (prefers-color-scheme: dark)']));
+  const darkForced = vars(sheet.rule(':root[data-theme="dark"]'));
+  const scheme = {
+    light,
+    'dark (system)': Object.assign({}, light, darkMedia),
+    'dark (forced)': Object.assign({}, light, darkForced)
+  };
   const rules = [
     ['error-badge', 'on-accent', 'danger'],
     ['modified-badge', 'on-modified', 'modified'],
     ['dangling-badge', 'on-accent', 'danger']
   ];
   for (const [name, text, background] of rules) {
-    const rule = css.match(new RegExp('\\.' + name + ' \\{[^}]*\\}'))[0];
-    assert.ok(rule.includes('color: var(--' + text + ')'), name + ' uses ' + text);
-    assert.ok(rule.includes('background: var(--' + background + ')'), name + ' on ' + background);
+    assert.equal(sheet.decl('.' + name, 'color'), 'var(--' + text + ')', name + ' uses ' + text);
+    assert.equal(sheet.decl('.' + name, 'background'), 'var(--' + background + ')', name + ' on ' + background);
     for (const [which, v] of Object.entries(scheme)) {
-      const ratio = contrast(v[text], v[background]);
+      const ratio = contrast(v['--' + text], v['--' + background]);
       assert.ok(ratio >= 4.5, name + ' in ' + which + ': ' + ratio.toFixed(2));
     }
   }
 });
 
-test('the reset block uses the page colors, the top bar wraps, and select-none is a rule', () => {
-  const css = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
-  assert.doesNotMatch(css, /#e5e7eb|#9ca3af/i);
-  assert.match(css, /::placeholder \{ opacity: 1; color: var\(--muted\)/);
-  assert.match(css, /\.select-none \{ user-select: none/);
-  assert.doesNotMatch(css, /^\s*h1 \{ font-size/m, 'the heading sizes of the reset block are the only ones');
-  assert.match(css, /\.top-panel \{[^}]*flex-wrap: wrap/);
-  assert.match(
-    css,
-    /\.help-menu \{ position: absolute; top: calc\(100% \+ 0\.25rem\)/,
+test('the reset block uses the page colors, and select-none is a rule', () => {
+  assert.equal(sheet.decl('input::placeholder, textarea::placeholder', 'opacity'), '1');
+  assert.equal(sheet.decl('input::placeholder, textarea::placeholder', 'color'), 'var(--muted)');
+  assert.equal(sheet.decl('.select-none', 'user-select'), 'none');
+  assert.equal(sheet.has('h1'), false, 'the heading sizes of the reset block are the only ones');
+  assert.equal(
+    sheet.decl('.help-menu', 'position'),
+    'absolute',
     'the menu hangs from the "?" button, whatever the height of the bar'
   );
+  assert.equal(sheet.decl('.help-menu', 'top'), 'calc(100% + 0.25rem)');
 });
 
 test('the files and the branches of the trees can be used with the keyboard', async () => {
@@ -879,12 +879,22 @@ test('the top bar: the perspectives are a button group, the pressed one is the c
 });
 
 test('a hovered or focused button of a button group rises above its neighbours, which overlap it by one border', () => {
-  const css = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
-  assert.match(css, /\.button-group button \+ button \{ margin-left: -1px; \}/);
-  assert.match(
-    css,
-    /\.button-group button:hover, \.button-group button:focus-visible \{ position: relative; z-index: 2; \}/
+  assert.equal(sheet.decl('.button-group button + button', 'margin-left'), '-1px');
+  const raised = '.button-group button:hover, .button-group button:focus-visible';
+  assert.equal(sheet.decl(raised, 'position'), 'relative');
+  assert.equal(sheet.decl(raised, 'z-index'), '2');
+  const pressed = [
+    '.perspective-tabs button[aria-pressed="true"]',
+    '.page-tabs button[aria-pressed="true"]',
+    '.viewpoint-switch button[aria-pressed="true"]',
+    '.changes-switch button[aria-pressed="true"]',
+    '.right-tabs button[aria-pressed="true"]'
+  ].join(', ');
+  assert.equal(sheet.decl(pressed, 'background'), 'var(--accent)', 'the pressed perspective is highlighted');
+  const pill = rulesOf(styleOf(HTML)).filter((one) => /\.perspective-tab(?![\w-])/.test(one.selector));
+  assert.deepEqual(
+    pill.map((one) => one.selector),
+    [],
+    'the pill styling of the tabs is gone'
   );
-  assert.match(css, /\.perspective-tabs button\[aria-pressed="true"\]/, 'the pressed perspective is highlighted');
-  assert.doesNotMatch(css, /\.perspective-tab[ .{]/, 'the pill styling of the tabs is gone');
 });

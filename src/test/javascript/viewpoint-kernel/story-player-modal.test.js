@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('./library-page');
 const { waitFor } = require('./harness');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet } = require('./stylesheet');
 const {
   REPO,
   LAYERED,
@@ -902,17 +902,11 @@ test('the bar over the editing diagram has no Previous, Next, menu or Read; it k
 });
 
 test('the page of the player: a title for the dialog, no horizontal scroll rules left out, a layout that never grows past the window', () => {
-  const html = compactStyle(fs.readFileSync(PAGE, 'utf8'));
-  const css = html.slice(html.indexOf('.story-player[hidden]'), html.indexOf('.player-words.muted') + 80);
-  assert.match(css, /\.story-player \{ position: fixed; inset: 0;/);
-  assert.match(
-    css,
-    /\.player-shell \{ height: 100vh; height: 100dvh; display: flex; flex-direction: column; min-width: 0; max-width: 100vw; overflow: hidden;/
-  );
-  assert.match(css, /\.player-bar \{ flex: none; display: flex; flex-wrap: wrap;/);
-  assert.match(css, /\.player-step-menu \{ flex: 0 1 22rem; min-width: 0; max-width: 100%;/);
-  assert.match(css, /\.player-words \{[^}]*overflow-y: auto;[^}]*overflow-wrap: anywhere;/);
-  assert.ok(!/\.story-player[^{]*\{[^}]*overflow-x: scroll/.test(css));
+  const sheet = loadStylesheet(fs.readFileSync(PAGE, 'utf8'));
+  assert.equal(sheet.decl('.story-player', 'position'), 'fixed');
+  assert.equal(sheet.decl('.story-player', 'inset'), '0');
+  // the layout never growing past the window at 360 px is read in src/test/e2e/stylesheet-claims.spec.js
+  assert.equal(sheet.decl('.story-player', 'overflow-x'), undefined, 'no horizontal scroll rule on the player');
 });
 
 test("while the player is open the keys of the editor are off: J and K of the changes do not walk, and the hint of a drawing that does not fit is the player's own", async () => {

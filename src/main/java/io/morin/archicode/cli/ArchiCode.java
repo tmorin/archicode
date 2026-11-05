@@ -10,6 +10,7 @@ import picocli.CommandLine;
 
 @TopCommand
 @CommandLine.Command(
+    name = "archicode",
     description = "ArchiCode provides features to support architecture work with an as-code approach.",
     versionProvider = VersionProvider.class,
     subcommands = {

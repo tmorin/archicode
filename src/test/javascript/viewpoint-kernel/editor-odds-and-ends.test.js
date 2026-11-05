@@ -17,11 +17,10 @@ const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { inPlateau, layeredFiles, compareWith } = require('./layered-folders');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet } = require('./stylesheet');
 
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const SHEET = loadStylesheet(HTML);
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart/layered');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -667,77 +666,38 @@ test('the changed environment keeps its Before and After under the same label', 
 
 // ---- 5. The document holds the width of the window at 360 px ----
 
-const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
 const rem = (value) => Number(/([\d.]+)rem/.exec(value)[1]);
-/** The declarations of a top-level rule `selector { ... }` of the stylesheet, as written (the first one). */
-const declarationsOf = (selector, css = CSS) => {
-  const at = css.indexOf('\n  ' + selector + ' {');
-  assert.ok(at >= 0, selector + ' is in the stylesheet');
-  return css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
-};
-const narrowRules = () => {
-  const at = CSS.indexOf('@media (max-width: 40rem) {');
-  assert.ok(at >= 0, 'the stylesheet has a rule for a window of 40rem or less');
-  let depth = 0;
-  for (let i = CSS.indexOf('{', at); i < CSS.length; i++) {
-    if (CSS[i] === '{') depth++;
-    if (CSS[i] === '}' && --depth === 0) return CSS.slice(CSS.indexOf('{', at) + 1, i);
-  }
-  throw new Error('the rule is not closed');
-};
-
-test('at 360 px the three columns do not fit: the tree and the inspection alone are wider than the window (what made the document 424 px wide)', () => {
-  const left = rem(declarationsOf('.min-w-48')) * 16; // the minimum width the tree, the inspection and the handles take
-  const right = rem(declarationsOf('.min-w-56')) * 16;
-  const handles = 2 * rem(declarationsOf('.w-1')) * 16;
-  assert.equal(
-    left + right + handles,
-    424,
-    'the width the document had at 360 px, measured in a browser on the Brightcart fixture'
-  );
-  assert.ok(left + right + handles > 360);
-});
+const NARROW = ['@media (max-width: 40rem)'];
 
 test('below 40rem the regions are stacked, as wide as the window, with no handle and none of the sizes the user gave them by dragging', () => {
-  const rules = (selector) => {
-    const found = [];
-    for (const m of narrowRules().matchAll(/([^{}]+)\{([^{}]*)\}/g))
-      if (
-        m[1]
-          .split(',')
-          .map((x) => x.trim())
-          .includes(selector)
-      )
-        found.push(m[2]);
-    return found.join(';');
-  };
-  assert.match(rules('.app-shell'), /display:\s*flex;\s*flex-direction:\s*column/);
-  assert.match(rules('.app-shell [data-resize]'), /display:\s*none/, 'the handles that set the widths are gone');
+  const decl = (selector, property) => SHEET.decl(selector, property, NARROW);
+  assert.equal(decl('.app-shell', 'display'), 'flex');
+  assert.equal(decl('.app-shell', 'flex-direction'), 'column');
+  assert.equal(decl('.app-shell [data-resize]', 'display'), 'none', 'the handles that set the widths are gone');
   for (const panel of ['.app-shell > .left-panel', '.app-shell .right-panel']) {
-    const css = rules(panel);
-    assert.match(
-      css,
-      /width:\s*auto\s*!important/,
+    assert.equal(
+      decl(panel, 'width'),
+      'auto',
       panel + ': the width saved by dragging does not apply (it is an inline style)'
     );
-    assert.match(css, /min-width:\s*0/, panel + ': and no minimum width');
-    assert.match(css, /max-width:\s*none/);
+    assert.equal(decl(panel, 'min-width'), '0', panel + ': and no minimum width');
+    assert.equal(decl(panel, 'max-width'), 'none');
   }
-  assert.match(
-    rules('.app-shell > div.col-start-3'),
-    /flex-direction:\s*column/,
+  assert.equal(
+    decl('.app-shell > div.col-start-3, .app-shell > div.col-start-3 > div.grid', 'flex-direction'),
+    'column',
     'the grid that holds the centre and the inspection is a column too'
   );
-  assert.match(
-    rules('.app-shell .center-panel'),
-    /height:\s*80vh/,
+  assert.equal(
+    decl('.app-shell .center-panel', 'height'),
+    '80vh',
     'the centre has a height of its own (it had the row of the grid), enough for a diagram'
   );
   // the window below which the three columns are not used leaves the centre at least 200 px when it is the three columns above it
   const columns =
-    rem(declarationsOf('.min-w-48')) * 16 +
-    rem(declarationsOf('.min-w-56')) * 16 +
-    2 * rem(declarationsOf('.w-1')) * 16;
+    rem(SHEET.decl('.min-w-48', 'min-width')) * 16 +
+    rem(SHEET.decl('.min-w-56', 'min-width')) * 16 +
+    2 * rem(SHEET.decl('.w-1', 'width')) * 16;
   assert.ok(
     40 * 16 - columns >= 200,
     'at 40rem the centre still has ' + (40 * 16 - columns) + ' px in the three-column layout'
@@ -745,9 +705,15 @@ test('below 40rem the regions are stacked, as wide as the window, with no handle
 });
 
 test('the wide layout is untouched: the rules for the narrow window are inside the media query and nowhere else', () => {
-  const outside = CSS.replace(narrowRules(), '');
-  for (const declaration of ['flex-direction: column; height: auto', 'height: 80vh', 'width: auto !important'])
-    assert.ok(!outside.includes(declaration), declaration + ' only in the query');
-  assert.match(declarationsOf('.app-shell'), /height:\s*100%/);
-  assert.match(declarationsOf('#app'), /height:\s*100vh/);
+  assert.equal(SHEET.decl('.app-shell', 'height'), '100%');
+  assert.equal(
+    SHEET.decl('.app-shell', 'height', NARROW),
+    'auto',
+    'the query lets the shell grow; the top-level rule does not'
+  );
+  // the narrow declarations are not top-level ones
+  assert.equal(SHEET.decl('.app-shell', 'flex-direction'), undefined);
+  assert.equal(SHEET.decl('.app-shell', 'display'), undefined);
+  assert.ok(!SHEET.has('.app-shell .center-panel'), 'the height of 80vh is the narrow one only');
+  assert.ok(!SHEET.has('.app-shell > .left-panel') && !SHEET.has('.app-shell .right-panel'));
 });

@@ -237,7 +237,6 @@ class CommandReferenceTest {
     /** The tree, root first, then depth first in declaration order, on a command line of the test's own. */
     private List<Command> commands() {
         val root = new CommandLine(ArchiCode.class, factory);
-        root.setCommandName("archicode");
         val commands = new ArrayList<Command>();
         walk(root, "archicode", commands);
         return commands;

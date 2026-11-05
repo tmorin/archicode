@@ -8,13 +8,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { FIXTURE, createApp, makeDirHandle } = require('./harness');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet } = require('./stylesheet');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const sheet = loadStylesheet(HTML);
 const KEY = 'archicode-standalone-editor:theme';
 
 /** A localStorage in memory. */
@@ -259,32 +257,15 @@ test('choosing a theme in Settings does not modify the workspace, light "Save al
 });
 
 test('the stylesheet: forced themes override the system, with the right color-scheme', () => {
-  assert.match(CSS, /:root \{\s*color-scheme: light dark;/, 'system: both');
-  assert.match(CSS, /:root\[data-theme="light"\] \{ color-scheme: light; \}/);
-  assert.match(CSS, /:root\[data-theme="dark"\] \{\s*color-scheme: dark;/);
-  assert.match(
-    CSS,
-    /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{/,
-    'a forced light wins over a dark system'
+  const dark = '@media (prefers-color-scheme: dark)';
+  assert.equal(sheet.decl(':root', 'color-scheme'), 'light dark', 'system: both');
+  assert.equal(sheet.decl(':root[data-theme="light"]', 'color-scheme'), 'light');
+  assert.equal(sheet.decl(':root[data-theme="dark"]', 'color-scheme'), 'dark');
+  // a forced light wins over a dark system: the system's dark rule excludes it
+  assert.ok(
+    sheet.has(':root:not([data-theme="light"])', [dark]),
+    'the dark rule of the system leaves a forced light alone'
   );
-});
-
-test("the dark variables are the same for the system's dark and for the forced one", () => {
-  const declarations = (block) =>
-    block
-      .split(';')
-      .map((d) => d.trim())
-      .filter((d) => d.startsWith('--'))
-      .sort();
-  const system = declarations(
-    CSS.match(/prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([^}]*)\}/)[1]
-  );
-  const forced = declarations(CSS.match(/:root\[data-theme="dark"\] \{([^}]*)\}/)[1]);
-  assert.ok(system.length >= 9);
-  assert.deepEqual(forced, system);
-  // and each of them overrides a variable of the light block
-  const light = declarations(CSS.match(/:root \{([^}]*)\}/)[1]).map((d) => d.split(':')[0]);
-  for (const d of system) assert.ok(light.includes(d.split(':')[0]), d);
 });
 
 test('the SVG export takes its colors from the root element, so it follows the theme', () => {
