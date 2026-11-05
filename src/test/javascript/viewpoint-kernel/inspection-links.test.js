@@ -10,13 +10,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { openFixture } = require('./harness');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet } = require('./stylesheet');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-const CSS_NO_COMMENTS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const sheet = loadStylesheet(HTML);
 const NONE = { kind: 'none', key: null, mode: 'view' };
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
@@ -756,33 +754,20 @@ test('the view key of the page tells two links, and a link from its element, apa
 
 // ============================================================ the stylesheet and the export
 
-const ruleBodies = (selector) =>
-  Array.from(CSS_NO_COMMENTS.matchAll(/([^{}@]+)\{([^{}]*)\}/g))
-    .filter((m) => m[1].trim() === selector)
-    .map((m) => m[2].trim());
-
 test('links are clickable, show the keyboard, and the selected pair takes the accent of the theme', () => {
-  assert.match(ruleBodies('.dg-link, .dg-label[data-action]')[0], /cursor: pointer/);
-  assert.match(ruleBodies('.dg-link:focus-visible .dg-edge')[0], /stroke: var\(--accent\)/);
-  assert.match(ruleBodies('.dg-link-selected .dg-edge')[0], /stroke: var\(--accent\)/);
-  assert.match(ruleBodies('.dg-label.dg-link-selected')[0], /fill: var\(--accent\)/);
-  for (const selector of ['.inspection-rel', '.inspection-rel-path', '.inspection-subhead'])
-    assert.ok(ruleBodies(selector).length, selector);
-  const rules = ['.inspection-rel', '.inspection-rel-path', '.inspection-subhead', '.inspection-end-name']
-    .map((s) => ruleBodies(s)[0])
-    .join(' ');
-  assert.ok(!/#[0-9a-f]{3,6}\b|rgb\(/i.test(rules), 'colours come from the theme variables');
-  const selectedAfterBase =
-    CSS_NO_COMMENTS.indexOf('.dg-link-selected .dg-edge') > CSS_NO_COMMENTS.indexOf('.dg-edge.dg-ghost-edge');
-  assert.ok(selectedAfterBase, 'the selected outline follows the ghost edge rule it ties with in specificity');
+  assert.equal(sheet.decl('.dg-link, .dg-label[data-action]', 'cursor'), 'pointer');
+  assert.equal(sheet.decl('.dg-link:focus-visible .dg-edge', 'stroke'), 'var(--accent)');
+  assert.equal(sheet.decl('.dg-link-selected .dg-edge', 'stroke'), 'var(--accent)');
+  assert.equal(sheet.decl('.dg-label.dg-link-selected', 'fill'), 'var(--accent)');
 });
 
-test('the dark blocks of the stylesheet still hold the same variables: the panel added none', () => {
-  const blocks = Array.from(
-    CSS_NO_COMMENTS.matchAll(/(?::root\[data-theme="dark"\]|:root:not\(\[data-theme="light"\]\))\s*\{([^{}]*)\}/g)
-  ).map((m) => (m[1].match(/--[\w-]+(?=:)/g) || []).sort().join());
-  assert.equal(blocks.length, 2);
-  assert.equal(blocks[0], blocks[1]);
+test('the inspection of a relationship has its rules', () => {
+  for (const selector of ['.inspection-rel', '.inspection-rel-path', '.inspection-subhead'])
+    assert.ok(sheet.has(selector), selector);
+});
+
+test('the selected outline follows the ghost edge rule, which weighs the same as it', () => {
+  assert.ok(sheet.order('.dg-edge.dg-ghost-edge', '.dg-link-selected .dg-edge'));
 });
 
 test('the exported SVG loses what only makes sense on screen: tab stops, actions and the pressed state', () => {

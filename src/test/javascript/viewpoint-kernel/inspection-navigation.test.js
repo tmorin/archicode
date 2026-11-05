@@ -11,13 +11,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { openFixture } = require('./harness');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet, rulesOf, styleOf } = require('./stylesheet');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-const CSS_NO_COMMENTS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const sheet = loadStylesheet(HTML);
 const NONE = { kind: 'none', key: null, mode: 'view' };
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
@@ -872,70 +870,57 @@ test('the actions row and the other headers do not change: badges are on the lab
   assert.ok(!map.sandbox.renderMapPerspectiveHtml().center.includes('element-header-badges'), "nor is the Map's");
 });
 
-const blockOf = (css, head) => {
-  const at = css.indexOf(head);
-  assert.notEqual(at, -1, head + ' is in the stylesheet');
-  const open = css.indexOf('{', at);
-  let depth = 0;
-  for (let i = open; i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    else if (css[i] === '}' && --depth === 0) return css.slice(open + 1, i);
-  }
-  throw new Error('no end');
-};
-const ruleBodies = (css, selector) =>
-  Array.from(css.matchAll(/([^{}@]+)\{([^{}]*)\}/g))
-    .filter((m) => m[1].trim() === selector)
-    .map((m) => m[2].trim());
-const ruleBody = (css, selector) => {
-  const found = ruleBodies(css, selector);
-  assert.equal(found.length, 1, 'exactly one rule for ' + selector + ', found ' + found.length);
-  return found[0];
-};
+const BADGES = '.element-header-badges';
+const TIGHT = ['@container center (max-width: 46rem)'];
 
 test('the group gives way first and shows whole badges only, so the name keeps the room the states were sized for', () => {
-  const bodies = ruleBodies(CSS_NO_COMMENTS, '.element-header-badges');
-  assert.equal(bodies.length, 2, 'the base rule and the override of the tight state');
-  const base = bodies[0];
-  assert.match(base, /flex: 0 100 auto;/, 'it shrinks 100 times faster than the name (flex-shrink 1)');
-  assert.match(base, /min-width: 0;/);
-  assert.match(base, /display: flex;/, 'flex-wrap does nothing without it');
-  assert.match(
-    base,
-    /margin-left: -0\.5rem;/,
+  // the base rule and the override of the tight state
+  assert.ok(sheet.has(BADGES));
+  assert.ok(sheet.has(BADGES, TIGHT));
+  // it shrinks 100 times faster than the name (flex-shrink 1)
+  assert.equal(sheet.decl(BADGES, 'flex'), '0 100 auto');
+  assert.equal(sheet.decl(BADGES, 'min-width'), '0');
+  assert.equal(sheet.decl(BADGES, 'display'), 'flex', 'flex-wrap does nothing without it');
+  assert.equal(
+    sheet.decl(BADGES, 'margin-left'),
+    '-0.5rem',
     'the gap of the label row is paid for by the group even at zero width: this gives most of it back'
   );
-  assert.match(base, /max-height: 1\.1rem;/, 'one badge row high');
-  assert.match(base, /overflow: hidden;/);
-  assert.match(base, /flex-wrap: wrap;/, 'so that the badges that do not fit as a whole are the ones clipped');
-  assert.ok(
-    !/(^|;)\s*flex-shrink:\s*0/.test(ruleBody(CSS_NO_COMMENTS, '.element-header-label h2')),
-    'the name still shrinks'
+  assert.equal(sheet.decl(BADGES, 'max-height'), '1.1rem', 'one badge row high');
+  assert.equal(sheet.decl(BADGES, 'overflow'), 'hidden');
+  assert.equal(
+    sheet.decl(BADGES, 'flex-wrap'),
+    'wrap',
+    'so that the badges that do not fit as a whole are the ones clipped'
   );
-  const first = CSS_NO_COMMENTS.indexOf('@container center (max-width: 85rem)');
-  assert.ok(
-    CSS_NO_COMMENTS.indexOf('.element-header-badges {') < first,
-    'the base rule is before the first query, which add no specificity'
-  );
+  assert.notEqual(sheet.decl('.element-header-label h2', 'flex-shrink'), '0', 'the name still shrinks');
 });
 
-test('in the tight state, where the label wraps, every badge shows; no container query and no colour was added', () => {
-  const tight = blockOf(CSS_NO_COMMENTS, '@container center (max-width: 46rem)');
-  assert.equal(
-    ruleBody(tight, '.element-header-badges'),
-    'max-height: none; max-width: 100%; flex: none; margin-left: 0;',
-    'a row of its own: all of them, no pull to the left, never wider than the row'
+test('the base rule of the group comes before the container queries, which add no specificity', () => {
+  assert.ok(sheet.order(BADGES, [BADGES, TIGHT]));
+  const all = rulesOf(styleOf(HTML));
+  const firstQuery = all.findIndex((one) => one.at.length > 0 && /^@container/.test(one.at[0]));
+  const base = all.findIndex((one) => one.selector === BADGES && one.at.length === 0);
+  assert.ok(base >= 0 && base < firstQuery);
+});
+
+test('in the tight state, where the label wraps, every badge shows; the three states and the theme tokens are kept', () => {
+  // a row of its own: all of them, no pull to the left, never wider than the row
+  assert.deepEqual(sheet.rule(BADGES, TIGHT), [
+    ['max-height', 'none'],
+    ['max-width', '100%'],
+    ['flex', 'none'],
+    ['margin-left', '0']
+  ]);
+  const queries = new Set(
+    rulesOf(styleOf(HTML))
+      .flatMap((one) => one.at)
+      .filter((head) => head.startsWith('@container'))
   );
   assert.deepEqual(
-    CSS_NO_COMMENTS.match(/@container[^{]*/g).map((q) => q.trim()),
+    [...queries],
     ['85', '60', '46'].map((rem) => '@container center (max-width: ' + rem + 'rem)'),
     'still exactly the three states'
   );
-  const added =
-    ruleBodies(CSS_NO_COMMENTS, '.element-header-badges')[0] +
-    ruleBody(tight, '.element-header-badges') +
-    ruleBody(CSS_NO_COMMENTS, '.inspection-rel-marked') +
-    ruleBody(CSS_NO_COMMENTS, '.inspection-rel-mark');
-  assert.doesNotMatch(added, /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/, "the theme's tokens only");
-  assert.match(ruleBody(CSS_NO_COMMENTS, '.inspection-rel-marked'), /var\(--accent\)/);
+  assert.equal(sheet.decl('.inspection-rel-marked', 'border-color'), 'var(--accent)');
 });

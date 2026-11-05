@@ -11,12 +11,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet } = require('./stylesheet');
 
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const SHEET = loadStylesheet(HTML);
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 
 const COUNTS = {
@@ -91,17 +89,9 @@ test('the key is a folded row with a Key button that says what it opens', async 
   assert.match(html, /class="dg-legend-note"/);
 });
 
-test('the rules of the page: folded hides the sentences and the note, open is capped and scrolls, a narrow screen keeps one row', () => {
-  assert.match(
-    CSS,
-    /\.dg-legend-compare:not\(\.dg-key-open\) \.dg-legend-how, [^{]*\.dg-legend-note[^{]*\{ display: none; \}/
-  );
-  assert.match(CSS, /\.dg-legend-compare\.dg-key-open \{ max-height: var\(--dg-key-max, 30vh\); overflow-y: auto; \}/);
-  assert.match(
-    CSS,
-    /@media \(max-width: 700px\) \{\s+\.dg-legend-compare:not\(\.dg-key-open\) \{ flex-wrap: nowrap; overflow-x: auto;/
-  );
-  assert.match(CSS, /\.dg-legend-toggle\[aria-expanded="true"\]/);
+// What the folded, open and narrow key look like in a browser is read in src/test/e2e/stylesheet-claims.spec.js; here, the toggle has its pressed look.
+test('the rules of the page: the Key toggle has a pressed look', () => {
+  assert.ok(SHEET.has('.dg-legend-toggle[aria-expanded="true"]'));
 });
 
 test('the Key button opens and folds the key in place, and says so with aria-expanded; the cap is 30 % of the diagram area', () => {

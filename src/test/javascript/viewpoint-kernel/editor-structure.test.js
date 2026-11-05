@@ -13,7 +13,7 @@ const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { click } = require('./library-page');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet } = require('./stylesheet');
 
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
 const LAYERED = path.join(BRIGHTCART, 'layered');
@@ -1111,33 +1111,31 @@ test('Settings has no plateau section for a layered or a plateau-less workspace'
 // ---- the layout ----
 
 test('the bar of the pages and the Plateaus page hold the width: they wrap, and the helper for the third row of the shell exists', async () => {
-  const html = compactStyle(
+  const sheet = loadStylesheet(
     fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
   );
-  assert.match(html, /\.page-tabs \{[^}]*flex-wrap: wrap;[^}]*min-width: 0;[^}]*max-width: 100%;/);
-  assert.match(html, /\.timeline-item \{[^}]*min-width: 0;[^}]*margin-left: calc\(var\(--depth, 0\) \* 1rem\);/);
-  assert.match(html, /\.timeline-main \{[^}]*flex-wrap: wrap;/);
-  assert.match(
-    html,
-    /\.grid-rows-\\\[auto_auto_auto_minmax\\\(0\\,1fr\\\)\\\] \{ grid-template-rows: auto auto auto minmax\(0, 1fr\); \}/
-  );
-  assert.match(html, /\.files-group \.tree-branch-title \{ min-width: 0; \}/);
-  // 360 px (issue #82): four pages in one row, and the fields of Settings under their labels, never wider than what holds them
-  assert.match(html, /\.page-tabs \.button-group \{ flex-wrap: wrap; max-width: 100%;/);
-  const narrow = html.slice(html.indexOf('@media (max-width: 40rem) {'), html.indexOf('</style>'));
+  const narrow = ['@media (max-width: 40rem)'];
+  assert.equal(sheet.decl('.page-tabs', 'flex-wrap'), 'wrap');
+  assert.equal(sheet.decl('.page-tabs', 'min-width'), '0');
+  assert.equal(sheet.decl('.page-tabs', 'max-width'), '100%');
+  assert.equal(sheet.decl('.timeline-item', 'min-width'), '0');
+  assert.equal(sheet.decl('.timeline-item', 'margin-left'), 'calc(var(--depth, 0) * 1rem)');
+  assert.equal(sheet.decl('.timeline-main', 'flex-wrap'), 'wrap');
   assert.equal(
-    (html.match(/@media \(max-width: 40rem\)/g) || []).length,
-    1,
-    'one rule for the narrow window: the tests of run 0073 read the first'
+    sheet.decl('.grid-rows-\\[auto_auto_auto_minmax\\(0\\,1fr\\)\\]', 'grid-template-rows'),
+    'auto auto auto minmax(0, 1fr)'
   );
-  assert.match(narrow, /\.page-tabs button \{ padding: 0 0\.45rem !important;/);
-  assert.match(narrow, /\.settings-view \.field-row \{ flex-wrap: wrap;/);
-  assert.match(narrow, /\.settings-view \.field-label \{ width: 100%; \}/);
-  assert.match(narrow, /\.settings-view \.field-value \{ flex-basis: 100%; \}/);
-  assert.match(
-    html,
-    /\.settings-view input\[type="text"\], \.settings-view select, \.settings-view textarea \{ max-width: 100%; min-width: 0;/
-  );
+  assert.equal(sheet.decl('.files-group .tree-branch-title', 'min-width'), '0');
+  // 360 px (issue #82): four pages in one row, and the fields of Settings under their labels, never wider than what holds them
+  assert.equal(sheet.decl('.page-tabs .button-group', 'flex-wrap'), 'wrap');
+  assert.equal(sheet.decl('.page-tabs .button-group', 'max-width'), '100%');
+  assert.equal(sheet.decl('.page-tabs button', 'padding', narrow), '0 0.45rem');
+  assert.equal(sheet.decl('.settings-view .field-row', 'flex-wrap', narrow), 'wrap');
+  assert.equal(sheet.decl('.settings-view .field-label', 'width', narrow), '100%');
+  assert.equal(sheet.decl('.settings-view .field-value', 'flex-basis', narrow), '100%');
+  const fields = '.settings-view input[type="text"], .settings-view select, .settings-view textarea';
+  assert.equal(sheet.decl(fields, 'max-width', narrow), '100%');
+  assert.equal(sheet.decl(fields, 'min-width', narrow), '0');
 });
 
 // ---- what the review of the run found ----

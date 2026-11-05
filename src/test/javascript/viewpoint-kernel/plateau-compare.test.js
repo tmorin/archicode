@@ -16,12 +16,10 @@ const vm = require('node:vm');
 const { createApp, openFixture } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { inPlateau, layeredFiles, openLayered, compareWith, bandOf } = require('./layered-folders');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet, rulesOf, declarationsOf } = require('./stylesheet');
 
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const sheet = loadStylesheet(HTML);
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
 
@@ -498,8 +496,9 @@ test("a box inside a box of the same state has its own line, glyph, pill and tin
   // the inner removed box is struck too
   assert.match(nodeOf(svg, 'shop.legacy.job'), /<tspan class="dg-struck">Nightly job<\/tspan>/);
   // the tint of a box that contains others is lighter, so that the boxes inside read on it
-  assert.match(CSS, /\.dg-compound \.dg-tint \{ fill-opacity: 0\.08; \}/);
-  assert.match(CSS, /\.dg-tint \{ fill: var\(--st-tint, none\); fill-opacity: 0\.16;/);
+  assert.equal(sheet.decl('.dg-compound .dg-tint', 'fill-opacity'), '0.08');
+  assert.equal(sheet.decl('.dg-tint', 'fill'), 'var(--st-tint, none)');
+  assert.equal(sheet.decl('.dg-tint', 'fill-opacity'), '0.16');
 });
 
 test('the links say their state: line style, an arrowhead of their colour, and the glyph in the caption, also when the captions are off', async () => {
@@ -561,12 +560,11 @@ test('a changed link is dotted, and a grouped link is the sum of what it stands 
     linkOf(svg, 'customer', 'shop.web'),
     /<path class="dg-edge dg-chg-changed" marker-end="url\(#dg-arrow-changed\)"/
   );
-  assert.match(
-    CSS,
-    /\.dg-edge\.dg-chg-changed \{ stroke: var\(--chg-changed\); stroke-width: 2; stroke-dasharray: 2 3; \}/
-  );
-  assert.match(CSS, /\.dg-edge\.dg-chg-new \{[^}]*stroke-width: 3;[^}]*\}/);
-  assert.match(CSS, /\.dg-edge\.dg-chg-removed \{[^}]*stroke-dasharray: 7 4;[^}]*\}/);
+  assert.equal(sheet.decl('.dg-edge.dg-chg-changed', 'stroke'), 'var(--chg-changed)');
+  assert.equal(sheet.decl('.dg-edge.dg-chg-changed', 'stroke-width'), '2');
+  assert.equal(sheet.decl('.dg-edge.dg-chg-changed', 'stroke-dasharray'), '2 3');
+  assert.equal(sheet.decl('.dg-edge.dg-chg-new', 'stroke-width'), '3');
+  assert.equal(sheet.decl('.dg-edge.dg-chg-removed', 'stroke-dasharray'), '7 4');
 });
 
 test('the legend explains the four states with their glyph, their line and their word, and says what red dashed is kept for', async () => {
@@ -1015,58 +1013,79 @@ test('the CSS of the export repeats the rules of the states with the colours of 
     sandbox.getComputedStyle = () => ({ getPropertyValue: (name) => ' ' + themes[theme][name] + ' ' });
     const css = sandbox.diagramExportCss();
     const t = themes[theme];
-    assert.ok(
-      css.includes(
-        'svg{--chg-new:' +
-          t['--chg-new'] +
-          ';--chg-changed:' +
-          t['--chg-changed'] +
-          ';--chg-removed:' +
-          t['--chg-removed'] +
-          ';--chg-removed-text:' +
-          t['--chg-removed-text'] +
-          ';--chg-contains:' +
-          t['--chg-contains'] +
-          '}'
-      ),
+    // the export is a stylesheet of its own: read it as one, with the same reader as the page
+    const exported = loadStylesheet('<style>' + css + '</style>');
+    // the export has two `svg` rules (the variables of the states, and the one of the drawing): read the first one that defines them
+    const variables = rulesOf(css).find((one) => one.selector === 'svg' && one.body.includes('--chg-new'));
+    assert.deepEqual(
+      declarationsOf(variables.body),
+      [
+        ['--chg-new', t['--chg-new']],
+        ['--chg-changed', t['--chg-changed']],
+        ['--chg-removed', t['--chg-removed']],
+        ['--chg-removed-text', t['--chg-removed-text']],
+        ['--chg-contains', t['--chg-contains']]
+      ],
       theme
     );
-    assert.ok(
-      css.includes(
-        '.dg-tint{fill:var(--st-tint,none);fill-opacity:.16;stroke:none}.dg-compound .dg-tint{fill-opacity:.08}'
-      )
-    );
-    assert.ok(
-      css.includes(
-        '.dg-struck{text-decoration:line-through}.dg-glyph{font-weight:700}.dg-label .dg-glyph{font-size:14px}'
-      )
-    );
-    assert.ok(css.includes('.dg-edge.dg-chg-new{stroke:' + t['--chg-new'] + ';stroke-width:3;stroke-dasharray:none}'));
-    assert.ok(
-      css.includes('.dg-edge.dg-chg-changed{stroke:' + t['--chg-changed'] + ';stroke-width:2;stroke-dasharray:2 3}')
-    );
-    assert.ok(
-      css.includes('.dg-edge.dg-chg-removed{stroke:' + t['--chg-removed'] + ';stroke-width:1.6;stroke-dasharray:7 4}')
-    );
-    assert.ok(css.includes('.dg-arrowhead.dg-chg-removed{fill:' + t['--chg-removed'] + '}'));
+    assert.deepEqual(exported.rule('.dg-tint'), [
+      ['fill', 'var(--st-tint,none)'],
+      ['fill-opacity', '.16'],
+      ['stroke', 'none']
+    ]);
+    assert.equal(exported.decl('.dg-compound .dg-tint', 'fill-opacity'), '.08');
+    assert.equal(exported.decl('.dg-struck', 'text-decoration'), 'line-through');
+    assert.equal(exported.decl('.dg-glyph', 'font-weight'), '700');
+    assert.equal(exported.decl('.dg-label .dg-glyph', 'font-size'), '14px');
+    assert.deepEqual(exported.rule('.dg-edge.dg-chg-new'), [
+      ['stroke', t['--chg-new']],
+      ['stroke-width', '3'],
+      ['stroke-dasharray', 'none']
+    ]);
+    assert.deepEqual(exported.rule('.dg-edge.dg-chg-changed'), [
+      ['stroke', t['--chg-changed']],
+      ['stroke-width', '2'],
+      ['stroke-dasharray', '2 3']
+    ]);
+    assert.deepEqual(exported.rule('.dg-edge.dg-chg-removed'), [
+      ['stroke', t['--chg-removed']],
+      ['stroke-width', '1.6'],
+      ['stroke-dasharray', '7 4']
+    ]);
+    assert.equal(exported.decl('.dg-arrowhead.dg-chg-removed', 'fill'), t['--chg-removed']);
     // the red dashed of a dangling reference is still there, and still its own
-    assert.ok(css.includes('.dg-ghost .dg-box{stroke:' + t['--danger'] + ';stroke-dasharray:5 4}'));
-    assert.ok(css.indexOf('.dg-ghost-edge') < css.indexOf('.dg-edge.dg-chg-new'));
+    assert.deepEqual(exported.rule('.dg-ghost .dg-box'), [
+      ['stroke', t['--danger']],
+      ['stroke-dasharray', '5 4']
+    ]);
     assert.ok(
-      css.indexOf('.dg-styled>.dg-box') < css.indexOf('.dg-tint'),
-      'the tint is laid over the box the styled rule draws'
+      exported.order('.dg-ghost-edge', '.dg-edge.dg-chg-new'),
+      'the dangling reference is drawn before the line of a state (same weight, so the order decides)'
+    );
+    assert.ok(
+      exported.order('.dg-styled>.dg-box', '.dg-tint'),
+      'the tint is laid over the box the styled rule draws (same weight, so the order decides)'
     );
   }
 });
 
 test('the page and the export agree on the lines of the states', () => {
-  const page = (cls) =>
-    CSS.match(new RegExp('\\.dg-edge\\.dg-chg-' + cls + ' \\{([^}]*)\\}'))[1]
-      .replace(/\s+/g, ' ')
-      .trim();
-  assert.equal(page('new'), 'stroke: var(--chg-new); stroke-width: 3; stroke-dasharray: none;');
-  assert.equal(page('changed'), 'stroke: var(--chg-changed); stroke-width: 2; stroke-dasharray: 2 3;');
-  assert.equal(page('removed'), 'stroke: var(--chg-removed); stroke-width: 1.6; stroke-dasharray: 7 4;');
+  const page = (cls) => sheet.rule('.dg-edge.dg-chg-' + cls);
+  assert.deepEqual(page('new'), [
+    ['stroke', 'var(--chg-new)'],
+    ['stroke-width', '3'],
+    ['stroke-dasharray', 'none']
+  ]);
+  assert.deepEqual(page('changed'), [
+    ['stroke', 'var(--chg-changed)'],
+    ['stroke-width', '2'],
+    ['stroke-dasharray', '2 3']
+  ]);
+  assert.deepEqual(page('removed'), [
+    ['stroke', 'var(--chg-removed)'],
+    ['stroke-width', '1.6'],
+    ['stroke-dasharray', '7 4']
+  ]);
   const source = HTML.slice(
     HTML.indexOf('function diagramExportCss()'),
     HTML.indexOf('function diagramExportDocument()')
@@ -1098,13 +1117,14 @@ test('the export of a comparison carries the glyphs, the struck titles, the pill
 
 test("the colours of the states are defined for the light theme, the system's dark and the forced dark", () => {
   const names = ['--chg-new', '--chg-changed', '--chg-removed', '--chg-removed-text', '--chg-contains'];
-  const light = CSS.match(/:root \{([^}]*)\}/)[1];
-  const system = CSS.match(/prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([^}]*)\}/)[1];
-  const forced = CSS.match(/:root\[data-theme="dark"\] \{([^}]*)\}/)[1];
+  const dark = ['@media (prefers-color-scheme: dark)'];
+  const light = (name) => sheet.decl(':root', name);
+  const system = (name) => sheet.decl(':root:not([data-theme="light"])', name, dark);
+  const forced = (name) => sheet.decl(':root[data-theme="dark"]', name);
   const value = (block, name) => {
-    const m = new RegExp(name + ': (#[0-9a-f]{6});').exec(block);
-    assert.ok(m, name);
-    return m[1];
+    const found = block(name);
+    assert.match(found, /^#[0-9a-f]{6}$/, name);
+    return found;
   };
   const luminance = (hex) => {
     const c = [1, 3, 5]

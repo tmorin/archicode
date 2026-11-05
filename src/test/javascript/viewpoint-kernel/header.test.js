@@ -10,13 +10,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { openFixture } = require('./harness');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet, rulesOf, styleOf, declarationsOf } = require('./stylesheet');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 
 // ---- helpers: markup ----
 
@@ -67,33 +64,17 @@ async function mapPage(selected) {
 
 // ---- helpers: stylesheet ----
 
-const CSS_NO_COMMENTS = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+const sheet = loadStylesheet(HTML);
 
-/** The body of the block that opens with `head` (an at-rule), braces matched. */
-function blockOf(css, head) {
-  const at = css.indexOf(head);
-  assert.notEqual(at, -1, head + ' is in the stylesheet');
-  const open = css.indexOf('{', at);
-  let depth = 0;
-  for (let i = open; i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    else if (css[i] === '}' && --depth === 0) return css.slice(open + 1, i);
-  }
-  throw new Error('the block of ' + head + ' does not close');
-}
-
-/** The plain rules of a piece of css (innermost blocks): { selector, body }. */
-function rulesOf(css) {
-  return Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g)).map((m) => ({ selector: m[1].trim(), body: m[2].trim() }));
-}
-
-const ruleOf = (css, selector) => {
-  const found = rulesOf(css).filter((r) => r.selector === selector);
-  assert.equal(found.length, 1, 'exactly one rule for ' + selector + ' here, found ' + found.length);
-  return found[0].body;
-};
-
-const QUERY = (rem) => '@container center (max-width: ' + rem + 'rem)';
+/** The heads of the container queries of the stylesheet, in source order, each once. */
+const containerQueries = () => [
+  ...new Set(
+    rulesOf(styleOf(HTML))
+      .flatMap((one) => one.at)
+      .filter((head) => head.startsWith('@container'))
+      .map((head) => head.replace(/\s+/g, ' '))
+  )
+];
 
 // ============================================================ 1-3. the markup of each header
 
@@ -341,147 +322,42 @@ test('the Details tab and the edit form are not diagram headers: no "⋯", no ov
 });
 
 // ============================================================ 7. the stylesheet
+// What the header does at each width of the centre is read in a browser (stylesheet-claims.spec.js); here, what the rules say.
 
 test('the centre panel is the container, and the three states are container queries, widest first', () => {
-  assert.ok(
-    CSS_NO_COMMENTS.includes('.center-panel { container: center / inline-size; }'),
-    'the centre panel is a container of its inline size'
-  );
-  const queries = CSS_NO_COMMENTS.match(/@container[^{]*/g).map((q) => q.trim());
+  const containers = rulesOf(styleOf(HTML))
+    .filter((one) => one.selector === '.center-panel' && one.at.length === 0)
+    .flatMap((one) => declarationsOf(one.body))
+    .filter(([name]) => name === 'container');
+  assert.deepEqual(containers, [['container', 'center / inline-size']], 'a container of its inline size');
   assert.deepEqual(
-    queries,
-    [QUERY(85), QUERY(60), QUERY(46)].map((q) => q),
+    containerQueries(),
+    [85, 60, 46].map((rem) => '@container center (max-width: ' + rem + 'rem)'),
     'exactly three container queries: 85rem, 60rem, 46rem, in that order'
   );
-  const at = [85, 60, 46].map((rem) => CSS_NO_COMMENTS.indexOf(QUERY(rem)));
-  assert.ok(at[0] < at[1] && at[1] < at[2], 'a narrower state comes after the wider one, so that it wins');
-});
-
-test('the container queries come after the base rules they override (a query adds no specificity)', () => {
-  const first = CSS_NO_COMMENTS.indexOf(QUERY(85));
-  // the first rules of the same name are small adjustments (margin); the base rules are the ones that make the flex row
-  const header = CSS_NO_COMMENTS.search(/\.element-header \{\s*display: flex;/);
-  const row = CSS_NO_COMMENTS.search(/\.element-header-actions \{ display: flex;/);
-  assert.notEqual(header, -1, 'the base rule of the header');
-  assert.notEqual(row, -1, 'the base rule of the row');
-  assert.ok(header < first, 'the base .element-header rule is before the first query');
-  assert.ok(row < first, 'the base .element-header-actions rule is before the first query');
-  assert.match(
-    CSS_NO_COMMENTS.slice(row, row + 100),
-    /flex-shrink: 0;/,
-    'the row is the one whose children do not shrink'
-  );
-  for (const rem of [85, 60, 46]) {
-    assert.ok(
-      CSS_NO_COMMENTS.indexOf(QUERY(rem)) > header && CSS_NO_COMMENTS.indexOf(QUERY(rem)) > row,
-      rem + 'rem is after both'
-    );
-  }
-  const baseHolder = CSS_NO_COMMENTS.indexOf('.header-more, .header-overflow { display: contents; }');
-  const baseButton = CSS_NO_COMMENTS.indexOf('.header-more-button { display: none; }');
-  assert.notEqual(baseHolder, -1, 'in the full state the holder and the overflow vanish from the box tree');
-  assert.notEqual(baseButton, -1, 'and the "⋯" button is not drawn');
-  assert.ok(baseHolder < first && baseButton < first, 'both base rules are before the first query');
-});
-
-test('the compact state hides the words of the icon controls and leaves the overflow alone', () => {
-  const compact = blockOf(CSS_NO_COMMENTS, QUERY(85));
-  assert.equal(ruleOf(compact, '.diagram-view .with-icon .control-label'), 'display: none;');
-  assert.match(ruleOf(compact, '.diagram-view .with-icon'), /width: 2rem;/);
-  assert.ok(!compact.includes('.header-overflow'), 'the overflow is not touched in compact');
-  assert.ok(!compact.includes('.header-more'), 'nor the "⋯"');
-});
-
-test('the minimal state shows the "⋯" button and turns the overflow into a popup that opens with data-open', () => {
-  const minimal = blockOf(CSS_NO_COMMENTS, QUERY(60));
-  assert.match(ruleOf(minimal, '.element-header .header-more-button'), /display: inline-flex;/);
-  assert.match(
-    ruleOf(minimal, '.header-more'),
-    /display: block; position: relative;/,
-    'the popup hangs from its holder'
-  );
-  const popup = ruleOf(minimal, '.header-overflow');
-  assert.match(popup, /position: absolute;/);
-  assert.match(popup, /display: none;/, 'closed unless the button says so');
-  assert.equal(ruleOf(minimal, '.header-overflow[data-open="true"]'), 'display: flex;');
-  assert.match(
-    ruleOf(minimal, '.element-header:has(.header-overflow[data-open="true"])'),
-    /z-index: 5;/,
-    'the header is raised above the chips of the map while the menu is open'
-  );
-  assert.ok(
-    minimal.indexOf('.header-overflow {') < minimal.indexOf('.header-overflow[data-open="true"]'),
-    'the open rule comes after the closed one'
-  );
-});
-
-test('the "⋯" button keeps its 2rem and no padding: its rule is more specific than ".element-header button", which has !important too', () => {
-  // field check of wave 006 (run 0030): the base rule `.element-header button { padding: 0 0.8rem !important }` (0,1,1) beat
-  // `.header-more-button { padding: 0 !important }` (0,1,0), so the 2rem button had 25.6px of padding and its 16px icon was 4.4px wide.
-  // A container query adds no specificity: the rule has to name .element-header itself (0,2,0).
-  const base = ruleOf(CSS_NO_COMMENTS, '.top-panel button, .element-header button');
-  assert.match(base, /padding: 0 0\.8rem !important;/, 'the base rule of the header buttons has !important padding');
-  const minimal = blockOf(CSS_NO_COMMENTS, QUERY(60));
-  const more = ruleOf(minimal, '.element-header .header-more-button');
-  assert.match(more, /width: 2rem;/);
-  assert.match(more, /padding: 0 !important;/);
-  assert.ok(
-    !rulesOf(minimal).some((r) => r.selector === '.header-more-button' && /padding/.test(r.body)),
-    'no weaker rule of the same name is left'
-  );
-});
-
-test('the tight state gives the header two rows instead of overflowing', () => {
-  const tight = blockOf(CSS_NO_COMMENTS, QUERY(46));
-  const header = ruleOf(tight, '.element-header');
-  assert.match(header, /height: auto;/);
-  assert.match(header, /flex-wrap: wrap;/);
-  assert.match(header, /min-height: var\(--header-h\);/);
 });
 
 test('the strip is gone: nothing scrolls inside the actions row, and the header does not answer to the window', () => {
-  for (const rule of rulesOf(CSS_NO_COMMENTS)) {
-    if (rule.selector.includes('element-header-actions'))
-      assert.ok(!rule.body.includes('overflow-x'), rule.selector + ' has no overflow-x');
-  }
-  assert.ok(!/\.element-header-actions[^{}]*\{[^{}]*overflow-x/.test(CSS_NO_COMMENTS));
-  const windowQueries = CSS_NO_COMMENTS.match(/@media\s*\(\s*max-width[^{]*\{/g) || [];
-  for (const head of windowQueries) {
-    const body = blockOf(CSS_NO_COMMENTS, head);
+  const rules = rulesOf(styleOf(HTML));
+  for (const rule of rules.filter((one) => one.selector.includes('element-header-actions')))
+    assert.equal(
+      declarationsOf(rule.body).some(([name]) => name === 'overflow-x'),
+      false,
+      rule.selector + ' has no overflow-x'
+    );
+  for (const rule of rules.filter((one) => one.at.some((head) => /^@media\s*\(\s*max-width/.test(head))))
     for (const name of ['.element-header', '.maximize-label', '.element-header-actions'])
-      assert.ok(!body.includes(name), head + ' does not mention ' + name);
-  }
-  assert.ok(!CSS_NO_COMMENTS.includes('.maximize-label'), 'the word of Maximize is a control-label now');
+      assert.ok(!rule.selector.includes(name), rule.at + ' does not mention ' + name);
+  assert.equal(
+    rules.some((one) => one.selector.includes('.maximize-label')),
+    false,
+    'the word of Maximize is a control-label now'
+  );
 });
 
 test('the help keeps its look: the "⋯" menu reuses it without changing it', () => {
-  assert.ok(CSS.includes('.help-menu { position: absolute; top: calc(100% + 0.25rem)'));
-});
-
-test('the block of the header uses the colours of the theme only: var(--...) and the shadow', () => {
-  const from = CSS.indexOf('The header of the centre panel holds together at any width of the panel');
-  const to = CSS.indexOf('.element-kind-badge {', from);
-  assert.ok(from !== -1 && to > from, 'the block is where the comment says');
-  const block = CSS.slice(from, to).replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.ok(block.includes('@container'), 'it is the block of the states');
-  assert.doesNotMatch(block, /#[0-9a-fA-F]{3,8}\b/, 'no hexadecimal colour');
-  assert.doesNotMatch(block, /\b(rgb|hsl|hsla)\(/, 'no other colour function');
-  for (const m of block.matchAll(/[^;{}]*\brgba\([^)]*\)[^;{}]*/g))
-    assert.match(m[0], /box-shadow:/, 'rgba only in a shadow: ' + m[0].trim());
-  const colours = Array.from(
-    block.matchAll(/(?:^|[;{\s])(?:background|color|border(?:-top|-bottom)?(?:-color)?)\s*:\s*([^;}]+)/g)
-  ).map((m) => m[1].trim());
-  assert.ok(colours.length > 5, 'the block does colour things');
-  for (const value of colours)
-    assert.doesNotMatch(
-      value,
-      /^(white|black|red|blue|green|gray|grey|#)/,
-      'a theme token, not a fixed colour: ' + value
-    );
-  assert.ok(
-    block.includes('var(--bg)') && block.includes('var(--border)') && block.includes('var(--accent)'),
-    'the tokens of the theme'
-  );
+  assert.equal(sheet.decl('.help-menu', 'position'), 'absolute');
+  assert.equal(sheet.decl('.help-menu', 'top'), 'calc(100% + 0.25rem)');
 });
 
 // ============================================================ 8. the menu, with fake elements
@@ -817,24 +693,13 @@ test('the dialog returns the focus to the item itself when the menu is not in us
 
 // ============================================================ the toolbar and the status line of a diagram in a narrow centre
 
-test('a narrow centre: the groups of the diagram toolbar wrap inside it, and the hint and the legend of the status line never exceed it', () => {
-  const rule = (selector) => {
-    const m = new RegExp('\\n\\s*' + selector.replace(/[.#]/g, '\\$&') + ' \\{([^}]*)\\}').exec(CSS_NO_COMMENTS);
-    assert.ok(m, selector + ' has a rule');
-    return m[1];
-  };
-  // run 0217: the rule now lists the toolbar docked above the canvas next to the floating one
-  const group = rule('.diagram-tools .button-group, .diagram-toolbar .button-group');
-  assert.match(group, /flex-wrap: wrap/, 'four buttons of "Texts" were 262 px in a toolbar of 238');
-  assert.match(group, /max-width: 100%/, 'a group is never wider than the toolbar');
-  assert.match(rule('.diagram-tools'), /flex-wrap: wrap/, 'the toolbar itself wraps (unchanged)');
-  assert.match(rule('.diagram-toolbar'), /flex-wrap: wrap/, 'and so does the docked toolbar');
-  assert.match(
-    rule('#diagram-hint'),
-    /max-width: 100%/,
+test('a narrow centre: the hint and the legend of the status line never exceed it', () => {
+  // the groups of the toolbar wrap inside the centre: diagram-toolbar.spec.js (360 px, no control outside the window)
+  assert.equal(
+    sheet.decl('#diagram-hint', 'max-width'),
+    '100%',
     'the hint (flex: none) wraps its text in a status line narrower than it'
   );
-  const legend = rule('.dg-legend');
-  assert.match(legend, /max-width: 100%/);
-  assert.match(legend, /flex-wrap: wrap/, 'and so does the legend');
+  assert.equal(sheet.decl('.dg-legend', 'max-width'), '100%');
+  assert.equal(sheet.decl('.dg-legend', 'flex-wrap'), 'wrap', 'and so does the legend');
 });

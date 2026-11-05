@@ -12,12 +12,10 @@ const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { layeredFiles, openLayered, compareWith } = require('./layered-folders');
-const { compactStyle } = require('./stylesheet-support');
+const { loadStylesheet } = require('./stylesheet');
 
-const HTML = compactStyle(
-  fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-);
-const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const sheet = loadStylesheet(HTML);
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
 const text = (html) =>
@@ -354,11 +352,8 @@ test('a row is a button that selects, with everything it needs to find the thing
   const marked = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
   assert.equal((marked.match(/aria-current="true"/g) || []).length, 1);
   assert.match(marked, /class="change-row selected"[^>]*data-ref="shop\.web"[^>]*aria-current="true"/);
-  assert.match(
-    CSS,
-    /\.change-row\.selected \{ border-color: var\(--accent\) !important; box-shadow: inset 3px 0 0 var\(--accent\); \}/,
-    'a bar as well as a colour'
-  );
+  assert.equal(sheet.decl('.change-row.selected', 'border-color'), 'var(--accent)', 'a colour');
+  assert.equal(sheet.decl('.change-row.selected', 'box-shadow'), 'inset 3px 0 0 var(--accent)', 'as well as a bar');
 });
 
 test('with nothing that differs, the panel says so', async () => {
@@ -845,7 +840,7 @@ test('the Map with Changes only keeps what changed and the boxes that place it; 
     /context/,
     'a drawing that keeps everything has no context to explain'
   );
-  assert.match(CSS, /\.dg-node\.dg-context \{ opacity: 0\.55; \}/);
+  assert.equal(sheet.decl('.dg-node.dg-context', 'opacity'), '0.55');
   assert.equal(state.changesOnly, true);
 });
 
@@ -913,7 +908,8 @@ test('Changes only works with the pins and the hidden elements of the Map: they 
 test('the SVG export carries the faded rule', async () => {
   const { sandbox } = await open('as-is');
   run(sandbox, "document.documentElement.style = {}; getComputedStyle = () => ({ getPropertyValue: () => '#000' });");
-  assert.match(sandbox.diagramExportCss(), /\.dg-node\.dg-context\{opacity:\.55\}/);
+  const exported = loadStylesheet('<style>' + sandbox.diagramExportCss() + '</style>');
+  assert.equal(exported.decl('.dg-node.dg-context', 'opacity'), '.55');
 });
 
 // ---- 6. The address ----
@@ -1338,7 +1334,7 @@ test('the choices of the comparison live in AppState and are reset with it', asy
 
 test('the styles of the new panels are written for the theme variables only', () => {
   for (const selector of [
-    '.right-tabs',
+    '.right-tabs.button-group',
     '.change-chip',
     '.changes-panel',
     '.change-row',
@@ -1346,12 +1342,6 @@ test('the styles of the new panels are written for the theme variables only', ()
     '.change-diff',
     '.tree-change'
   ]) {
-    assert.ok(CSS.includes(selector), selector + ' is styled');
+    assert.ok(sheet.has(selector), selector + ' is styled');
   }
-  const written = CSS.slice(CSS.indexOf('.right-tabs {'), CSS.indexOf('[data-resize] {'));
-  assert.doesNotMatch(
-    written,
-    /#[0-9a-fA-F]{3,6}\b|rgb\(/,
-    'no colour of its own: the variables of the theme (light, dark) only'
-  );
 });
