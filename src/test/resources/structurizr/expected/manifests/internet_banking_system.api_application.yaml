@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "internet_banking_system"
+content:
+  id: "api_application"
+  name: "API Application"
+  description: "Provides Internet banking functionality via a JSON/HTTPS API."
+  qualifiers:
+    - "Java and Spring MVC"
+  tags:
+    structurizr.id: "11"

@@ -71,7 +71,7 @@ class ManifestRoundTripCorpusTest {
             }
         }
         System.out.println(
-            "Writer facts: the repository ships no JSON or TOML manifest, so each of the 422 is written and read back in each format: " +
+            "Writer facts: the repository ships no JSON or TOML manifest, so each of the 440 is written and read back in each format: " +
                 total
         );
         assertFalse(all.isEmpty());

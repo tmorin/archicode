@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "customer_service_staff"
+  name: "Customer Service Staff"
+  description: "Customer service staff within the bank."
+  qualifiers:
+    - "Bank Staff"
+  tags:
+    structurizr.id: "2"
+    group: "Big Bank plc"
+  relationships:
+    - destination: "mainframe_banking_system"
+      label: "Uses"
+      tags:
+        structurizr.id: "24"

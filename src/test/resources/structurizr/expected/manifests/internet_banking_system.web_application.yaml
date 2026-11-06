@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "internet_banking_system"
+content:
+  id: "web_application"
+  name: "Web Application"
+  description: "Delivers the static content and the Internet banking single page application."
+  qualifiers:
+    - "Java and Spring MVC"
+  tags:
+    structurizr.id: "10"
+  relationships:
+    - destination: "internet_banking_system.single-page_application"
+      label: "Delivers to the customer's web browser"
+      tags:
+        structurizr.id: "31"

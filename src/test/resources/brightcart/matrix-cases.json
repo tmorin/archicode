@@ -1,0 +1,1730 @@
+{
+  "workspace": "layered/.archicode.yaml",
+  "cases": [
+    {
+      "id": "baseline-inhouse-marketplace",
+      "args": [
+        "baseline",
+        "inhouse",
+        "marketplace"
+      ],
+      "path": [
+        "baseline",
+        "inhouse",
+        "marketplace"
+      ],
+      "rows": 61,
+      "unchanged": 27,
+      "pairs": [
+        {
+          "from": "baseline",
+          "to": "inhouse",
+          "counts": {
+            "elements": {
+              "new": 17,
+              "changed": 5,
+              "removed": 1,
+              "moved": 7,
+              "split": 2,
+              "merged": 1
+            },
+            "relationships": {
+              "new": 17,
+              "changed": 1,
+              "removed": 6
+            }
+          }
+        },
+        {
+          "from": "inhouse",
+          "to": "marketplace",
+          "counts": {
+            "elements": {
+              "new": 21,
+              "changed": 12,
+              "removed": 5,
+              "moved": 5,
+              "split": 0,
+              "merged": 0
+            },
+            "relationships": {
+              "new": 18,
+              "changed": 1,
+              "removed": 3
+            }
+          }
+        }
+      ],
+      "span": {
+        "from": "baseline",
+        "to": "marketplace",
+        "counts": {
+          "elements": {
+            "new": 38,
+            "changed": 3,
+            "removed": 6,
+            "moved": 11,
+            "split": 2,
+            "merged": 1
+          },
+          "relationships": {
+            "new": 35,
+            "changed": 1,
+            "removed": 9
+          }
+        }
+      },
+      "expectRows": [
+        {
+          "layer": "application",
+          "reference": "accounts",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "accounts.db",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "accounts.profiles",
+          "cells": [
+            "absent",
+            "merged",
+            "changed"
+          ],
+          "span": "merged",
+          "from": [
+            [],
+            [
+              "shop.app.customers",
+              "shop.app.loyalty"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "backoffice.console",
+          "cells": [
+            "present",
+            "changed",
+            "present"
+          ],
+          "span": "changed"
+        },
+        {
+          "layer": "application",
+          "reference": "commerce",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.cart",
+          "cells": [
+            "present",
+            "moved",
+            "changed"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [
+              "shop.app.cart"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.cart-store",
+          "cells": [
+            "present",
+            "moved",
+            "present"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [
+              "shop.cache"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.catalog",
+          "cells": [
+            "present",
+            "moved",
+            "changed"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [
+              "shop.app.catalog"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.catalog-db",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.checkout",
+          "cells": [
+            "present",
+            "moved",
+            "changed"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [
+              "shop.app.checkout"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.gateway",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.pricing",
+          "cells": [
+            "present",
+            "moved",
+            "changed"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [
+              "shop.app.promotions"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "discovery",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "discovery.features",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "discovery.recommender",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "discovery.search",
+          "cells": [
+            "present",
+            "moved",
+            "moved"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [
+              "shop.app.search"
+            ],
+            [
+              "commerce.search"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "fulfilment.db",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "fulfilment.inventory",
+          "cells": [
+            "present",
+            "present",
+            "moved"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [],
+            [
+              "shop.app.inventory"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "fulfilment.sync",
+          "cells": [
+            "present",
+            "changed",
+            "changed"
+          ],
+          "span": "changed"
+        },
+        {
+          "layer": "application",
+          "reference": "kyc",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace.db",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace.listing",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace.seller-portal",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace.settlement",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "orders",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "orders.db",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "orders.history",
+          "cells": [
+            "present",
+            "split",
+            "changed"
+          ],
+          "span": "split",
+          "from": [
+            [],
+            [
+              "shop.app.orders"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "orders.placement",
+          "cells": [
+            "present",
+            "split",
+            "changed"
+          ],
+          "span": "split",
+          "from": [
+            [],
+            [
+              "shop.app.orders"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "payments",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "payments.orchestrator",
+          "cells": [
+            "present",
+            "moved",
+            "changed"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [
+              "shop.app.payments"
+            ],
+            []
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "platform",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "platform.broker",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "platform.notifications",
+          "cells": [
+            "present",
+            "present",
+            "moved"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [],
+            [
+              "shop.app.notifications"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "seller",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app",
+          "cells": [
+            "present",
+            "changed",
+            "removed"
+          ],
+          "span": "removed"
+        },
+        {
+          "layer": "application",
+          "reference": "shop.db",
+          "cells": [
+            "present",
+            "present",
+            "removed"
+          ],
+          "span": "removed"
+        },
+        {
+          "layer": "application",
+          "reference": "storefront",
+          "cells": [
+            "present",
+            "present",
+            "moved"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [],
+            [
+              "shop"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "storefront.mobile",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "application",
+          "reference": "storefront.web",
+          "cells": [
+            "present",
+            "changed",
+            "moved"
+          ],
+          "span": "moved",
+          "from": [
+            [],
+            [],
+            [
+              "shop.web"
+            ]
+          ]
+        },
+        {
+          "layer": "technology",
+          "reference": "partners.kyc-live",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.cdn",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.accounts",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.commerce",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.marketplace",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.orders",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.payments",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.platform",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.kafka",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.pg",
+          "cells": [
+            "absent",
+            "new",
+            "changed"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.redis",
+          "cells": [
+            "absent",
+            "new",
+            "changed"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.app-vm",
+          "cells": [
+            "present",
+            "present",
+            "removed"
+          ],
+          "span": "removed"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.cache-vm",
+          "cells": [
+            "present",
+            "removed",
+            "absent"
+          ],
+          "span": "removed"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.db-vm",
+          "cells": [
+            "present",
+            "present",
+            "removed"
+          ],
+          "span": "removed"
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.web-vm",
+          "cells": [
+            "present",
+            "present",
+            "removed"
+          ],
+          "span": "removed"
+        },
+        {
+          "layer": "technology",
+          "reference": "sandbox.kyc-sandbox",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "staging.k8s",
+          "cells": [
+            "absent",
+            "new",
+            "present"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "staging.platform",
+          "cells": [
+            "absent",
+            "absent",
+            "new"
+          ],
+          "span": "new"
+        },
+        {
+          "layer": "technology",
+          "reference": "staging.vm",
+          "cells": [
+            "present",
+            "changed",
+            "changed"
+          ],
+          "span": "changed"
+        }
+      ]
+    },
+    {
+      "id": "baseline-saas",
+      "args": [
+        "baseline",
+        "saas"
+      ],
+      "path": [
+        "baseline",
+        "saas"
+      ],
+      "rows": 19,
+      "unchanged": 34,
+      "pairs": [
+        {
+          "from": "baseline",
+          "to": "saas",
+          "counts": {
+            "elements": {
+              "new": 3,
+              "changed": 5,
+              "removed": 11,
+              "moved": 0,
+              "split": 0,
+              "merged": 0
+            },
+            "relationships": {
+              "new": 5,
+              "changed": 1,
+              "removed": 12
+            }
+          }
+        }
+      ],
+      "span": null,
+      "expectRows": [
+        {
+          "layer": "application",
+          "reference": "backoffice.console",
+          "cells": [
+            "present",
+            "changed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "commerce-saas",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "fulfilment.sync",
+          "cells": [
+            "present",
+            "changed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app",
+          "cells": [
+            "present",
+            "changed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app.cart",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app.catalog",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app.checkout",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app.payments",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app.promotions",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app.search",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.cache",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.web",
+          "cells": [
+            "present",
+            "changed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "tax",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "partners.commerce-live",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "partners.tax-live",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.cache-vm",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "sandbox.commerce-sandbox",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "sandbox.tax-sandbox",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "staging.vm",
+          "cells": [
+            "present",
+            "changed"
+          ],
+          "span": null
+        }
+      ]
+    },
+    {
+      "id": "baseline-marketplace-skipping-inhouse",
+      "args": [
+        "baseline",
+        "marketplace"
+      ],
+      "path": [
+        "baseline",
+        "marketplace"
+      ],
+      "rows": 61,
+      "unchanged": 27,
+      "pairs": [
+        {
+          "from": "baseline",
+          "to": "marketplace",
+          "counts": {
+            "elements": {
+              "new": 38,
+              "changed": 3,
+              "removed": 6,
+              "moved": 11,
+              "split": 2,
+              "merged": 1
+            },
+            "relationships": {
+              "new": 35,
+              "changed": 1,
+              "removed": 9
+            }
+          }
+        }
+      ],
+      "span": null,
+      "expectRows": [
+        {
+          "layer": "application",
+          "reference": "accounts",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "accounts.db",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "accounts.profiles",
+          "cells": [
+            "absent",
+            "merged"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.customers",
+              "shop.app.loyalty"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "backoffice.console",
+          "cells": [
+            "present",
+            "changed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "commerce",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.cart",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.cart"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.cart-store",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.cache"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.catalog",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.catalog"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.catalog-db",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.checkout",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.checkout"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.gateway",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "commerce.pricing",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.promotions"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "discovery",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "discovery.features",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "discovery.recommender",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "discovery.search",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.search"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "fulfilment.db",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "fulfilment.inventory",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.inventory"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "fulfilment.sync",
+          "cells": [
+            "present",
+            "changed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "kyc",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace.db",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace.listing",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace.seller-portal",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "marketplace.settlement",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "orders",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "orders.db",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "orders.history",
+          "cells": [
+            "present",
+            "split"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.orders"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "orders.placement",
+          "cells": [
+            "present",
+            "split"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.orders"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "payments",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "payments.orchestrator",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.payments"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "platform",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "platform.broker",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "platform.notifications",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.app.notifications"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "seller",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.app",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "shop.db",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "storefront",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop"
+            ]
+          ]
+        },
+        {
+          "layer": "application",
+          "reference": "storefront.mobile",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "application",
+          "reference": "storefront.web",
+          "cells": [
+            "present",
+            "moved"
+          ],
+          "span": null,
+          "from": [
+            [],
+            [
+              "shop.web"
+            ]
+          ]
+        },
+        {
+          "layer": "technology",
+          "reference": "partners.kyc-live",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.cdn",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.accounts",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.commerce",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.marketplace",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.orders",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.payments",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.k8s.platform",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.kafka",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.pg",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.cloud.redis",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.app-vm",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.cache-vm",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.db-vm",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "prod.dc.web-vm",
+          "cells": [
+            "present",
+            "removed"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "sandbox.kyc-sandbox",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "staging.k8s",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "staging.platform",
+          "cells": [
+            "absent",
+            "new"
+          ],
+          "span": null
+        },
+        {
+          "layer": "technology",
+          "reference": "staging.vm",
+          "cells": [
+            "present",
+            "changed"
+          ],
+          "span": null
+        }
+      ]
+    }
+  ],
+  "refusals": [
+    {
+      "id": "siblings",
+      "args": [
+        "inhouse",
+        "saas"
+      ],
+      "error": "the plateaus `inhouse` and `saas` are not on one chain: `saas` is not a plateau that overrides `inhouse` (they are alternatives, both override `baseline`). Name the plateaus of one path, oldest first"
+    },
+    {
+      "id": "sibling-in-the-middle",
+      "args": [
+        "saas",
+        "inhouse",
+        "marketplace"
+      ],
+      "error": "the plateaus `saas` and `inhouse` are not on one chain: `inhouse` is not a plateau that overrides `saas` (they are alternatives, both override `baseline`). Name the plateaus of one path, oldest first"
+    },
+    {
+      "id": "unknown-id",
+      "args": [
+        "baseline",
+        "nowhere"
+      ],
+      "error": "unknown plateau `nowhere`: the plateaus of this workspace are `baseline`, `inhouse`, `marketplace` and `saas`"
+    },
+    {
+      "id": "one-plateau",
+      "args": [
+        "inhouse"
+      ],
+      "error": "the matrix needs a path of at least two plateaus: `inhouse` is the only one named"
+    },
+    {
+      "id": "the-root-alone",
+      "args": [
+        "--plateau",
+        "baseline"
+      ],
+      "error": "the matrix needs a path of at least two plateaus: `baseline` is the root and nothing is before it"
+    },
+    {
+      "id": "wrong-order",
+      "args": [
+        "marketplace",
+        "inhouse"
+      ],
+      "error": "`inhouse` comes before `marketplace` in the tree, not after it: name the plateaus of one path, oldest first"
+    },
+    {
+      "id": "a-plateau-twice",
+      "args": [
+        "baseline",
+        "inhouse",
+        "inhouse"
+      ],
+      "error": "the plateau `inhouse` is named twice: name each plateau of the path once, oldest first"
+    }
+  ]
+}

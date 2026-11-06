@@ -19,6 +19,7 @@ import picocli.CommandLine;
         EditorGroup.class,
         PlateauGroup.class,
         StoriesGroup.class,
+        ImportGroup.class,
         DiffCommand.class,
         GuideCommand.class,
         InitCommand.class

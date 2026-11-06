@@ -35,6 +35,9 @@ content:
             - destination: "archicode.commandline.manifest"
               label: "imports the package"
               qualifiers: ["imports"]
+            - destination: "archicode.commandline.importer"
+              label: "imports the package"
+              qualifiers: ["imports"]
           elements:
             - kind: "component"
               id: "editor_serve"
@@ -57,6 +60,16 @@ content:
                   label: "reads"
                   qualifiers: ["reads"]
             - kind: "component"
+              id: "import_structurizr"
+              name: "Import structurizr"
+              description: "The archicode import structurizr command."
+              tags:
+                path: "src/main/java/io/morin/archicode/cli/ImportGroup.java, src/main/java/io/morin/archicode/cli/ImportStructurizrCommand.java"
+              relationships:
+                - destination: "archicode.commandline.importer"
+                  label: "calls the import service"
+                  qualifiers: ["calls"]
+            - kind: "component"
               id: "init"
               name: "Init"
               description: "The archicode init command."
@@ -66,6 +79,22 @@ content:
                 - destination: "archicode.contracts.couplings.manifest_schema"
                   label: "reads"
                   qualifiers: ["reads"]
+            - kind: "component"
+              id: "plateau_matrix"
+              name: "Plateau matrix"
+              description: "The archicode plateau matrix command: one table of the changes across N plateaus."
+              tags:
+                path: "src/main/java/io/morin/archicode/cli/PlateauMatrixCommand.java, src/main/java/io/morin/archicode/cli/MatrixPath.java"
+              relationships:
+                - destination: "archicode.commandline.viewpoint"
+                  label: "compares the plateaus"
+                  qualifiers: ["calls"]
+                - destination: "archicode.commandline.workspace"
+                  label: "loads the workspace"
+                  qualifiers: ["calls"]
+                - destination: "archicode.commandline.rendering"
+                  label: "renders the matrix"
+                  qualifiers: ["calls"]
         - kind: "container"
           id: "workspace"
           name: "Workspace"
@@ -102,6 +131,16 @@ content:
               label: "imports the package"
               qualifiers: ["imports"]
         - kind: "container"
+          id: "importer"
+          name: "Importer"
+          description: "Reads the JSON export of a Structurizr workspace and writes an ArchiCode workspace folder (package importer)."
+          tags:
+            path: "src/main/java/io/morin/archicode/importer"
+          relationships:
+            - destination: "archicode.commandline.manifest"
+              label: "imports the package"
+              qualifiers: ["imports"]
+        - kind: "container"
           id: "resource"
           name: "Resource"
           description: "Elements, views, stories and plateaus (package resource)."
@@ -135,7 +174,7 @@ content:
         - kind: "container"
           id: "rendering"
           name: "Rendering"
-          description: "PlantUML output and the gap tables (package rendering)."
+          description: "PlantUML output, the gap tables and the plateau matrix (package rendering)."
           tags:
             path: "src/main/java/io/morin/archicode/rendering"
           relationships:

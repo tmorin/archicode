@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "internet_banking_system"
+content:
+  id: "database"
+  name: "Database"
+  description: "Stores user registration information, hashed authentication credentials,\
+    \ access logs, etc."
+  qualifiers:
+    - "Oracle Database Schema"
+    - "Database"
+  tags:
+    structurizr.id: "18"

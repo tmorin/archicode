@@ -1,0 +1,20 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "internet_banking_system.api_application"
+content:
+  id: "security_component"
+  name: "Security Component"
+  description: "Provides functionality related to signing in, changing passwords,\
+    \ etc."
+  qualifiers:
+    - "Spring Bean"
+  tags:
+    structurizr.id: "15"
+  relationships:
+    - destination: "internet_banking_system.database"
+      label: "Reads from and writes to"
+      qualifiers:
+        - "SQL/TCP"
+      tags:
+        structurizr.id: "44"

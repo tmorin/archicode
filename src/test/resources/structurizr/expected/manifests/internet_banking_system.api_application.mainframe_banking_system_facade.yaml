@@ -1,0 +1,19 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "internet_banking_system.api_application"
+content:
+  id: "mainframe_banking_system_facade"
+  name: "Mainframe Banking System Facade"
+  description: "A facade onto the mainframe banking system."
+  qualifiers:
+    - "Spring Bean"
+  tags:
+    structurizr.id: "16"
+  relationships:
+    - destination: "mainframe_banking_system"
+      label: "Makes API calls to"
+      qualifiers:
+        - "XML/HTTPS"
+      tags:
+        structurizr.id: "46"

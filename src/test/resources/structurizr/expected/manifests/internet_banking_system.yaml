@@ -1,0 +1,20 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "internet_banking_system"
+  name: "Internet Banking System"
+  description: "Allows customers to view information about their bank accounts, and\
+    \ make payments."
+  tags:
+    structurizr.id: "7"
+    group: "Big Bank plc"
+  relationships:
+    - destination: "mainframe_banking_system"
+      label: "Gets account information from, and makes payments using"
+      tags:
+        structurizr.id: "20"
+    - destination: "e-mail_system"
+      label: "Sends e-mail using"
+      tags:
+        structurizr.id: "21"
