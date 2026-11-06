@@ -231,11 +231,19 @@ jobs:
     # jar (`./mvnw package` without the tests and the manual: about a minute) instead of waiting for the one `Java` builds,
     # which would put this job after Java's five minutes; its own Maven cache, apart from Java's (a cache of what a build
     # without tests needs must not take the place of the one `verify` needs).
+    # One job per browser (the projects of playwright.config.js), each with one worker and no retry as before: the time of
+    # the suite is that of the slowest browser plus the set-up, not the sum of the three (about 16 minutes of tests: Firefox
+    # 7, Chromium 6, WebKit 3). The result of the job E2E that `Build` reads is the aggregate of the three: `success` only
+    # if every one passed.
     needs: Changes
     if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.e2e == 'true' }}
     runs-on: "ubuntu-latest"
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit]
     steps:
       - uses: "actions/checkout@v7"
       - name: Cache Maven packages
@@ -274,29 +282,28 @@ jobs:
         id: playwright
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
       - name: "Cache the Playwright browsers"
-        # the browsers of one Playwright version are fixed builds (Chromium, Firefox, WebKit); a new version of the
-        # library is a new key
+        # the browser of this job, of one Playwright version (a fixed build); a new version of the library is a new key
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}-chromium-firefox-webkit
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}-${{ matrix.project }}
       - name: "Install the browsers of the end-to-end tests"
         # the browsers of the pinned version (nothing is downloaded when the cache hit) and the system libraries they
         # need (apt, always); no server of ours, no token
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install --with-deps ${{ matrix.project }}
       - name: "Run the end-to-end tests"
-        # `npm run test:e2e`: a real browser (Chromium, Firefox, then WebKit for four specs) against `archicode editor serve` on the jar built
-        # above (target/quarkus-app), on a copy of a shipped example per test; one worker and no retry
-        # (playwright.config.js). Run the same command to see them; src/test/e2e
+        # `npm run test:e2e -- --project=<browser>`: a real browser (Chromium, Firefox, or WebKit for six specs) against
+        # `archicode editor serve` on the jar built above (target/quarkus-app), on a copy of a shipped example per test; one
+        # worker and no retry (playwright.config.js). Run the same command to see them; src/test/e2e
         id: e2e
-        run: npm run test:e2e
+        run: npm run test:e2e -- --project=${{ matrix.project }}
       - name: "Keep the end-to-end results"
         # the HTML report and, for a test that failed, its trace, screenshot, video and page snapshot
         # (target/e2e/test-results/<test>/): only when the tests failed. 7 days.
         if: ${{ failure() && steps.e2e.outcome == 'failure' }}
         uses: "actions/upload-artifact@v7.0.2"
         with:
-          name: e2e-results
+          name: e2e-results-${{ matrix.project }}
           path: target/e2e
           if-no-files-found: warn
           retention-days: 7
