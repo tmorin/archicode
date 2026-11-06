@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 033
-status: proposed
+status: completed
 date: 2026-11-05
 related:
   - docs/wav/wav-033-import-structurizr-and-plateau-matrix/wbc-033-import-structurizr-and-plateau-matrix.md
@@ -36,7 +36,7 @@ None: the shape of both is decided on #135 and #24 (comments of 2026-10-31). The
 wave_manifest:
   wave: 033
   slug: import-structurizr-and-plateau-matrix
-  status: proposed
+  status: completed
   sources:
     - '#135'
     - '#24'
@@ -57,7 +57,7 @@ wave_manifest:
       slug: structurizr-json-import
       phase: P1
       depends_on: []
-      run: null
+      run: 0224
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/ArchiCode.java'
@@ -77,7 +77,7 @@ wave_manifest:
       slug: plateau-matrix-file
       phase: P1
       depends_on: []
-      run: null
+      run: 0225
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/ArchiCode.java'

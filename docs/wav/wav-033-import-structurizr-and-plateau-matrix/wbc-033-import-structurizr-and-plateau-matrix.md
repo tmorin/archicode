@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 033
-status: proposed
+status: completed
 date: 2026-11-05
 related:
   - docs/wav/wav-032-help-name-and-stylesheet-tests/wav-032-help-name-and-stylesheet-tests.md
