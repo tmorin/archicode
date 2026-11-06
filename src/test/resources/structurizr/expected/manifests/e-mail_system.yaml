@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "e-mail_system"
+  name: "E-mail System"
+  description: "The internal Microsoft Exchange e-mail system."
+  qualifiers:
+    - "Existing System"
+  tags:
+    structurizr.id: "5"
+    group: "Big Bank plc"
+  relationships:
+    - destination: "personal_banking_customer"
+      label: "Sends e-mails to"
+      tags:
+        structurizr.id: "22"

@@ -1,0 +1,33 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "internet_banking_system"
+content:
+  id: "single-page_application"
+  name: "Single-Page Application"
+  description: "Provides all of the Internet banking functionality to customers via\
+    \ their web browser."
+  qualifiers:
+    - "JavaScript and Angular"
+    - "Web Browser"
+  tags:
+    structurizr.id: "8"
+  relationships:
+    - destination: "internet_banking_system.api_application.sign_in_controller"
+      label: "Makes API calls to"
+      qualifiers:
+        - "JSON/HTTPS"
+      tags:
+        structurizr.id: "32"
+    - destination: "internet_banking_system.api_application.accounts_summary_controller"
+      label: "Makes API calls to"
+      qualifiers:
+        - "JSON/HTTPS"
+      tags:
+        structurizr.id: "34"
+    - destination: "internet_banking_system.api_application.reset_password_controller"
+      label: "Makes API calls to"
+      qualifiers:
+        - "JSON/HTTPS"
+      tags:
+        structurizr.id: "35"

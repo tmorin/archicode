@@ -142,40 +142,59 @@ class MistakeSweepTest {
         EMPTY
     }
 
+    /** The longest key of the object that starts the rest of the path (a key may hold a dot, as {@code structurizr.id}). */
+    private static String keyAt(JsonNode object, String rest) {
+        String best = null;
+        val names = new ArrayList<String>();
+        object.fieldNames().forEachRemaining(names::add);
+        for (val name : names) {
+            val end = name.length();
+            if (!rest.startsWith(name)) {
+                continue;
+            }
+            val boundary = rest.length() == end || rest.charAt(end) == '.' || rest.charAt(end) == '[';
+            if (boundary && (best == null || end > best.length())) {
+                best = name;
+            }
+        }
+        return best;
+    }
+
     /** A copy of the document with the node at the path edited. */
     private static JsonNode edit(JsonNode root, String path, Edit edit) {
         val copy = root.deepCopy();
         JsonNode parent = copy;
-        val steps = path.split("\\.");
-        String last = null;
-        for (int i = 0; i < steps.length; i++) {
-            var step = steps[i];
+        var rest = path;
+        while (true) {
+            val step = keyAt(parent, rest);
+            rest = rest.substring(step.length());
             var index = -1;
-            val bracket = step.indexOf('[');
-            if (bracket >= 0) {
-                index = Integer.parseInt(step.substring(bracket + 1, step.length() - 1));
-                step = step.substring(0, bracket);
+            if (rest.startsWith("[")) {
+                index = Integer.parseInt(rest.substring(1, rest.indexOf(']')));
+                rest = rest.substring(rest.indexOf(']') + 1);
             }
-            if (i == steps.length - 1) {
-                last = step;
+            if (rest.isEmpty()) {
                 if (index >= 0) {
                     ((ArrayNode) parent.get(step)).set(index, NullNode.getInstance());
                     return copy;
                 }
-                break;
+                val object = (ObjectNode) parent;
+                switch (edit) {
+                    case REMOVE -> object.remove(step);
+                    case NULL -> object.set(step, NullNode.getInstance());
+                    case EMPTY -> object.set(
+                        step,
+                        object.get(step).isArray() ? object.arrayNode() : object.objectNode()
+                    );
+                }
+                return copy;
             }
             parent = parent.get(step);
             if (index >= 0) {
                 parent = parent.get(index);
             }
+            rest = rest.substring(1);
         }
-        val object = (ObjectNode) parent;
-        switch (edit) {
-            case REMOVE -> object.remove(last);
-            case NULL -> object.set(last, NullNode.getInstance());
-            case EMPTY -> object.set(last, object.get(last).isArray() ? object.arrayNode() : object.objectNode());
-        }
-        return copy;
     }
 
     @SneakyThrows

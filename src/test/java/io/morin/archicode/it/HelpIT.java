@@ -37,6 +37,18 @@ class HelpIT {
     }
 
     @Test
+    void helpOfTheImportCommandStartsWithItsPath(QuarkusMainLauncher launcher) {
+        val result = succeeded(launcher.launch("import", "structurizr", "--help"));
+        assertTrue(firstLine(payload(result)).startsWith("Usage: archicode import structurizr"), () -> said(result));
+    }
+
+    @Test
+    void helpOfThePlateauMatrixCommandStartsWithItsPath(QuarkusMainLauncher launcher) {
+        val result = succeeded(launcher.launch("plateau", "matrix", "--help"));
+        assertTrue(firstLine(payload(result)).startsWith("Usage: archicode plateau matrix"), () -> said(result));
+    }
+
+    @Test
     void usageAfterAnErrorStartsWithItsPath(QuarkusMainLauncher launcher) {
         val result = launcher.launch("views", "generate", "--bogus");
         assertEquals(2, result.exitCode(), () -> said(result));

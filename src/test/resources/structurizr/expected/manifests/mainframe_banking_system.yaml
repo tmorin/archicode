@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "mainframe_banking_system"
+  name: "Mainframe Banking System"
+  description: "Stores all of the core banking information about customers, accounts,\
+    \ transactions, etc."
+  qualifiers:
+    - "Existing System"
+  tags:
+    structurizr.id: "4"
+    group: "Big Bank plc"

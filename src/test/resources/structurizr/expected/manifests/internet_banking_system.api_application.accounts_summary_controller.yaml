@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "internet_banking_system.api_application"
+content:
+  id: "accounts_summary_controller"
+  name: "Accounts Summary Controller"
+  description: "Provides customers with a summary of their bank accounts."
+  qualifiers:
+    - "Spring MVC Rest Controller"
+  tags:
+    structurizr.id: "13"
+  relationships:
+    - destination: "internet_banking_system.api_application.mainframe_banking_system_facade"
+      label: "Uses"
+      tags:
+        structurizr.id: "41"

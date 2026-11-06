@@ -1,0 +1,40 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "personal_banking_customer"
+  name: "Personal Banking Customer"
+  description: "A customer of the bank, with personal bank accounts."
+  qualifiers:
+    - "Customer"
+  tags:
+    structurizr.id: "1"
+  relationships:
+    - destination: "internet_banking_system"
+      label: "Views account balances, and makes payments using"
+      tags:
+        structurizr.id: "19"
+    - destination: "customer_service_staff"
+      label: "Asks questions to"
+      qualifiers:
+        - "Telephone"
+      tags:
+        structurizr.id: "23"
+    - destination: "atm"
+      label: "Withdraws cash using"
+      tags:
+        structurizr.id: "25"
+    - destination: "internet_banking_system.web_application"
+      label: "Visits bigbank.com/ib using"
+      qualifiers:
+        - "HTTPS"
+      tags:
+        structurizr.id: "28"
+    - destination: "internet_banking_system.single-page_application"
+      label: "Views account balances, and makes payments using"
+      tags:
+        structurizr.id: "29"
+    - destination: "internet_banking_system.mobile_app"
+      label: "Views account balances, and makes payments using"
+      tags:
+        structurizr.id: "30"

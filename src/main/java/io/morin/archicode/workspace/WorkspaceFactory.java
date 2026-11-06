@@ -613,7 +613,7 @@ public class WorkspaceFactory {
      * asked for comes first: {@code settings.current} is looked at only when nothing was asked, so that {@code --plateau} can
      * get past a {@code current} that names a plateau that is gone (after a rename).
      */
-    private static String chosen(String current, PlateauTree tree, String requested) {
+    public static String chosen(String current, PlateauTree tree, String requested) {
         if (requested != null) {
             return tree.node(requested).id();
         }

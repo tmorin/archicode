@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "internet_banking_system.api_application"
+content:
+  id: "sign_in_controller"
+  name: "Sign In Controller"
+  description: "Allows users to sign in to the Internet Banking System."
+  qualifiers:
+    - "Spring MVC Rest Controller"
+  tags:
+    structurizr.id: "12"
+  relationships:
+    - destination: "internet_banking_system.api_application.security_component"
+      label: "Uses"
+      tags:
+        structurizr.id: "40"

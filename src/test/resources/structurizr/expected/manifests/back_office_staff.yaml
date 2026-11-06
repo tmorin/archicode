@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "back_office_staff"
+  name: "Back Office Staff"
+  description: "Administration and support staff within the bank."
+  qualifiers:
+    - "Bank Staff"
+  tags:
+    structurizr.id: "3"
+    group: "Big Bank plc"
+  relationships:
+    - destination: "mainframe_banking_system"
+      label: "Uses"
+      tags:
+        structurizr.id: "27"

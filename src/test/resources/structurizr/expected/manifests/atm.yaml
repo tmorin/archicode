@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "atm"
+  name: "ATM"
+  description: "Allows customers to withdraw cash."
+  qualifiers:
+    - "Existing System"
+  tags:
+    structurizr.id: "6"
+    group: "Big Bank plc"
+  relationships:
+    - destination: "mainframe_banking_system"
+      label: "Uses"
+      tags:
+        structurizr.id: "26"

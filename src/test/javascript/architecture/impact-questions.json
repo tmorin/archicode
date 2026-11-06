@@ -68,6 +68,7 @@
       "expect": [
         "archicode.contracts.couplings.manifest_schema",
         "archicode.commandline.commands",
+        "archicode.commandline.importer",
         "archicode.commandline.workspace"
       ]
     },

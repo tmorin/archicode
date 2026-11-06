@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "internet_banking_system.api_application"
+content:
+  id: "e-mail_component"
+  name: "E-mail Component"
+  description: "Sends e-mails to users."
+  qualifiers:
+    - "Spring Bean"
+  tags:
+    structurizr.id: "17"
+  relationships:
+    - destination: "e-mail_system"
+      label: "Sends e-mail using"
+      tags:
+        structurizr.id: "48"

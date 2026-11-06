@@ -1,0 +1,5 @@
+warning: views: 8 dropped
+warning: deployment nodes: 5 dropped
+warning: styles: 11 dropped
+warning: properties: 45 dropped
+warning: implied relationships: 5 skipped

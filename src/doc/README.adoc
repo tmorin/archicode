@@ -2452,6 +2452,7 @@ ArchiCode runs as `archicode <command>`; the usage of every command, with all it
 - `diff`: Compare a plateau with another one: the elements and the relationships that are new, changed or removed, and what changed in each, as a table (see <<diff>>).
 - `guide`: Print the guide to ArchiCode for an agent that has only this program (see <<guide>>).
 - `init`: Write a small workspace (.archicode.yaml, a person, a system with a container, a relationship and a view) that loads and is drawn (see <<init>>).
+- `import`: Import a model written for another tool into an ArchiCode workspace (see <<import-structurizr>>).
 
 [[version]]
 === Print the version
@@ -2498,6 +2499,25 @@ archicode init my-architecture
 It prints the files it wrote and two commands, to run in the folder: `archicode query graph`, which checks that the workspace loads, and `archicode views generate`, which draws it. A saved view is drawn only when it is named, so the view of the example is drawn by `archicode views generate -i shop_overview` (see <<generate-views>>); without `-i` the command draws the views of the elements. It ends by pointing to `archicode guide` (see <<guide>>).
 
 `init` never overwrites. A folder that already holds `.archicode.yaml`, or one of the three manifests, is one line on the error output, for instance ``error: the folder `my-architecture` already holds `.archicode.yaml`: init writes nothing over a workspace``, with the code 1 and nothing written. Edit the files, add manifests, and see <<manifest-kinds>> for the kinds you can write.
+
+[[import-structurizr]]
+=== Import a Structurizr workspace
+
+.Import a Structurizr workspace - The command line
+[source,shell]
+----
+archicode import structurizr workspace.json --output my-architecture
+----
+
+`archicode import structurizr <workspace.json> --output <folder>` reads the JSON export of a Structurizr workspace and writes a new ArchiCode workspace. It loads no workspace (`-w` is not read). `--output` is required, and the folder must be absent or empty; an absent folder, and its absent parents, are created.
+
+*What it reads.* The people, the software systems, the containers and the components of `model`, and the relationships they hold. Every other key is ignored.
+
+*What it writes.* `.archicode.yaml` (a name, and `manifests.paths` set to `manifests/**`) and one manifest for each element, in `manifests/`, named by its reference: a person, a system, and a container or a component whose `header.parent` is the element that holds it. The id of an element is its name, in lower case, with each run of characters other than letters, digits, `_` and `-` turned into one `_`; a name with no letter or digit takes `<kind>_<Structurizr id>`; elements that share a parent and an id get the suffix `_2`, `_3`, and so on, in the order of the export. The Structurizr id is kept in the tag `structurizr.id` and the `group` in the tag `group`; the technology and the tags of the element, other than the defaults of Structurizr, become qualifiers. A relationship is written on its source, with the description as its label and the technology as a qualifier. A relationship that Structurizr derived from another (it has a `linkedRelationshipId`) is not written, since ArchiCode derives such links itself. When it is done the command prints `imported <n> elements and <m> relationships into <folder>`; the result loads with `archicode query graph` and opens in the editor.
+
+*What it drops.* Views, deployment nodes, styles, documentation and properties are not carried. Each part present is one `warning:` line with its count, and so is each relationship whose end is not an imported element, each derived relationship that was skipped and each id that was rewritten (the element, its Structurizr id and the id written). A dropped part is not an error: the exit code is 0, and the warnings tell what to write again.
+
+*The refusals.* Each is one line on the error output, starts with `error: `, exits with the code 1 and writes nothing: an input that does not exist, that is a folder or that is not JSON; a file that ends in `.dsl` (export it to JSON first); a JSON with no `model`; an element with no name; an output folder that is not empty, or that is a file. The files are written in a folder next to the output and moved into place at the end, so that a failed write leaves no half of a workspace.
 
 [[errors-and-warnings]]
 === Errors, warnings and exit codes
@@ -3005,6 +3025,30 @@ error: in the plateau `c`, `bad` has a relationship towards `nowhere`, which doe
 
 *What it does not do.* It folds into the plateau directly above and no further; it does not rewrite a story or a view that names the folded plateau (it refuses, and you change those steps first); it does not keep the name and the horizon of the folded plateau; and it does not keep the comments, the quotes and the layout of the files it rewrites. The editor has no button for it (see <<plateau-limits>>).
 
+[[plateau-matrix]]
+=== Read what a path of plateaus changes, element by element
+
+.The matrix of a path of plateaus - The command line
+[source,shell]
+----
+archicode plateau matrix baseline inhouse marketplace   # the plateaus, oldest first
+archicode plateau matrix --plateau marketplace          # the chain from baseline to marketplace
+archicode plateau matrix baseline inhouse marketplace -f markdown
+archicode plateau matrix baseline inhouse marketplace -o views
+----
+
+`archicode plateau matrix [PLATEAU_ID...]` answers "what happens to this element along the way" for a whole path at once, where `archicode diff` compares one pair. A row is one element followed through `replaces` (a move, a split or a merge keeps its row), a column is one plateau, and a cell says what the element is there: `absent`, `present`, `new`, `changed`, `removed`, `moved`, `split` or `merged`, with the references it replaces and what differs. A row with no change anywhere is left out, and the table says how many were left out.
+
+*The columns.* Either the plateau ids, oldest first, each one a plateau that overrides the one before it (a plateau may be skipped: `baseline marketplace` compares the two as `diff` does), or none, and then the chain from `baseline` to `--plateau` (default: `settings.current`, else the last plateau when the plateaus form one line). `--plateau` together with ids is one `error:` line, and so is a path of fewer than two plateaus, a plateau named twice or out of order, an unknown plateau, and two plateaus that are alternatives (siblings, as `inhouse` and `saas` of the layered Brightcart): they are not a history, so no cell compares them.
+
+*The Span.* From three plateaus, the last column, `SPAN`, is one comparison of the first plateau with the last, made by the same code as `archicode diff --plateau <last> --against <first>`. It is not the sum of the cells: an element moved in two steps is one move in the Span, and an element that is new and then removed is left empty there. With two plateaus the Span is the cell, and is not drawn twice.
+
+*The output.* Without `--output` the table is printed in `--format` (`text`, the default, `markdown` or `json`). With `--output` the command writes `matrix.md` and `matrix.json` (the same text as `-f markdown` and `-f json`) in the folder `<PATH>-matrix-<first>-to-<last>`, next to the workspace file, and prints `wrote <folder>`. Without a value, `PATH` is the folder of the views of the settings (`views`), so the folder is `views-matrix-baseline-to-marketplace`; with one, it is relative to the folder of the workspace file, or absolute. `--format` with `--output` is one `error:` line. Put the plateau ids before `--output`, since the option may take a value. A folder that exists is written over, file by file; nothing else in it is touched.
+
+*Keep the folder in the family of the views.* A folder that begins with the views folder and a dash is left out when the manifests are found below a `/**` path, and `matrix.json` is then not read as a manifest. With `-o` outside that family (`-o reports` below `manifests/**`, for instance), `matrix.json` is read as a manifest on the next load. Choose a `PATH` that begins with the views folder, or a folder outside `manifests.paths`.
+
+The exit code is 0, a difference is not an error, and there is no `--fail-on`. The warnings of the comparisons go to the error output.
+
 === Generate JSON Schemas
 
 .JSON Schemas - The command line
@@ -3062,6 +3106,7 @@ Commands:
   editor   Manage the local manifest editor server.
   plateau  Manage the plateaus of the workspace.
   stories  Manage the stories of the workspace.
+  import   Import a model written for another tool into an ArchiCode workspace.
   diff     Compare a plateau with another one: the elements and the
              relationships that are new, changed or removed, and what changed
              in each, as a table.
@@ -3275,12 +3320,17 @@ Manage the plateaus of the workspace.
   -w, --workspace=<workspace file>
                The workspace file.
 Commands:
-  list  List the plateaus of the workspace, in the order of the tree: baseline,
-          then what overrides it, each plateau followed by what overrides it.
-  fold  Fold a plateau into the plateau above it: the files are rewritten or
-          deleted, the patches merged and the replaces composed, then the
-          plateaus that remain are read before and after on a temporary copy
-          and the folder is written only if they read the same.
+  list    List the plateaus of the workspace, in the order of the tree:
+            baseline, then what overrides it, each plateau followed by what
+            overrides it.
+  fold    Fold a plateau into the plateau above it: the files are rewritten or
+            deleted, the patches merged and the replaces composed, then the
+            plateaus that remain are read before and after on a temporary copy
+            and the folder is written only if they read the same.
+  matrix  Write the matrix of a path of plateaus: a row per element lineage
+            (followed through `replaces`), a column per plateau, and from three
+            plateaus a SPAN column that is one comparison of the first plateau
+            with the last. A row without a change is left out and counted.
 ----
 
 .archicode plateau list
@@ -3311,6 +3361,43 @@ be folded is one error line and the folder is not changed.
   -h, --help      Display this help message.
   -w, --workspace=<workspace file>
                   The workspace file.
+----
+
+.archicode plateau matrix
+----
+Usage: archicode plateau matrix [-h] [-o[=PATH]] [-f=FORMAT]
+                                [--plateau=PLATEAU_ID] [-w=<workspace file>]
+                                [PLATEAU_ID...]
+Write the matrix of a path of plateaus: a row per element lineage (followed
+through `replaces`), a column per plateau, and from three plateaus a SPAN
+column that is one comparison of the first plateau with the last. A row without
+a change is left out and counted.
+The path is the plateau ids, oldest first, each one a plateau that overrides
+the one before it (a plateau may be skipped), or the chain from `baseline` to
+--plateau (default: settings.current, else the last plateau when the plateaus
+form one line). Two plateaus that are alternatives (siblings) are not a path:
+that is one error.
+The table is printed in --format. With --output the command writes matrix.md
+and matrix.json in the folder PATH-matrix-<first>-to-<last> (default PATH: the
+views folder of the settings) and prints its name; put the plateau ids before
+--output.
+      [PLATEAU_ID...]        The plateaus of the path, oldest first. Without
+                               them, the path is the chain from baseline to
+                               --plateau.
+  -f, --format=FORMAT        The format of the table: text, markdown or json
+                               (default: text). Not with --output.
+  -h, --help                 Display this help message.
+  -o, --output[=PATH]        Write matrix.md and matrix.json in
+                               PATH-matrix-<first>-to-<last>, instead of
+                               printing the table: PATH is relative to the
+                               folder of the workspace file, or absolute
+                               (default: the views folder of the settings).
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+  -w, --workspace=<workspace file>
+                             The workspace file.
 ----
 
 .archicode stories
@@ -3352,6 +3439,36 @@ the plateau of a step lacks is a warning and the step is skipped.
                                is drawn.
   -w, --workspace=<workspace file>
                              The workspace file.
+----
+
+.archicode import
+----
+Usage: archicode import [-h] [-w=<workspace file>] [COMMAND]
+Import a model written for another tool into an ArchiCode workspace.
+  -h, --help   Display this help message.
+  -w, --workspace=<workspace file>
+               The workspace file.
+Commands:
+  structurizr  Import the JSON export of a Structurizr workspace (people,
+                 software systems, containers, components and their
+                 relationships) into a new ArchiCode workspace.
+----
+
+.archicode import structurizr
+----
+Usage: archicode import structurizr [-h] -o=<folder> [-w=<workspace file>]
+                                    <workspace.json>
+Import the JSON export of a Structurizr workspace (people, software systems,
+containers, components and their relationships) into a new ArchiCode workspace.
+Views, deployment, styles, documentation and properties are not imported: each
+is said as a warning. The folder must be absent or empty; a file that is not a
+JSON export, or a folder that is not empty, is one error line and nothing is
+written.
+      <workspace.json>    The JSON export to read.
+  -h, --help              Display this help message.
+  -o, --output=<folder>   The folder to write the workspace in: absent or empty.
+  -w, --workspace=<workspace file>
+                          The workspace file.
 ----
 
 .archicode diff

@@ -215,11 +215,18 @@ Every command takes `-h`/`--help` and `-w`/`--workspace=<workspace file>` (defau
   - `--host=host`: The address to bind to.
   - `--allowed-host=name`: A host name, besides localhost, 127.0.0.1 and [::1], that a request may be addressed to.
 - `archicode guide`: Print the guide to ArchiCode for an agent that has only this program.
+- `archicode import`: Import a model written for another tool into an ArchiCode workspace.
+- `archicode import structurizr` `<workspace.json>`: Import the JSON export of a Structurizr workspace (people, software systems, containers, components and their relationships) into a new ArchiCode workspace.
+  - `-o, --output=folder`: The folder to write the workspace in: absent or empty.
 - `archicode init` `<folder>`: Write a small workspace (.archicode.yaml, a person, a system with a container, a relationship and a view) that loads and is drawn.
 - `archicode plateau`: Manage the plateaus of the workspace.
 - `archicode plateau fold` `<plateau>`: Fold a plateau into the plateau above it: the files are rewritten or deleted, the patches merged and the replaces composed, then the plateaus that remain are read before and after on a temporary copy and the folder ...
   - `--dry-run`: Say what the fold would do and write nothing.
 - `archicode plateau list`: List the plateaus of the workspace, in the order of the tree: baseline, then what overrides it, each plateau followed by what overrides it.
+- `archicode plateau matrix` `PLATEAU_ID`: Write the matrix of a path of plateaus: a row per element lineage (followed through `replaces`), a column per plateau, and from three plateaus a SPAN column that is one comparison of the first plateau with the last.
+  - `--plateau=PLATEAU_ID`: The plateau to read, by its id (a plateau: key of a header or a Plateau manifest).
+  - `-f, --format=FORMAT`: The format of the table: text, markdown or json (default: text).
+  - `-o, --output[=PATH]`: Write matrix.md and matrix.json in PATH-matrix-<first>-to-<last>, instead of printing the table: PATH is relative to the folder of the workspace file, or absolute (default: the views folder of the settings).
 - `archicode query`: Query the ArchiCode data model.
 - `archicode query graph`: Print the resolved element/relationship graph of the workspace as JSON.
   - `--plateau=PLATEAU_ID`: The plateau to read, by its id (a plateau: key of a header or a Plateau manifest).
