@@ -19,7 +19,6 @@ const SKELETON = [
   '<script>',
   '<!--@parts-->',
   '</script>',
-  '<!--@wasm ../wasm/viewpoint_kernel.wasm-->',
   '</html>',
   ''
 ].join('\n');
@@ -39,7 +38,6 @@ function makeTree(options = {}) {
   write(root, `${editor}/layers.json`, JSON.stringify(options.layers ?? defaultLayers()));
   write(root, `${editor}/core/a.js`, 'const a = 1;\n');
   write(root, `${editor}/unsorted/b.js`, 'const b = 2;\nconst c = 3;\n');
-  write(root, 'src/main/wasm/viewpoint_kernel.wasm', WASM);
   return root;
 }
 
@@ -54,8 +52,7 @@ function defaultLayers() {
 }
 
 function expectedPage() {
-  const wasm = `<script type="application/octet-stream" id="viewpoint-kernel-wasm">${WASM.toString('base64')}</script>`;
-  return `<!DOCTYPE html>\n<script id="theme-boot">\nboot();\n</script>\n<script>\nconst a = 1;\nconst b = 2;\nconst c = 3;\n</script>\n${wasm}\n</html>\n`;
+  return `<!DOCTYPE html>\n<script id="theme-boot">\nboot();\n</script>\n<script>\nconst a = 1;\nconst b = 2;\nconst c = 3;\n</script>\n</html>\n`;
 }
 
 function run(root, ...args) {
@@ -71,7 +68,7 @@ function refused(root, sentence, ...args) {
   assert.doesNotMatch(result.err, /\n\s+at /, 'no stack trace');
 }
 
-test('assembles include, parts and wasm, and writes the page', () => {
+test('assembles include and parts, and writes the page', () => {
   const root = makeTree();
   const result = run(root);
   assert.equal(result.code, 0, result.err);
@@ -105,7 +102,7 @@ test('exports assemble and mapOf and does not run the command line when imported
 
 test('--map prints parts, files and skeleton with their lines as JSON', () => {
   const map = JSON.parse(run(makeTree(), '--map').out);
-  assert.equal(map.lines, 11);
+  assert.equal(map.lines, 10);
   assert.deepEqual(map.files, [{ file: 'theme-boot.js', first: 3, last: 3 }]);
   assert.deepEqual(map.parts, [
     { file: 'core/a.js', first: 6, last: 6 },
@@ -116,7 +113,7 @@ test('--map prints parts, files and skeleton with their lines as JSON', () => {
     [
       [1, 2],
       [4, 5],
-      [9, 11]
+      [9, 10]
     ]
   );
 });
@@ -126,8 +123,8 @@ test('--where names the part and the line in it, or the skeleton', () => {
   assert.equal(run(root, '--where', '8').out.trim(), 'unsorted/b.js:2');
   assert.equal(run(root, '--where', '3').out.trim(), 'theme-boot.js:1');
   assert.equal(run(root, '--where', '4').out.trim(), 'page.html:4');
-  assert.equal(run(root, '--where', '10').out.trim(), 'page.html:8');
-  refused(root, /--where needs a line between 1 and 11/, '--where', '99');
+  assert.equal(run(root, '--where', '9').out.trim(), 'page.html:7');
+  refused(root, /--where needs a line between 1 and 10/, '--where', '99');
 });
 
 test('--check passes on the assembly and fails on one changed byte with the sentence', () => {
@@ -362,7 +359,7 @@ test('--where, --map and --check-identical need no esbuild: a copy of the script
   const go = (...args) => spawnSync('node', [copy, '--root', root, ...args], { encoding: 'utf8' });
   assert.equal(go('--where', '2').stdout.trim(), 'page.html:2');
   assert.equal(go('--where', '3').status, 0);
-  assert.equal(JSON.parse(go('--map').stdout).lines, 12);
+  assert.equal(JSON.parse(go('--map').stdout).lines, 11);
   const git = (...args) =>
     spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: root, encoding: 'utf8' });
   git('init', '-q');
@@ -385,4 +382,52 @@ test('a tree without assets.json builds as before, with no assets folder', () =>
   const root = makeTree();
   assert.equal(run(root).code, 0);
   assert.equal(fs.existsSync(path.join(root, ASSETS)), false);
+});
+
+// ---- the `files` of assets.json: committed files beside the bundles, named by a <meta> and not built ----
+
+function makeFilesTree(files = [{ name: 'kernel.wasm' }], { present = true } = {}) {
+  const root = makeAssetTree();
+  const editor = 'src/main/editor';
+  write(
+    root,
+    `${editor}/assets.json`,
+    JSON.stringify({ assets: [{ name: 'lib.js', entry: 'bundles/lib.mjs' }], files })
+  );
+  if (present) write(root, `${ASSETS}/kernel.wasm`, WASM);
+  return root;
+}
+
+test('a listed file gets a <meta> after the assets, with the first 8 hex of its SHA-256, and is left as it is', () => {
+  const root = makeFilesTree();
+  const result = run(root);
+  assert.equal(result.code, 0, result.err);
+  const page = fs.readFileSync(path.join(root, PAGE), 'utf8');
+  const file = path.join(root, ASSETS, 'kernel.wasm');
+  const lib = `<meta name="archicode-asset:lib.js" content="./assets/lib.js?v=${sha8(path.join(root, ASSETS, 'lib.js'))}">`;
+  const meta = `<meta name="archicode-asset:kernel.wasm" content="./assets/kernel.wasm?v=${sha8(file)}">`;
+  assert.ok(page.includes(`${lib}\n${meta}\n`), page);
+  assert.ok(fs.readFileSync(file).equals(WASM), 'the build does not touch the file');
+  assert.ok(!page.includes(WASM.toString('base64')), 'the file is not inlined in the page');
+  assert.equal(run(root, '--check').code, 0);
+});
+
+test('a listed file that does not exist is one line: the asset is missing', () => {
+  const root = makeFilesTree(undefined, { present: false });
+  refused(root, /^error: the asset kernel\.wasm is missing/);
+});
+
+test('a name in both lists, or twice in files, is refused', () => {
+  refused(makeFilesTree([{ name: 'lib.js' }]), /lists `lib\.js` as an asset and as a file/);
+  refused(
+    makeFilesTree([{ name: 'kernel.wasm' }, { name: 'kernel.wasm' }]),
+    /lists `kernel\.wasm` as an asset and as a file/
+  );
+});
+
+test('--where and --map work on a tree with files', () => {
+  const root = makeFilesTree();
+  assert.equal(run(root).code, 0);
+  assert.equal(run(root, '--where', '1').code, 0);
+  assert.equal(run(root, '--map').code, 0);
 });

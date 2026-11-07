@@ -19,10 +19,10 @@ const FIXTURE = path.resolve(__dirname, '../../resources/plateau-state-hints');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 async function loadEmbeddedKernel() {
-  const block = fs
-    .readFileSync(HTML, 'utf8')
-    .match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
-  const { instance } = await WebAssembly.instantiate(Buffer.from(block[1].trim(), 'base64'), {});
+  const bytes = fs.readFileSync(
+    path.join(__dirname, '../../../main/resources/editor-webapp/assets/viewpoint_kernel.wasm')
+  );
+  const { instance } = await WebAssembly.instantiate(bytes, {});
   const x = instance.exports;
   return (name, input) => {
     const data = Buffer.from(typeof input === 'string' ? input : JSON.stringify(input), 'utf8');

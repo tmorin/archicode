@@ -136,7 +136,7 @@ jobs:
 
   Page:
     # The editor page and the scripts: Prettier, ESLint, the node unit suite with the coverage of the editor script, and the
-    # time budget of the kernel. Needs Node.js only (the kernel is the committed .wasm).
+    # time budget of the kernel. Needs Node.js only (the kernel is the committed file in editor-webapp/assets/, which the tests read).
     needs: Changes
     if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.page == 'true' }}
     runs-on: "ubuntu-latest"
@@ -207,7 +207,7 @@ jobs:
 
   Kernel:
     # The viewpoint kernel (Rust compiled to WebAssembly): tests, format, lint, line coverage, and the check that the
-    # committed .wasm is the one the sources build. Needs rustup (on the runner) and python3, nothing else: rustup installs
+    # committed .wasm is the one the sources build. Needs rustup (on the runner), nothing else: rustup installs
     # the toolchain, the components and the wasm target of rust-toolchain.toml at the first cargo command.
     needs: Changes
     if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.kernel == 'true' }}
@@ -238,7 +238,7 @@ jobs:
             || { echo "::error::the line coverage of the viewpoint kernel is below 90 % (the table above says where)"; exit 1; }
       - name: "Check the committed WebAssembly is the one the Rust builds"
         # the same build as embed.sh, into a scratch directory, with the compiler of rust-toolchain.toml: a change to the
-        # Rust whose .wasm was not re-embedded (in src/main/wasm and in standalone.html) fails
+        # Rust whose .wasm was not rebuilt into editor-webapp/assets/, or whose hash in standalone.html is stale, fails
         run: src/main/rust/viewpoint-kernel/embed.sh --check
 
   E2E:

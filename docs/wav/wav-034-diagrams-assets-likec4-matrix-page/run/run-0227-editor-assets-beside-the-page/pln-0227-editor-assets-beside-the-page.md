@@ -1,6 +1,6 @@
 ---
 title: Execution Plan — Editor assets beside the page
-status: draft
+status: done
 date: 2026-11-06
 related:
   - docs/wav/wav-034-diagrams-assets-likec4-matrix-page/run/run-0227-editor-assets-beside-the-page/tdd-0227-editor-assets-beside-the-page.md
@@ -27,7 +27,7 @@ Order of the work: task-001 (the build and the two bundles) is the root. task-00
 
 ```yaml
 summary:
-  status: 'pending'
+  status: 'done'
   product_goal: 'The editor draws diagrams and edits YAML with no network: CodeMirror and ELK are served as committed files beside the page, by editor serve and by the website, and the page no longer imports from esm.sh'
   technical_approach: 'esbuild (pinned, run by scripts/build-editor.mjs) bundles two entry files into assets/codemirror.js and assets/elk.js, committed and compared by editor:check; the page learns their hashes from meta tags and loads them with import(); EditorHttpServer serves them from a table of two names; the website step copies and compares the folder; an end-to-end spec with every host but 127.0.0.1 blocked proves it'
   total_tasks: 8
@@ -197,7 +197,7 @@ execution_graph:
       risk: 'low'
       confidence: 75
     - id: task-008
-      status: 'pending'
+      status: 'done'
       title: 'Gates of the run: the P2 criteria that belong to W-2, the whole suites, byte identity and a clean rebuild'
       depends_on: [task-007]
       produces:
@@ -597,6 +597,7 @@ task_catalog:
         - 'a command fails for a reason outside this run (a base already red): record it, do not fix it'
         - 'the Java coverage floor or an editor coverage floor goes down: stop and log it, do not lower a floor'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed first time, inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -1222,7 +1223,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 8

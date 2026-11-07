@@ -139,7 +139,10 @@ const SAMPLE = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'sam
 const SITE = path.join(ROOT, 'src', 'site', 'index.html');
 const ASSETS = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'assets');
 // the assets folder beside the page, at the website layout: /editor/assets/NAME for each file of the folder
-const ASSET_TYPES = new Map([['.js', 'text/javascript; charset=utf-8']]);
+const ASSET_TYPES = new Map([
+  ['.js', 'text/javascript; charset=utf-8'],
+  ['.wasm', 'application/wasm']
+]);
 const ASSET_ROUTES = fs.existsSync(ASSETS)
   ? fs
       .readdirSync(ASSETS)

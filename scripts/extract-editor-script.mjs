@@ -10,7 +10,7 @@
 //   module.js        <script type="module">      the CodeMirror loader (an ES module)
 //   page.js          <script>                    the editor itself, a classic script
 //
-// The data block <script type="application/octet-stream" id="viewpoint-kernel-wasm"> is not code and is left out.
+// The kernel is not a block of the page: it is a file beside it (assets/viewpoint_kernel.wasm).
 //
 // Each copy is padded with blank lines so that a line of the copy is the same line of the HTML: a finding
 // "page.js:12345:7" is standalone.html line 12345. Nothing is written back to the page: the copies are read-only input.
