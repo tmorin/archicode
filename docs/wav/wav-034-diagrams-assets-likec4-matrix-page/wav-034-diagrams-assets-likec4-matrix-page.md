@@ -81,7 +81,7 @@ wave_manifest:
       slug: manual-plantuml-diagrams
       phase: P1
       depends_on: []
-      run: null
+      run: 0226
       delegation: standard
       profile: single-document
       likely_paths:
@@ -93,7 +93,7 @@ wave_manifest:
       slug: editor-assets-beside-the-page
       phase: P2
       depends_on: []
-      run: null
+      run: 0227
       delegation: hard_judgment
       delegation_reason: 'changes the files the live hosted editor serves (the website step is proved only by a tag run)'
       likely_paths:

@@ -1980,6 +1980,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.cli.EditorHttpServer$Asset",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.cli.EditorHttpServer$Refusal",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,

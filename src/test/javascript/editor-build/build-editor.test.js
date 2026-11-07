@@ -262,3 +262,127 @@ test('refuses an unknown option and a missing value', () => {
   refused(makeTree(), /unknown option `--nope`/, '--nope');
   refused(makeTree(), /--where needs a value/, '--where');
 });
+
+// ---- assets: assets.json, <!--@assets-->, the esbuild step, the notice file and --check ----
+
+const { createHash } = require('node:crypto');
+const ASSETS = 'src/main/resources/editor-webapp/assets';
+const ASSET_SKELETON = SKELETON.replace('<!DOCTYPE html>', '<!DOCTYPE html>\n<!--@assets-->');
+
+function makeAssetTree() {
+  const root = makeTree({ skeleton: ASSET_SKELETON });
+  const editor = 'src/main/editor';
+  write(root, `${editor}/assets.json`, JSON.stringify({ assets: [{ name: 'lib.js', entry: 'bundles/lib.mjs' }] }));
+  write(root, `${editor}/bundles/lib.mjs`, "export { answer } from 'fakepkg';\n");
+  write(root, 'node_modules/fakepkg/index.js', 'export const answer = 42;\n');
+  write(
+    root,
+    'node_modules/fakepkg/package.json',
+    JSON.stringify({ name: 'fakepkg', version: '1.2.3', license: 'MIT' })
+  );
+  write(root, 'node_modules/fakepkg/LICENSE', 'Fake licence text\n');
+  return root;
+}
+
+const sha8 = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 8);
+
+test('builds the asset and the notice file, and the <meta> hash is the SHA-256 of the written file', () => {
+  const root = makeAssetTree();
+  const result = run(root);
+  assert.equal(result.code, 0, result.err);
+  const asset = path.join(root, ASSETS, 'lib.js');
+  assert.match(fs.readFileSync(asset, 'utf8'), /^\/\* lib\.js: bundled from bundles\/lib\.mjs/);
+  assert.match(fs.readFileSync(asset, 'utf8'), /42/);
+  const page = fs.readFileSync(path.join(root, PAGE), 'utf8');
+  assert.ok(page.includes(`<meta name="archicode-asset:lib.js" content="./assets/lib.js?v=${sha8(asset)}">`), page);
+  const notices = fs.readFileSync(path.join(root, ASSETS, 'THIRD-PARTY-NOTICES.txt'), 'utf8');
+  assert.match(notices, /^fakepkg 1\.2\.3\nLicense: MIT\n\nFake licence text$/m);
+});
+
+test('the notice file lists the packages of the metafile sorted by name', () => {
+  const root = makeAssetTree();
+  write(root, 'src/main/editor/bundles/lib.mjs', "export { answer } from 'zeta';\nexport { b } from 'alpha';\n");
+  for (const [name, license] of [
+    ['zeta', 'MIT'],
+    ['alpha', 'EPL-2.0']
+  ]) {
+    write(root, `node_modules/${name}/index.js`, `export const ${name === 'zeta' ? 'answer' : 'b'} = 1;\n`);
+    write(root, `node_modules/${name}/package.json`, JSON.stringify({ name, version: '0.0.1', license }));
+    write(root, `node_modules/${name}/LICENSE.md`, `${name} text\n`);
+  }
+  assert.equal(run(root).code, 0);
+  const notices = fs.readFileSync(path.join(root, ASSETS, 'THIRD-PARTY-NOTICES.txt'), 'utf8');
+  assert.ok(notices.indexOf('alpha 0.0.1\nLicense: EPL-2.0') < notices.indexOf('zeta 0.0.1\nLicense: MIT'));
+  assert.doesNotMatch(notices, /fakepkg/);
+});
+
+test('a second build writes nothing: the files keep their modification time', () => {
+  const root = makeAssetTree();
+  run(root);
+  const files = ['lib.js', 'THIRD-PARTY-NOTICES.txt'].map((name) => path.join(root, ASSETS, name));
+  const old = new Date(2020, 0, 1);
+  for (const file of [...files, path.join(root, PAGE)]) fs.utimesSync(file, old, old);
+  assert.equal(run(root).code, 0);
+  for (const file of [...files, path.join(root, PAGE)]) assert.equal(fs.statSync(file).mtimeMs, old.getTime(), file);
+});
+
+test('--check passes on a built tree, writes nothing, and names an edited asset or notice file', () => {
+  const root = makeAssetTree();
+  assert.equal(run(root, '--check').code, 1, 'nothing is built yet');
+  assert.equal(fs.existsSync(path.join(root, ASSETS)), false, '--check does not write');
+  run(root);
+  assert.equal(run(root, '--check').code, 0);
+  const asset = path.join(root, ASSETS, 'lib.js');
+  fs.appendFileSync(asset, '//\n');
+  refused(
+    root,
+    /^error: editor-webapp\/assets\/lib\.js is generated: edit src\/main\/editor and run `npm run editor:build`\n$/,
+    '--check'
+  );
+  run(root);
+  fs.appendFileSync(path.join(root, ASSETS, 'THIRD-PARTY-NOTICES.txt'), 'x\n');
+  refused(root, /editor-webapp\/assets\/THIRD-PARTY-NOTICES\.txt is generated: edit src\/main\/editor/, '--check');
+});
+
+test('a page with @assets and no assets.json is an error, and so is assets.json with no @assets', () => {
+  const none = makeAssetTree();
+  fs.rmSync(path.join(none, 'src/main/editor/assets.json'));
+  refused(none, /page\.html:2: @assets needs src\/main\/editor\/assets\.json/);
+  const noDirective = makeAssetTree();
+  write(noDirective, 'src/main/editor/page.html', SKELETON);
+  refused(noDirective, /assets\.json is there but page\.html has no `<!--@assets-->` line/);
+});
+
+test('--where, --map and --check-identical need no esbuild: a copy of the script with no node_modules runs them', () => {
+  const root = makeAssetTree();
+  run(root);
+  const lone = fs.mkdtempSync(path.join(os.tmpdir(), 'build-editor-script-'));
+  const copy = path.join(lone, 'build-editor.mjs');
+  fs.copyFileSync(SCRIPT, copy);
+  const go = (...args) => spawnSync('node', [copy, '--root', root, ...args], { encoding: 'utf8' });
+  assert.equal(go('--where', '2').stdout.trim(), 'page.html:2');
+  assert.equal(go('--where', '3').status, 0);
+  assert.equal(JSON.parse(go('--map').stdout).lines, 12);
+  const git = (...args) =>
+    spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: root, encoding: 'utf8' });
+  git('init', '-q');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'one');
+  assert.equal(go('--check-identical', 'HEAD').status, 0, go('--check-identical', 'HEAD').stderr);
+  const built = go();
+  assert.equal(built.status, 1);
+  assert.equal(built.stderr, 'error: esbuild is not installed: run npm ci\n');
+  assert.equal(go('--check').stderr, 'error: esbuild is not installed: run npm ci\n');
+});
+
+test('an entry that does not resolve is one error line naming the asset and the entry', () => {
+  const root = makeAssetTree();
+  write(root, 'src/main/editor/bundles/lib.mjs', "export { x } from 'nowhere-at-all';\n");
+  refused(root, /cannot build the asset `lib\.js` from `bundles\/lib\.mjs`: .*(nowhere-at-all).*run npm ci/);
+});
+
+test('a tree without assets.json builds as before, with no assets folder', () => {
+  const root = makeTree();
+  assert.equal(run(root).code, 0);
+  assert.equal(fs.existsSync(path.join(root, ASSETS)), false);
+});

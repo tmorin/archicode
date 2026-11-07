@@ -114,12 +114,15 @@ test('a visitor whose browser has a folder picker never calls it, and the page w
   );
   expect(calls, 'calls of showDirectoryPicker').toBe(0);
 
-  // nothing is written: every request is a GET, and the hosted server was asked for the page and the sample only
+  // nothing is written: every request is a GET, and the hosted server was asked for the page, its assets and the sample only
   expect(sent.filter((r) => r.method !== 'GET').map((r) => `${r.method} ${r.url}`)).toEqual([]);
   const mine = new URL(hosted.url).origin;
   const others = sent.filter((r) => /^https?:/.test(r.url) && !r.url.startsWith(mine));
   expect(others.every((r) => r.method === 'GET')).toBe(true);
-  expect(new Set(hosted.requests)).toEqual(new Set(['/editor/', '/editor/samples/brightcart.yaml']));
+  // (the page also asks for the two files of the assets folder beside it, CodeMirror and the layout)
+  expect(new Set(hosted.requests)).toEqual(
+    new Set(['/editor/', '/editor/assets/codemirror.js', '/editor/assets/elk.js', '/editor/samples/brightcart.yaml'])
+  );
 });
 
 test('the button of the site opens Brightcart in one click, and a second click reopens the same workspace', async ({

@@ -2,7 +2,7 @@
 # Builds the viewpoint kernel to WebAssembly and puts it where it is used:
 #   - src/main/wasm/viewpoint_kernel.wasm, which Maven translates to JVM bytecode for the CLI (Chicory);
 #   - base64-encoded in the standalone editor (the <script id="viewpoint-kernel-wasm"> block of standalone.html).
-# In write mode the page is assembled by scripts/build-editor.mjs (node, no npm install) from src/main/editor, which
+# In write mode the page is assembled by scripts/build-editor.mjs (node, after npm ci) from src/main/editor, which
 # reads the wasm just written; the check mode compares the block in the page and needs no node.
 # Both must come from the same build; a test checks that they do.
 #

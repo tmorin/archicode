@@ -110,6 +110,24 @@ class EditorServeIT {
             );
             assertEquals(403, get(client, base + "samples/brightcart.yaml").statusCode(), "no proof, no sample");
             assertEquals(404, get(client, base + "samples/other.yaml", address.group(2)).statusCode());
+
+            // the two libraries of the page are resources of the jar and of the native image, served with the same proof
+            for (val name : new String[] { "codemirror.js", "elk.js" }) {
+                val asset = get(client, base + "assets/" + name, address.group(2));
+                assertEquals(200, asset.statusCode(), () -> "the asset " + name);
+                assertEquals(
+                    Files.readString(Path.of("src/main/resources/editor-webapp/assets/" + name)),
+                    asset.body(),
+                    "the bytes of the committed " + name
+                );
+                assertEquals(
+                    "text/javascript; charset=utf-8",
+                    asset.headers().firstValue("Content-Type").orElse(""),
+                    name
+                );
+                assertEquals(403, get(client, base + "assets/" + name).statusCode(), "no proof, no " + name);
+            }
+            assertEquals(404, get(client, base + "assets/other.js", address.group(2)).statusCode());
         } finally {
             process.destroy();
             if (!process.waitFor(STOP_TIMEOUT.toSeconds(), java.util.concurrent.TimeUnit.SECONDS)) {

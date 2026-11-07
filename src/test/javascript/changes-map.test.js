@@ -103,6 +103,8 @@ const EXAMPLES = [
   ['src/main/rust/viewpoint-kernel/src/lib.rs', ALL],
   ['src/main/wasm/viewpoint_kernel.wasm', ALL],
   ['src/main/resources/editor-webapp/standalone.html', ALL],
+  ['src/main/resources/editor-webapp/assets/codemirror.js', 'e2e,java,page'],
+  ['src/main/editor/bundles/x.mjs', ALL],
   ['src/main/java/io/morin/archicode/Anything.java', 'e2e,java,page'],
   ['src/test/java/io/morin/archicode/AnythingTest.java', 'java,page'],
   ['pom.xml', 'e2e,java'],

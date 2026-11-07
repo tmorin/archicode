@@ -194,6 +194,7 @@
     "askForPersistentStorage",
     "askToDeleteBrowserWorkspace",
     "askToResetSample",
+    "assetAddress",
     "autoGrowObserver",
     "autosizeAllTextareas",
     "autosizeTextarea",

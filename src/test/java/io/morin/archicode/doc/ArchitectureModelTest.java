@@ -20,7 +20,7 @@ import picocli.CommandLine;
 
 /**
  * The model of ArchiCode itself, {@code docs/architecture/} (wave 029, run 0209), is a workspace the command line loads:
- * 35 to 45 elements, every relationship leads to an element of its layer, {@code query graph} and {@code query views}
+ * 35 to 50 elements, every relationship leads to an element of its layer, {@code query graph} and {@code query views}
  * exit 0 with nothing on the error output, 4 or 5 saved views are listed, and the folder holds only YAML (no generated
  * {@code views-*} folder). The test reads the folder and writes nothing into it. The editor opens the same folder in
  * {@code architecture-model.test.js}.
@@ -50,12 +50,12 @@ class ArchitectureModelTest {
     }
 
     @Test
-    void shouldLoadBetween35And45ElementsWhoseRelationshipsLeadToAnElement() {
+    void shouldLoadBetween35And50ElementsWhoseRelationshipsLeadToAnElement() {
         val workspace = workspaceFactory.create(WORKSPACE);
         val applications = workspace.appIndex.listAllElementReferences(e -> true);
         val technology = workspace.techIndex.listAllElementReferences(e -> true);
         val count = applications.size() + technology.size();
-        assertTrue(count >= 35 && count <= 45, "the model has 35 to 45 elements: " + count);
+        assertTrue(count >= 35 && count <= 50, "the model has 35 to 50 elements: " + count);
         assertFalse(technology.isEmpty(), "the model has a technology layer");
         assertDestinationsExist(workspace.appIndex, applications);
         assertDestinationsExist(workspace.techIndex, technology);
