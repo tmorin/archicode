@@ -101,7 +101,7 @@ const EXAMPLES = [
   ['scripts/changes.mjs', ALL],
   ['scripts/build-editor.mjs', 'java,kernel,page'],
   ['src/main/rust/viewpoint-kernel/src/lib.rs', ALL],
-  ['src/main/wasm/viewpoint_kernel.wasm', ALL],
+  ['src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm', ALL],
   ['src/main/resources/editor-webapp/standalone.html', ALL],
   ['src/main/resources/editor-webapp/assets/codemirror.js', 'e2e,java,page'],
   ['src/main/editor/bundles/x.mjs', ALL],

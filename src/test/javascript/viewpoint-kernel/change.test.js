@@ -13,14 +13,11 @@ const vm = require('node:vm');
 const { openFixture } = require('./harness');
 
 const REPO = path.resolve(__dirname, '../../../..');
-const HTML = path.join(REPO, 'src/main/resources/editor-webapp/standalone.html');
 
-/** The module of standalone.html, instantiated as the page does, with `compare` in addition to `compute`. */
+/** The module of the file beside the page, instantiated as the page does, with `compare` in addition to `compute`. */
 async function loadEmbeddedKernel() {
-  const html = fs.readFileSync(HTML, 'utf8');
-  const block = html.match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
-  assert.ok(block, 'the kernel is embedded in standalone.html');
-  const { instance } = await WebAssembly.instantiate(Buffer.from(block[1].trim(), 'base64'), {});
+  const bytes = fs.readFileSync(path.join(REPO, 'src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm'));
+  const { instance } = await WebAssembly.instantiate(bytes, {});
   const x = instance.exports;
   const call = (name, input) => {
     const data = Buffer.from(typeof input === 'string' ? input : JSON.stringify(input), 'utf8');

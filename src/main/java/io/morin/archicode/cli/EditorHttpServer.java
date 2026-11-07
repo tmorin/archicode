@@ -64,9 +64,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  *       the application (UTF-8, {@code text/yaml}). The routes under {@code /samples/} are a table of two entries
  *       ({@link #SAMPLES}): any other path there is 404, and a request never names a resource. It has the {@code Host}
  *       check of the page and wants the token in the header or the session cookie, never in the query (403).</li>
- *   <li>{@code GET /assets/codemirror.js} and {@code GET /assets/elk.js} — the two libraries the editor page loads
- *       beside itself, resources of the application ({@code text/javascript; charset=utf-8}). The routes under
- *       {@code /assets/} are a table of two entries ({@link #ASSETS}): any other path there is 404, a query such as
+ *   <li>{@code GET /assets/codemirror.js}, {@code GET /assets/elk.js} and {@code GET /assets/viewpoint_kernel.wasm} —
+ *       the two libraries and the kernel the editor page loads beside itself, resources of the application
+ *       ({@code text/javascript; charset=utf-8} for the libraries, {@code application/wasm} for the kernel). The routes
+ *       under {@code /assets/} are a table of three entries ({@link #ASSETS}): any other path there is 404, a query such as
  *       {@code ?v=} is ignored, and a request never names a resource. Same {@code Host} check and same proof as the
  *       samples: the token in the header or the session cookie, never in the query (403).</li>
  * </ul>
@@ -119,7 +120,9 @@ public class EditorHttpServer {
         "codemirror.js",
         new Asset("/editor-webapp/assets/codemirror.js", "text/javascript; charset=utf-8"),
         "elk.js",
-        new Asset("/editor-webapp/assets/elk.js", "text/javascript; charset=utf-8")
+        new Asset("/editor-webapp/assets/elk.js", "text/javascript; charset=utf-8"),
+        "viewpoint_kernel.wasm",
+        new Asset("/editor-webapp/assets/viewpoint_kernel.wasm", "application/wasm")
     );
 
     private static final String SAMPLE_TYPE = "text/yaml; charset=utf-8";

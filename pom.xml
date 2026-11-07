@@ -158,7 +158,7 @@
                         </goals>
                         <configuration>
                             <name>io.morin.archicode.viewpoint.kernel.ViewpointKernelModule</name>
-                            <wasmFile>${project.basedir}/src/main/wasm/viewpoint_kernel.wasm</wasmFile>
+                            <wasmFile>${project.basedir}/src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm</wasmFile>
                         </configuration>
                     </execution>
                 </executions>

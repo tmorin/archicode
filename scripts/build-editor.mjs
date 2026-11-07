@@ -4,14 +4,14 @@
 // The skeleton src/main/editor/page.html is read line by line. A line that is exactly one of
 //   <!--@include FILE-->   the content of FILE (relative to src/main/editor/) without its last newline
 //   <!--@parts-->          the parts of layers.json in order, each verbatim, without the last newline of the last
-//   <!--@wasm FILE-->      <script type="application/octet-stream" id="viewpoint-kernel-wasm">base64</script>
-//   <!--@assets-->          one <meta name="archicode-asset:NAME" content="./assets/NAME?v=8 hex"> per asset of assets.json,
+//   <!--@assets-->          one <meta name="archicode-asset:NAME" content="./assets/NAME?v=8 hex"> per asset of assets.json, then per file of its `files`,
 //                          the 8 hex being the start of the SHA-256 of the committed file on disk
 // is replaced; every other line is copied. The result is src/main/resources/editor-webapp/standalone.html.
 //
 // When src/main/editor/assets.json exists, the write mode also bundles each listed entry with esbuild (in memory) into
 // src/main/resources/editor-webapp/assets/NAME and writes the notice file THIRD-PARTY-NOTICES.txt, each only when its
-// bytes differ. assets.json and the @assets line go together: one without the other is an error.
+// bytes differ. The `files` of assets.json are committed files of that folder (the kernel's .wasm) that are not built: only
+// their metas are written. assets.json and the @assets line go together: one without the other is an error.
 //
 // Usage: node scripts/build-editor.mjs [--check | --check-identical <rev> | --where <line> | --map] [--root <dir>]
 //   (none)                    write the page, only when its bytes differ
@@ -143,19 +143,13 @@ export function assemble(root) {
         partFiles.push(part.file);
         linesOf(part.text).forEach((line, i) => push(line, part.file, i + 1));
       }
-    } else if (name === 'wasm') {
-      if (argument === undefined) fail(`page.html:${here}: @wasm needs a file`);
-      const wasm = join(editorDir, argument);
-      if (!existsSync(wasm)) fail(`page.html:${here}: the wasm file \`${argument}\` is missing`);
-      const base64 = readFileSync(wasm).toString('base64');
-      push(`<script type="application/octet-stream" id="viewpoint-kernel-wasm">${base64}</script>`, 'page.html', here);
     } else if (name === 'assets') {
       if (argument !== undefined) fail(`page.html:${here}: @assets takes no argument`);
       if (assets === null) fail(`page.html:${here}: @assets needs src/main/editor/assets.json`);
       assetsDirective = true;
-      for (const asset of assets) {
+      for (const asset of [...assets, ...assets.files]) {
         const file = join(root, ASSETS_DIR, asset.name);
-        if (!existsSync(file)) fail(`${ASSETS_DIR}/${asset.name} is missing: run \`npm run editor:build\``);
+        if (!existsSync(file)) fail(`the asset ${asset.name} is missing: ${ASSETS_DIR}/${asset.name}`);
         const hash = createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 8);
         push(
           `<meta name="archicode-asset:${asset.name}" content="./assets/${asset.name}?v=${hash}">`,
@@ -172,7 +166,7 @@ export function assemble(root) {
   return { text: `${out.join('\n')}\n`, origins, partFiles };
 }
 
-/** The assets of assets.json as [{ name, entry }], or null when the file does not exist. */
+/** The assets of assets.json as [{ name, entry }] with the committed `files` as a property, or null when the file does not exist. */
 function readAssetList(editorDir) {
   const file = join(editorDir, 'assets.json');
   if (!existsSync(file)) return null;
@@ -193,6 +187,20 @@ function readAssetList(editorDir) {
     if (names.has(asset.name)) fail(`assets.json lists the asset \`${asset.name}\` twice`);
     names.add(asset.name);
   }
+  const files =
+    config.files === undefined
+      ? []
+      : Array.isArray(config.files)
+        ? config.files
+        : fail('assets.json: `files` must be a list');
+  for (const item of files) {
+    if (typeof item?.name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(item.name)) {
+      fail('assets.json: a file needs a `name` that is a file name');
+    }
+    if (names.has(item.name)) fail(`assets.json lists \`${item.name}\` as an asset and as a file, or twice`);
+    names.add(item.name);
+  }
+  list.files = files;
   return list;
 }
 

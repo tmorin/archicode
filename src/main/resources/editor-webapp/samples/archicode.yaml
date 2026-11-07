@@ -71,6 +71,9 @@ content:
                 - destination: "archicode.contracts.couplings.editor_assets"
                   label: "serves the assets"
                   qualifiers: ["serves"]
+                - destination: "archicode.contracts.couplings.kernel_wasm"
+                  label: "serves the kernel"
+                  qualifiers: ["serves"]
             - kind: "component"
               id: "guide"
               name: "Guide"
@@ -390,6 +393,9 @@ content:
             - destination: "archicode.contracts.couplings.editor_assets"
               label: "loads CodeMirror and ELK from"
               qualifiers: ["reads"]
+            - destination: "archicode.contracts.couplings.kernel_wasm"
+              label: "loads the kernel from"
+              qualifiers: ["reads"]
     - kind: "system"
       id: "contracts"
       name: "Contracts"
@@ -405,7 +411,7 @@ content:
               name: "Kernel WebAssembly"
               description: "The committed WebAssembly both tools run."
               tags:
-                path: "src/main/wasm/viewpoint_kernel.wasm"
+                path: "src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm"
               relationships:
                 - destination: "archicode.kernel.engine"
                   label: "is generated from"

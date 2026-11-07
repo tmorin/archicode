@@ -86,8 +86,12 @@ fi
 echo "editor serve listens: ${address%%\?*}?token=..."
 status="$(curl --silent --show-error --max-time 30 --output "${work}/page.html" --write-out '%{http_code}' "${address}")" || die "no answer from editor serve at ${address%%\?*}"
 [ "${status}" = "200" ] || die "the editor page answered HTTP ${status}, expected 200"
-grep -q 'viewpoint-kernel-wasm' "${work}/page.html" || die "the page served is not the standalone editor"
-echo "the editor page: HTTP 200, $(wc -c <"${work}/page.html" | tr -d ' ') bytes"
+grep -q '<meta name="archicode-asset:viewpoint_kernel.wasm"' "${work}/page.html" || die "the page served is not the standalone editor"
+token="${address##*token=}"
+kernel_status="$(curl --silent --show-error --max-time 30 --header "X-ArchiCode-Token: ${token}" --output "${work}/kernel.wasm" --write-out '%{http_code}' "${address%%\?*}assets/viewpoint_kernel.wasm")" || die "no answer from editor serve for assets/viewpoint_kernel.wasm"
+[ "${kernel_status}" = "200" ] || die "assets/viewpoint_kernel.wasm answered HTTP ${kernel_status}, expected 200"
+[ "$(head -c 4 "${work}/kernel.wasm" | od -An -tx1 | tr -d ' \n')" = "0061736d" ] || die "assets/viewpoint_kernel.wasm is not a WebAssembly module"
+echo "the editor page: HTTP 200, $(wc -c <"${work}/page.html" | tr -d ' ') bytes; the kernel: HTTP 200, $(wc -c <"${work}/kernel.wasm" | tr -d ' ') bytes"
 
 kill "${server}" 2>/dev/null || die "editor serve ended before it was asked to stop"
 waited=0

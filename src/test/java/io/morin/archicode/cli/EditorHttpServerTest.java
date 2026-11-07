@@ -97,7 +97,7 @@ class EditorHttpServerTest {
         val response = call("GET", "/?token=" + running.token(), null, null, null);
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("<meta name=\"archicode-server\" content=\"" + running.token() + "\">"));
-        assertTrue(response.body().contains("viewpoint-kernel-wasm"), "it is the standalone editor");
+        assertTrue(response.body().contains("archicode-asset:viewpoint_kernel.wasm"), "it is the standalone editor");
         assertTrue(
             response.body().contains("<meta name=\"archicode-version\" content=\"" + version + "\">"),
             "the page says which ArchiCode serves it"
@@ -123,7 +123,7 @@ class EditorHttpServerTest {
             val response = call("GET", path, null, null, null);
             assertEquals(403, response.statusCode(), path);
             assertFalse(response.body().contains(running.token()));
-            assertFalse(response.body().contains("viewpoint-kernel-wasm"));
+            assertFalse(response.body().contains("archicode-asset:viewpoint_kernel.wasm"));
         }
         assertEquals(400, status(rawGet("/?token=%zz", "127.0.0.1")), "malformed escape");
         assertTrue(call("GET", "/", null, null, null).body().contains("archicode editor serve"));
@@ -149,7 +149,7 @@ class EditorHttpServerTest {
         val session = "Cookie: other=1; " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
         val reload = rawGet("/", "127.0.0.1", session);
         assertEquals(200, status(reload), "the cookie alone opens the page");
-        assertTrue(reload.contains("viewpoint-kernel-wasm"));
+        assertTrue(reload.contains("archicode-asset:viewpoint_kernel.wasm"));
         assertFalse(reload.toLowerCase(Locale.ROOT).contains("set-cookie"), "only the token in the address sets it");
 
         assertEquals(403, status(rawGet("/", "127.0.0.1")), "no token, no cookie");
@@ -594,20 +594,42 @@ class EditorHttpServerTest {
 
     private static final Path CODEMIRROR = Path.of("src/main/resources/editor-webapp/assets/codemirror.js");
     private static final Path ELK = Path.of("src/main/resources/editor-webapp/assets/elk.js");
+    private static final Path KERNEL = Path.of("src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm");
 
     @SneakyThrows
     @Test
     void servesTheAssetsWithTheTokenHeader() {
-        for (val entry : Map.of("/assets/codemirror.js", CODEMIRROR, "/assets/elk.js", ELK).entrySet()) {
+        val types = Map.of(
+            "/assets/codemirror.js",
+            "text/javascript; charset=utf-8",
+            "/assets/elk.js",
+            "text/javascript; charset=utf-8",
+            "/assets/viewpoint_kernel.wasm",
+            "application/wasm"
+        );
+        val files = Map.of(
+            "/assets/codemirror.js",
+            CODEMIRROR,
+            "/assets/elk.js",
+            ELK,
+            "/assets/viewpoint_kernel.wasm",
+            KERNEL
+        );
+        for (val entry : files.entrySet()) {
             val response = sample(entry.getKey(), running.token());
             assertEquals(200, response.statusCode(), entry.getKey());
             assertArrayEquals(Files.readAllBytes(entry.getValue()), response.body(), "the bytes, as committed");
-            assertEquals("text/javascript; charset=utf-8", response.headers().firstValue("Content-Type").orElse(""));
+            assertEquals(types.get(entry.getKey()), response.headers().firstValue("Content-Type").orElse(""));
             assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
             assertEquals("nosniff", response.headers().firstValue("X-Content-Type-Options").orElse(""));
             assertFalse(response.headers().firstValue("Set-Cookie").isPresent(), "only the page sets the session");
         }
         assertEquals(200, sample("/assets/elk.js?v=abc123", running.token()).statusCode(), "the query is ignored");
+        assertEquals(
+            200,
+            sample("/assets/viewpoint_kernel.wasm?v=abc123", running.token()).statusCode(),
+            "the query is ignored"
+        );
     }
 
     @SneakyThrows
@@ -620,9 +642,15 @@ class EditorHttpServerTest {
     }
 
     @Test
-    void holdsTwoAssetsAndNoWasm() {
-        assertEquals(Set.of("codemirror.js", "elk.js"), EditorHttpServer.ASSETS.keySet());
-        EditorHttpServer.ASSETS.values().forEach(a -> assertEquals("text/javascript; charset=utf-8", a.contentType()));
+    void holdsThreeAssets() {
+        assertEquals(Set.of("codemirror.js", "elk.js", "viewpoint_kernel.wasm"), EditorHttpServer.ASSETS.keySet());
+        assertEquals("application/wasm", EditorHttpServer.ASSETS.get("viewpoint_kernel.wasm").contentType());
+    }
+
+    @Test
+    void doesNotServeTheKernelWithoutAProof() {
+        assertEquals(403, sample("/assets/viewpoint_kernel.wasm", null).statusCode());
+        assertEquals(403, sample("/assets/viewpoint_kernel.wasm", "wrong").statusCode());
     }
 
     @Test
@@ -667,6 +695,8 @@ class EditorHttpServerTest {
             "/assets/ELK.js",
             "/assets/elk.mjs",
             "/assets/elk.wasm",
+            "/assets/viewpoint_kernel.wasm/",
+            "/assets/viewpoint_kernel.wasm.map",
             "/assets/THIRD-PARTY-NOTICES.txt",
             "/assets/../standalone.html",
             "/assets/%2e%2e/standalone.html",

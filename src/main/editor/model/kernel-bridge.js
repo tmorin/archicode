@@ -1,16 +1,30 @@
 /** The kernel, once the promise of `loadViewpointKernel` has settled: null before. */
 let loadedKernel = null;
 
-/** Decode the embedded WebAssembly module and wrap its tiny C ABI (alloc / compute / compare / result_ptr / dealloc). */
+/** Fetch the WebAssembly module that sits beside the page and wrap its tiny C ABI (alloc / compute / compare / result_ptr / dealloc). */
 function loadViewpointKernel() {
   if (!viewpointKernelPromise) {
     viewpointKernelPromise = (async () => {
-      const node = document.getElementById('viewpoint-kernel-wasm');
-      if (!node) throw new Error('The embedded viewpoint kernel is missing from this file.');
-      const binary = atob(node.textContent.trim());
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const { instance } = await WebAssembly.instantiate(bytes, {});
+      const address = assetAddress('viewpoint_kernel.wasm');
+      if (address === null) throw new Error('The page names no viewpoint_kernel.wasm file.');
+      let response;
+      try {
+        response = await fetch(address);
+      } catch (e) {
+        throw new Error(
+          'The viewpoint kernel could not be loaded from ' + address + ': ' + (e && e.message ? e.message : e),
+          { cause: e }
+        );
+      }
+      if (!response.ok) {
+        throw new Error('The viewpoint kernel could not be loaded: HTTP ' + response.status + ' from ' + address + '.');
+      }
+      // streaming compilation needs the right type; a host that does not know .wasm gets the bytes read instead
+      const type = (response.headers.get('content-type') || '').trim().toLowerCase(); // the engine streams only the bare type, with no parameter
+      const { instance } =
+        type === 'application/wasm'
+          ? await WebAssembly.instantiateStreaming(response, {})
+          : await WebAssembly.instantiate(await response.arrayBuffer(), {});
       const x = instance.exports;
       const encoder = new TextEncoder();
       const decoder = new TextDecoder();

@@ -311,13 +311,15 @@ test('the facets that filter on tags, qualifiers and labels keep what a plain re
   }
 });
 
-test('the kernel the CLI runs is the one the editor embeds', () => {
-  const html = fs.readFileSync(path.join(FIXTURE, '../../../../main/resources/editor-webapp/standalone.html'), 'utf8');
-  const embedded = html.match(
-    /<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/
-  )[1];
-  const file = fs.readFileSync(path.join(FIXTURE, '../../../../main/wasm/viewpoint_kernel.wasm'));
-  assert.equal(Buffer.from(embedded, 'base64').equals(file), true, 'run src/main/rust/viewpoint-kernel/embed.sh');
+test('the page names the kernel file that the CLI runs, by the hash of its bytes', () => {
+  const root = path.join(FIXTURE, '../../../../main/resources/editor-webapp');
+  const html = fs.readFileSync(path.join(root, 'standalone.html'), 'utf8');
+  const file = fs.readFileSync(path.join(root, 'assets/viewpoint_kernel.wasm'));
+  const hash = require('node:crypto').createHash('sha256').update(file).digest('hex').slice(0, 8);
+  assert.ok(
+    html.includes('archicode-asset:viewpoint_kernel.wasm') && html.includes(hash),
+    'run src/main/rust/viewpoint-kernel/embed.sh'
+  );
 });
 
 test('the map, pinned on one element with nothing open, draws the overview the CLI generates; with everything open, its deep links', async () => {
