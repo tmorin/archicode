@@ -277,13 +277,13 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         token = self.headers.get("X-ArchiCode-Token") == "abc_1-Z"
         page = self.path == "/?token=abc_1-Z"
-        kernel = self.path == "/assets/viewpoint_kernel.wasm" and token
+        kernel = self.path == "/assets/viewpoint_kernel.js" and token
         self.send_response(200 if page or kernel else 403)
         self.end_headers()
         if page:
-            self.wfile.write(b"<html><meta name=\"archicode-asset:viewpoint_kernel.wasm\" content=\"./assets/viewpoint_kernel.wasm?v=00000000\"></html>")
+            self.wfile.write(b"<html><meta name=\"archicode-asset:viewpoint_kernel.js\" content=\"./assets/viewpoint_kernel.js?v=00000000\"></html>")
         elif kernel:
-            self.wfile.write(b"\x00asm\x01\x00\x00\x00")
+            self.wfile.write(b"globalThis.ArchiCodeKernelWasm = " + bytes([39]) + b"AGFzbQEAAAA=" + bytes([39]) + b";\n")
     def log_message(self, *args):
         pass
 server = http.server.HTTPServer(("127.0.0.1", 0), H)
