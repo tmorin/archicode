@@ -24,7 +24,8 @@ function readTree(dir, base = dir, out = {}) {
     const file = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       readTree(file, base, out);
-    } else {
+    } else if (!/^\.archicode-.*\.tmp$/.test(entry.name)) {
+      // the editor writes through a temporary `.archicode-<uuid>.tmp` and renames it: not a file of the workspace
       out[path.relative(base, file)] = fs.readFileSync(file, 'utf8');
     }
   }

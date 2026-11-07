@@ -278,13 +278,14 @@ const SAVED = ['Draw', 'Texts', 'Layout'];
 const DOT = 'Saved with the view';
 const resetOf = (page) => page.locator('#diagram-reset-button');
 
-// The files of the workspace that hold a text (the view a test names is written under a file name the editor chooses).
+// The files of the workspace that hold a text (the view a test names is written under a file name the editor chooses). The editor
+// writes a file through a temporary `.archicode-<uuid>.tmp` that it renames: one listed here may be gone when it is read, and is no file.
 function filesWith(dir, text, found = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const file = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       filesWith(file, text, found);
-    } else if (fs.readFileSync(file, 'utf8').includes(text)) {
+    } else if (!/^\.archicode-.*\.tmp$/.test(entry.name) && fs.readFileSync(file, 'utf8').includes(text)) {
       found.push(file);
     }
   }
