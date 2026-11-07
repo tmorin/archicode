@@ -314,10 +314,10 @@ test('the facets that filter on tags, qualifiers and labels keep what a plain re
 test('the page names the kernel file that the CLI runs, by the hash of its bytes', () => {
   const root = path.join(FIXTURE, '../../../../main/resources/editor-webapp');
   const html = fs.readFileSync(path.join(root, 'standalone.html'), 'utf8');
-  const file = fs.readFileSync(path.join(root, 'assets/viewpoint_kernel.wasm'));
+  const file = fs.readFileSync(path.join(root, 'assets/viewpoint_kernel.js'));
   const hash = require('node:crypto').createHash('sha256').update(file).digest('hex').slice(0, 8);
   assert.ok(
-    html.includes('archicode-asset:viewpoint_kernel.wasm') && html.includes(hash),
+    html.includes('archicode-asset:viewpoint_kernel.js') && html.includes(hash),
     'run src/main/rust/viewpoint-kernel/embed.sh'
   );
 });

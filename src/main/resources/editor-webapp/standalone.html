@@ -4326,6 +4326,127 @@ video {
   .diagram-toolbar .tool-reset {
     max-width: 9rem;
   }
+  .matrix-scroll {
+    max-height: 70vh;
+  }
+  .matrix th,
+  .matrix td {
+    padding: 0.25rem 0.4rem;
+  }
+  .matrix th.matrix-ref {
+    min-width: 6rem;
+    max-width: 9rem;
+  }
+}
+
+/* The reading of a path of plateaus: a table in a box that scrolls on its own, the page never does. The first column stays while the others scroll; a state is a glyph, a word and a left line. */
+.matrix-block {
+  min-width: 0;
+  max-width: 100%;
+}
+.matrix-scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+}
+.matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+.matrix th,
+.matrix td {
+  padding: 0.3rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  font-weight: normal;
+}
+.matrix thead th {
+  background: var(--panel-bg);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.matrix th.matrix-ref {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 8rem;
+  max-width: 14rem;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.matrix .matrix-name {
+  color: var(--muted);
+}
+.matrix .matrix-span {
+  border-left: 2px solid var(--control-border);
+  background: var(--panel-bg);
+}
+.matrix .matrix-layer th {
+  background: var(--panel-bg);
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+}
+.matrix .matrix-cell {
+  border-left: 3px solid transparent;
+  white-space: nowrap;
+}
+.matrix .matrix-cell.matrix-span {
+  border-left: 2px solid var(--control-border);
+}
+.matrix .matrix-absent,
+.matrix .matrix-present,
+.matrix .matrix-from {
+  color: var(--muted);
+}
+.matrix .matrix-glyph {
+  display: inline-block;
+  min-width: 1em;
+  text-align: center;
+  font-weight: 600;
+}
+.matrix .matrix-new {
+  border-left-color: var(--chg-new);
+}
+.matrix .matrix-changed {
+  border-left-color: var(--chg-changed);
+}
+.matrix .matrix-removed {
+  border-left-color: var(--chg-removed);
+}
+.matrix .matrix-moved {
+  border-left-color: var(--chg-moved);
+}
+.matrix .matrix-split {
+  border-left-color: var(--chg-split);
+}
+.matrix .matrix-merged {
+  border-left-color: var(--chg-merged);
+}
+.matrix .matrix-cell-button {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.matrix .matrix-cell-button:hover .matrix-word {
+  text-decoration: underline;
+}
+.matrix .matrix-cell-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.matrix-problems {
+  color: var(--danger);
 }
 </style>
 </head>
@@ -14561,6 +14682,7 @@ async function loadWorkspace(dirHandle) {
     bom: workspaceBom
   };
   await openLayers(settings, plateauTree);
+  if (currentPerspective === 'plateaus') plateauReadingFromHash(); // a reload or a shared link keeps the path being read
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   const playing = storyPlayerAddress(); // read before render(), which writes the address back without `play=`
   requestRedraw();
@@ -15775,6 +15897,7 @@ function resetUiState() {
   diagramMaximized = false;
   diagramHideUnlinked = false;
   diagramColumns = null;
+  plateauReading = { path: null, all: false };
   diagramOrigin = null;
   toolPanelOpen = null;
   diagramScale = 'auto';
@@ -16829,6 +16952,14 @@ function sampleFromHash() {
   return new URLSearchParams(location.hash.slice(queryIdx + 1)).get('sample');
 }
 
+/** The Reading view the hash names on the page Plateaus: `matrix=<plateau>` and `rows=all`, as the state of the page. Whether the path can stand is judged by `plateauReadingPath` at the next draw. */
+function plateauReadingFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  const params = new URLSearchParams(queryIdx === -1 ? '' : location.hash.slice(queryIdx + 1));
+  const path = params.get('matrix');
+  plateauReading = path ? { path, all: params.get('rows') === 'all' } : { path: null, all: false };
+}
+
 /**
  * The removed element the hash names (`removed=` with the reference of an element only the other plateau has, `removed-layer=technology` for one of that
  * layer), or null. It is a selection that exists only with a comparison, so the address carries `compare=` with it (see `currentRouteHash`).
@@ -16898,6 +17029,7 @@ function syncPerspectiveFromHash() {
   useDiagramHost(diagramHostOf(currentPerspective)); // the framing an address carries (`frame=fit`) is that of the diagram it will draw
   if (AppState.workspace) {
     drawLayersNamedByAddress(); // before the selection: an element may exist in the plateau the address names only
+    if (currentPerspective === 'plateaus') plateauReadingFromHash();
     applySelectionFromHashRef();
   }
 }
@@ -17024,6 +17156,14 @@ function currentRouteHash() {
     AppState.layers.current !== BASELINE_PLATEAU
   )
     params.push('plateau=' + encodeURIComponent(AppState.layers.current));
+  // the Reading view of a path of plateaus (page Plateaus only): the last plateau of the path, and the unfolding of the lineages with no change
+  if (currentPerspective === 'plateaus') {
+    const readingPath = plateauReadingPath(); // lets go of a path that cannot stand: the key is then not written
+    if (readingPath !== null) {
+      params.push('matrix=' + encodeURIComponent(readingPath));
+      if (plateauReading.all) params.push('rows=all');
+    }
+  }
   if (storyPlayer) params.push('play=' + encodeURIComponent(storyPlayer.story), 'step=' + storyPlayer.step); // wave 021, run 0153 (#153): the story player, on top of whatever the editor shows
   return (
     '/' +
@@ -17224,6 +17364,9 @@ let diagramHideUnlinked = false;
 
 /** Wave 027, run 0202 (DEC-4): the boxes per row chosen on the toolbar of the diagram on screen, or null (the view, then the workspace, decide). View state: never `modelsChanged()`. */
 let diagramColumns = null;
+
+/** The Reading view of a path of plateaus on the page Plateaus: `path` is the id of the last plateau of the path (a plateau that is not the root), null for no reading; `all` unfolds the lineages with no change. View state: never `modelsChanged()`, reset with the folder, not part of what a write puts back. */
+let plateauReading = { path: null, all: false };
 
 /** The view or step the diagram on screen came from: `null | { perspective, element, name, properties }` (the toolbar keys it said). Session state: read through `currentDiagramOrigin()`, never stored. */
 let diagramOrigin = null;
@@ -25629,6 +25772,318 @@ function renderElementsPerspectiveHtml() {
     bottom: null
   };
 }
+// ---- The Reading view of a path of plateaus: where each element came from and went, in one table ----
+// The page Plateaus draws, under its list, a table for the path from the root to the plateau a reader chose: a column per plateau and a Span column, a row per lineage of an element
+// (followed through `replaces`), the rows grouped by layer. The rows are made by `plateauMatrixOf` (model/plateau-matrix.js) from what the editor knows: the elements of each plateau
+// (`layerModelOf`) and the kernel's comparison of each pair of neighbours and of the first with the last (`comparisonStateOf`). Nothing here writes the workspace.
+
+/** The plateaus of the path that ends at `id`, from the root down, as ids. Empty when `id` is not in the tree. */
+function plateauMatrixPathOf(id) {
+  const tree = AppState.plateauTree;
+  if (!tree || !tree.nodes.has(id)) return [];
+  return plateauChain(tree, id).map((node) => node.id);
+}
+
+/**
+ * The plateau the reading ends at, or null. A reading that cannot stand (no plateau tree, a workspace with one plateau, blocked layers, a plateau that is no longer in the tree, the root,
+ * or a plateau that cannot be drawn) is let go: the state is cleared and the page shows the list alone.
+ */
+function plateauReadingPath() {
+  const path = plateauReading.path;
+  if (path === null) return null;
+  const layers = AppState.layers;
+  const tree = AppState.plateauTree;
+  const standing =
+    !!layers &&
+    !!AppState.workspace &&
+    !!tree &&
+    tree.layered &&
+    !layers.blocked &&
+    tree.nodes.has(path) &&
+    tree.nodes.get(path).parent !== null &&
+    (!loadedKernel || !layerModelBroken(path)); // until the kernel is loaded no plateau can be drawn: the reading waits, it is not let go
+  if (!standing) {
+    plateauReading = { path: null, all: false };
+    return null;
+  }
+  return path;
+}
+
+/** Is a reading chosen that still waits for the kernel? (`settlePlateausPanel` loads it and draws the page again.) */
+function plateauMatrixIsPending() {
+  return plateauReadingPath() !== null && !loadedKernel;
+}
+
+/** The elements a plateau holds, as the rule reads them. */
+function plateauMatrixPresenceOf(id) {
+  const model = layerModelOf(id, AppState.workspace.settings);
+  const out = [];
+  for (const layer of ['application', 'technology']) {
+    for (const element of model.index[layer].values())
+      out.push({ layer, reference: element.reference, kind: element.kind, name: element.name });
+  }
+  return out;
+}
+
+/** The element rows of the comparison of `id` with `against`, or `{ pending }`, or `{ problems, pair }`. The wording toggle of the editor is not read: the table is the one of `diff`. */
+function plateauMatrixPairNow(id, against, memo) {
+  const state = comparisonStateOf(drawingOfPlateaus(id, against, { hideWording: false }), memo);
+  if (!state) return { problems: ['The two plateaus cannot be compared.'], pair: [against, id] };
+  if (state.pending) return { pending: true };
+  if (state.problems) return { problems: state.problems, pair: [against, id] };
+  return { rows: state.full.changes.filter((row) => row.thing === 'element') };
+}
+
+/**
+ * The reading now: null when no path is chosen, `{ pending: true }` while the kernel is not loaded, `{ problems, pair }` when a pair cannot be drawn or compared, else the matrix of
+ * `plateauMatrixOf` with the ids of the path: `{ ids, columns, rows, unchanged }`. One comparison per pair of neighbours and one for the Span from three plateaus on; the answers are
+ * kept by the comparison memo of the story scene and by nothing else.
+ */
+function plateauMatrixNow() {
+  const path = plateauReadingPath();
+  if (path === null) return null;
+  const ids = plateauMatrixPathOf(path);
+  if (!loadedKernel) return { pending: true };
+  const memo = sceneComparisonMemo();
+  const steps = [];
+  for (let i = 1; i < ids.length; i++) {
+    const step = plateauMatrixPairNow(ids[i], ids[i - 1], memo);
+    if (step.pending || step.problems) return step;
+    steps.push(step.rows);
+  }
+  let span = null;
+  if (ids.length > 2) {
+    const whole = plateauMatrixPairNow(ids[ids.length - 1], ids[0], memo);
+    if (whole.pending || whole.problems) return whole;
+    span = whole.rows;
+  }
+  const matrix = plateauMatrixOf(
+    ids.map((id) => ({ id })),
+    ids.map(plateauMatrixPresenceOf),
+    steps,
+    span
+  );
+  return Object.assign({ ids }, matrix);
+}
+
+/** The states of a cell that are changes (the buttons); the others are `absent` and `present`. */
+const MATRIX_CELL_CHANGES = ['new', 'changed', 'removed', 'moved', 'split', 'merged'];
+
+/** The glyph of a state of a cell: the one of the Changes panel for a change, `-` for an element the plateau does not hold, `=` for one that did not change. Nothing while the words are not known. */
+function matrixGlyphOf(state) {
+  if (state === 'absent') return '-';
+  if (state === 'present') return '=';
+  return CHANGE_STATES.includes(state) ? CHANGE_GLYPHS[state] : '';
+}
+
+/** What a cell says: its glyph and its word, then where it comes from when it replaces something. A glyph never stands alone. */
+function matrixCellContentHtml(cell) {
+  const glyph = matrixGlyphOf(cell.state);
+  return (
+    (glyph ? '<span class="matrix-glyph" aria-hidden="true">' + escapeHtml(glyph) + '</span> ' : '') +
+    '<span class="matrix-word">' +
+    escapeHtml(cell.state) +
+    '</span>' +
+    (cell.from && cell.from.length
+      ? ' <span class="matrix-from">from ' +
+        cell.from.map((ref) => '<code>' + escapeHtml(ref) + '</code>').join(', ') +
+        '</span>'
+      : '')
+  );
+}
+
+/**
+ * One cell of a row. A cell that says a change is a button that draws the pair of its column and opens the Changes panel on the element; `present` and `absent` are plain text, and so
+ * is every cell of the first column (it compares with nothing). `column` is the index of the plateau, or `span`; `reference` the element the Changes panel lists.
+ */
+function matrixCellHtml(row, cell, column, reference, pair) {
+  const clickable = MATRIX_CELL_CHANGES.includes(cell.state) && column !== 0 && reference !== null;
+  const cls = 'matrix-cell matrix-' + cell.state + (column === 'span' ? ' matrix-span' : '');
+  if (!clickable) return '<td class="' + cls + '">' + matrixCellContentHtml(cell) + '</td>';
+  return (
+    '<td class="' +
+    cls +
+    '"><button type="button" class="matrix-cell-button" data-action="matrix-cell" data-column="' +
+    column +
+    '" data-layer="' +
+    escapeHtml(row.layer) +
+    '" data-reference="' +
+    escapeHtml(reference) +
+    '" aria-label="' +
+    escapeHtml(reference + ', ' + cell.state + ', ' + pair[0] + ' to ' + pair[1]) +
+    '" title="Draw ' +
+    escapeHtml(pair[1]) +
+    ' compared with ' +
+    escapeHtml(pair[0]) +
+    ' and open the change in the Changes panel">' +
+    matrixCellContentHtml(cell) +
+    '</button></td>'
+  );
+}
+
+/** The reference the Changes panel lists for a cell: the element of the plateau the cell is in, or, for a `removed` cell, the one it was in the plateau before. */
+function matrixCellReference(row, column) {
+  if (column === 'span') {
+    const last = row.cells[row.cells.length - 1];
+    return row.span && row.span.state === 'removed' ? row.cells[0].reference : last.reference;
+  }
+  const cell = row.cells[column];
+  if (cell.reference !== null) return cell.reference;
+  return column > 0 ? row.cells[column - 1].reference : null;
+}
+
+function matrixRowHtml(row, ids) {
+  const cells = row.cells.map((cell, i) =>
+    matrixCellHtml(row, cell, i, matrixCellReference(row, i), [ids[i - 1], ids[i]])
+  );
+  if (row.span) {
+    const last = ids.length - 1;
+    cells.push(matrixCellHtml(row, row.span, 'span', matrixCellReference(row, 'span'), [ids[0], ids[last]]));
+  } else if (ids.length > 2) {
+    cells.push('<td class="matrix-cell matrix-span matrix-empty"></td>');
+  }
+  return (
+    '<tr class="matrix-row"><th scope="row" class="matrix-ref" title="' +
+    escapeHtml((row.kind || '') + (row.name ? ' ' + row.name : '')) +
+    '"><code>' +
+    escapeHtml(row.reference) +
+    '</code>' +
+    (row.name ? ' <span class="matrix-name">' + escapeHtml(row.name) + '</span>' : '') +
+    '</th>' +
+    cells.join('') +
+    '</tr>'
+  );
+}
+
+/** The table of a matrix: the head (the plateaus, then Span), and a group of rows per layer under its own caption row. */
+function matrixTableHtml(matrix) {
+  const ids = matrix.ids;
+  const all = plateauReading.all;
+  const shown = matrix.rows.filter((row) => all || row.changes);
+  const width = 1 + ids.length + (ids.length > 2 ? 1 : 0);
+  const head =
+    '<thead><tr><th scope="col" class="matrix-ref">Element</th>' +
+    ids
+      .map((id) => {
+        const title = plateauTitle(layerPlateauModel(id));
+        return (
+          '<th scope="col">' +
+          escapeHtml(title) +
+          (title !== id ? ' <code class="timeline-id">' + escapeHtml(id) + '</code>' : '') +
+          '</th>'
+        );
+      })
+      .join('') +
+    (ids.length > 2 ? '<th scope="col" class="matrix-span">Span</th>' : '') +
+    '</tr></thead>';
+  const groups = [];
+  for (const row of shown) {
+    const last = groups[groups.length - 1];
+    if (last && last.layer === row.layer) last.rows.push(row);
+    else groups.push({ layer: row.layer, rows: [row] });
+  }
+  const body = groups
+    .map(
+      (group) =>
+        '<tbody data-layer="' +
+        escapeHtml(group.layer) +
+        '"><tr class="matrix-layer"><th scope="rowgroup" colspan="' +
+        width +
+        '">' +
+        escapeHtml(group.layer.charAt(0).toUpperCase() + group.layer.slice(1)) +
+        '</th></tr>' +
+        group.rows.map((row) => matrixRowHtml(row, ids)).join('') +
+        '</tbody>'
+    )
+    .join('');
+  return '<div class="matrix-scroll"><table class="matrix">' + head + body + '</table></div>';
+}
+
+/**
+ * The Reading block under the list of the plateaus: empty while no path is chosen. A path the kernel has not answered for says so; a pair that cannot be drawn or compared is
+ * told with its sentences and the table is not drawn.
+ */
+function renderPlateauMatrixHtml() {
+  const path = plateauReadingPath();
+  if (path === null) return '';
+  const ids = plateauMatrixPathOf(path);
+  const head =
+    '<div class="matrix-head"><h3>Reading <code>' +
+    escapeHtml(ids.join(', ')) +
+    '</code></h3><button type="button" data-action="matrix-close">Close reading</button></div>';
+  const now = plateauMatrixNow();
+  let body;
+  if (now.pending) body = '<p class="timeline-status" role="status">Reading the plateaus…</p>';
+  else if (now.problems)
+    body =
+      '<div class="matrix-problems" role="alert"><p>The path cannot be read: ' +
+      escapeHtml(now.pair[0]) +
+      ' and ' +
+      escapeHtml(now.pair[1]) +
+      ' are not compared.</p>' +
+      now.problems.map((sentence) => '<p>' + escapeHtml(sentence) + '</p>').join('') +
+      '</div>';
+  else {
+    const changes = now.rows.length - now.unchanged;
+    body =
+      '<div class="matrix-tools"><button type="button" data-action="matrix-rows" aria-pressed="' +
+      !plateauReading.all +
+      '">Changes only</button><span class="muted">' +
+      changes +
+      (changes === 1 ? ' change' : ' changes') +
+      ' in ' +
+      now.rows.length +
+      (now.rows.length === 1 ? ' lineage' : ' lineages') +
+      ' · ' +
+      now.unchanged +
+      ' unchanged</span></div>' +
+      matrixTableHtml(now);
+  }
+  return '<section class="matrix-block" aria-label="Reading of the path">' + head + body + '</section>';
+}
+
+/** Read the path that ends at `id`; the same button again closes the reading. */
+function openPlateauMatrix(id) {
+  if (plateauReading.path === id) return closePlateauMatrix();
+  const tree = AppState.plateauTree;
+  if (!tree || !tree.nodes.has(id) || tree.nodes.get(id).parent === null) return;
+  plateauReading = { path: id, all: false };
+  requestRedraw();
+}
+
+function closePlateauMatrix() {
+  plateauReading = { path: null, all: false };
+  requestRedraw();
+}
+
+/** Unfold (`all` true) or fold the lineages with no change. */
+function setMatrixRows(all) {
+  if (plateauReading.path === null) return;
+  plateauReading = { path: plateauReading.path, all: !!all };
+  requestRedraw();
+}
+
+/**
+ * A click on a cell: draw the plateau of its column compared with the plateau on its left (the first plateau for the Span), then select the element in the Changes panel.
+ * `column`: the index of the plateau in the path, or `span`.
+ */
+function openMatrixCell(column, layer, reference) {
+  const path = plateauReadingPath();
+  if (path === null) return false;
+  const ids = plateauMatrixPathOf(path);
+  const index = column === 'span' ? ids.length - 1 : Number(column);
+  const against = column === 'span' ? ids[0] : ids[index - 1];
+  if (!(index > 0 && index < ids.length) || against === undefined) return false;
+  const parent = AppState.plateauTree.nodes.get(ids[index]).parent;
+  drawPlateau(ids[index], { compare: parent === against ? 'past' : 'other:' + against });
+  const state = comparisonState();
+  const row =
+    state && state.changes
+      ? orderedChangeRows(state).find((r) => r.thing === 'element' && r.layer === layer && r.reference === reference)
+      : null;
+  if (row) goToChange(row);
+  return true;
+}
 // ---- Plateaus: the page of the band (wave 014, run 0081, W-7, then called Timeline; renamed by wave 015, run 0096, W-8) ----
 // The band under the top bar is always there; this page is where the plateaus are read as a list: what each is called, what it overrides, where it is written, how
 // many patches and files it has, and what it changes over the plateau it overrides (the counts of `archicode diff`). W-8 writes plateaus from here.
@@ -25646,13 +26101,17 @@ function filePlateauOf(mf) {
 
 /** The Plateaus page mounts no diagram, so nothing else asks for the kernel that its Changes panel waits for (`rightPanelPending`): it is loaded, and the panel is written again. */
 function settlePlateausPanel() {
-  if ((currentPerspective !== 'plateaus' && currentPerspective !== 'library') || !rightPanelPending) return;
+  if (currentPerspective !== 'plateaus' && currentPerspective !== 'library') return;
+  const readingPending = currentPerspective === 'plateaus' && plateauMatrixIsPending();
+  if (!rightPanelPending && !readingPending) return;
   const page = currentPerspective;
   loadViewpointKernel()
     .then(() => {
       if (currentPerspective !== page) return;
-      if (page === 'plateaus') refreshRightPanel();
-      else requestRedraw(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
+      if (page === 'plateaus') {
+        if (rightPanelPending) refreshRightPanel();
+        if (readingPending) requestRedraw(); // the Reading block is written again with the table
+      } else requestRedraw(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
     })
     .catch((e) => console.error('ArchiCode: the viewpoint kernel could not be loaded, the changes are not listed', e));
 }
@@ -25763,6 +26222,15 @@ function timelineItemHtml(item, depth) {
             escapeHtml(item.node.parent) +
             ' in the Changes panel">Changes</button>'
           : '') +
+        (parent && !layers.blocked && AppState.plateauTree.layered
+          ? '<button type="button" data-action="matrix-open" data-plateau="' +
+            escapeHtml(item.id) +
+            '" aria-pressed="' +
+            (plateauReading.path === item.id) +
+            '"' +
+            (broken ? ' disabled' : '') +
+            ' title="Read, in one table, where the elements of the path from the root to this plateau came from and went">Read the path</button>'
+          : '') +
         (!layers.blocked
           ? '<button type="button" data-action="plateau-create" data-plateau="' +
             escapeHtml(item.id) +
@@ -25826,7 +26294,8 @@ function renderPlateausPageHtml() {
         ? '<p class="timeline-status" role="status">' + escapeHtml(layers.blocked ? layers.blocked : status) + '</p>'
         : '') +
       (writing ? '<div class="timeline-writing" aria-label="Edit the plateaus">' + writing + '</div>' : '') +
-      timelineListHtml();
+      timelineListHtml() +
+      renderPlateauMatrixHtml();
   }
   return '<div class="timeline-view">' + header + '<div class="timeline-body">' + body + '</div></div>';
 }
@@ -27248,6 +27717,163 @@ function buildKernelInput(viewpoint, reference, options) {
   const expanded = Array.from(opts.expanded || []);
   if (expanded.length) input.expanded = expanded;
   return { dangling: main.dangling, input };
+}
+// ---- The matrix of a path of plateaus: the lineages of its elements ----
+
+/** The states of a cell that say a change (`PlateauMatrix.CHANGES`); the others are `absent` and `present`. */
+const MATRIX_CHANGE_STATES = new Set(['new', 'changed', 'removed', 'moved', 'split', 'merged']);
+
+const matrixKey = (layer, reference) => layer + '\0' + reference;
+
+/** The state of a cell: the word the comparison gives the element, `present` when it gives none (or `none`). */
+function matrixStateOf(change) {
+  return !change || !change.change || change.change === 'none' ? 'present' : change.change;
+}
+
+/** The order of the layers of the rows: application, technology, then any other by name. */
+function matrixLayerRank(layer) {
+  return layer === 'application' ? 0 : layer === 'technology' ? 1 : 2;
+}
+
+/** The order of two references by Unicode code point (the Java `compareCodePoints`), which is not the order of UTF-16 units for a character above the BMP. */
+function matrixCompareCodePoints(a, b) {
+  const left = Array.from(a);
+  const right = Array.from(b);
+  const n = Math.min(left.length, right.length);
+  for (let i = 0; i < n; i++) {
+    const x = left[i].codePointAt(0);
+    const y = right[i].codePointAt(0);
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return left.length - right.length;
+}
+
+/**
+ * The rows of one lineage traced back from its terminal element: one cell per column, and the Span (`PlateauMatrix.trace`).
+ * `terminal` is the column of the element, `first` where the trace stops (a split origin or a new element stops it, a merge too).
+ */
+function matrixTrace(columns, nodes, changes, predecessors, spanChanges, hasSpan, terminal, terminalKey) {
+  const n = columns.length;
+  const keys = new Array(n).fill(null);
+  keys[terminal] = terminalKey;
+  let first = terminal;
+  while (first > 0) {
+    const before = predecessors[first].get(keys[first]);
+    if (before.length !== 1) break;
+    keys[first - 1] = before[0];
+    first--;
+  }
+  const cells = [];
+  for (let i = 0; i < n; i++) {
+    const plateau = columns[i].id;
+    if (keys[i] !== null) {
+      const change = i === 0 ? null : changes[i - 1].get(keys[i]) || null;
+      cells.push({
+        plateau,
+        state: matrixStateOf(change),
+        reference: nodes[i].get(keys[i]).reference,
+        from: change ? change.replaces || [] : [],
+        natures: change ? change.natures || [] : []
+      });
+    } else {
+      cells.push({
+        plateau,
+        state: i > 0 && keys[i - 1] !== null ? 'removed' : 'absent',
+        reference: null,
+        from: [],
+        natures: []
+      });
+    }
+  }
+  let span = null;
+  if (hasSpan) {
+    if (terminal === n - 1) {
+      const change = spanChanges.get(terminalKey) || null;
+      span = {
+        state: matrixStateOf(change),
+        from: change ? change.replaces || [] : [],
+        natures: change ? change.natures || [] : []
+      };
+    } else if (first === 0) {
+      span = { state: 'removed', from: [], natures: [] };
+    }
+    // else: a transient, born after the first plateau and gone before the last, has no Span
+  }
+  const node = nodes[terminal].get(terminalKey);
+  const changed =
+    cells.some((cell) => MATRIX_CHANGE_STATES.has(cell.state)) ||
+    (span !== null && MATRIX_CHANGE_STATES.has(span.state));
+  return {
+    layer: node.layer,
+    reference: node.reference,
+    kind: node.kind,
+    name: node.name,
+    cells,
+    span,
+    changes: changed,
+    column: terminal
+  };
+}
+
+/**
+ * The elements of a path of plateaus as lineages, a row per lineage and a cell per plateau (`PlateauMatrix.of`, ported statement for statement; the oracle is
+ * `src/test/resources/brightcart/matrix-cases.json`). `columns`: the plateaus, oldest first (`{ id, ... }`), two at least; `presence`: for each column the elements it holds,
+ * `{ layer, reference, kind, name }`; `steps`: for each column but the first, the element rows (`{ layer, reference, change, replaces?, natures? }`) of its comparison with the column
+ * on its left; `span`: the same for the first column with the last, required from three plateaus and null with two. Returns `{ columns, rows, unchanged }`: every lineage, sorted
+ * by layer, reference (code point) and first column, each with `changes` (false for a row where nothing changed), and `unchanged`, how many of them have no change. It writes
+ * nothing and returns state words only.
+ */
+function plateauMatrixOf(columns, presence, steps, span) {
+  const n = columns.length;
+  if (n < 2 || presence.length !== n || steps.length !== n - 1 || n > 2 !== (span !== null && span !== undefined))
+    throw new Error(
+      'a matrix is made of two plateaus or more, their elements, one comparison per step and, from three plateaus, a span'
+    );
+  const indexed = (rows) => new Map(rows.map((row) => [matrixKey(row.layer, row.reference), row]));
+  const nodes = presence.map((column) => {
+    const byKey = new Map();
+    for (const node of column) byKey.set(matrixKey(node.layer, node.reference), node);
+    return new Map(Array.from(byKey).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)));
+  });
+  const changes = steps.map(indexed);
+  const spanChanges = span ? indexed(span) : new Map();
+  // predecessors[i]: key of a node of column i -> the keys of the nodes of column i-1 it stands on
+  const predecessors = [new Map()];
+  const named = columns.map(() => new Set());
+  for (let i = 1; i < n; i++) {
+    const here = new Map();
+    for (const node of nodes[i].values()) {
+      const replaces = new Set();
+      const change = changes[i - 1].get(matrixKey(node.layer, node.reference));
+      if (change) {
+        for (const reference of change.replaces || []) {
+          const key = matrixKey(node.layer, reference);
+          if (nodes[i - 1].has(key)) replaces.add(key);
+        }
+      }
+      if (replaces.size === 0 && nodes[i - 1].has(matrixKey(node.layer, node.reference)))
+        replaces.add(matrixKey(node.layer, node.reference));
+      here.set(matrixKey(node.layer, node.reference), Array.from(replaces));
+      for (const key of replaces) named[i - 1].add(key);
+    }
+    predecessors.push(here);
+  }
+  const built = [];
+  for (let i = 0; i < n; i++) {
+    for (const key of nodes[i].keys()) {
+      if (!named[i].has(key))
+        built.push(matrixTrace(columns, nodes, changes, predecessors, spanChanges, !!span, i, key));
+    }
+  }
+  built.sort(
+    (a, b) =>
+      matrixLayerRank(a.layer) - matrixLayerRank(b.layer) ||
+      (a.layer < b.layer ? -1 : a.layer > b.layer ? 1 : 0) ||
+      matrixCompareCodePoints(a.reference, b.reference) ||
+      a.column - b.column
+  );
+  const rows = built.map(({ column, ...row }) => row);
+  return { columns: columns.slice(), rows, unchanged: rows.filter((row) => !row.changes).length };
 }
 /** The facet of the settings the diagram is drawn through, or null (also when the named facet no longer exists). */
 function currentDiagramFacet() {
@@ -36475,6 +37101,37 @@ function handleAppClick(e) {
       break;
     case 'timeline-draw': // wave 014 (run 0081): the Plateaus page
       drawPlateau(target.getAttribute('data-plateau'));
+      break;
+    case 'matrix-open': // the Reading view of the path that ends at a plateau; a place of its own in the history
+      layerChangeIsAnEntry = true;
+      try {
+        openPlateauMatrix(target.getAttribute('data-plateau'));
+      } finally {
+        layerChangeIsAnEntry = false;
+      }
+      break;
+    case 'matrix-close':
+      layerChangeIsAnEntry = true;
+      try {
+        closePlateauMatrix();
+      } finally {
+        layerChangeIsAnEntry = false;
+      }
+      break;
+    case 'matrix-rows':
+      layerChangeIsAnEntry = true;
+      try {
+        setMatrixRows(!plateauReading.all);
+      } finally {
+        layerChangeIsAnEntry = false;
+      }
+      break;
+    case 'matrix-cell':
+      openMatrixCell(
+        target.getAttribute('data-column'),
+        target.getAttribute('data-layer'),
+        target.getAttribute('data-reference')
+      );
       break;
     case 'timeline-changes':
       showPlateauChanges(target.getAttribute('data-plateau'));

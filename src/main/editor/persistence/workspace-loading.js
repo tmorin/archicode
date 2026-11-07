@@ -263,6 +263,7 @@ async function loadWorkspace(dirHandle) {
     bom: workspaceBom
   };
   await openLayers(settings, plateauTree);
+  if (currentPerspective === 'plateaus') plateauReadingFromHash(); // a reload or a shared link keeps the path being read
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   const playing = storyPlayerAddress(); // read before render(), which writes the address back without `play=`
   requestRedraw();

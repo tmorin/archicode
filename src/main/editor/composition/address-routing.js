@@ -200,6 +200,14 @@ function sampleFromHash() {
   return new URLSearchParams(location.hash.slice(queryIdx + 1)).get('sample');
 }
 
+/** The Reading view the hash names on the page Plateaus: `matrix=<plateau>` and `rows=all`, as the state of the page. Whether the path can stand is judged by `plateauReadingPath` at the next draw. */
+function plateauReadingFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  const params = new URLSearchParams(queryIdx === -1 ? '' : location.hash.slice(queryIdx + 1));
+  const path = params.get('matrix');
+  plateauReading = path ? { path, all: params.get('rows') === 'all' } : { path: null, all: false };
+}
+
 /**
  * The removed element the hash names (`removed=` with the reference of an element only the other plateau has, `removed-layer=technology` for one of that
  * layer), or null. It is a selection that exists only with a comparison, so the address carries `compare=` with it (see `currentRouteHash`).
@@ -269,6 +277,7 @@ function syncPerspectiveFromHash() {
   useDiagramHost(diagramHostOf(currentPerspective)); // the framing an address carries (`frame=fit`) is that of the diagram it will draw
   if (AppState.workspace) {
     drawLayersNamedByAddress(); // before the selection: an element may exist in the plateau the address names only
+    if (currentPerspective === 'plateaus') plateauReadingFromHash();
     applySelectionFromHashRef();
   }
 }
@@ -395,6 +404,14 @@ function currentRouteHash() {
     AppState.layers.current !== BASELINE_PLATEAU
   )
     params.push('plateau=' + encodeURIComponent(AppState.layers.current));
+  // the Reading view of a path of plateaus (page Plateaus only): the last plateau of the path, and the unfolding of the lineages with no change
+  if (currentPerspective === 'plateaus') {
+    const readingPath = plateauReadingPath(); // lets go of a path that cannot stand: the key is then not written
+    if (readingPath !== null) {
+      params.push('matrix=' + encodeURIComponent(readingPath));
+      if (plateauReading.all) params.push('rows=all');
+    }
+  }
   if (storyPlayer) params.push('play=' + encodeURIComponent(storyPlayer.story), 'step=' + storyPlayer.step); // wave 021, run 0153 (#153): the story player, on top of whatever the editor shows
   return (
     '/' +

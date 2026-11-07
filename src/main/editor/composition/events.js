@@ -192,6 +192,37 @@ function handleAppClick(e) {
     case 'timeline-draw': // wave 014 (run 0081): the Plateaus page
       drawPlateau(target.getAttribute('data-plateau'));
       break;
+    case 'matrix-open': // the Reading view of the path that ends at a plateau; a place of its own in the history
+      layerChangeIsAnEntry = true;
+      try {
+        openPlateauMatrix(target.getAttribute('data-plateau'));
+      } finally {
+        layerChangeIsAnEntry = false;
+      }
+      break;
+    case 'matrix-close':
+      layerChangeIsAnEntry = true;
+      try {
+        closePlateauMatrix();
+      } finally {
+        layerChangeIsAnEntry = false;
+      }
+      break;
+    case 'matrix-rows':
+      layerChangeIsAnEntry = true;
+      try {
+        setMatrixRows(!plateauReading.all);
+      } finally {
+        layerChangeIsAnEntry = false;
+      }
+      break;
+    case 'matrix-cell':
+      openMatrixCell(
+        target.getAttribute('data-column'),
+        target.getAttribute('data-layer'),
+        target.getAttribute('data-reference')
+      );
+      break;
     case 'timeline-changes':
       showPlateauChanges(target.getAttribute('data-plateau'));
       break;
