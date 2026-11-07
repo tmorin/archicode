@@ -138,6 +138,9 @@ let diagramHideUnlinked = false;
 /** Wave 027, run 0202 (DEC-4): the boxes per row chosen on the toolbar of the diagram on screen, or null (the view, then the workspace, decide). View state: never `modelsChanged()`. */
 let diagramColumns = null;
 
+/** The Reading view of a path of plateaus on the page Plateaus: `path` is the id of the last plateau of the path (a plateau that is not the root), null for no reading; `all` unfolds the lineages with no change. View state: never `modelsChanged()`, reset with the folder, not part of what a write puts back. */
+let plateauReading = { path: null, all: false };
+
 /** The view or step the diagram on screen came from: `null | { perspective, element, name, properties }` (the toolbar keys it said). Session state: read through `currentDiagramOrigin()`, never stored. */
 let diagramOrigin = null;
 

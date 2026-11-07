@@ -2222,6 +2222,10 @@ Not written by the editor: patches with a free `json-path` or an `expect` (they 
 
 The name of a plateau draws it, as a choice in the list *Plateau* of the band does. *Changes* draws the plateau and compares it with the plateau it overrides in one step, and the *Changes* panel opens on the right with the same lists as on the other pages; a click on one of its rows opens the element in *Elements*, since this page draws none (*Next change* and *Previous change* show the change they are at under the buttons, see <<editor-changes-panel>>).
 
+*Reading a path.* *Read the path* (on every entry but the root) draws, under the list, a table of the path from the root to that plateau: a row is one element followed through `replaces`, a column is one plateau, and the last column, _Span_, is the root compared with the end of the path. A cell says what the element is there (new, changed, removed, moved, split or merged). The rows with no change are folded, and *Changes only* unfolds them; the table is the one `archicode plateau matrix` writes (see <<plateau-matrix>>). A click on a cell with a change draws the plateau of its column compared with the plateau on its left (the root and the end of the path for the Span), as *Changes* does for one pair, and selects the element in the *Changes* panel. *Close reading* removes the table. The button is off for a plateau that cannot be drawn, and there is no table in a workspace with one plateau.
+
+The address carries the reading: `matrix=<plateau>` names the end of the path and `rows=all` says the folded rows are unfolded, both on the page Plateaus only and after `plateau=`. A plateau that is not in the tree or is the root drops the key, and `rows=all` without `matrix=` is dropped; the page writes the address back without it.
+
 *Writing a plateau.* *New plateau after this* (on an entry) and *New plateau* (above the list, for the plateau drawn, with _writing in: <plateau>_) make a plateau that overrides it; *Edit* (*Edit plateau* beside *New plateau*) changes its name, horizon or parent. The manifest is written as <<editor-writing>> says.
 
 [[editor-plateau-delete]]
@@ -2339,6 +2343,8 @@ A link copied from the address bar draws the diagram its sender saw: the same bo
 | `changes-only=1` | *Changes only*, while a comparison is on; with `compare=` and without it, the flag is off
 | `open=` | the unfolded boxes of a Map, a list of references
 | `hide=` | the hidden elements of a Map, a list of references
+| `matrix=` | the plateau at the end of the path read on the page Plateaus (the root has none)
+| `rows=all` | the unfolded rows of that reading, with `matrix=` only
 | `pin=`, `rel=`, `hl=`, `facet=`, `hide-unlinked`, `applications=0`, `relationships=0`, the names shown, `frame=fit` | as before
 |===
 

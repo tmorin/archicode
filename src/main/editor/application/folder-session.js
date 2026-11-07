@@ -40,6 +40,7 @@ function resetUiState() {
   diagramMaximized = false;
   diagramHideUnlinked = false;
   diagramColumns = null;
+  plateauReading = { path: null, all: false };
   diagramOrigin = null;
   toolPanelOpen = null;
   diagramScale = 'auto';
