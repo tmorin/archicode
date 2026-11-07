@@ -395,6 +395,11 @@
                         <artifactId>asciidoctorj-diagram</artifactId>
                         <version>3.2.1</version>
                     </dependency>
+                    <dependency>
+                        <groupId>org.asciidoctor</groupId>
+                        <artifactId>asciidoctorj-diagram-plantuml</artifactId>
+                        <version>1.2024.0</version>
+                    </dependency>
                 </dependencies>
                 <configuration>
                     <skip>${plugin.asciidoctor.skip}</skip>
