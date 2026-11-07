@@ -195,7 +195,7 @@ execution_graph:
       risk: 'low'
       confidence: 85
     - id: task-008
-      status: 'pending'
+      status: 'done'
       title: 'Gates of the run: the whole suites, the floor, PMD, verify, byte identity, the builds, the time of the first open, a look at the page'
       depends_on: [task-006, task-007]
       produces:
@@ -518,6 +518,7 @@ task_catalog:
         - 'the first open of replaces-large-pair takes more than one second: record the figure as a finding, DEF-3 stands'
         - 'a test red on the starting tree (task-001 Facts) stays red: say so, it is not a regression'
       delegation_tier: 'standard'
+      results: 'tier standard, model sonnet, effort medium, profile low-cost, passed after the workflow committed the task (--commit-tasks, a2906de), inline (leaf), independently verified'
 ```
 
 ## 5. Parallelization Plan
@@ -977,7 +978,7 @@ escalation_rules:
 
 ```yaml
 execution_manifest:
-  status: 'in_progress'
+  status: 'done'
   recommendation: 'proceed_with_review'
   autonomy_level: 'medium'
   total_tasks: 8
