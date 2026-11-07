@@ -51,7 +51,7 @@ export const RULES = [
     id: 'R-07a0',
     patterns: ['src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm'],
     jobs: [J, P, K, E],
-    reason: 'the kernel the CLI translates and the page fetches; embed.sh --check compares it'
+    reason: 'the kernel the CLI translates and the build writes the page script from; embed.sh --check compares it'
   },
   {
     id: 'R-07a',
