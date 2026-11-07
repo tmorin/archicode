@@ -275,11 +275,15 @@ case "$*" in
 import http.server
 class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        ok = self.path == "/?token=abc_1-Z"
-        self.send_response(200 if ok else 403)
+        token = self.headers.get("X-ArchiCode-Token") == "abc_1-Z"
+        page = self.path == "/?token=abc_1-Z"
+        kernel = self.path == "/assets/viewpoint_kernel.wasm" and token
+        self.send_response(200 if page or kernel else 403)
         self.end_headers()
-        if ok:
-            self.wfile.write(b"<html><script id=\"viewpoint-kernel-wasm\"></script></html>")
+        if page:
+            self.wfile.write(b"<html><meta name=\"archicode-asset:viewpoint_kernel.wasm\" content=\"./assets/viewpoint_kernel.wasm?v=00000000\"></html>")
+        elif kernel:
+            self.wfile.write(b"\x00asm\x01\x00\x00\x00")
     def log_message(self, *args):
         pass
 server = http.server.HTTPServer(("127.0.0.1", 0), H)

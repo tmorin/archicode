@@ -6,5 +6,4 @@ src/site/
 # generated or vendored
 node_modules/
 target/
-src/main/wasm/
 src/main/rust/viewpoint-kernel/target/

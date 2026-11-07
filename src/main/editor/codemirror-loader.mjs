@@ -1,14 +1,24 @@
 try {
-  const cm = await import('https://esm.sh/codemirror@6.0.1');
-  const yamlMod = await import('https://esm.sh/@codemirror/lang-yaml@6.1.1');
-  const jsonMod = await import('https://esm.sh/@codemirror/lang-json@6.0.1');
-  window.CM = { EditorView: cm.EditorView, basicSetup: cm.basicSetup, yaml: yamlMod.yaml, json: jsonMod.json };
+  // the address of the asset beside the page, from the <meta> the build writes; none: window.CM stays undefined
+  const meta = document.querySelector('meta[name="archicode-asset:codemirror.js"]');
+  const content = meta ? meta.getAttribute('content') : null;
+  if (!content) throw new Error('the page names no codemirror.js asset');
+  // a classic script, which a page opened from a disk (file://) may load, unlike a module: it sets window.ArchiCodeCodeMirror
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = new URL(content, document.baseURI).href;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('the script ' + script.src + ' could not be loaded'));
+    document.head.appendChild(script);
+  });
+  const cm = window.ArchiCodeCodeMirror;
+  if (!cm) throw new Error('codemirror.js did not define ArchiCodeCodeMirror');
+  window.CM = { EditorView: cm.EditorView, basicSetup: cm.basicSetup, yaml: cm.yaml, json: cm.json };
   // the colors of the code in the dark scheme (the default highlighting is written for a light page): a plain extra,
   // the editor works without it
   try {
-    const language = await import('https://esm.sh/@codemirror/language@6');
-    const lezer = await import('https://esm.sh/@lezer/highlight@1');
-    const t = lezer.tags;
+    const language = cm;
+    const t = cm.tags;
     window.CM.darkHighlight = language.syntaxHighlighting(
       language.HighlightStyle.define([
         { tag: [t.propertyName, t.definition(t.propertyName)], color: '#9cdcfe' },

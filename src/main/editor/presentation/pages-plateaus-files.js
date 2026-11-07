@@ -15,13 +15,17 @@ function filePlateauOf(mf) {
 
 /** The Plateaus page mounts no diagram, so nothing else asks for the kernel that its Changes panel waits for (`rightPanelPending`): it is loaded, and the panel is written again. */
 function settlePlateausPanel() {
-  if ((currentPerspective !== 'plateaus' && currentPerspective !== 'library') || !rightPanelPending) return;
+  if (currentPerspective !== 'plateaus' && currentPerspective !== 'library') return;
+  const readingPending = currentPerspective === 'plateaus' && plateauMatrixIsPending();
+  if (!rightPanelPending && !readingPending) return;
   const page = currentPerspective;
   loadViewpointKernel()
     .then(() => {
       if (currentPerspective !== page) return;
-      if (page === 'plateaus') refreshRightPanel();
-      else requestRedraw(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
+      if (page === 'plateaus') {
+        if (rightPanelPending) refreshRightPanel();
+        if (readingPending) requestRedraw(); // the Reading block is written again with the table
+      } else requestRedraw(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
     })
     .catch((e) => console.error('ArchiCode: the viewpoint kernel could not be loaded, the changes are not listed', e));
 }
@@ -132,6 +136,15 @@ function timelineItemHtml(item, depth) {
             escapeHtml(item.node.parent) +
             ' in the Changes panel">Changes</button>'
           : '') +
+        (parent && !layers.blocked && AppState.plateauTree.layered
+          ? '<button type="button" data-action="matrix-open" data-plateau="' +
+            escapeHtml(item.id) +
+            '" aria-pressed="' +
+            (plateauReading.path === item.id) +
+            '"' +
+            (broken ? ' disabled' : '') +
+            ' title="Read, in one table, where the elements of the path from the root to this plateau came from and went">Read the path</button>'
+          : '') +
         (!layers.blocked
           ? '<button type="button" data-action="plateau-create" data-plateau="' +
             escapeHtml(item.id) +
@@ -195,7 +208,8 @@ function renderPlateausPageHtml() {
         ? '<p class="timeline-status" role="status">' + escapeHtml(layers.blocked ? layers.blocked : status) + '</p>'
         : '') +
       (writing ? '<div class="timeline-writing" aria-label="Edit the plateaus">' + writing + '</div>' : '') +
-      timelineListHtml();
+      timelineListHtml() +
+      renderPlateauMatrixHtml();
   }
   return '<div class="timeline-view">' + header + '<div class="timeline-body">' + body + '</div></div>';
 }

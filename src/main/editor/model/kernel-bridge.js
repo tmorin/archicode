@@ -1,15 +1,31 @@
 /** The kernel, once the promise of `loadViewpointKernel` has settled: null before. */
 let loadedKernel = null;
 
-/** Decode the embedded WebAssembly module and wrap its tiny C ABI (alloc / compute / compare / result_ptr / dealloc). */
+/**
+ * Load the WebAssembly module that sits beside the page, as the script viewpoint_kernel.js that holds it in base64, and wrap its
+ * tiny C ABI (alloc / compute / compare / result_ptr / dealloc). A script, not a fetch of the .wasm: a page opened from a disk
+ * (file://) may load a script but not fetch a file.
+ */
 function loadViewpointKernel() {
   if (!viewpointKernelPromise) {
     viewpointKernelPromise = (async () => {
-      const node = document.getElementById('viewpoint-kernel-wasm');
-      if (!node) throw new Error('The embedded viewpoint kernel is missing from this file.');
-      const binary = atob(node.textContent.trim());
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const address = assetAddress('viewpoint_kernel.js');
+      if (address === null) throw new Error('The page names no viewpoint_kernel.js file.');
+      try {
+        await loadClassicScript(address);
+      } catch (e) {
+        throw new Error(
+          'The viewpoint kernel could not be loaded from ' + address + ': ' + (e && e.message ? e.message : e),
+          {
+            cause: e
+          }
+        );
+      }
+      const encoded = globalThis.ArchiCodeKernelWasm;
+      if (typeof encoded !== 'string')
+        throw new Error('The script ' + address + ' did not define the viewpoint kernel.');
+      delete globalThis.ArchiCodeKernelWasm; // the string is about a megabyte: the bytes are all that is kept
+      const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
       const { instance } = await WebAssembly.instantiate(bytes, {});
       const x = instance.exports;
       const encoder = new TextEncoder();
@@ -75,15 +91,49 @@ const ELK_RETRY_AFTER_MS = 30000;
 let elkFailedAt = 0;
 
 /**
- * ELK (layered layout with nested boxes), lazily from a CDN — null when it cannot be loaded (offline). A failure is
+ * Adds a classic script to the page and resolves when it has run. A page opened from a disk (file://) may load a script but not
+ * import a module or fetch a file, so the assets beside the page are scripts that set a global.
+ */
+function loadClassicScript(address) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = address;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('the script ' + address + ' could not be loaded'));
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * The address of an asset that sits beside the page, read from the <meta name="archicode-asset:NAME"> that the build
+ * writes; null when there is no document, no such meta, an empty content or an address that cannot be read.
+ */
+function assetAddress(name) {
+  try {
+    if (typeof document === 'undefined' || !document || typeof document.querySelector !== 'function') return null;
+    const meta = document.querySelector('meta[name="archicode-asset:' + name + '"]');
+    const content = meta ? meta.getAttribute('content') : null;
+    if (!content) return null;
+    return new URL(content, document.baseURI).href;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * ELK (layered layout with nested boxes), lazily from the asset elk.js beside the page — null when it cannot be loaded (offline). A failure is
  * not remembered for good (it may have been a moment without network): a later render tries again, at most once per
  * ELK_RETRY_AFTER_MS.
  */
 function loadElk() {
   if (!elkPromise) {
     if (elkFailedAt && Date.now() - elkFailedAt < ELK_RETRY_AFTER_MS) return Promise.resolve(null);
-    elkPromise = import('https://esm.sh/elkjs@0.9.3/lib/elk.bundled.js')
-      .then((mod) => new mod.default())
+    const address = assetAddress('elk.js');
+    // no address is a failure like any other: the same warning, the same wait before the next try
+    elkPromise = (
+      address === null ? Promise.reject(new Error('the page names no elk.js asset')) : loadClassicScript(address)
+    )
+      .then(() => new globalThis.ArchiCodeElk.default())
       .catch((e) => {
         console.warn('ELK failed to load — the diagram falls back to a plain list.', e);
         elkFailedAt = Date.now();

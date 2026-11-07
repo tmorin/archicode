@@ -205,6 +205,10 @@
       "layer": "presentation"
     },
     {
+      "file": "presentation/plateau-matrix-page.js",
+      "layer": "presentation"
+    },
+    {
       "file": "presentation/pages-plateaus-files.js",
       "layer": "presentation"
     },
@@ -234,6 +238,10 @@
     },
     {
       "file": "model/comparison.js",
+      "layer": "model"
+    },
+    {
+      "file": "model/plateau-matrix.js",
       "layer": "model"
     },
     {

@@ -7,6 +7,8 @@ const vm = require('node:vm');
 
 const REPO = path.resolve(__dirname, '../../../..');
 const HTML = path.join(REPO, 'src/main/resources/editor-webapp/standalone.html');
+const KERNEL = path.join(REPO, 'src/main/resources/editor-webapp/assets/viewpoint_kernel.js');
+const KERNEL_ADDRESS = 'http://editor.test/assets/viewpoint_kernel.js';
 const FIXTURE = path.join(REPO, 'src/test/resources/viewpoint-kernel/workspace');
 
 function notFound(p) {
@@ -348,8 +350,29 @@ function createApp(options = {}) {
   const html =
     options.html !== undefined ? options.html : fs.readFileSync(process.env.ARCHICODE_EDITOR_HTML || HTML, 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/);
-  const wasm = html.match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
-  if (!script || !wasm) throw new Error('standalone.html: script or embedded kernel not found');
+  if (!script) throw new Error('standalone.html: script not found');
+  // a released page (options.html, a tag before the kernel moved out of the page) carries the kernel as a base64 block: it is answered as it was
+  const oldBlock = html.match(/<script type="application\/[^"]+" id="(viewpoint-kernel-[a-z]+)">([^<]+)<\/script>/);
+  // the kernel is a script beside the page, which a classic <script> loads (a page opened from a disk may not fetch a file): the
+  // sandbox answers the meta that names it, and runs the committed script in the page when the page appends the element
+  const kernelScript = fs.readFileSync(KERNEL, 'utf8');
+  const pageFetch = options.fetch;
+  const noFetch = (url, ...rest) =>
+    pageFetch ? pageFetch(url, ...rest) : Promise.reject(new TypeError('no fetch in this page'));
+  // `options.kernelScript`: what the sandbox does with each load of the kernel script, by the number of the call (1, 2, ...):
+  // 'ok' (the default), 'error' (the load fails) or 'empty' (the script runs and defines nothing)
+  let kernelScriptCalls = 0;
+  const loadScript = (element) => {
+    setTimeout(() => {
+      if (!String(element.src).startsWith(KERNEL_ADDRESS))
+        return element.onerror && element.onerror(new Error('no such script'));
+      kernelScriptCalls += 1;
+      const outcome = options.kernelScript ? options.kernelScript(kernelScriptCalls) : 'ok';
+      if (outcome === 'error') return element.onerror && element.onerror(new Error('load failed'));
+      if (outcome === 'ok') vm.runInContext(kernelScript, sandbox);
+      return element.onload && element.onload();
+    }, 0);
+  };
 
   const appEl = { id: 'app', innerHTML: '', addEventListener() {} };
   let hash = '';
@@ -427,15 +450,25 @@ function createApp(options = {}) {
           delete rootAttributes[name];
         }
       },
+      baseURI: 'http://editor.test/',
+      createElement: (tag) => ({ tag }),
+      head: {
+        appendChild(element) {
+          loadScript(element);
+          return element;
+        }
+      },
       getElementById(id) {
         if (id === 'app') return appEl;
-        if (id === 'viewpoint-kernel-wasm') return { textContent: wasm[1] };
+        if (oldBlock && id === oldBlock[1]) return { textContent: oldBlock[2] };
         return null;
       },
       querySelectorAll() {
         return [];
       },
       querySelector(selector) {
+        if (selector === 'meta[name="archicode-asset:viewpoint_kernel.js"]' && options.kernelMeta !== false)
+          return { getAttribute: (a) => (a === 'content' ? KERNEL_ADDRESS : null) };
         // the page served by `editor serve` carries the token of the server in a <meta>
         return options.serverToken && selector === 'meta[name="archicode-server"]'
           ? { getAttribute: () => options.serverToken }
@@ -446,7 +479,8 @@ function createApp(options = {}) {
       }
     },
     localStorage: options.localStorage, // absent: the page runs as if the browser refused its storage
-    fetch: options.fetch,
+    fetch: noFetch,
+    URL,
     File: options.serverToken || options.withFile ? File : undefined, // the host's File, which drops a byte-order mark in text() as a browser does
     Blob,
     // the remembered folders: an in-memory IndexedDB of its own per page, unless the test gives one (to share it, or seed it)

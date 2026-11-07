@@ -1,0 +1,7 @@
+{
+  "assets": [
+    { "name": "codemirror.js", "entry": "bundles/codemirror.mjs", "global": "ArchiCodeCodeMirror" },
+    { "name": "elk.js", "entry": "bundles/elk.mjs", "global": "ArchiCodeElk" }
+  ],
+  "encoded": [{ "name": "viewpoint_kernel.js", "from": "viewpoint_kernel.wasm", "global": "ArchiCodeKernelWasm" }]
+}

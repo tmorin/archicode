@@ -137,7 +137,23 @@ async function startServer(example, files = {}) {
 // order. Resolves with the URL (`http://127.0.0.1:<port>/editor/`), `siteUrl` (`http://127.0.0.1:<port>/`), the list and a stop function.
 const SAMPLE = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'samples', 'brightcart.yaml');
 const SITE = path.join(ROOT, 'src', 'site', 'index.html');
+const ASSETS = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'assets');
+// the assets folder beside the page, at the website layout: /editor/assets/NAME for each file of the folder
+const ASSET_TYPES = new Map([
+  ['.js', 'text/javascript; charset=utf-8'],
+  ['.wasm', 'application/wasm']
+]);
+const ASSET_ROUTES = fs.existsSync(ASSETS)
+  ? fs
+      .readdirSync(ASSETS)
+      .filter((name) => ASSET_TYPES.has(path.extname(name)))
+      .map((name) => [
+        `/editor/assets/${name}`,
+        { file: path.join(ASSETS, name), type: ASSET_TYPES.get(path.extname(name)) }
+      ])
+  : [];
 const HOSTED_ROUTES = new Map([
+  ...ASSET_ROUTES,
   ['/', { file: SITE, type: 'text/html; charset=utf-8' }],
   ['/editor/', { file: PAGE, type: 'text/html; charset=utf-8' }],
   ['/editor/samples/brightcart.yaml', { file: SAMPLE, type: 'text/yaml; charset=utf-8' }]

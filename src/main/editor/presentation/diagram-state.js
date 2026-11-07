@@ -2,8 +2,8 @@
 
 /*
  * The viewpoint algorithms (overview / detailed / deep), the facets and the folding of boxes are NOT implemented in
- * this file. They live in a Rust crate (src/main/rust/viewpoint-kernel) that is compiled to WebAssembly and embedded
- * below as base64 (<script id="viewpoint-kernel-wasm">), and that the ArchiCode CLI runs too, so a diagram here is
+ * this file. They live in a Rust crate (src/main/rust/viewpoint-kernel) that is compiled to WebAssembly and served as the
+ * file viewpoint_kernel.wasm beside the page (see loadViewpointKernel), and that the ArchiCode CLI runs too, so a diagram here is
  * the same set of boxes and links the CLI writes to PlantUML. The kernel is a pure function: a graph of references
  * and relationships goes in as JSON, items and links come out. It never sees YAML or files — this section adapts the
  * in-memory model to its input (so a diagram always reflects unsaved edits) and draws its output.

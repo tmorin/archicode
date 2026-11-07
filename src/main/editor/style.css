@@ -4304,4 +4304,125 @@ video {
   .diagram-toolbar .tool-reset {
     max-width: 9rem;
   }
+  .matrix-scroll {
+    max-height: 70vh;
+  }
+  .matrix th,
+  .matrix td {
+    padding: 0.25rem 0.4rem;
+  }
+  .matrix th.matrix-ref {
+    min-width: 6rem;
+    max-width: 9rem;
+  }
+}
+
+/* The reading of a path of plateaus: a table in a box that scrolls on its own, the page never does. The first column stays while the others scroll; a state is a glyph, a word and a left line. */
+.matrix-block {
+  min-width: 0;
+  max-width: 100%;
+}
+.matrix-scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+}
+.matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+.matrix th,
+.matrix td {
+  padding: 0.3rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  font-weight: normal;
+}
+.matrix thead th {
+  background: var(--panel-bg);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.matrix th.matrix-ref {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 8rem;
+  max-width: 14rem;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.matrix .matrix-name {
+  color: var(--muted);
+}
+.matrix .matrix-span {
+  border-left: 2px solid var(--control-border);
+  background: var(--panel-bg);
+}
+.matrix .matrix-layer th {
+  background: var(--panel-bg);
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+}
+.matrix .matrix-cell {
+  border-left: 3px solid transparent;
+  white-space: nowrap;
+}
+.matrix .matrix-cell.matrix-span {
+  border-left: 2px solid var(--control-border);
+}
+.matrix .matrix-absent,
+.matrix .matrix-present,
+.matrix .matrix-from {
+  color: var(--muted);
+}
+.matrix .matrix-glyph {
+  display: inline-block;
+  min-width: 1em;
+  text-align: center;
+  font-weight: 600;
+}
+.matrix .matrix-new {
+  border-left-color: var(--chg-new);
+}
+.matrix .matrix-changed {
+  border-left-color: var(--chg-changed);
+}
+.matrix .matrix-removed {
+  border-left-color: var(--chg-removed);
+}
+.matrix .matrix-moved {
+  border-left-color: var(--chg-moved);
+}
+.matrix .matrix-split {
+  border-left-color: var(--chg-split);
+}
+.matrix .matrix-merged {
+  border-left-color: var(--chg-merged);
+}
+.matrix .matrix-cell-button {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.matrix .matrix-cell-button:hover .matrix-word {
+  text-decoration: underline;
+}
+.matrix .matrix-cell-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.matrix-problems {
+  color: var(--danger);
 }

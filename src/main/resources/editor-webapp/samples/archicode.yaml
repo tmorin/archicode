@@ -68,6 +68,12 @@ content:
                 - destination: "archicode.editor.page"
                   label: "serves the page"
                   qualifiers: ["serves"]
+                - destination: "archicode.contracts.couplings.editor_assets"
+                  label: "serves the assets"
+                  qualifiers: ["serves"]
+                - destination: "archicode.contracts.couplings.kernel_wasm"
+                  label: "serves the kernel"
+                  qualifiers: ["serves"]
             - kind: "component"
               id: "guide"
               name: "Guide"
@@ -384,6 +390,12 @@ content:
             - destination: "archicode.editor.composition"
               label: "is generated from the layers"
               qualifiers: ["generated from"]
+            - destination: "archicode.contracts.couplings.editor_assets"
+              label: "loads CodeMirror and ELK from"
+              qualifiers: ["reads"]
+            - destination: "archicode.contracts.couplings.kernel_wasm"
+              label: "loads the kernel from"
+              qualifiers: ["reads"]
     - kind: "system"
       id: "contracts"
       name: "Contracts"
@@ -392,14 +404,14 @@ content:
         - kind: "container"
           id: "couplings"
           name: "Couplings"
-          description: "The five couplings that must change together."
+          description: "The six couplings that must change together."
           elements:
             - kind: "component"
               id: "kernel_wasm"
               name: "Kernel WebAssembly"
               description: "The committed WebAssembly both tools run."
               tags:
-                path: "src/main/wasm/viewpoint_kernel.wasm"
+                path: "src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm"
               relationships:
                 - destination: "archicode.kernel.engine"
                   label: "is generated from"
@@ -437,6 +449,12 @@ content:
                 - destination: "archicode.commandline.manifest"
                   label: "is generated from"
                   qualifiers: ["generated from"]
+            - kind: "component"
+              id: "editor_assets"
+              name: "Editor assets"
+              description: "CodeMirror and ELK, bundled by editor:build and served beside the page."
+              tags:
+                path: "src/main/resources/editor-webapp/assets, src/main/editor/bundles"
             - kind: "component"
               id: "goldens"
               name: "Goldens"
@@ -538,7 +556,7 @@ header:
 content:
   id: "contracts"
   name: "What couples the tools"
-  description: "The five couplings that must change together."
+  description: "The six couplings that must change together."
   viewpoint: "map"
   properties:
     pinned:
@@ -546,6 +564,7 @@ content:
       - "archicode.contracts.couplings.shared_cases"
       - "archicode.contracts.couplings.read_schema"
       - "archicode.contracts.couplings.manifest_schema"
+      - "archicode.contracts.couplings.editor_assets"
       - "archicode.contracts.couplings.goldens"
     opened: ["archicode.contracts.couplings"]
 --- # file: manifests/views/view.deployment.yaml

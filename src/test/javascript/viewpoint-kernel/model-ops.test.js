@@ -1085,6 +1085,7 @@ test('an element without any relationship has no Overview to open, while Detaile
     title: '',
     getAttribute: () => tab
   }));
+  await sandbox.loadViewpointKernel(); // the kernel is fetched by the address in the page's meta, before the query is replaced
   sandbox.document.querySelector = () => ({ querySelectorAll: () => list });
   await sandbox.markElementTabs();
   assert.deepEqual(

@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
-# Builds the viewpoint kernel to WebAssembly and puts it where it is used:
-#   - src/main/wasm/viewpoint_kernel.wasm, which Maven translates to JVM bytecode for the CLI (Chicory);
-#   - base64-encoded in the standalone editor (the <script id="viewpoint-kernel-wasm"> block of standalone.html).
-# In write mode the page is assembled by scripts/build-editor.mjs (node, no npm install) from src/main/editor, which
-# reads the wasm just written; the check mode compares the block in the page and needs no node.
-# Both must come from the same build; a test checks that they do.
+# Builds the viewpoint kernel to WebAssembly and puts it where it is used: the file
+# src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm, which Maven translates to JVM bytecode for the CLI
+# (Chicory), and from which scripts/build-editor.mjs writes the script viewpoint_kernel.js that the editor page loads beside
+# itself (the base64 of the file, a classic script so that a page opened from a disk loads it; its ?v= hash is in the page).
 #
-#   embed.sh          rebuild and write both
-#   embed.sh --check  rebuild into a scratch directory and fail if either differs (what CI runs)
+#   embed.sh          rebuild, write the file, then write the script and assemble the page (node, after npm ci)
+#   embed.sh --check  rebuild into a scratch directory and fail if the committed file differs from the build (needs rustup,
+#                     no node; `npm run editor:check` checks that the script and the page follow the file)
 #
 # The compiler is the one of rust-toolchain.toml (rustup installs it and the wasm target by itself), and the paths
 # of this machine are remapped, so that the same sources give the same bytes on every machine.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-html="$here/../../resources/editor-webapp/standalone.html"
-committed="$here/../../wasm/viewpoint_kernel.wasm"
+committed="$here/../../resources/editor-webapp/assets/viewpoint_kernel.wasm"
 
 # rustup looks for rust-toolchain.toml from the current directory
 cd "$here"
@@ -29,30 +27,19 @@ fi
 
 cargo build --release --target wasm32-unknown-unknown --manifest-path "$here/Cargo.toml" --target-dir "$target"
 wasm="$target/wasm32-unknown-unknown/release/viewpoint_kernel.wasm"
-
-python3 - "$html" "$wasm" "$committed" "${1:-}" <<'PY'
-import base64, re, sys
-html_path, wasm_path, committed_path, mode = sys.argv[1:5]
-built = open(wasm_path, 'rb').read()
-b64 = base64.b64encode(built).decode('ascii')
-block = '<script type="application/octet-stream" id="viewpoint-kernel-wasm">' + b64 + '</script>'
-html = open(html_path, encoding='utf-8').read()
-pattern = re.compile(r'<script type="application/octet-stream" id="viewpoint-kernel-wasm">.*?</script>', re.S)
-if mode == '--check':
-    found = pattern.search(html)
-    problems = []
-    if open(committed_path, 'rb').read() != built:
-        problems.append('src/main/wasm/viewpoint_kernel.wasm is not the build of the current sources')
-    if not found or found.group(0) != block:
-        problems.append('the kernel embedded in standalone.html is not the build of the current sources')
-    if problems:
-        sys.exit('\n'.join(problems) + '\nrun src/main/rust/viewpoint-kernel/embed.sh and commit the result')
-    print('the committed WebAssembly is the one the sources build (%d bytes)' % len(built))
-else:
-    open(committed_path, 'wb').write(built)
-    print('wrote %d bytes of WebAssembly (%d base64 characters)' % (len(built), len(b64)))
-PY
-
-if [ "${1:-}" != "--check" ]; then
+if [ "${1:-}" = "--check" ]; then
+  problems=""
+  if ! cmp -s "$wasm" "$committed"; then
+    problems="src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm is not the build of the current sources"
+  fi
+  if [ -n "$problems" ]; then
+    echo "$problems" >&2
+    echo "run src/main/rust/viewpoint-kernel/embed.sh and commit the result" >&2
+    exit 1
+  fi
+  echo "the committed WebAssembly is the one the sources build ($(wc -c < "$wasm") bytes)"
+else
+  cp "$wasm" "$committed"
+  echo "wrote $(wc -c < "$wasm") bytes of WebAssembly"
   node "$here/../../../../scripts/build-editor.mjs"
 fi

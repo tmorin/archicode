@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +64,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  *       the application (UTF-8, {@code text/yaml}). The routes under {@code /samples/} are a table of two entries
  *       ({@link #SAMPLES}): any other path there is 404, and a request never names a resource. It has the {@code Host}
  *       check of the page and wants the token in the header or the session cookie, never in the query (403).</li>
+ *   <li>{@code GET /assets/codemirror.js}, {@code GET /assets/elk.js} and {@code GET /assets/viewpoint_kernel.js} —
+ *       the two libraries and the kernel (the script that holds its WebAssembly as base64) the editor page loads beside itself,
+ *       resources of the application, three classic scripts ({@code text/javascript; charset=utf-8}) so that a page opened
+ *       from a disk loads them too. The routes
+ *       under {@code /assets/} are a table of three entries ({@link #ASSETS}): any other path there is 404, a query such as
+ *       {@code ?v=} is ignored, and a request never names a resource. Same {@code Host} check and same proof as the
+ *       samples: the token in the header or the session cookie, never in the query (403).</li>
  * </ul>
  * The API writes to the disk, and this server may listen on every address (that is what a Docker {@code -p} mapping
  * needs), so it does not trust the network: the page and every {@code /api} call must carry the token (a page of
@@ -89,6 +97,7 @@ public class EditorHttpServer {
 
     private static final String API_PREFIX = "/api/fs/";
     private static final String SAMPLES_PREFIX = "/samples/";
+    private static final String ASSETS_PREFIX = "/assets/";
 
     /**
      * The samples the server gives, by the name after {@code /samples/}: the one table of the route. A request is looked up
@@ -100,6 +109,24 @@ public class EditorHttpServer {
         "archicode.yaml",
         "/editor-webapp/samples/archicode.yaml"
     );
+
+    /** A resource of the application the server gives, and the type it declares. */
+    record Asset(String resource, String contentType) {}
+
+    /**
+     * The assets the server gives, by the name after {@code /assets/}: the one table of the route. A request is looked up
+     * in it and never used to build a path, so it can name no other resource.
+     */
+    static final Map<String, Asset> ASSETS = Map.of(
+        "codemirror.js",
+        new Asset("/editor-webapp/assets/codemirror.js", "text/javascript; charset=utf-8"),
+        "elk.js",
+        new Asset("/editor-webapp/assets/elk.js", "text/javascript; charset=utf-8"),
+        "viewpoint_kernel.js",
+        new Asset("/editor-webapp/assets/viewpoint_kernel.js", "text/javascript; charset=utf-8")
+    );
+
+    private static final String SAMPLE_TYPE = "text/yaml; charset=utf-8";
 
     private static final String WEBAPP_RESOURCE = "/editor-webapp/standalone.html";
     private static final String TOKEN_MARKER = "<head>";
@@ -154,7 +181,12 @@ public class EditorHttpServer {
         server.setExecutor(Executors.newFixedThreadPool(HANDLER_THREADS));
         server.createContext("/", exchange -> handleRoot(exchange, token, hosts));
         server.createContext(API_PREFIX, exchange -> handleApi(exchange, root, token, hosts, maxBodyBytes));
-        server.createContext(SAMPLES_PREFIX, exchange -> handleSample(exchange, token, hosts));
+        server.createContext(SAMPLES_PREFIX, exchange ->
+            handleStatic(exchange, token, hosts, SAMPLES_PREFIX, name -> sampleOf(SAMPLES.get(name)))
+        );
+        server.createContext(ASSETS_PREFIX, exchange ->
+            handleStatic(exchange, token, hosts, ASSETS_PREFIX, ASSETS::get)
+        );
         server.start();
         if (log.isInfoEnabled()) {
             log.info("editor http server listening on {}:{}", host, server.getAddress().getPort());
@@ -238,16 +270,29 @@ public class EditorHttpServer {
         }
     }
 
-    /** {@code GET /samples/<name>}: a sample of {@link #SAMPLES}, for the page that holds the token or its cookie. */
+    private static Asset sampleOf(String resource) {
+        return resource == null ? null : new Asset(resource, SAMPLE_TYPE);
+    }
+
+    /**
+     * {@code GET <prefix><name>}: a sample or an asset, for the page that holds the token or its cookie. The name is a key
+     * of the lookup, never a path.
+     */
     @SneakyThrows
-    private void handleSample(HttpExchange exchange, String token, Set<String> hosts) {
+    private void handleStatic(
+        HttpExchange exchange,
+        String token,
+        Set<String> hosts,
+        String prefix,
+        Function<String, Asset> lookup
+    ) {
         try {
             if (!hostAllowed(exchange, hosts)) {
                 text(exchange, 403, "this host name is not allowed: start the server with --allowed-host to serve it");
                 return;
             }
-            val resource = SAMPLES.get(exchange.getRequestURI().getPath().substring(SAMPLES_PREFIX.length()));
-            if (resource == null) {
+            val asset = lookup.apply(exchange.getRequestURI().getPath().substring(prefix.length()));
+            if (asset == null) {
                 text(exchange, 404, "not found");
                 return;
             }
@@ -260,15 +305,15 @@ public class EditorHttpServer {
                 text(exchange, 403, "missing or wrong token: reload the page served by this server");
                 return;
             }
-            try (val stream = getClass().getResourceAsStream(resource)) {
+            try (val stream = getClass().getResourceAsStream(asset.resource())) {
                 if (stream == null) {
-                    text(exchange, 500, "the sample is missing from the classpath: " + resource);
+                    text(exchange, 500, "the resource is missing from the classpath: " + asset.resource());
                     return;
                 }
                 val headers = exchange.getResponseHeaders();
                 headers.set("Cache-Control", "no-store");
                 headers.set("X-Content-Type-Options", "nosniff");
-                write(exchange, 200, "text/yaml; charset=utf-8", stream.readAllBytes());
+                write(exchange, 200, asset.contentType(), stream.readAllBytes());
             }
         } catch (Exception e) {
             fail(exchange, e);

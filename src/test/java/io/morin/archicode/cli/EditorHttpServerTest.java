@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;
@@ -96,7 +97,7 @@ class EditorHttpServerTest {
         val response = call("GET", "/?token=" + running.token(), null, null, null);
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("<meta name=\"archicode-server\" content=\"" + running.token() + "\">"));
-        assertTrue(response.body().contains("viewpoint-kernel-wasm"), "it is the standalone editor");
+        assertTrue(response.body().contains("archicode-asset:viewpoint_kernel.js"), "it is the standalone editor");
         assertTrue(
             response.body().contains("<meta name=\"archicode-version\" content=\"" + version + "\">"),
             "the page says which ArchiCode serves it"
@@ -122,7 +123,7 @@ class EditorHttpServerTest {
             val response = call("GET", path, null, null, null);
             assertEquals(403, response.statusCode(), path);
             assertFalse(response.body().contains(running.token()));
-            assertFalse(response.body().contains("viewpoint-kernel-wasm"));
+            assertFalse(response.body().contains("archicode-asset:viewpoint_kernel.js"));
         }
         assertEquals(400, status(rawGet("/?token=%zz", "127.0.0.1")), "malformed escape");
         assertTrue(call("GET", "/", null, null, null).body().contains("archicode editor serve"));
@@ -148,7 +149,7 @@ class EditorHttpServerTest {
         val session = "Cookie: other=1; " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
         val reload = rawGet("/", "127.0.0.1", session);
         assertEquals(200, status(reload), "the cookie alone opens the page");
-        assertTrue(reload.contains("viewpoint-kernel-wasm"));
+        assertTrue(reload.contains("archicode-asset:viewpoint_kernel.js"));
         assertFalse(reload.toLowerCase(Locale.ROOT).contains("set-cookie"), "only the token in the address sets it");
 
         assertEquals(403, status(rawGet("/", "127.0.0.1")), "no token, no cookie");
@@ -589,5 +590,129 @@ class EditorHttpServerTest {
             call("GET", "/api/fs/samples/brightcart.yaml", null, running.token(), null).statusCode(),
             "the API has no sample route"
         );
+    }
+
+    private static final Path CODEMIRROR = Path.of("src/main/resources/editor-webapp/assets/codemirror.js");
+    private static final Path ELK = Path.of("src/main/resources/editor-webapp/assets/elk.js");
+    private static final Path KERNEL = Path.of("src/main/resources/editor-webapp/assets/viewpoint_kernel.js");
+
+    @SneakyThrows
+    @Test
+    void servesTheAssetsWithTheTokenHeader() {
+        val types = Map.of(
+            "/assets/codemirror.js",
+            "text/javascript; charset=utf-8",
+            "/assets/elk.js",
+            "text/javascript; charset=utf-8",
+            "/assets/viewpoint_kernel.js",
+            "text/javascript; charset=utf-8"
+        );
+        val files = Map.of(
+            "/assets/codemirror.js",
+            CODEMIRROR,
+            "/assets/elk.js",
+            ELK,
+            "/assets/viewpoint_kernel.js",
+            KERNEL
+        );
+        for (val entry : files.entrySet()) {
+            val response = sample(entry.getKey(), running.token());
+            assertEquals(200, response.statusCode(), entry.getKey());
+            assertArrayEquals(Files.readAllBytes(entry.getValue()), response.body(), "the bytes, as committed");
+            assertEquals(types.get(entry.getKey()), response.headers().firstValue("Content-Type").orElse(""));
+            assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
+            assertEquals("nosniff", response.headers().firstValue("X-Content-Type-Options").orElse(""));
+            assertFalse(response.headers().firstValue("Set-Cookie").isPresent(), "only the page sets the session");
+        }
+        assertEquals(200, sample("/assets/elk.js?v=abc123", running.token()).statusCode(), "the query is ignored");
+        assertEquals(
+            200,
+            sample("/assets/viewpoint_kernel.js?v=abc123", running.token()).statusCode(),
+            "the query is ignored"
+        );
+    }
+
+    @SneakyThrows
+    @Test
+    void servesTheAssetsWithTheSessionCookie() {
+        val cookie = "Cookie: " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
+        val raw = rawGet("/assets/elk.js", "127.0.0.1", cookie);
+        assertEquals(200, status(raw));
+        assertEquals(Files.readString(ELK, StandardCharsets.UTF_8), bodyOf(raw));
+    }
+
+    @Test
+    void holdsThreeAssets() {
+        assertEquals(Set.of("codemirror.js", "elk.js", "viewpoint_kernel.js"), EditorHttpServer.ASSETS.keySet());
+        assertEquals(
+            "text/javascript; charset=utf-8",
+            EditorHttpServer.ASSETS.get("viewpoint_kernel.js").contentType()
+        );
+    }
+
+    @Test
+    void doesNotServeTheKernelWithoutAProof() {
+        assertEquals(403, sample("/assets/viewpoint_kernel.js", null).statusCode());
+        assertEquals(403, sample("/assets/viewpoint_kernel.js", "wrong").statusCode());
+    }
+
+    @Test
+    void doesNotServeAnAssetWithoutAProof() {
+        assertEquals(403, sample("/assets/elk.js", null).statusCode(), "no header, no cookie");
+        assertEquals(403, sample("/assets/elk.js", "wrong").statusCode());
+        assertEquals(403, sample("/assets/elk.js", "").statusCode());
+        assertEquals(403, status(rawGet("/assets/elk.js?token=" + running.token(), "127.0.0.1")), "not in the query");
+        assertEquals(
+            403,
+            status(rawGet("/assets/elk.js", "127.0.0.1", "Cookie: " + EditorHttpServer.SESSION_COOKIE + "=wrong\r\n"))
+        );
+    }
+
+    @Test
+    void doesNotServeAnAssetToAHostThatIsNotAllowed() {
+        val header = EditorHttpServer.TOKEN_HEADER + ": " + running.token() + "\r\n";
+        assertEquals(403, status(rawGet("/assets/elk.js", "attacker.example", header)));
+        assertEquals(403, status(rawGet("/assets/nothing.js", "attacker.example", header)), "the host comes first");
+        assertEquals(200, status(rawGet("/assets/elk.js", "localhost:48080", header)));
+    }
+
+    @Test
+    void takesOnlyGetOnTheAssets() {
+        for (val method : new String[] { "POST", "PUT", "DELETE" }) {
+            val builder = HttpRequest.newBuilder(URI.create(base() + "/assets/elk.js"))
+                .header(EditorHttpServer.TOKEN_HEADER, running.token())
+                .method(method, HttpRequest.BodyPublishers.ofString("x"));
+            val response = send(builder.build());
+            assertEquals(405, response.statusCode(), method);
+            assertEquals("method not allowed", response.body(), method);
+        }
+    }
+
+    @Test
+    void answers404ForAnyOtherPathUnderAssets() {
+        val header = EditorHttpServer.TOKEN_HEADER + ": " + running.token() + "\r\n";
+        for (val path : new String[] {
+            "/assets",
+            "/assets/",
+            "/assets/elk.js/",
+            "/assets/ELK.js",
+            "/assets/elk.mjs",
+            "/assets/elk.wasm",
+            "/assets/viewpoint_kernel.js/",
+            "/assets/viewpoint_kernel.js.map",
+            "/assets/viewpoint_kernel.wasm",
+            "/assets/THIRD-PARTY-NOTICES.txt",
+            "/assets/../standalone.html",
+            "/assets/%2e%2e/standalone.html",
+            "/assets/..%2fstandalone.html",
+            "/assets/elk.js/../../application.properties",
+            "/assets/%00elk.js",
+            "/assets/other.js"
+        }) {
+            val status = status(rawGet(path, "127.0.0.1", header));
+            assertTrue(status == 404, path + " answered " + status);
+        }
+        assertEquals("not found", call("GET", "/assets/other.js", null, running.token(), null).body());
+        assertEquals(404, call("GET", "/assets/other.js", null, null, null).statusCode(), "the name is checked first");
     }
 }

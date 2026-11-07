@@ -28,7 +28,9 @@ const READERS = [
   'columnsOfRecipe',
   'mapStateOf',
   'mapLayer',
-  'effectiveDiagramViewpoint'
+  'effectiveDiagramViewpoint',
+  'plateauReadingPath',
+  'plateauMatrixNow'
 ];
 /** The functions that write the address: a parameter on the table must be named in one of them (or be a name in the constants they loop over). */
 const WRITERS = [
@@ -54,10 +56,17 @@ const INPUTS = {
   'AppState.baseline': { param: ['compare'] },
   'AppState.changesOnly': { param: ['changes-only'] },
   'AppState.hideWording': { reason: EXCEPTION.wording },
+  'AppState.layers': { param: ['plateau'] },
+  'AppState.plateauTree': { param: ['plateau'] },
   'AppState.index': { param: ['plateau', 'compare'] },
   'AppState.workspace': { reason: EXCEPTION.files },
   currentPerspective: { reason: EXCEPTION.route },
+  loadedKernel: {
+    reason:
+      'a fact of loading: the Reading waits for the kernel, and its path is in the address (matrix=) whether or not it has loaded'
+  },
   modelVersion: { reason: EXCEPTION.files },
+  plateauReading: { param: ['matrix', 'rows'] },
   diagramColumns: { param: ['layout'] },
   diagramFacet: { param: ['facet'] },
   diagramHideUnlinked: { param: ['hide-unlinked'] },

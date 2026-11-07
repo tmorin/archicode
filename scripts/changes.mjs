@@ -48,10 +48,24 @@ export const RULES = [
     reason: 'the workflow and the map itself'
   },
   {
-    id: 'R-07',
-    patterns: ['src/main/rust/**', 'src/main/wasm/**', 'src/main/editor/**', 'src/main/resources/**'],
+    id: 'R-07a0',
+    patterns: ['src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm'],
     jobs: [J, P, K, E],
-    reason: 'the WebAssembly is embedded in the page and the jar; embed.sh --check compares the page'
+    reason: 'the kernel the CLI translates and the page fetches; embed.sh --check compares it'
+  },
+  {
+    id: 'R-07a',
+    patterns: ['src/main/resources/editor-webapp/assets/**'],
+    jobs: [J, P, E],
+    reason:
+      'the assets are served beside the page (the jar, the e2e suite) and checked by node tests; the Kernel job reads the .wasm (rule R-07a0), which the other assets do not touch; after R-07a0'
+  },
+  {
+    id: 'R-07',
+    patterns: ['src/main/rust/**', 'src/main/editor/**', 'src/main/resources/**'],
+    jobs: [J, P, K, E],
+    reason:
+      'the Rust is the kernel of the jar and the page; embed.sh --check compares the committed file and the hash in the page'
   },
   {
     id: 'R-08',
