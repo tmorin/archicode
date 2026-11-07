@@ -119,9 +119,15 @@ test('a visitor whose browser has a folder picker never calls it, and the page w
   const mine = new URL(hosted.url).origin;
   const others = sent.filter((r) => /^https?:/.test(r.url) && !r.url.startsWith(mine));
   expect(others.every((r) => r.method === 'GET')).toBe(true);
-  // (the page also asks for the two files of the assets folder beside it, CodeMirror and the layout)
+  // (the page also asks for the three scripts of the assets folder beside it: CodeMirror, the layout and the kernel)
   expect(new Set(hosted.requests)).toEqual(
-    new Set(['/editor/', '/editor/assets/codemirror.js', '/editor/assets/elk.js', '/editor/samples/brightcart.yaml'])
+    new Set([
+      '/editor/',
+      '/editor/assets/codemirror.js',
+      '/editor/assets/elk.js',
+      '/editor/assets/viewpoint_kernel.js',
+      '/editor/samples/brightcart.yaml'
+    ])
   );
 });
 
