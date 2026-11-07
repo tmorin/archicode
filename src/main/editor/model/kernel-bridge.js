@@ -1,30 +1,32 @@
 /** The kernel, once the promise of `loadViewpointKernel` has settled: null before. */
 let loadedKernel = null;
 
-/** Fetch the WebAssembly module that sits beside the page and wrap its tiny C ABI (alloc / compute / compare / result_ptr / dealloc). */
+/**
+ * Load the WebAssembly module that sits beside the page, as the script viewpoint_kernel.js that holds it in base64, and wrap its
+ * tiny C ABI (alloc / compute / compare / result_ptr / dealloc). A script, not a fetch of the .wasm: a page opened from a disk
+ * (file://) may load a script but not fetch a file.
+ */
 function loadViewpointKernel() {
   if (!viewpointKernelPromise) {
     viewpointKernelPromise = (async () => {
-      const address = assetAddress('viewpoint_kernel.wasm');
-      if (address === null) throw new Error('The page names no viewpoint_kernel.wasm file.');
-      let response;
+      const address = assetAddress('viewpoint_kernel.js');
+      if (address === null) throw new Error('The page names no viewpoint_kernel.js file.');
       try {
-        response = await fetch(address);
+        await loadClassicScript(address);
       } catch (e) {
         throw new Error(
           'The viewpoint kernel could not be loaded from ' + address + ': ' + (e && e.message ? e.message : e),
-          { cause: e }
+          {
+            cause: e
+          }
         );
       }
-      if (!response.ok) {
-        throw new Error('The viewpoint kernel could not be loaded: HTTP ' + response.status + ' from ' + address + '.');
-      }
-      // streaming compilation needs the right type; a host that does not know .wasm gets the bytes read instead
-      const type = (response.headers.get('content-type') || '').trim().toLowerCase(); // the engine streams only the bare type, with no parameter
-      const { instance } =
-        type === 'application/wasm'
-          ? await WebAssembly.instantiateStreaming(response, {})
-          : await WebAssembly.instantiate(await response.arrayBuffer(), {});
+      const encoded = globalThis.ArchiCodeKernelWasm;
+      if (typeof encoded !== 'string')
+        throw new Error('The script ' + address + ' did not define the viewpoint kernel.');
+      delete globalThis.ArchiCodeKernelWasm; // the string is about a megabyte: the bytes are all that is kept
+      const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+      const { instance } = await WebAssembly.instantiate(bytes, {});
       const x = instance.exports;
       const encoder = new TextEncoder();
       const decoder = new TextDecoder();
@@ -89,6 +91,20 @@ const ELK_RETRY_AFTER_MS = 30000;
 let elkFailedAt = 0;
 
 /**
+ * Adds a classic script to the page and resolves when it has run. A page opened from a disk (file://) may load a script but not
+ * import a module or fetch a file, so the assets beside the page are scripts that set a global.
+ */
+function loadClassicScript(address) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = address;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('the script ' + address + ' could not be loaded'));
+    document.head.appendChild(script);
+  });
+}
+
+/**
  * The address of an asset that sits beside the page, read from the <meta name="archicode-asset:NAME"> that the build
  * writes; null when there is no document, no such meta, an empty content or an address that cannot be read.
  */
@@ -114,8 +130,10 @@ function loadElk() {
     if (elkFailedAt && Date.now() - elkFailedAt < ELK_RETRY_AFTER_MS) return Promise.resolve(null);
     const address = assetAddress('elk.js');
     // no address is a failure like any other: the same warning, the same wait before the next try
-    elkPromise = (address === null ? Promise.reject(new Error('the page names no elk.js asset')) : import(address))
-      .then((mod) => new mod.default())
+    elkPromise = (
+      address === null ? Promise.reject(new Error('the page names no elk.js asset')) : loadClassicScript(address)
+    )
+      .then(() => new globalThis.ArchiCodeElk.default())
       .catch((e) => {
         console.warn('ELK failed to load — the diagram falls back to a plain list.', e);
         elkFailedAt = Date.now();

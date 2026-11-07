@@ -89,7 +89,7 @@ class EditorServeIT {
             assertEquals(200, page.statusCode(), () -> "the editor page: " + page.body());
             assertTrue(page.body().contains("<html"), () -> "not the editor page: " + page.body());
             assertTrue(
-                page.body().contains("archicode-asset:viewpoint_kernel.wasm"),
+                page.body().contains("archicode-asset:viewpoint_kernel.js"),
                 "it is the standalone editor, with the kernel beside it"
             );
 
@@ -116,7 +116,7 @@ class EditorServeIT {
             assertEquals(404, get(client, base + "samples/other.yaml", address.group(2)).statusCode());
 
             // the two libraries and the kernel of the page are resources of the jar and of the native image, served with the same proof
-            for (val name : new String[] { "codemirror.js", "elk.js", "viewpoint_kernel.wasm" }) {
+            for (val name : new String[] { "codemirror.js", "elk.js", "viewpoint_kernel.js" }) {
                 val file = Path.of("src/main/resources/editor-webapp/assets/" + name);
                 val asset = client.send(
                     HttpRequest.newBuilder(URI.create(base + "assets/" + name))
@@ -128,7 +128,7 @@ class EditorServeIT {
                 assertEquals(200, asset.statusCode(), () -> "the asset " + name);
                 assertArrayEquals(Files.readAllBytes(file), asset.body(), "the bytes of the committed " + name);
                 assertEquals(
-                    name.endsWith(".wasm") ? "application/wasm" : "text/javascript; charset=utf-8",
+                    "text/javascript; charset=utf-8",
                     asset.headers().firstValue("Content-Type").orElse(""),
                     name
                 );

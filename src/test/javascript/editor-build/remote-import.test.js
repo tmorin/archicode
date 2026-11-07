@@ -67,3 +67,22 @@ test('the sources of the editor and the generated page import nothing remote', (
   }
   assert.deepEqual(found, []);
 });
+
+// A page opened from a disk (file://) may load a classic script but may not import a module or fetch a file: the assets beside the
+// page are scripts that set a global, and nothing in the page may go back to `import(`. The bundles are built output, not read.
+test('the sources of the editor and the page import no module at all (a page opened from a disk could not load it)', () => {
+  const files = [
+    ...filesUnder(path.join(ROOT, 'src/main/editor')).filter((file) => !file.includes(`${path.sep}bundles${path.sep}`)),
+    path.join(ROOT, 'src/main/resources/editor-webapp/standalone.html')
+  ];
+  const found = [];
+  for (const file of files) {
+    fs.readFileSync(file, 'utf8')
+      .split('\n')
+      .forEach((line, i) => {
+        if (/\bimport\s*\(/.test(line.replace(/\/\/.*$/, '').replace(/\/\*.*?\*\//g, '')))
+          found.push(`${path.relative(ROOT, file)}:${i + 1}`);
+      });
+  }
+  assert.deepEqual(found, []);
+});

@@ -97,7 +97,7 @@ class EditorHttpServerTest {
         val response = call("GET", "/?token=" + running.token(), null, null, null);
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("<meta name=\"archicode-server\" content=\"" + running.token() + "\">"));
-        assertTrue(response.body().contains("archicode-asset:viewpoint_kernel.wasm"), "it is the standalone editor");
+        assertTrue(response.body().contains("archicode-asset:viewpoint_kernel.js"), "it is the standalone editor");
         assertTrue(
             response.body().contains("<meta name=\"archicode-version\" content=\"" + version + "\">"),
             "the page says which ArchiCode serves it"
@@ -123,7 +123,7 @@ class EditorHttpServerTest {
             val response = call("GET", path, null, null, null);
             assertEquals(403, response.statusCode(), path);
             assertFalse(response.body().contains(running.token()));
-            assertFalse(response.body().contains("archicode-asset:viewpoint_kernel.wasm"));
+            assertFalse(response.body().contains("archicode-asset:viewpoint_kernel.js"));
         }
         assertEquals(400, status(rawGet("/?token=%zz", "127.0.0.1")), "malformed escape");
         assertTrue(call("GET", "/", null, null, null).body().contains("archicode editor serve"));
@@ -149,7 +149,7 @@ class EditorHttpServerTest {
         val session = "Cookie: other=1; " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
         val reload = rawGet("/", "127.0.0.1", session);
         assertEquals(200, status(reload), "the cookie alone opens the page");
-        assertTrue(reload.contains("archicode-asset:viewpoint_kernel.wasm"));
+        assertTrue(reload.contains("archicode-asset:viewpoint_kernel.js"));
         assertFalse(reload.toLowerCase(Locale.ROOT).contains("set-cookie"), "only the token in the address sets it");
 
         assertEquals(403, status(rawGet("/", "127.0.0.1")), "no token, no cookie");
@@ -594,7 +594,7 @@ class EditorHttpServerTest {
 
     private static final Path CODEMIRROR = Path.of("src/main/resources/editor-webapp/assets/codemirror.js");
     private static final Path ELK = Path.of("src/main/resources/editor-webapp/assets/elk.js");
-    private static final Path KERNEL = Path.of("src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm");
+    private static final Path KERNEL = Path.of("src/main/resources/editor-webapp/assets/viewpoint_kernel.js");
 
     @SneakyThrows
     @Test
@@ -604,15 +604,15 @@ class EditorHttpServerTest {
             "text/javascript; charset=utf-8",
             "/assets/elk.js",
             "text/javascript; charset=utf-8",
-            "/assets/viewpoint_kernel.wasm",
-            "application/wasm"
+            "/assets/viewpoint_kernel.js",
+            "text/javascript; charset=utf-8"
         );
         val files = Map.of(
             "/assets/codemirror.js",
             CODEMIRROR,
             "/assets/elk.js",
             ELK,
-            "/assets/viewpoint_kernel.wasm",
+            "/assets/viewpoint_kernel.js",
             KERNEL
         );
         for (val entry : files.entrySet()) {
@@ -627,7 +627,7 @@ class EditorHttpServerTest {
         assertEquals(200, sample("/assets/elk.js?v=abc123", running.token()).statusCode(), "the query is ignored");
         assertEquals(
             200,
-            sample("/assets/viewpoint_kernel.wasm?v=abc123", running.token()).statusCode(),
+            sample("/assets/viewpoint_kernel.js?v=abc123", running.token()).statusCode(),
             "the query is ignored"
         );
     }
@@ -643,14 +643,17 @@ class EditorHttpServerTest {
 
     @Test
     void holdsThreeAssets() {
-        assertEquals(Set.of("codemirror.js", "elk.js", "viewpoint_kernel.wasm"), EditorHttpServer.ASSETS.keySet());
-        assertEquals("application/wasm", EditorHttpServer.ASSETS.get("viewpoint_kernel.wasm").contentType());
+        assertEquals(Set.of("codemirror.js", "elk.js", "viewpoint_kernel.js"), EditorHttpServer.ASSETS.keySet());
+        assertEquals(
+            "text/javascript; charset=utf-8",
+            EditorHttpServer.ASSETS.get("viewpoint_kernel.js").contentType()
+        );
     }
 
     @Test
     void doesNotServeTheKernelWithoutAProof() {
-        assertEquals(403, sample("/assets/viewpoint_kernel.wasm", null).statusCode());
-        assertEquals(403, sample("/assets/viewpoint_kernel.wasm", "wrong").statusCode());
+        assertEquals(403, sample("/assets/viewpoint_kernel.js", null).statusCode());
+        assertEquals(403, sample("/assets/viewpoint_kernel.js", "wrong").statusCode());
     }
 
     @Test
@@ -695,8 +698,9 @@ class EditorHttpServerTest {
             "/assets/ELK.js",
             "/assets/elk.mjs",
             "/assets/elk.wasm",
-            "/assets/viewpoint_kernel.wasm/",
-            "/assets/viewpoint_kernel.wasm.map",
+            "/assets/viewpoint_kernel.js/",
+            "/assets/viewpoint_kernel.js.map",
+            "/assets/viewpoint_kernel.wasm",
             "/assets/THIRD-PARTY-NOTICES.txt",
             "/assets/../standalone.html",
             "/assets/%2e%2e/standalone.html",

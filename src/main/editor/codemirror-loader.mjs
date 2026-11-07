@@ -3,7 +3,16 @@ try {
   const meta = document.querySelector('meta[name="archicode-asset:codemirror.js"]');
   const content = meta ? meta.getAttribute('content') : null;
   if (!content) throw new Error('the page names no codemirror.js asset');
-  const cm = await import(new URL(content, document.baseURI).href);
+  // a classic script, which a page opened from a disk (file://) may load, unlike a module: it sets window.ArchiCodeCodeMirror
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = new URL(content, document.baseURI).href;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('the script ' + script.src + ' could not be loaded'));
+    document.head.appendChild(script);
+  });
+  const cm = window.ArchiCodeCodeMirror;
+  if (!cm) throw new Error('codemirror.js did not define ArchiCodeCodeMirror');
   window.CM = { EditorView: cm.EditorView, basicSetup: cm.basicSetup, yaml: cm.yaml, json: cm.json };
   // the colors of the code in the dark scheme (the default highlighting is written for a light page): a plain extra,
   // the editor works without it

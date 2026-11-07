@@ -64,9 +64,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  *       the application (UTF-8, {@code text/yaml}). The routes under {@code /samples/} are a table of two entries
  *       ({@link #SAMPLES}): any other path there is 404, and a request never names a resource. It has the {@code Host}
  *       check of the page and wants the token in the header or the session cookie, never in the query (403).</li>
- *   <li>{@code GET /assets/codemirror.js}, {@code GET /assets/elk.js} and {@code GET /assets/viewpoint_kernel.wasm} —
- *       the two libraries and the kernel the editor page loads beside itself, resources of the application
- *       ({@code text/javascript; charset=utf-8} for the libraries, {@code application/wasm} for the kernel). The routes
+ *   <li>{@code GET /assets/codemirror.js}, {@code GET /assets/elk.js} and {@code GET /assets/viewpoint_kernel.js} —
+ *       the two libraries and the kernel (the script that holds its WebAssembly as base64) the editor page loads beside itself,
+ *       resources of the application, three classic scripts ({@code text/javascript; charset=utf-8}) so that a page opened
+ *       from a disk loads them too. The routes
  *       under {@code /assets/} are a table of three entries ({@link #ASSETS}): any other path there is 404, a query such as
  *       {@code ?v=} is ignored, and a request never names a resource. Same {@code Host} check and same proof as the
  *       samples: the token in the header or the session cookie, never in the query (403).</li>
@@ -121,8 +122,8 @@ public class EditorHttpServer {
         new Asset("/editor-webapp/assets/codemirror.js", "text/javascript; charset=utf-8"),
         "elk.js",
         new Asset("/editor-webapp/assets/elk.js", "text/javascript; charset=utf-8"),
-        "viewpoint_kernel.wasm",
-        new Asset("/editor-webapp/assets/viewpoint_kernel.wasm", "application/wasm")
+        "viewpoint_kernel.js",
+        new Asset("/editor-webapp/assets/viewpoint_kernel.js", "text/javascript; charset=utf-8")
     );
 
     private static final String SAMPLE_TYPE = "text/yaml; charset=utf-8";
