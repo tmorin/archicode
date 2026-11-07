@@ -1,6 +1,6 @@
 ---
 type: prg
-status: active
+status: completed
 run: 0230
 wave: 034
 ---
@@ -16,6 +16,7 @@ wave: 034
 
 - 2026-11-07: Stage 9 C scan of pln-0230 against the TDD and the repository by a fresh leaf agent (no PRD, so only the TDD and repository comparisons apply): every source_requirements id traces to a real REQ/DEC/IMP/CTR/TG/CON/RISK/IF/FLOW/ASM/Q item, and the likely_files and test names exist (matrix-cases.json, PlateauMatrix.java, story-scene.js, plateau-choice.js, folder-session.js, changes-panel.js, the node tests, the e2e specs, the scripts, JDK 25.0.4-tem; the editor has 98 upward pairs against ratchet.max 99); C-DOC outcome, the TDD was the side to fix: applied the Stage 5 corrections to the TDD (drawPlateau takes { compare }, model/ returns state words and presentation/ adds the glyphs, no page memo, application/folder-session.js is edited, blocked/null/stale-path states in IF-4/DEC-6/CTR-2, CI-arc-1 against mirror of and shared_cases, replaces-large-pair is 839 changes, the model arrow to comparison.js removed from the diagram, the hideWording edge of FLOW-2); amended the pln (gaps 001-006 marked fixed in the TDD, new gap-010 on where the oracle test gets its inputs, task-002/task-007 wording); blocking_gaps stays empty, no Stage-10 blocker carried; complete_wave.py run --stage implement exits 0 after the edit.
 - 2026-11-07: implement workflow stopped, state blocked: task not verified ["task-007: failed twice (The acceptance criterion 'the log says whether the model of ArchiCode changed' is not met: docs/wav/wav-034-diagrams-assets-likec4-matrix-page/run/run-0230-plateau-matrix-page/prg-0230-plateau-matrix-page.md has no task-007 entry. Also, 'npx prettier --check src/main/editor/presentation/CLAUDE.md' prints '[warn] src/main/editor/presentation/CLAUDE.md. Code style issues found'. The HEAD version of the file fails the same way.)"]
+- 2026-11-07: Stage 11 verification: pln criteria re-checked against the files and the cheap gates re-run (editor:check, format:check, lint, matrix node tests 34/34); the heavy gates rest on the task-008 record; pln execution_manifest.status set to done, run and prg set to completed; the model of ArchiCode is unchanged (CI-arc-1 discharged, CI-dom-1 n/a); the backlog register is github-issues (check-backlog skipped, exit 0); noted that commit 7a1c867 (#207) touched src/main/rust docs and embed.sh outside this run.
 
 ## Findings
 

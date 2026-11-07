@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 034
-status: proposed
+status: completed
 date: 2026-11-06
 related:
   - docs/wav/wav-033-import-structurizr-and-plateau-matrix/wav-033-import-structurizr-and-plateau-matrix.md
