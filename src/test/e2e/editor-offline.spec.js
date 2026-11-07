@@ -1,10 +1,13 @@
 // The editor with the network cut: every URL whose host is not 127.0.0.1 is aborted and recorded, and the editor still
-// draws a diagram (ELK, from assets/elk.js; the kernel, from assets/viewpoint_kernel.wasm) and edits YAML in CodeMirror (assets/codemirror.js). A build that imports
+// draws a diagram (ELK, from assets/elk.js; the kernel, from assets/viewpoint_kernel.js) and edits YAML in CodeMirror (assets/codemirror.js). The three are classic scripts, so that the page also works opened from a disk (file://). A build that imports
 // from a remote host again records a request and fails the last assertion of its test. `g.dg-node` exists only when ELK
 // laid the view out; `.cm-editor` exists only when CodeMirror mounted.
 
 const { test, expect, openPerspective } = require('./fixtures');
 const { CORNER_SHOP } = require('./workspace');
+const { pathToFileURL } = require('node:url');
+const path = require('node:path');
+const { ROOT } = require('./harness');
 
 // Aborts and records every request that does not go to 127.0.0.1.
 async function blockOutsideWorld(page) {
@@ -20,11 +23,11 @@ async function blockOutsideWorld(page) {
   return blocked;
 }
 
-// Records the answers for the kernel file, and the time from goto to the first drawn node.
+// Records the answers for the kernel script, and the time from goto to the first drawn node.
 function watchKernel(page) {
   const answers = [];
   page.on('response', (response) => {
-    if (new URL(response.url()).pathname.endsWith('/assets/viewpoint_kernel.wasm')) {
+    if (new URL(response.url()).pathname.endsWith('/assets/viewpoint_kernel.js')) {
       answers.push({ status: response.status(), type: response.headers()['content-type'] });
     }
   });
@@ -35,7 +38,7 @@ async function expectKernelFromFile(page, answers) {
   expect(answers.length, 'requests for the kernel file').toBeGreaterThan(0);
   for (const answer of answers) {
     expect(answer.status).toBe(200);
-    expect(answer.type).toContain('application/wasm');
+    expect(answer.type).toContain('text/javascript');
   }
   expect(await page.content(), 'the page carries no kernel block').not.toMatch(/<script[^>]*id="viewpoint-kernel/);
 }
@@ -95,6 +98,25 @@ test('the hosted-style page: the sample is drawn and CodeMirror mounts with ever
 
   expect(hosted.requests).toContain('/editor/assets/elk.js');
   expect(hosted.requests).toContain('/editor/assets/codemirror.js');
-  expect(hosted.requests).toContain('/editor/assets/viewpoint_kernel.wasm');
+  expect(hosted.requests).toContain('/editor/assets/viewpoint_kernel.js');
   expect(blocked, 'requests to a host other than 127.0.0.1').toEqual([]);
+});
+
+// How the editor is also used: the file standalone.html opened from a disk. Chrome and Firefox refuse an import() or a fetch
+// of a file there, and load a classic script, so this fails when an asset goes back to a module or to a fetch.
+test('the page opened from a disk (file://) loads its kernel, ELK and CodeMirror from the files beside it', async ({
+  page
+}) => {
+  const url = pathToFileURL(path.join(ROOT, 'src/main/resources/editor-webapp/standalone.html')).href;
+  await page.goto(url);
+  await expect
+    .poll(() => page.evaluate(() => typeof window.CM), { message: 'CodeMirror, a script beside the page' })
+    .toBe('object');
+  const kernel = await page.evaluate(async () => typeof (await window.loadViewpointKernel()).compute);
+  expect(kernel, 'the kernel, a script holding its WebAssembly').toBe('function');
+  const elk = await page.evaluate(async () => {
+    const instance = await window.loadElk();
+    return instance === null ? null : typeof instance.layout;
+  });
+  expect(elk, 'ELK, a script beside the page').toBe('function');
 });

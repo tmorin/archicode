@@ -269,7 +269,11 @@ const ASSET_SKELETON = SKELETON.replace('<!DOCTYPE html>', '<!DOCTYPE html>\n<!-
 function makeAssetTree() {
   const root = makeTree({ skeleton: ASSET_SKELETON });
   const editor = 'src/main/editor';
-  write(root, `${editor}/assets.json`, JSON.stringify({ assets: [{ name: 'lib.js', entry: 'bundles/lib.mjs' }] }));
+  write(
+    root,
+    `${editor}/assets.json`,
+    JSON.stringify({ assets: [{ name: 'lib.js', entry: 'bundles/lib.mjs', global: 'Lib' }] })
+  );
   write(root, `${editor}/bundles/lib.mjs`, "export { answer } from 'fakepkg';\n");
   write(root, 'node_modules/fakepkg/index.js', 'export const answer = 42;\n');
   write(
@@ -384,49 +388,71 @@ test('a tree without assets.json builds as before, with no assets folder', () =>
   assert.equal(fs.existsSync(path.join(root, ASSETS)), false);
 });
 
-// ---- the `files` of assets.json: committed files beside the bundles, named by a <meta> and not built ----
+// ---- the `encoded` files of assets.json: a committed file beside the bundles, written as the base64 string of a global ----
 
-function makeFilesTree(files = [{ name: 'kernel.wasm' }], { present = true } = {}) {
+function makeEncodedTree(
+  encoded = [{ name: 'kernel.js', from: 'kernel.wasm', global: 'KernelBytes' }],
+  { present = true } = {}
+) {
   const root = makeAssetTree();
   const editor = 'src/main/editor';
   write(
     root,
     `${editor}/assets.json`,
-    JSON.stringify({ assets: [{ name: 'lib.js', entry: 'bundles/lib.mjs' }], files })
+    JSON.stringify({ assets: [{ name: 'lib.js', entry: 'bundles/lib.mjs', global: 'Lib' }], encoded })
   );
   if (present) write(root, `${ASSETS}/kernel.wasm`, WASM);
   return root;
 }
 
-test('a listed file gets a <meta> after the assets, with the first 8 hex of its SHA-256, and is left as it is', () => {
-  const root = makeFilesTree();
+test('a bundle is a classic script that sets its global, not a module', () => {
+  const root = makeAssetTree();
+  assert.equal(run(root).code, 0);
+  const text = fs.readFileSync(path.join(root, ASSETS, 'lib.js'), 'utf8');
+  assert.match(text, /var Lib=/, 'an IIFE that names the global');
+  assert.doesNotMatch(text, /^export |\bexport\s*\{/m, 'no module export: a page opened from a disk cannot import it');
+});
+
+test('an encoded file is a script that sets the base64 of its source on its global, and has a <meta> with its hash', () => {
+  const root = makeEncodedTree();
   const result = run(root);
   assert.equal(result.code, 0, result.err);
+  const written = path.join(root, ASSETS, 'kernel.js');
+  assert.equal(
+    fs.readFileSync(written, 'utf8'),
+    `/* kernel.js: kernel.wasm as base64, by scripts/build-editor.mjs */\nglobalThis.KernelBytes = '${WASM.toString('base64')}';\n`
+  );
+  assert.ok(
+    fs.readFileSync(path.join(root, ASSETS, 'kernel.wasm')).equals(WASM),
+    'the build does not touch the source'
+  );
   const page = fs.readFileSync(path.join(root, PAGE), 'utf8');
-  const file = path.join(root, ASSETS, 'kernel.wasm');
   const lib = `<meta name="archicode-asset:lib.js" content="./assets/lib.js?v=${sha8(path.join(root, ASSETS, 'lib.js'))}">`;
-  const meta = `<meta name="archicode-asset:kernel.wasm" content="./assets/kernel.wasm?v=${sha8(file)}">`;
+  const meta = `<meta name="archicode-asset:kernel.js" content="./assets/kernel.js?v=${sha8(written)}">`;
   assert.ok(page.includes(`${lib}\n${meta}\n`), page);
-  assert.ok(fs.readFileSync(file).equals(WASM), 'the build does not touch the file');
-  assert.ok(!page.includes(WASM.toString('base64')), 'the file is not inlined in the page');
+  assert.ok(!page.includes(WASM.toString('base64')), 'the bytes are not inlined in the page');
   assert.equal(run(root, '--check').code, 0);
 });
 
-test('a listed file that does not exist is one line: the asset is missing', () => {
-  const root = makeFilesTree(undefined, { present: false });
-  refused(root, /^error: the asset kernel\.wasm is missing/);
+test('an encoded file whose source does not exist is one line', () => {
+  const root = makeEncodedTree(undefined, { present: false });
+  refused(root, /^error: the file `kernel\.wasm` of `kernel\.js` is missing/);
 });
 
-test('a name in both lists, or twice in files, is refused', () => {
-  refused(makeFilesTree([{ name: 'lib.js' }]), /lists `lib\.js` as an asset and as a file/);
+test('a name listed twice, or an entry with no global, is refused', () => {
+  refused(makeEncodedTree([{ name: 'lib.js', from: 'kernel.wasm', global: 'K' }]), /lists `lib\.js` twice/);
   refused(
-    makeFilesTree([{ name: 'kernel.wasm' }, { name: 'kernel.wasm' }]),
-    /lists `kernel\.wasm` as an asset and as a file/
+    makeEncodedTree([
+      { name: 'kernel.js', from: 'kernel.wasm', global: 'K' },
+      { name: 'kernel.js', from: 'kernel.wasm', global: 'K' }
+    ]),
+    /lists `kernel\.js` twice/
   );
+  refused(makeEncodedTree([{ name: 'kernel.js', from: 'kernel.wasm' }]), /needs a `global` that is a JavaScript name/);
 });
 
-test('--where and --map work on a tree with files', () => {
-  const root = makeFilesTree();
+test('--where and --map work on a tree with encoded files', () => {
+  const root = makeEncodedTree();
   assert.equal(run(root).code, 0);
   assert.equal(run(root, '--where', '1').code, 0);
   assert.equal(run(root, '--map').code, 0);

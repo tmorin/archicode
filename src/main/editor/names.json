@@ -743,6 +743,7 @@
     "listBrowserWorkspaces",
     "listParam",
     "liveFolderId",
+    "loadClassicScript",
     "loadElk",
     "loadViewpointKernel",
     "loadWorkspace",

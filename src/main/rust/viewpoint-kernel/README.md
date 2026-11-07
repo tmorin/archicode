@@ -39,7 +39,7 @@ It is written once and runs in both places that draw views, so they cannot disag
 | Where | How |
 |---|---|
 | The CLI (`views generate`) | `src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm` is translated to JVM bytecode when Maven builds the project (Chicory's compiler plugin), then called through `ViewpointKernel` / `KernelViewpointFactory`. Works in a native image. |
-| The standalone editor | the same file, fetched by the page from `assets/viewpoint_kernel.wasm` beside it (the `?v=` hash is a `<meta>` of `standalone.html`) and instantiated by the browser. |
+| The standalone editor | the same bytes, as the script `assets/viewpoint_kernel.js` that `scripts/build-editor.mjs` writes (the base64 of the file) and the page loads with a `<script>` beside it (the `?v=` hash is a `<meta>` of `standalone.html`); the page decodes and instantiates them. A script, not a fetch of the `.wasm`, so that a page opened from a disk loads it. |
 
 Maven does not need Rust: the `.wasm` is committed. Rust is only needed to change the kernel.
 

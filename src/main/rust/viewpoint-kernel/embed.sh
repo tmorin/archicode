@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Builds the viewpoint kernel to WebAssembly and puts it where it is used: the file
 # src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm, which Maven translates to JVM bytecode for the CLI
-# (Chicory) and which the editor fetches beside the page (its ?v= hash is written in the page by scripts/build-editor.mjs).
+# (Chicory), and from which scripts/build-editor.mjs writes the script viewpoint_kernel.js that the editor page loads beside
+# itself (the base64 of the file, a classic script so that a page opened from a disk loads it; its ?v= hash is in the page).
 #
-#   embed.sh          rebuild, write the file, then assemble the page (node, after npm ci)
-#   embed.sh --check  rebuild into a scratch directory and fail if the committed file differs from the build, or if the
-#                     hash of the file in standalone.html is not the first 8 hex of its sha256 (needs rustup, no node)
+#   embed.sh          rebuild, write the file, then write the script and assemble the page (node, after npm ci)
+#   embed.sh --check  rebuild into a scratch directory and fail if the committed file differs from the build (needs rustup,
+#                     no node; `npm run editor:check` checks that the script and the page follow the file)
 #
 # The compiler is the one of rust-toolchain.toml (rustup installs it and the wasm target by itself), and the paths
 # of this machine are remapped, so that the same sources give the same bytes on every machine.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-html="$here/../../resources/editor-webapp/standalone.html"
 committed="$here/../../resources/editor-webapp/assets/viewpoint_kernel.wasm"
 
 # rustup looks for rust-toolchain.toml from the current directory
@@ -31,11 +31,6 @@ if [ "${1:-}" = "--check" ]; then
   problems=""
   if ! cmp -s "$wasm" "$committed"; then
     problems="src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm is not the build of the current sources"
-  fi
-  hash="$(sha256sum "$wasm" | cut -c1-8)"
-  meta="$(grep -o '<meta name="archicode-asset:viewpoint_kernel.wasm" content="[^"]*"' "$html" | sed 's/.*?v=\([0-9a-f]*\)"$/\1/' || true)"
-  if [ "$meta" != "$hash" ]; then
-    problems="${problems:+$problems$'\n'}the hash of the kernel in standalone.html is not the build of the current sources"
   fi
   if [ -n "$problems" ]; then
     echo "$problems" >&2

@@ -1,10 +1,13 @@
 'use strict';
-// loadViewpointKernel fetches viewpoint_kernel.wasm beside the page: streaming when the type is application/wasm, the bytes read otherwise;
-// a page with no meta, an HTTP error and a network error each have their sentence, and a failure is not remembered.
+// loadViewpointKernel loads viewpoint_kernel.js beside the page, a classic script that holds the WebAssembly in base64 (a page
+// opened from a disk may load a script but not fetch a file): a page with no meta, a script that does not load and one that
+// defines nothing each have their sentence, a failure is not remembered, and the string is dropped once decoded.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
+
+const ADDRESS = 'http://editor.test/assets/viewpoint_kernel.js';
 
 const states = (kernel) =>
   kernel.compare({
@@ -13,66 +16,43 @@ const states = (kernel) =>
     to: { application: [], technology: [] }
   });
 
-test('a file served as application/wasm is compiled while it streams', async () => {
-  const sandbox = createApp({ kernelType: 'application/wasm' });
+test('the kernel is loaded from the script beside the page and computes', async () => {
+  const sandbox = createApp();
   const kernel = await sandbox.loadViewpointKernel();
   assert.equal(typeof kernel.compute, 'function');
   assert.ok(states(kernel));
 });
 
-test('a file served as application/wasm with a parameter, which streaming refuses, is read as bytes', async () => {
-  const sandbox = createApp({ kernelType: 'application/wasm; charset=binary' });
-  assert.equal(typeof (await sandbox.loadViewpointKernel()).compute, 'function');
+test('the base64 string is dropped from the page once the bytes are decoded', async () => {
+  const sandbox = createApp();
+  await sandbox.loadViewpointKernel();
+  assert.equal(sandbox.ArchiCodeKernelWasm, undefined);
 });
 
-test('a file served with another type, or none, is read as bytes and still loads', async () => {
-  for (const kernelType of ['text/plain', null]) {
-    const sandbox = createApp({ kernelType });
-    assert.equal(typeof (await sandbox.loadViewpointKernel()).compute, 'function', String(kernelType));
-  }
-});
-
-test('a page with no meta for the file says so', async () => {
+test('a page with no meta for the script says so', async () => {
   const sandbox = createApp({ kernelMeta: false });
-  await assert.rejects(sandbox.loadViewpointKernel(), { message: 'The page names no viewpoint_kernel.wasm file.' });
+  await assert.rejects(sandbox.loadViewpointKernel(), { message: 'The page names no viewpoint_kernel.js file.' });
 });
 
-test('an HTTP error names the status and the address', async () => {
-  const sandbox = createApp({ kernelFetch: async () => new Response('no', { status: 404 }) });
+test('a script that does not load names the address and the cause', async () => {
+  const sandbox = createApp({ kernelScript: () => 'error' });
   await assert.rejects(sandbox.loadViewpointKernel(), {
-    message: 'The viewpoint kernel could not be loaded: HTTP 404 from http://editor.test/assets/viewpoint_kernel.wasm.'
+    message: `The viewpoint kernel could not be loaded from ${ADDRESS}: the script ${ADDRESS} could not be loaded`
   });
 });
 
-test('a network error names the address and the cause', async () => {
-  const sandbox = createApp({
-    kernelFetch: async () => {
-      throw new TypeError('Failed to fetch');
-    }
-  });
+test('a script that runs and defines nothing says so', async () => {
+  const sandbox = createApp({ kernelScript: () => 'empty' });
   await assert.rejects(sandbox.loadViewpointKernel(), {
-    message:
-      'The viewpoint kernel could not be loaded from http://editor.test/assets/viewpoint_kernel.wasm: Failed to fetch'
+    message: `The script ${ADDRESS} did not define the viewpoint kernel.`
   });
 });
 
-test('a failure is not remembered: the next call fetches again', async () => {
-  let calls = 0;
-  const bytes = require('node:fs').readFileSync(
-    require('node:path').join(__dirname, '../../../main/resources/editor-webapp/assets/viewpoint_kernel.wasm')
-  );
-  const sandbox = createApp({
-    kernelFetch: async () => {
-      calls++;
-      if (calls === 1) throw new TypeError('offline');
-      return new Response(bytes, { status: 200, headers: { 'content-type': 'application/wasm' } });
-    }
-  });
+test('a failure is not remembered: the next call loads again, and a success is remembered', async () => {
+  const sandbox = createApp({ kernelScript: (call) => (call === 1 ? 'error' : 'ok') });
   await assert.rejects(sandbox.loadViewpointKernel());
   const kernel = await sandbox.loadViewpointKernel();
   assert.equal(typeof kernel.compute, 'function');
-  assert.equal(calls, 2);
   assert.equal(await sandbox.loadViewpointKernel(), kernel, 'a success is remembered');
-  assert.equal(calls, 2);
   assert.ok(vm.isContext(sandbox));
 });

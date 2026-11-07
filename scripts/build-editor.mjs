@@ -4,14 +4,16 @@
 // The skeleton src/main/editor/page.html is read line by line. A line that is exactly one of
 //   <!--@include FILE-->   the content of FILE (relative to src/main/editor/) without its last newline
 //   <!--@parts-->          the parts of layers.json in order, each verbatim, without the last newline of the last
-//   <!--@assets-->          one <meta name="archicode-asset:NAME" content="./assets/NAME?v=8 hex"> per asset of assets.json, then per file of its `files`,
-//                          the 8 hex being the start of the SHA-256 of the committed file on disk
+//   <!--@assets-->          one <meta name="archicode-asset:NAME" content="./assets/NAME?v=8 hex"> per asset of assets.json, then per entry of its
+//                          `encoded`, the 8 hex being the start of the SHA-256 of the committed file on disk
 // is replaced; every other line is copied. The result is src/main/resources/editor-webapp/standalone.html.
 //
-// When src/main/editor/assets.json exists, the write mode also bundles each listed entry with esbuild (in memory) into
-// src/main/resources/editor-webapp/assets/NAME and writes the notice file THIRD-PARTY-NOTICES.txt, each only when its
-// bytes differ. The `files` of assets.json are committed files of that folder (the kernel's .wasm) that are not built: only
-// their metas are written. assets.json and the @assets line go together: one without the other is an error.
+// When src/main/editor/assets.json exists, the write mode also writes, in src/main/resources/editor-webapp/assets, each
+// file it lists and the notice file THIRD-PARTY-NOTICES.txt, each only when its bytes differ. Every one is a CLASSIC script
+// that the page adds with a <script src> (a page opened from a disk, file://, may not import a module or fetch a file, and
+// may load a script): an `assets` entry is bundled with esbuild (in memory) as an IIFE that sets the global `global`; an
+// `encoded` entry is a committed file of that folder (the kernel's .wasm, which Maven reads) written as the base64 string of
+// the global `global`. assets.json and the @assets line go together: one without the other is an error.
 //
 // Usage: node scripts/build-editor.mjs [--check | --check-identical <rev> | --where <line> | --map] [--root <dir>]
 //   (none)                    write the page, only when its bytes differ
@@ -147,7 +149,7 @@ export function assemble(root) {
       if (argument !== undefined) fail(`page.html:${here}: @assets takes no argument`);
       if (assets === null) fail(`page.html:${here}: @assets needs src/main/editor/assets.json`);
       assetsDirective = true;
-      for (const asset of [...assets, ...assets.files]) {
+      for (const asset of [...assets, ...assets.encoded]) {
         const file = join(root, ASSETS_DIR, asset.name);
         if (!existsSync(file)) fail(`the asset ${asset.name} is missing: ${ASSETS_DIR}/${asset.name}`);
         const hash = createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 8);
@@ -166,7 +168,7 @@ export function assemble(root) {
   return { text: `${out.join('\n')}\n`, origins, partFiles };
 }
 
-/** The assets of assets.json as [{ name, entry }] with the committed `files` as a property, or null when the file does not exist. */
+/** The assets of assets.json as [{ name, entry, global }] with the `encoded` ones as a property, or null when the file does not exist. */
 function readAssetList(editorDir) {
   const file = join(editorDir, 'assets.json');
   if (!existsSync(file)) return null;
@@ -179,28 +181,26 @@ function readAssetList(editorDir) {
   }
   const list = Array.isArray(config.assets) ? config.assets : fail('assets.json: `assets` must be a list');
   const names = new Set();
-  for (const asset of list) {
-    if (typeof asset?.name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*\.js$/.test(asset.name)) {
-      fail('assets.json: an asset needs a `name` that is a file name ending in .js');
+  const check = (item, what, needs) => {
+    if (typeof item?.name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*\.js$/.test(item.name)) {
+      fail(`assets.json: ${what} needs a \`name\` that is a file name ending in .js`);
     }
-    if (typeof asset.entry !== 'string') fail(`assets.json: the asset \`${asset.name}\` has no \`entry\``);
-    if (names.has(asset.name)) fail(`assets.json lists the asset \`${asset.name}\` twice`);
-    names.add(asset.name);
-  }
-  const files =
-    config.files === undefined
-      ? []
-      : Array.isArray(config.files)
-        ? config.files
-        : fail('assets.json: `files` must be a list');
-  for (const item of files) {
-    if (typeof item?.name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(item.name)) {
-      fail('assets.json: a file needs a `name` that is a file name');
+    if (typeof item[needs] !== 'string') fail(`assets.json: the ${what} \`${item.name}\` has no \`${needs}\``);
+    if (typeof item.global !== 'string' || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(item.global)) {
+      fail(`assets.json: the ${what} \`${item.name}\` needs a \`global\` that is a JavaScript name`);
     }
-    if (names.has(item.name)) fail(`assets.json lists \`${item.name}\` as an asset and as a file, or twice`);
+    if (names.has(item.name)) fail(`assets.json lists \`${item.name}\` twice`);
     names.add(item.name);
-  }
-  list.files = files;
+  };
+  for (const asset of list) check(asset, 'an asset', 'entry');
+  const encoded =
+    config.encoded === undefined
+      ? []
+      : Array.isArray(config.encoded)
+        ? config.encoded
+        : fail('assets.json: `encoded` must be a list');
+  for (const item of encoded) check(item, 'an encoded file', 'from');
+  list.encoded = encoded;
   return list;
 }
 
@@ -265,7 +265,8 @@ export async function buildAssets(root) {
         entryPoints: [entry],
         absWorkingDir: root,
         bundle: true,
-        format: 'esm',
+        format: 'iife',
+        globalName: asset.global,
         platform: 'browser',
         target: TARGETS,
         minify: true,
@@ -284,6 +285,15 @@ export async function buildAssets(root) {
     }
     files.push({ name: asset.name, bytes: Buffer.from(result.outputFiles[0].contents) });
     metafiles.push(result.metafile);
+  }
+  for (const item of assets.encoded) {
+    const source = join(root, ASSETS_DIR, item.from);
+    if (!existsSync(source))
+      fail(`the file \`${item.from}\` of \`${item.name}\` is missing: ${ASSETS_DIR}/${item.from}`);
+    const text =
+      `/* ${item.name}: ${item.from} as base64, by scripts/build-editor.mjs */\n` +
+      `globalThis.${item.global} = '${readFileSync(source).toString('base64')}';\n`;
+    files.push({ name: item.name, bytes: Buffer.from(text, 'utf8') });
   }
   files.push({ name: NOTICES, bytes: Buffer.from(noticesOf(root, metafiles), 'utf8') });
   return files;
