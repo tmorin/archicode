@@ -1,0 +1,3585 @@
+{
+  "_stage": "computed",
+  "projectId": "cloud-system",
+  "project": {
+    "id": "cloud-system",
+    "title": "Cloud System"
+  },
+  "specification": {
+    "tags": {
+      "api": {
+        "color": "tomato"
+      },
+      "db": {
+        "color": "grass"
+      },
+      "deprecated": {
+        "color": "blue"
+      },
+      "next": {
+        "color": "ruby"
+      }
+    },
+    "elements": {
+      "actor": {
+        "notation": "Person",
+        "style": {
+          "shape": "person"
+        }
+      },
+      "system": {
+        "notation": "Software system",
+        "style": {
+          "opacity": 10
+        }
+      },
+      "externalSystem": {
+        "notation": "External System",
+        "style": {
+          "color": "secondary",
+          "opacity": 10
+        }
+      },
+      "container": {
+        "style": {
+          "opacity": 50
+        }
+      },
+      "app": {
+        "notation": "Application",
+        "style": {
+          "multiple": true
+        }
+      },
+      "component": {
+        "style": {
+          "opacity": 50
+        }
+      },
+      "mobileApp": {
+        "notation": "Mobile Application",
+        "style": {
+          "shape": "mobile",
+          "icon": "tech:swift"
+        }
+      },
+      "queue": {
+        "notation": "Message queue",
+        "style": {
+          "shape": "queue",
+          "color": "secondary",
+          "icon": "aws:simple-queue-service"
+        }
+      },
+      "database": {
+        "notation": "Database",
+        "style": {
+          "shape": "storage"
+        }
+      },
+      "table": {
+        "notation": "Database Table",
+        "style": {
+          "shape": "storage"
+        }
+      },
+      "gqlMutation": {
+        "notation": "GraphQL Mutation",
+        "style": {
+          "icon": "tech:graphql"
+        }
+      },
+      "gqlQuery": {
+        "notation": "GraphQL Query",
+        "style": {
+          "icon": "tech:graphql"
+        }
+      },
+      "lambda": {
+        "notation": "Serverless function",
+        "style": {
+          "icon": "aws:lambda"
+        }
+      }
+    },
+    "relationships": {
+      "uses": {
+        "style": {}
+      },
+      "requests": {
+        "style": {}
+      }
+    },
+    "deployments": {
+      "node": {
+        "style": {}
+      },
+      "region": {
+        "summary": {
+          "txt": "Geo Region"
+        },
+        "notation": "Geo Region",
+        "style": {}
+      },
+      "zone": {
+        "summary": {
+          "txt": "Availability Zone"
+        },
+        "notation": "Availability Zone",
+        "style": {}
+      },
+      "group": {
+        "style": {}
+      },
+      "environment": {
+        "notation": "Environment",
+        "style": {
+          "color": "gray"
+        }
+      }
+    },
+    "metadataKeys": [
+      "bandwith",
+      "rps",
+      "security",
+      "version"
+    ],
+    "customColors": {
+      "custom": {
+        "elements": {
+          "fill": "#6BD731",
+          "stroke": "#3daf00",
+          "hiContrast": "#001400",
+          "loContrast": "#002100"
+        },
+        "relationships": {
+          "line": "#50a125",
+          "label": "#001400",
+          "labelBg": "#6BD731"
+        }
+      }
+    }
+  },
+  "elements": {
+    "cloud": {
+      "notation": "Software system",
+      "style": {
+        "opacity": 10
+      },
+      "description": {
+        "txt": "Our SaaS platfrom that allows\ncustomers to interact with\nthe latest technologies"
+      },
+      "title": "Cloud System",
+      "kind": "system",
+      "id": "cloud"
+    },
+    "cloud.legacy": {
+      "style": {
+        "opacity": 50
+      },
+      "links": [
+        {
+          "url": "./.github/workflows/update-diagrams.yml#L19-L25",
+          "title": "L19-L25",
+          "relative": ".github/workflows/update-diagrams.yml#L19-L25"
+        }
+      ],
+      "description": {
+        "txt": "The legacy version of our SaaS\nMVP as was presented to the first customers"
+      },
+      "title": "Cloud Legacy",
+      "kind": "container",
+      "id": "cloud.legacy"
+    },
+    "cloud.legacy.backend": {
+      "notation": "Application",
+      "style": {
+        "multiple": true
+      },
+      "description": {
+        "txt": "The legacy version of backend"
+      },
+      "title": "Legacy Backend",
+      "kind": "app",
+      "id": "cloud.legacy.backend"
+    },
+    "cloud.legacy.backend.services": {
+      "style": {
+        "opacity": 50
+      },
+      "tags": [
+        "deprecated"
+      ],
+      "description": {
+        "txt": "Description of Legacy Backend Services"
+      },
+      "title": "Legacy Backend Services",
+      "kind": "component",
+      "id": "cloud.legacy.backend.services"
+    },
+    "amazon": {
+      "notation": "External System",
+      "style": {
+        "color": "amber",
+        "opacity": 10,
+        "icon": "tech:amazon-web-services"
+      },
+      "technology": "Amazon Web Services",
+      "description": {
+        "txt": "Cloud and managed services provider"
+      },
+      "title": "Amazon",
+      "kind": "externalSystem",
+      "id": "amazon"
+    },
+    "amazon.rds": {
+      "style": {
+        "opacity": 50,
+        "shape": "storage",
+        "icon": "aws:rds"
+      },
+      "technology": "Rds",
+      "description": {
+        "txt": "Relational Database Service"
+      },
+      "title": "RDS",
+      "kind": "container",
+      "id": "amazon.rds"
+    },
+    "amazon.rds.aurora": {
+      "style": {
+        "opacity": 50,
+        "icon": "tech:mysql",
+        "shape": "storage",
+        "color": "secondary"
+      },
+      "tags": [
+        "db"
+      ],
+      "technology": "Mysql",
+      "description": {
+        "txt": "Aurora RDS"
+      },
+      "title": "Aurora",
+      "kind": "component",
+      "id": "amazon.rds.aurora"
+    },
+    "cloud.next": {
+      "style": {
+        "opacity": 50
+      },
+      "description": {
+        "txt": "Cloud Next is the next version of our cloud systems"
+      },
+      "title": "Cloud Next",
+      "kind": "container",
+      "id": "cloud.next"
+    },
+    "cloud.next.backend": {
+      "notation": "Application",
+      "style": {
+        "multiple": true,
+        "icon": "tech:nestjs"
+      },
+      "tags": [
+        "api"
+      ],
+      "technology": "Nestjs",
+      "description": {
+        "txt": "The next version of backend"
+      },
+      "title": "Backend V2",
+      "kind": "app",
+      "id": "cloud.next.backend"
+    },
+    "cloud.next.graphql": {
+      "style": {
+        "opacity": 50,
+        "icon": "tech:graphql"
+      },
+      "tags": [
+        "api",
+        "next"
+      ],
+      "technology": "Graphql",
+      "description": {
+        "txt": "GraphQL API for the backend\nUses Apollo Server"
+      },
+      "title": "GraphQL",
+      "kind": "component",
+      "id": "cloud.next.graphql"
+    },
+    "cloud.next.events": {
+      "style": {
+        "opacity": 50
+      },
+      "title": "Events Manager",
+      "kind": "component",
+      "id": "cloud.next.events"
+    },
+    "amazon.rds.aurora.tblUsers": {
+      "notation": "Database Table",
+      "style": {
+        "shape": "storage",
+        "color": "secondary"
+      },
+      "tags": [
+        "next"
+      ],
+      "description": {
+        "txt": "Table with registered users.\nContains references to Identity provider."
+      },
+      "title": "Users Table",
+      "kind": "table",
+      "id": "amazon.rds.aurora.tblUsers"
+    },
+    "cloud.next.graphql.myAccount": {
+      "notation": "GraphQL Query",
+      "style": {
+        "icon": "tech:graphql"
+      },
+      "technology": "Graphql",
+      "description": {
+        "txt": "Returns the account of the authenticated user"
+      },
+      "title": "myAccount",
+      "kind": "gqlQuery",
+      "id": "cloud.next.graphql.myAccount"
+    },
+    "cloud.next.graphql.updateAccount": {
+      "notation": "GraphQL Mutation",
+      "style": {
+        "icon": "tech:graphql"
+      },
+      "technology": "Graphql",
+      "description": {
+        "txt": "If requested by customer, updates only its own account\nSupport user updates any account"
+      },
+      "title": "updateAccount",
+      "kind": "gqlMutation",
+      "id": "cloud.next.graphql.updateAccount"
+    },
+    "cloud.ui": {
+      "metadata": {
+        "version": "2.1.1"
+      },
+      "style": {
+        "opacity": 50,
+        "shape": "browser"
+      },
+      "description": {
+        "txt": "All the frontend applications\nof Cloud System"
+      },
+      "title": "Frontends",
+      "kind": "container",
+      "id": "cloud.ui"
+    },
+    "cloud.ui.dashboard": {
+      "notation": "Application",
+      "style": {
+        "multiple": true,
+        "shape": "browser"
+      },
+      "description": {
+        "txt": "Nextjs application, hosted on Vercel"
+      },
+      "title": "Customer Dashboard",
+      "kind": "app",
+      "id": "cloud.ui.dashboard"
+    },
+    "cloud.ui.mobile": {
+      "notation": "Mobile Application",
+      "style": {
+        "shape": "mobile",
+        "icon": "tech:swift"
+      },
+      "links": [
+        {
+          "url": "/view/mobile",
+          "title": "view",
+          "relative": "view/mobile"
+        }
+      ],
+      "technology": "Swift",
+      "description": {
+        "txt": "Native iOS Application\nwritten in Swift"
+      },
+      "title": "Customer Mobile App",
+      "kind": "mobileApp",
+      "id": "cloud.ui.mobile"
+    },
+    "cloud.ui.supportPanel": {
+      "notation": "Application",
+      "style": {
+        "multiple": true,
+        "icon": "tech:astro"
+      },
+      "technology": "Astro",
+      "description": {
+        "txt": "Retoool Application"
+      },
+      "title": "Support Panel",
+      "kind": "app",
+      "id": "cloud.ui.supportPanel"
+    },
+    "amazon.sqs": {
+      "style": {
+        "opacity": 50,
+        "icon": "aws:simple-queue-service"
+      },
+      "technology": "Simple Queue Service",
+      "description": {
+        "txt": "Simple Queue Service"
+      },
+      "title": "SQS",
+      "kind": "container",
+      "id": "amazon.sqs"
+    },
+    "amazon.lambdas": {
+      "style": {
+        "opacity": 50
+      },
+      "tags": [
+        "deprecated",
+        "api",
+        "db"
+      ],
+      "description": {
+        "txt": "Serverless compute"
+      },
+      "title": "Lambdas",
+      "kind": "container",
+      "id": "amazon.lambdas"
+    },
+    "amazon.rds.pg": {
+      "style": {
+        "opacity": 50,
+        "icon": "tech:postgresql"
+      },
+      "tags": [
+        "db"
+      ],
+      "technology": "Postgresql",
+      "title": "PostgreSQL",
+      "kind": "component",
+      "id": "amazon.rds.pg"
+    },
+    "amazon.sqs.queue1": {
+      "notation": "Message queue",
+      "style": {
+        "shape": "queue",
+        "color": "secondary",
+        "icon": "aws:simple-queue-service"
+      },
+      "technology": "Simple Queue Service",
+      "description": {
+        "txt": "Queue with raw data"
+      },
+      "title": "Raw Data",
+      "kind": "queue",
+      "id": "amazon.sqs.queue1"
+    },
+    "amazon.sqs.queue2": {
+      "notation": "Message queue",
+      "style": {
+        "shape": "queue",
+        "color": "secondary",
+        "icon": "aws:simple-queue-service"
+      },
+      "technology": "Simple Queue Service",
+      "description": {
+        "txt": "Filtered and preprocessed data\nReady for further processing"
+      },
+      "title": "Enriched Data",
+      "kind": "queue",
+      "id": "amazon.sqs.queue2"
+    },
+    "amazon.lambdas.fn_enrich": {
+      "notation": "Serverless function",
+      "style": {
+        "icon": "aws:lambda"
+      },
+      "technology": "Lambda",
+      "description": {
+        "txt": "Enriches raw data\nby adding additional information"
+      },
+      "title": "Enrichment",
+      "kind": "lambda",
+      "id": "amazon.lambdas.fn_enrich"
+    },
+    "amazon.rds.pg.tblUsers": {
+      "notation": "Database Table",
+      "style": {
+        "shape": "storage",
+        "icon": "https://icons.terrastruct.com/dev%2Fpostgresql.svg"
+      },
+      "tags": [
+        "deprecated"
+      ],
+      "description": {
+        "txt": "Table with registered users. Contains references to Identity provider.\n[deprecated, moving to Aurora]"
+      },
+      "title": "Users Table",
+      "kind": "table",
+      "id": "amazon.rds.pg.tblUsers"
+    },
+    "customer": {
+      "notation": "Person",
+      "style": {
+        "shape": "person"
+      },
+      "summary": {
+        "txt": "Interacts with the system"
+      },
+      "description": {
+        "md": "Long description\n\n## Markdown\n\n```\nCode block\n```\n\n- List item\n- List item\n- List item\n\n## Table\n\n| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Row 1    | Row 1    | Row 1    |\n| Row 2    | Row 2    | Row 2    |\n| Row 3    | Row 3    | Row 3    |"
+      },
+      "title": "Cloud System Customer",
+      "kind": "actor",
+      "id": "customer"
+    },
+    "cloud.supportUser": {
+      "notation": "Person",
+      "style": {
+        "shape": "person"
+      },
+      "description": {
+        "txt": "Support team member\nHas limited access to the system"
+      },
+      "title": "Support User",
+      "kind": "actor",
+      "id": "cloud.supportUser"
+    }
+  },
+  "relations": {
+    "1kszipp": {
+      "source": {
+        "model": "cloud.legacy.backend.services"
+      },
+      "target": {
+        "model": "amazon.rds.pg.tblUsers"
+      },
+      "id": "1kszipp",
+      "title": "reads/writes"
+    },
+    "1mbcqs3": {
+      "navigateTo": "cloud-to-amazon",
+      "source": {
+        "model": "cloud.next.backend"
+      },
+      "target": {
+        "model": "amazon.rds.aurora.tblUsers"
+      },
+      "id": "1mbcqs3",
+      "title": "reads/writes"
+    },
+    "rz7igd": {
+      "source": {
+        "model": "cloud.next.backend"
+      },
+      "target": {
+        "model": "cloud.legacy.backend.services"
+      },
+      "id": "rz7igd",
+      "title": "calls legacy"
+    },
+    "1ql35tl": {
+      "navigateTo": "cloud-to-amazon",
+      "source": {
+        "model": "cloud.next.events"
+      },
+      "target": {
+        "model": "amazon.sqs"
+      },
+      "id": "1ql35tl",
+      "title": "publishes events"
+    },
+    "1wckwm9": {
+      "technology": "REST",
+      "source": {
+        "model": "cloud.next.backend"
+      },
+      "target": {
+        "model": "cloud.next.events"
+      },
+      "id": "1wckwm9",
+      "title": "triggers"
+    },
+    "vfgn5n": {
+      "navigateTo": "cloud-to-amazon",
+      "technology": "JSON",
+      "source": {
+        "model": "cloud.next.events"
+      },
+      "target": {
+        "model": "amazon.sqs.queue1"
+      },
+      "id": "vfgn5n",
+      "title": "publishes events"
+    },
+    "145bos9": {
+      "navigateTo": "cloud-to-amazon",
+      "technology": "proto",
+      "source": {
+        "model": "cloud.next.events"
+      },
+      "target": {
+        "model": "amazon.sqs.queue2"
+      },
+      "id": "145bos9",
+      "title": "publishes events"
+    },
+    "4xklir": {
+      "source": {
+        "model": "cloud.next.graphql.myAccount"
+      },
+      "target": {
+        "model": "cloud.next.backend"
+      },
+      "id": "4xklir",
+      "title": "reads"
+    },
+    "1r078mv": {
+      "source": {
+        "model": "cloud.next.graphql.updateAccount"
+      },
+      "target": {
+        "model": "cloud.next.backend"
+      },
+      "id": "1r078mv",
+      "title": "writes"
+    },
+    "k267jb": {
+      "source": {
+        "model": "customer"
+      },
+      "target": {
+        "model": "cloud.ui.dashboard"
+      },
+      "id": "k267jb",
+      "title": "opens in the browser vit HTTPS"
+    },
+    "27wqxs": {
+      "source": {
+        "model": "customer"
+      },
+      "target": {
+        "model": "cloud.ui.mobile"
+      },
+      "id": "27wqxs",
+      "title": "opens on a mobile device"
+    },
+    "mp89i5": {
+      "source": {
+        "model": "cloud.supportUser"
+      },
+      "target": {
+        "model": "cloud.ui.supportPanel"
+      },
+      "id": "mp89i5",
+      "title": "accesses via browser with encrypted VPN connection"
+    },
+    "f4f6a": {
+      "metadata": {
+        "bandwith": "medium",
+        "security": "approved"
+      },
+      "source": {
+        "model": "cloud.ui.dashboard"
+      },
+      "target": {
+        "model": "cloud.next.graphql.myAccount"
+      },
+      "id": "f4f6a",
+      "title": "fetches via GraphQL"
+    },
+    "narxx0": {
+      "metadata": {
+        "bandwith": "low",
+        "security": "tbd"
+      },
+      "source": {
+        "model": "cloud.ui.dashboard"
+      },
+      "target": {
+        "model": "cloud.next.graphql.updateAccount"
+      },
+      "id": "narxx0",
+      "title": "mutates via GraphQL"
+    },
+    "uqo3ho": {
+      "metadata": {
+        "bandwith": "high"
+      },
+      "source": {
+        "model": "cloud.ui.dashboard"
+      },
+      "target": {
+        "model": "cloud.legacy.backend.services"
+      },
+      "id": "uqo3ho",
+      "title": "fetches via REST"
+    },
+    "1grs5by": {
+      "title": "fetches via GraphQL",
+      "source": {
+        "model": "cloud.ui.mobile"
+      },
+      "target": {
+        "model": "cloud.next.graphql.myAccount"
+      },
+      "kind": "requests",
+      "id": "1grs5by"
+    },
+    "1g5r5a2": {
+      "title": "mutates via GraphQL",
+      "source": {
+        "model": "cloud.ui.mobile"
+      },
+      "target": {
+        "model": "cloud.next.graphql.updateAccount"
+      },
+      "kind": "uses",
+      "id": "1g5r5a2"
+    },
+    "a8gvsw": {
+      "title": "fetches via REST",
+      "source": {
+        "model": "cloud.ui.mobile"
+      },
+      "target": {
+        "model": "cloud.legacy.backend.services"
+      },
+      "kind": "uses",
+      "id": "a8gvsw"
+    },
+    "svpc3h": {
+      "source": {
+        "model": "cloud.ui.supportPanel"
+      },
+      "target": {
+        "model": "cloud.next.graphql"
+      },
+      "id": "svpc3h",
+      "title": "updates data in case of a support request"
+    },
+    "1nf1zxg": {
+      "navigateTo": "cloud-to-amazon",
+      "technology": "postgres-rest",
+      "source": {
+        "model": "cloud.ui.supportPanel"
+      },
+      "target": {
+        "model": "amazon.rds.aurora.tblUsers"
+      },
+      "id": "1nf1zxg",
+      "title": "reads users from the database"
+    },
+    "omqe0d": {
+      "source": {
+        "model": "amazon.lambdas.fn_enrich"
+      },
+      "target": {
+        "model": "amazon.sqs.queue1"
+      },
+      "id": "omqe0d",
+      "title": "reads raw data"
+    },
+    "ngweq5": {
+      "source": {
+        "model": "amazon.lambdas.fn_enrich"
+      },
+      "target": {
+        "model": "amazon.sqs.queue2"
+      },
+      "id": "ngweq5",
+      "title": "writes enriched data"
+    },
+    "1y1xzld": {
+      "navigateTo": "dynamic-view-1",
+      "title": "uses and pays",
+      "source": {
+        "model": "customer"
+      },
+      "target": {
+        "model": "cloud"
+      },
+      "kind": "uses",
+      "id": "1y1xzld"
+    },
+    "1qceuwx": {
+      "metadata": {
+        "rps": "1000"
+      },
+      "source": {
+        "model": "cloud.supportUser"
+      },
+      "target": {
+        "model": "customer"
+      },
+      "id": "1qceuwx",
+      "title": "helps with questions"
+    }
+  },
+  "globals": {
+    "predicates": {},
+    "dynamicPredicates": {},
+    "styles": {}
+  },
+  "views": {
+    "cloud_ui_dashboard": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "viewOf": "cloud.ui.dashboard",
+      "_stage": "computed",
+      "sourcePath": "cloud/ui.c4",
+      "description": null,
+      "title": "Customer Dashboard",
+      "id": "cloud_ui_dashboard",
+      "autoLayout": {
+        "direction": "TB"
+      },
+      "edges": [
+        {
+          "id": "1nbac95",
+          "parent": null,
+          "source": "cloud.ui.dashboard",
+          "target": "cloud.legacy",
+          "label": "fetches via REST",
+          "relations": [
+            "uqo3ho"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        },
+        {
+          "id": "1smkgij",
+          "parent": null,
+          "source": "cloud.ui.dashboard",
+          "target": "cloud.next",
+          "label": "[...]",
+          "relations": [
+            "f4f6a",
+            "narxx0"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "cloud.ui",
+          "parent": null,
+          "level": 0,
+          "children": [
+            "cloud.ui.dashboard"
+          ],
+          "inEdges": [],
+          "outEdges": [
+            "1nbac95",
+            "1smkgij"
+          ],
+          "title": "Frontends",
+          "modelRef": "cloud.ui",
+          "shape": "browser",
+          "color": "primary",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "All the frontend applications\nof Cloud System"
+          },
+          "tags": [],
+          "metadata": {
+            "version": "2.1.1"
+          },
+          "kind": "container",
+          "depth": 1,
+          "navigateTo": "cloud_ui"
+        },
+        {
+          "id": "cloud.ui.dashboard",
+          "parent": "cloud.ui",
+          "level": 1,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "1nbac95",
+            "1smkgij"
+          ],
+          "title": "Customer Dashboard",
+          "modelRef": "cloud.ui.dashboard",
+          "shape": "browser",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md",
+            "multiple": true
+          },
+          "description": {
+            "txt": "Nextjs application, hosted on Vercel"
+          },
+          "tags": [],
+          "notation": "Application",
+          "kind": "app"
+        },
+        {
+          "id": "cloud.legacy",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "1nbac95"
+          ],
+          "outEdges": [],
+          "title": "Cloud Legacy",
+          "modelRef": "cloud.legacy",
+          "shape": "rectangle",
+          "color": "muted",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "The legacy version of our SaaS\nMVP as was presented to the first customers"
+          },
+          "tags": [],
+          "links": [
+            {
+              "url": "./.github/workflows/update-diagrams.yml#L19-L25",
+              "title": "L19-L25",
+              "relative": ".github/workflows/update-diagrams.yml#L19-L25"
+            }
+          ],
+          "kind": "container",
+          "navigateTo": "cloud_legacy"
+        },
+        {
+          "id": "cloud.next",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "1smkgij"
+          ],
+          "outEdges": [],
+          "title": "Cloud Next",
+          "modelRef": "cloud.next",
+          "shape": "rectangle",
+          "color": "muted",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Cloud Next is the next version of our cloud systems"
+          },
+          "tags": [],
+          "kind": "container",
+          "navigateTo": "cloud_next"
+        }
+      ],
+      "notation": {
+        "nodes": [
+          {
+            "title": "Application",
+            "shape": "browser",
+            "color": "primary",
+            "kinds": [
+              "app"
+            ]
+          }
+        ]
+      },
+      "hash": "Fcv9oHHwND-wCw_BFewZhWbSr3yibrIDsAXJKGeCljI"
+    },
+    "customer": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "viewOf": "customer",
+      "_stage": "computed",
+      "sourcePath": "model.c4",
+      "description": null,
+      "title": "Cloud System Customer",
+      "id": "customer",
+      "autoLayout": {
+        "direction": "BT"
+      },
+      "edges": [
+        {
+          "id": "1r2spnx",
+          "parent": null,
+          "source": "customer",
+          "target": "cloud.ui",
+          "label": "[...]",
+          "relations": [
+            "k267jb",
+            "27wqxs"
+          ],
+          "color": "red",
+          "line": "dashed",
+          "head": "normal",
+          "isCustomized": true
+        },
+        {
+          "id": "1e1gf73",
+          "parent": null,
+          "source": "cloud.supportUser",
+          "target": "customer",
+          "label": "helps with questions",
+          "relations": [
+            "1qceuwx"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        },
+        {
+          "id": "1uibe4o",
+          "parent": "cloud",
+          "source": "cloud.supportUser",
+          "target": "cloud.ui",
+          "label": "accesses via browser with encrypted VPN connection",
+          "relations": [
+            "mp89i5"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "@gr1",
+          "parent": null,
+          "kind": "@group",
+          "title": "",
+          "color": "primary",
+          "shape": "rectangle",
+          "children": [
+            "cloud"
+          ],
+          "inEdges": [
+            "1r2spnx"
+          ],
+          "outEdges": [
+            "1e1gf73"
+          ],
+          "level": 0,
+          "depth": 2,
+          "tags": [],
+          "style": {
+            "border": "dashed",
+            "opacity": 15
+          }
+        },
+        {
+          "id": "cloud",
+          "parent": "@gr1",
+          "level": 1,
+          "children": [
+            "cloud.supportUser",
+            "cloud.ui"
+          ],
+          "inEdges": [
+            "1r2spnx"
+          ],
+          "outEdges": [
+            "1e1gf73"
+          ],
+          "title": "Cloud System",
+          "modelRef": "cloud",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 10,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Our SaaS platfrom that allows\ncustomers to interact with\nthe latest technologies"
+          },
+          "tags": [],
+          "notation": "Software system",
+          "kind": "system",
+          "depth": 1,
+          "navigateTo": "cloud"
+        },
+        {
+          "id": "cloud.supportUser",
+          "parent": "cloud",
+          "level": 2,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "1e1gf73",
+            "1uibe4o"
+          ],
+          "title": "Support User",
+          "modelRef": "cloud.supportUser",
+          "shape": "person",
+          "color": "indigo",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Support team member\nHas limited access to the system"
+          },
+          "tags": [],
+          "notation": "Person",
+          "kind": "actor"
+        },
+        {
+          "id": "customer",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "1e1gf73"
+          ],
+          "outEdges": [
+            "1r2spnx"
+          ],
+          "title": "Cloud System Customer",
+          "modelRef": "customer",
+          "shape": "person",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Interacts with the system"
+          },
+          "tags": [],
+          "notation": "Person",
+          "kind": "actor"
+        },
+        {
+          "id": "cloud.ui",
+          "parent": "cloud",
+          "level": 2,
+          "children": [],
+          "inEdges": [
+            "1r2spnx",
+            "1uibe4o"
+          ],
+          "outEdges": [],
+          "title": "Frontends",
+          "modelRef": "cloud.ui",
+          "shape": "browser",
+          "color": "primary",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "All the frontend applications\nof Cloud System"
+          },
+          "tags": [],
+          "metadata": {
+            "version": "2.1.1"
+          },
+          "kind": "container",
+          "navigateTo": "cloud_ui"
+        }
+      ],
+      "notation": {
+        "nodes": [
+          {
+            "title": "Person",
+            "shape": "person",
+            "color": "indigo",
+            "kinds": [
+              "actor"
+            ]
+          },
+          {
+            "title": "Person",
+            "shape": "person",
+            "color": "primary",
+            "kinds": [
+              "actor"
+            ]
+          },
+          {
+            "title": "Software system",
+            "shape": "rectangle",
+            "color": "primary",
+            "kinds": [
+              "system"
+            ]
+          }
+        ]
+      },
+      "hash": "JEdxBPSfq-qIzCtyBFEO2gdX87Pu36DjkyiFqLAp-l8"
+    },
+    "view-with-custom-colors": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "_stage": "computed",
+      "sourcePath": "views.c4",
+      "description": null,
+      "title": null,
+      "id": "view-with-custom-colors",
+      "autoLayout": {
+        "direction": "TB"
+      },
+      "edges": [
+        {
+          "id": "1wzb1fx",
+          "parent": null,
+          "source": "cloud",
+          "target": "amazon",
+          "label": "[...]",
+          "relations": [
+            "1kszipp",
+            "1mbcqs3",
+            "1ql35tl",
+            "vfgn5n",
+            "145bos9",
+            "1nf1zxg"
+          ],
+          "color": "custom",
+          "line": "dashed",
+          "head": "normal",
+          "navigateTo": "cloud-to-amazon",
+          "isCustomized": true
+        },
+        {
+          "id": "1ycshz3",
+          "parent": null,
+          "source": "cloud",
+          "target": "customer",
+          "label": "helps with questions",
+          "relations": [
+            "1qceuwx"
+          ],
+          "color": "custom",
+          "line": "dashed",
+          "head": "normal",
+          "isCustomized": true
+        },
+        {
+          "id": "kzb1r3",
+          "parent": null,
+          "source": "customer",
+          "target": "cloud",
+          "label": "uses and pays",
+          "relations": [
+            "k267jb",
+            "27wqxs",
+            "1y1xzld"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "kind": "uses",
+          "navigateTo": "dynamic-view-1"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "cloud",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "kzb1r3"
+          ],
+          "outEdges": [
+            "1wzb1fx",
+            "1ycshz3"
+          ],
+          "title": "Cloud System",
+          "modelRef": "cloud",
+          "shape": "rectangle",
+          "color": "custom",
+          "style": {
+            "opacity": 10,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Our SaaS platfrom that allows\ncustomers to interact with\nthe latest technologies"
+          },
+          "tags": [],
+          "notation": "Software system",
+          "kind": "system",
+          "navigateTo": "cloud"
+        },
+        {
+          "id": "amazon",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "1wzb1fx"
+          ],
+          "outEdges": [],
+          "title": "Amazon",
+          "modelRef": "amazon",
+          "shape": "rectangle",
+          "color": "amber",
+          "icon": "tech:amazon-web-services",
+          "style": {
+            "opacity": 10,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Cloud and managed services provider"
+          },
+          "tags": [],
+          "notation": "External System",
+          "technology": "Amazon Web Services",
+          "kind": "externalSystem",
+          "navigateTo": "amazon"
+        },
+        {
+          "id": "customer",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "1ycshz3"
+          ],
+          "outEdges": [
+            "kzb1r3"
+          ],
+          "title": "Cloud System Customer",
+          "modelRef": "customer",
+          "shape": "person",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Interacts with the system"
+          },
+          "tags": [],
+          "notation": "Person",
+          "kind": "actor",
+          "navigateTo": "customer"
+        }
+      ],
+      "notation": {
+        "nodes": [
+          {
+            "title": "Person",
+            "shape": "person",
+            "color": "primary",
+            "kinds": [
+              "actor"
+            ]
+          },
+          {
+            "title": "External System",
+            "shape": "rectangle",
+            "color": "amber",
+            "kinds": [
+              "externalSystem"
+            ]
+          },
+          {
+            "title": "Software system",
+            "shape": "rectangle",
+            "color": "custom",
+            "kinds": [
+              "system"
+            ]
+          }
+        ]
+      },
+      "hash": "U_TTfaBQ1IdKj-4Swg8mUy4F4mOOvuE85NvzXU6ouFk"
+    }
+  },
+  "deployments": {
+    "elements": {
+      "acc": {
+        "notation": "Environment",
+        "style": {
+          "color": "gray"
+        },
+        "kind": "environment",
+        "title": "acc",
+        "id": "acc"
+      },
+      "acc.eu": {
+        "summary": {
+          "txt": "Geo Region"
+        },
+        "notation": "Geo Region",
+        "style": {},
+        "kind": "region",
+        "title": "EU",
+        "id": "acc.eu"
+      },
+      "acc.us": {
+        "summary": {
+          "txt": "Geo Region"
+        },
+        "notation": "Geo Region",
+        "style": {},
+        "kind": "region",
+        "title": "US",
+        "id": "acc.us"
+      },
+      "acc.eu.server1": {
+        "style": {},
+        "kind": "node",
+        "title": "server1",
+        "id": "acc.eu.server1"
+      },
+      "acc.eu.server2": {
+        "style": {},
+        "kind": "node",
+        "title": "server2",
+        "id": "acc.eu.server2"
+      },
+      "acc.eu.backend": {
+        "id": "acc.eu.backend",
+        "element": "cloud.next.backend",
+        "style": {}
+      },
+      "acc.eu.events": {
+        "id": "acc.eu.events",
+        "element": "cloud.next.events",
+        "style": {}
+      },
+      "acc.eu.amazon": {
+        "style": {},
+        "kind": "group",
+        "title": "Amazon",
+        "id": "acc.eu.amazon"
+      },
+      "acc.us.serv1": {
+        "style": {},
+        "kind": "node",
+        "title": "serv1",
+        "id": "acc.us.serv1"
+      },
+      "acc.us.amazon": {
+        "style": {},
+        "kind": "group",
+        "title": "Amazon",
+        "id": "acc.us.amazon"
+      },
+      "acc.eu.server1.ui": {
+        "id": "acc.eu.server1.ui",
+        "element": "cloud.ui",
+        "style": {}
+      },
+      "acc.eu.server1.graphql": {
+        "id": "acc.eu.server1.graphql",
+        "element": "cloud.next.graphql",
+        "style": {}
+      },
+      "acc.eu.server1.backend": {
+        "id": "acc.eu.server1.backend",
+        "element": "cloud.next.backend",
+        "style": {}
+      },
+      "acc.eu.server2.ui": {
+        "id": "acc.eu.server2.ui",
+        "element": "cloud.ui",
+        "style": {}
+      },
+      "acc.eu.server2.graphql": {
+        "id": "acc.eu.server2.graphql",
+        "element": "cloud.next.graphql",
+        "style": {}
+      },
+      "acc.eu.server2.backend": {
+        "id": "acc.eu.server2.backend",
+        "element": "cloud.next.backend",
+        "style": {}
+      },
+      "acc.eu.amazon.rds": {
+        "id": "acc.eu.amazon.rds",
+        "element": "amazon.rds",
+        "style": {}
+      },
+      "acc.eu.amazon.sqs": {
+        "id": "acc.eu.amazon.sqs",
+        "element": "amazon.sqs",
+        "style": {}
+      },
+      "acc.us.serv1.ui": {
+        "id": "acc.us.serv1.ui",
+        "element": "cloud.ui",
+        "style": {}
+      },
+      "acc.us.serv1.graphql": {
+        "id": "acc.us.serv1.graphql",
+        "element": "cloud.next.graphql",
+        "style": {}
+      },
+      "acc.us.serv1.backend": {
+        "id": "acc.us.serv1.backend",
+        "element": "cloud.next.backend",
+        "style": {}
+      },
+      "acc.us.amazon.rds": {
+        "id": "acc.us.amazon.rds",
+        "element": "amazon.rds",
+        "style": {}
+      },
+      "customer": {
+        "style": {},
+        "kind": "node",
+        "title": "customer",
+        "id": "customer"
+      },
+      "prod": {
+        "notation": "Environment",
+        "style": {
+          "color": "gray"
+        },
+        "kind": "environment",
+        "technology": "OpenTofu",
+        "title": "Production environment",
+        "id": "prod"
+      },
+      "customer.customer": {
+        "id": "customer.customer",
+        "element": "customer",
+        "style": {}
+      },
+      "prod.eu": {
+        "summary": {
+          "txt": "Geo Region"
+        },
+        "notation": "Geo Region",
+        "style": {},
+        "kind": "region",
+        "title": "EU",
+        "id": "prod.eu"
+      },
+      "prod.us": {
+        "summary": {
+          "txt": "Geo Region"
+        },
+        "notation": "Geo Region",
+        "style": {},
+        "kind": "region",
+        "title": "US",
+        "id": "prod.us"
+      },
+      "prod.eu.zone1": {
+        "summary": {
+          "txt": "Availability Zone"
+        },
+        "notation": "Availability Zone",
+        "style": {},
+        "kind": "zone",
+        "title": "zone1",
+        "id": "prod.eu.zone1"
+      },
+      "prod.us.serv1": {
+        "style": {},
+        "kind": "node",
+        "title": "serv1",
+        "id": "prod.us.serv1"
+      },
+      "prod.us.serv2": {
+        "style": {},
+        "kind": "node",
+        "title": "serv2",
+        "id": "prod.us.serv2"
+      },
+      "prod.us.amazon": {
+        "style": {},
+        "kind": "group",
+        "title": "Amazon",
+        "id": "prod.us.amazon"
+      },
+      "prod.eu.zone1.server1": {
+        "style": {},
+        "kind": "node",
+        "title": "server1",
+        "id": "prod.eu.zone1.server1"
+      },
+      "prod.eu.zone1.server2": {
+        "style": {},
+        "kind": "node",
+        "title": "server2",
+        "id": "prod.eu.zone1.server2"
+      },
+      "prod.eu.zone1.server3": {
+        "style": {},
+        "kind": "node",
+        "title": "server3",
+        "id": "prod.eu.zone1.server3"
+      },
+      "prod.eu.zone1.server4": {
+        "style": {},
+        "kind": "node",
+        "title": "server4",
+        "id": "prod.eu.zone1.server4"
+      },
+      "prod.eu.zone1.amazon": {
+        "style": {},
+        "kind": "group",
+        "title": "Amazon",
+        "id": "prod.eu.zone1.amazon"
+      },
+      "prod.us.serv1.ui": {
+        "id": "prod.us.serv1.ui",
+        "element": "cloud.ui",
+        "style": {}
+      },
+      "prod.us.serv1.graphql": {
+        "id": "prod.us.serv1.graphql",
+        "element": "cloud.next.graphql",
+        "style": {}
+      },
+      "prod.us.serv2.backend": {
+        "id": "prod.us.serv2.backend",
+        "element": "cloud.next.backend",
+        "style": {}
+      },
+      "prod.us.amazon.rds": {
+        "id": "prod.us.amazon.rds",
+        "element": "amazon.rds",
+        "style": {}
+      },
+      "prod.us.amazon.sqs": {
+        "id": "prod.us.amazon.sqs",
+        "element": "amazon.sqs",
+        "style": {}
+      },
+      "prod.eu.zone1.server1.ui": {
+        "id": "prod.eu.zone1.server1.ui",
+        "element": "cloud.ui",
+        "style": {}
+      },
+      "prod.eu.zone1.server1.graphql": {
+        "id": "prod.eu.zone1.server1.graphql",
+        "element": "cloud.next.graphql",
+        "style": {}
+      },
+      "prod.eu.zone1.server2.ui": {
+        "id": "prod.eu.zone1.server2.ui",
+        "element": "cloud.ui",
+        "style": {}
+      },
+      "prod.eu.zone1.server2.graphql": {
+        "id": "prod.eu.zone1.server2.graphql",
+        "element": "cloud.next.graphql",
+        "style": {}
+      },
+      "prod.eu.zone1.server3.backend": {
+        "id": "prod.eu.zone1.server3.backend",
+        "element": "cloud.next.backend",
+        "style": {}
+      },
+      "prod.eu.zone1.server3.events": {
+        "id": "prod.eu.zone1.server3.events",
+        "element": "cloud.next.events",
+        "style": {}
+      },
+      "prod.eu.zone1.server4.backend": {
+        "id": "prod.eu.zone1.server4.backend",
+        "element": "cloud.next.backend",
+        "style": {}
+      },
+      "prod.eu.zone1.amazon.rds": {
+        "id": "prod.eu.zone1.amazon.rds",
+        "element": "amazon.rds",
+        "style": {}
+      }
+    },
+    "relations": {
+      "ebqimr": {
+        "title": "replicates",
+        "color": "green",
+        "source": {
+          "deployment": "acc.eu.amazon.rds"
+        },
+        "target": {
+          "deployment": "acc.us.amazon.rds"
+        },
+        "id": "ebqimr"
+      },
+      "1eflbki": {
+        "title": "replicates",
+        "color": "green",
+        "source": {
+          "deployment": "acc.us.amazon.rds"
+        },
+        "target": {
+          "deployment": "acc.eu.amazon.rds"
+        },
+        "id": "1eflbki"
+      },
+      "1hy815o": {
+        "title": "replicates",
+        "color": "green",
+        "source": {
+          "deployment": "prod.eu.zone1.amazon.rds"
+        },
+        "target": {
+          "deployment": "prod.us.amazon.rds"
+        },
+        "id": "1hy815o"
+      },
+      "1hfb7b1": {
+        "title": "replicates",
+        "color": "green",
+        "source": {
+          "deployment": "prod.us.amazon.rds"
+        },
+        "target": {
+          "deployment": "prod.eu.zone1.amazon.rds"
+        },
+        "id": "1hfb7b1"
+      },
+      "nnyiog": {
+        "title": "reuse",
+        "source": {
+          "deployment": "prod.eu.zone1.server4.backend"
+        },
+        "target": {
+          "deployment": "prod.eu.zone1.server3.events"
+        },
+        "id": "nnyiog"
+      },
+      "yneb83": {
+        "title": "reuse",
+        "color": "red",
+        "source": {
+          "deployment": "prod.eu.zone1.server3.events"
+        },
+        "target": {
+          "deployment": "prod.eu.zone1.server4.backend"
+        },
+        "id": "yneb83"
+      }
+    }
+  },
+  "imports": {},
+  "manualLayouts": {
+    "backend": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "viewOf": "cloud.next.backend",
+      "_stage": "layouted",
+      "sourcePath": "cloud/next.c4",
+      "description": null,
+      "title": "Backend V2",
+      "id": "backend",
+      "autoLayout": {
+        "direction": "TB"
+      },
+      "notation": {
+        "nodes": [
+          {
+            "title": "Application",
+            "shape": "rectangle",
+            "color": "primary",
+            "kinds": [
+              "app"
+            ]
+          },
+          {
+            "title": "External System",
+            "shape": "rectangle",
+            "color": "muted",
+            "kinds": [
+              "externalSystem"
+            ]
+          },
+          {
+            "title": "Software system",
+            "shape": "rectangle",
+            "color": "muted",
+            "kinds": [
+              "system"
+            ]
+          }
+        ]
+      },
+      "hash": "e45142199da989e5ce1f9d1b61952473a483f3cb",
+      "bounds": {
+        "x": -76,
+        "y": 241,
+        "width": 1279,
+        "height": 1084
+      },
+      "nodes": [
+        {
+          "id": "cloud",
+          "parent": null,
+          "level": 0,
+          "children": [
+            "cloud.next",
+            "cloud.legacy"
+          ],
+          "inEdges": [],
+          "outEdges": [
+            "1elbqem",
+            "148txyu"
+          ],
+          "title": "Cloud System",
+          "modelRef": "cloud",
+          "shape": "rectangle",
+          "color": "muted",
+          "style": {
+            "opacity": 10,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Our SaaS platfrom that allows\ncustomers to interact with\nthe latest technologies"
+          },
+          "tags": [],
+          "notation": "Software system",
+          "kind": "system",
+          "depth": 2,
+          "navigateTo": "cloud",
+          "x": -76,
+          "y": 241,
+          "width": 1279,
+          "height": 893,
+          "labelBBox": {
+            "x": 6,
+            "y": 0,
+            "width": 93,
+            "height": 15
+          }
+        },
+        {
+          "id": "cloud.next",
+          "parent": "cloud",
+          "level": 1,
+          "children": [
+            "cloud.next.graphql",
+            "cloud.next.backend",
+            "cloud.next.events"
+          ],
+          "inEdges": [],
+          "outEdges": [
+            "1elbqem",
+            "1mrbzo2"
+          ],
+          "title": "Cloud Next",
+          "modelRef": "cloud.next",
+          "shape": "rectangle",
+          "color": "muted",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Cloud Next is the next version of our cloud systems"
+          },
+          "tags": [],
+          "kind": "container",
+          "depth": 1,
+          "navigateTo": "cloud_next",
+          "x": -36,
+          "y": 296,
+          "width": 1199,
+          "height": 798,
+          "labelBBox": {
+            "x": 6,
+            "y": 0,
+            "width": 77,
+            "height": 15
+          }
+        },
+        {
+          "id": "cloud.next.graphql",
+          "parent": "cloud.next",
+          "level": 2,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "8gzokf"
+          ],
+          "title": "GraphQL",
+          "modelRef": "cloud.next.graphql",
+          "shape": "rectangle",
+          "color": "muted",
+          "icon": "tech:graphql",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "GraphQL API for the backend\nUses Apollo Server"
+          },
+          "tags": [
+            "api",
+            "next"
+          ],
+          "kind": "component",
+          "navigateTo": "graphql",
+          "x": 802,
+          "y": 351,
+          "width": 321,
+          "height": 180,
+          "labelBBox": {
+            "x": 47,
+            "y": 55,
+            "width": 259,
+            "height": 65
+          }
+        },
+        {
+          "id": "cloud.next.backend",
+          "parent": "cloud.next",
+          "level": 2,
+          "children": [],
+          "inEdges": [
+            "8gzokf"
+          ],
+          "outEdges": [
+            "1elbqem",
+            "1mrbzo2",
+            "1590sfl"
+          ],
+          "title": "Backend V2",
+          "modelRef": "cloud.next.backend",
+          "shape": "rectangle",
+          "color": "primary",
+          "icon": "tech:nestjs",
+          "style": {
+            "opacity": 15,
+            "size": "md",
+            "multiple": true
+          },
+          "description": {
+            "txt": "The next version of backend"
+          },
+          "tags": [
+            "api"
+          ],
+          "notation": "Application",
+          "kind": "app",
+          "x": 89,
+          "y": 453,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 50,
+            "y": 64,
+            "width": 251,
+            "height": 47
+          }
+        },
+        {
+          "id": "cloud.legacy",
+          "parent": "cloud",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "1mrbzo2"
+          ],
+          "outEdges": [
+            "148txyu"
+          ],
+          "title": "Cloud Legacy",
+          "modelRef": "cloud.legacy",
+          "shape": "rectangle",
+          "color": "muted",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "The legacy version of our SaaS\nMVP as was presented to the first customers"
+          },
+          "tags": [],
+          "links": [
+            {
+              "url": "./.github/workflows/update-diagrams.yml#L19-L25",
+              "title": "L19-L25",
+              "relative": ".github/workflows/update-diagrams.yml#L19-L25"
+            }
+          ],
+          "kind": "container",
+          "navigateTo": "cloud_legacy",
+          "x": 519,
+          "y": 795,
+          "width": 340,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 55,
+            "width": 305,
+            "height": 65
+          }
+        },
+        {
+          "id": "cloud.next.events",
+          "parent": "cloud.next",
+          "level": 2,
+          "children": [],
+          "inEdges": [
+            "1590sfl"
+          ],
+          "outEdges": [],
+          "title": "Events Manager",
+          "modelRef": "cloud.next.events",
+          "shape": "rectangle",
+          "color": "muted",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "component",
+          "x": 1,
+          "y": 873,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 85,
+            "y": 75,
+            "width": 150,
+            "height": 24
+          }
+        },
+        {
+          "id": "amazon",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "1elbqem",
+            "148txyu"
+          ],
+          "outEdges": [],
+          "title": "Amazon",
+          "modelRef": "amazon",
+          "shape": "rectangle",
+          "color": "muted",
+          "icon": "tech:amazon-web-services",
+          "style": {
+            "opacity": 10,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Cloud and managed services provider"
+          },
+          "tags": [],
+          "notation": "External System",
+          "kind": "externalSystem",
+          "navigateTo": "amazon",
+          "x": 501,
+          "y": 1145,
+          "width": 376,
+          "height": 180,
+          "labelBBox": {
+            "x": 46,
+            "y": 64,
+            "width": 314,
+            "height": 46
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "8gzokf",
+          "source": "cloud.next.graphql",
+          "target": "cloud.next.backend",
+          "label": "[...]",
+          "dotpos": "e,249,452.93 249,310.64 249,351.62 249,400.45 249,442.64",
+          "points": [
+            [
+              249,
+              311
+            ],
+            [
+              249,
+              352
+            ],
+            [
+              249,
+              400
+            ],
+            [
+              249,
+              443
+            ]
+          ],
+          "labelBBox": {
+            "x": 483.5,
+            "y": 382,
+            "width": 24,
+            "height": 18
+          },
+          "parent": "cloud.next",
+          "relations": [
+            "7vlt6f",
+            "p14epf"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "controlPoints": [
+            {
+              "x": 249,
+              "y": 376
+            }
+          ]
+        },
+        {
+          "id": "1elbqem",
+          "source": "cloud.next.backend",
+          "target": "amazon",
+          "label": "reads/writes",
+          "dotpos": "e,849.83,1144.7 408.75,556.26 588.06,574 862.33,613.55 926,692.75 1026.8,818.15 997.76,910.75 926,1054.8 910.03,1086.8 885.28,1114.6 857.68,1138.1",
+          "points": [
+            [
+              409,
+              556
+            ],
+            [
+              588,
+              574
+            ],
+            [
+              862,
+              614
+            ],
+            [
+              926,
+              693
+            ],
+            [
+              1027,
+              818
+            ],
+            [
+              998,
+              911
+            ],
+            [
+              926,
+              1055
+            ],
+            [
+              910,
+              1087
+            ],
+            [
+              885,
+              1115
+            ],
+            [
+              858,
+              1138
+            ]
+          ],
+          "labelBBox": {
+            "x": 910.5,
+            "y": 677.5,
+            "width": 77,
+            "height": 18
+          },
+          "parent": null,
+          "relations": [
+            "14uyrh3"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "navigateTo": "cloud-to-amazon"
+        },
+        {
+          "id": "1mrbzo2",
+          "source": "cloud.next.backend",
+          "target": "cloud.legacy",
+          "label": "calls legacy",
+          "dotpos": "e,573.88,794.79 364.03,632.64 426.05,680.56 502.61,739.72 565.84,788.58",
+          "points": [
+            [
+              364,
+              633
+            ],
+            [
+              426,
+              681
+            ],
+            [
+              503,
+              740
+            ],
+            [
+              566,
+              789
+            ]
+          ],
+          "labelBBox": {
+            "x": 465,
+            "y": 711,
+            "width": 74,
+            "height": 18
+          },
+          "parent": "cloud",
+          "relations": [
+            "i1pi95"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        },
+        {
+          "id": "1590sfl",
+          "source": "cloud.next.backend",
+          "target": "cloud.next.events",
+          "label": "triggers",
+          "dotpos": "e,220.43,795.13 216.82,632.64 208.72,664.64 203.46,701.14 208,734.75 210.24,751.31 213.81,768.63 217.94,785.36",
+          "points": [
+            [
+              217,
+              633
+            ],
+            [
+              209,
+              665
+            ],
+            [
+              203,
+              701
+            ],
+            [
+              208,
+              735
+            ],
+            [
+              210,
+              751
+            ],
+            [
+              214,
+              769
+            ],
+            [
+              218,
+              785
+            ]
+          ],
+          "labelBBox": {
+            "x": 339,
+            "y": 788.5,
+            "width": 49,
+            "height": 38
+          },
+          "parent": "cloud.next",
+          "relations": [
+            "tjd6lh"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "technology": "REST",
+          "controlPoints": [
+            {
+              "x": 400.5,
+              "y": 797
+            },
+            {
+              "x": 212,
+              "y": 760
+            }
+          ]
+        },
+        {
+          "id": "148txyu",
+          "source": "cloud.legacy",
+          "target": "amazon",
+          "label": "reads/writes",
+          "dotpos": "e,689,1144.7 689,974.4 689,1023.3 689,1084 689,1134.4",
+          "points": [
+            [
+              689,
+              974
+            ],
+            [
+              689,
+              1023
+            ],
+            [
+              689,
+              1084
+            ],
+            [
+              689,
+              1134
+            ]
+          ],
+          "labelBBox": {
+            "x": 689,
+            "y": 1054,
+            "width": 77,
+            "height": 18
+          },
+          "parent": null,
+          "relations": [
+            "wb50a3"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        }
+      ],
+      "_layout": "manual"
+    },
+    "cloud_legacy": {
+      "_type": "element",
+      "tags": null,
+      "links": null,
+      "viewOf": "cloud.legacy",
+      "_stage": "layouted",
+      "sourcePath": "cloud/legacy.c4",
+      "description": null,
+      "title": "Cloud Legacy",
+      "id": "cloud_legacy",
+      "autoLayout": {
+        "direction": "LR"
+      },
+      "notation": {
+        "nodes": [
+          {
+            "title": "Person",
+            "shape": "person",
+            "color": "muted",
+            "kinds": [
+              "actor"
+            ]
+          },
+          {
+            "title": "Application",
+            "shape": "rectangle",
+            "color": "primary",
+            "kinds": [
+              "app"
+            ]
+          },
+          {
+            "title": "External System",
+            "shape": "rectangle",
+            "color": "amber",
+            "kinds": [
+              "externalSystem"
+            ]
+          },
+          {
+            "title": "Software system",
+            "shape": "rectangle",
+            "color": "muted",
+            "kinds": [
+              "system"
+            ]
+          }
+        ]
+      },
+      "hash": "acded82b82f1e227c780453c571638df96febdf2",
+      "bounds": {
+        "x": -10,
+        "y": -323,
+        "width": 1961,
+        "height": 914
+      },
+      "nodes": [
+        {
+          "id": "customer",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "1r2spnx"
+          ],
+          "title": "Cloud System Customer",
+          "modelRef": "customer",
+          "shape": "person",
+          "color": "muted",
+          "style": {
+            "opacity": 15,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Interacts with the system"
+          },
+          "tags": [],
+          "notation": "Person",
+          "kind": "actor",
+          "navigateTo": "customer",
+          "x": 0,
+          "y": 359,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 50,
+            "y": 63,
+            "width": 221,
+            "height": 48
+          }
+        },
+        {
+          "id": "cloud",
+          "parent": null,
+          "level": 0,
+          "children": [
+            "cloud.ui",
+            "cloud.next",
+            "cloud.legacy"
+          ],
+          "inEdges": [
+            "1r2spnx"
+          ],
+          "outEdges": [
+            "jp1130"
+          ],
+          "title": "Cloud System",
+          "modelRef": "cloud",
+          "shape": "rectangle",
+          "color": "muted",
+          "style": {
+            "opacity": 10,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Our SaaS platfrom that allows\ncustomers to interact with\nthe latest technologies"
+          },
+          "tags": [],
+          "notation": "Software system",
+          "kind": "system",
+          "depth": 2,
+          "navigateTo": "cloud",
+          "x": 305,
+          "y": -313,
+          "width": 1112,
+          "height": 894,
+          "labelBBox": {
+            "x": 6,
+            "y": 0,
+            "width": 91,
+            "height": 15
+          }
+        },
+        {
+          "id": "cloud.ui",
+          "parent": "cloud",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "1r2spnx"
+          ],
+          "outEdges": [
+            "jma98p"
+          ],
+          "title": "Frontends",
+          "modelRef": "cloud.ui",
+          "shape": "browser",
+          "color": "muted",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "All the frontend applications\nof Cloud System"
+          },
+          "tags": [],
+          "kind": "container",
+          "navigateTo": "cloud_ui",
+          "x": 468,
+          "y": 359,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 66,
+            "y": 54,
+            "width": 188,
+            "height": 66
+          }
+        },
+        {
+          "id": "cloud.next",
+          "parent": "cloud",
+          "level": 1,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "z64w7m"
+          ],
+          "title": "Cloud Next",
+          "modelRef": "cloud.next",
+          "shape": "rectangle",
+          "color": "muted",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Cloud Next is the next version of our cloud systems"
+          },
+          "tags": [],
+          "kind": "container",
+          "navigateTo": "cloud_next",
+          "x": 345,
+          "y": -256,
+          "width": 321,
+          "height": 180,
+          "labelBBox": {
+            "x": 18,
+            "y": 54,
+            "width": 286,
+            "height": 66
+          }
+        },
+        {
+          "id": "cloud.legacy",
+          "parent": "cloud",
+          "level": 1,
+          "children": [
+            "cloud.legacy.backend"
+          ],
+          "inEdges": [
+            "jma98p",
+            "z64w7m"
+          ],
+          "outEdges": [
+            "jp1130"
+          ],
+          "title": "Cloud Legacy",
+          "modelRef": "cloud.legacy",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "The legacy version of our SaaS\nMVP as was presented to the first customers"
+          },
+          "tags": [],
+          "links": [
+            {
+              "url": "./.github/workflows/update-diagrams.yml#L19-L25",
+              "title": "L19-L25",
+              "relative": ".github/workflows/update-diagrams.yml#L19-L25"
+            }
+          ],
+          "kind": "container",
+          "depth": 1,
+          "x": 991,
+          "y": 177,
+          "width": 384,
+          "height": 265,
+          "labelBBox": {
+            "x": 6,
+            "y": 0,
+            "width": 92,
+            "height": 15
+          }
+        },
+        {
+          "id": "cloud.legacy.backend",
+          "parent": "cloud.legacy",
+          "level": 2,
+          "children": [],
+          "inEdges": [
+            "jma98p",
+            "z64w7m"
+          ],
+          "outEdges": [
+            "jp1130"
+          ],
+          "title": "Legacy Backend",
+          "modelRef": "cloud.legacy.backend",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 15,
+            "size": "md",
+            "multiple": true
+          },
+          "description": {
+            "txt": "The legacy version of backend"
+          },
+          "tags": [],
+          "notation": "Application",
+          "kind": "app",
+          "navigateTo": "cloud_legacy_backend",
+          "x": 1023,
+          "y": 230,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 56,
+            "y": 63,
+            "width": 207,
+            "height": 48
+          }
+        },
+        {
+          "id": "amazon",
+          "parent": null,
+          "level": 0,
+          "children": [],
+          "inEdges": [
+            "jp1130"
+          ],
+          "outEdges": [],
+          "title": "Amazon",
+          "modelRef": "amazon",
+          "shape": "rectangle",
+          "color": "amber",
+          "icon": "tech:amazon-web-services",
+          "style": {
+            "opacity": 10,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Cloud and managed services provider"
+          },
+          "tags": [],
+          "notation": "External System",
+          "kind": "externalSystem",
+          "navigateTo": "amazon",
+          "x": 1565,
+          "y": 230,
+          "width": 376,
+          "height": 180,
+          "labelBBox": {
+            "x": 46,
+            "y": 63,
+            "width": 314,
+            "height": 48
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "jma98p",
+          "source": "cloud.ui",
+          "target": "cloud.legacy.backend",
+          "label": "fetches via REST",
+          "dotpos": "e,1023.4,366.33 787.61,419.68 843.3,408.7 906.17,395.54 963.11,381.8 979.48,377.85 996.48,373.5 1013.4,369",
+          "points": [
+            [
+              788,
+              420
+            ],
+            [
+              843,
+              409
+            ],
+            [
+              906,
+              396
+            ],
+            [
+              963,
+              382
+            ],
+            [
+              979,
+              378
+            ],
+            [
+              996,
+              374
+            ],
+            [
+              1013,
+              369
+            ]
+          ],
+          "labelBBox": {
+            "x": 850,
+            "y": 359,
+            "width": 112,
+            "height": 18
+          },
+          "parent": "cloud",
+          "relations": [
+            "b38fhv",
+            "8mkfun"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "kind": "uses"
+        },
+        {
+          "id": "z64w7m",
+          "source": "cloud.next",
+          "target": "cloud.legacy.backend",
+          "label": "calls legacy",
+          "dotpos": "e,1023.3,273.76 788.61,205.46 859.02,225.95 941.81,250.05 1013.3,270.84",
+          "points": [
+            [
+              789,
+              205
+            ],
+            [
+              859,
+              226
+            ],
+            [
+              942,
+              250
+            ],
+            [
+              1013,
+              271
+            ]
+          ],
+          "labelBBox": {
+            "x": 785,
+            "y": -20,
+            "width": 76,
+            "height": 18
+          },
+          "parent": "cloud",
+          "relations": [
+            "i1pi95"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "controlPoints": [
+            {
+              "x": 876,
+              "y": 112
+            }
+          ]
+        },
+        {
+          "id": "jp1130",
+          "source": "cloud.legacy.backend",
+          "target": "amazon",
+          "label": "reads/writes",
+          "dotpos": "e,1564.7,320 1343.1,320 1408.7,320 1485.4,320 1554.5,320",
+          "points": [
+            [
+              1343,
+              320
+            ],
+            [
+              1409,
+              320
+            ],
+            [
+              1485,
+              320
+            ],
+            [
+              1555,
+              320
+            ]
+          ],
+          "labelBBox": {
+            "x": 1424,
+            "y": 297,
+            "width": 79,
+            "height": 18
+          },
+          "parent": null,
+          "relations": [
+            "wb50a3"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        },
+        {
+          "id": "1r2spnx",
+          "source": "customer",
+          "target": "cloud.ui",
+          "label": "[...]",
+          "dotpos": "e,468.05,449 319.75,449 364.16,449 412.6,449 457.6,449",
+          "points": [
+            [
+              320,
+              449
+            ],
+            [
+              364,
+              449
+            ],
+            [
+              413,
+              449
+            ],
+            [
+              458,
+              449
+            ]
+          ],
+          "labelBBox": {
+            "x": 381,
+            "y": 425,
+            "width": 25,
+            "height": 18
+          },
+          "parent": null,
+          "relations": [
+            "1qqckd4",
+            "1d2ufi7"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal"
+        }
+      ],
+      "_layout": "manual"
+    },
+    "cloud-to-amazon": {
+      "_type": "dynamic",
+      "tags": null,
+      "links": null,
+      "_stage": "layouted",
+      "sourcePath": "model.c4",
+      "description": null,
+      "title": "Cloud to amazon",
+      "id": "cloud-to-amazon",
+      "variant": "diagram",
+      "autoLayout": {
+        "direction": "TB"
+      },
+      "notation": {
+        "nodes": [
+          {
+            "title": "Application",
+            "shape": "rectangle",
+            "color": "primary",
+            "kinds": [
+              "app"
+            ]
+          },
+          {
+            "title": "External System",
+            "shape": "rectangle",
+            "color": "amber",
+            "kinds": [
+              "externalSystem"
+            ]
+          }
+        ]
+      },
+      "hash": "dad1b57267cc266968df2d2b1b452cdf6ac7d4e4",
+      "sequenceLayout": {
+        "actors": [
+          {
+            "id": "cloud.next.backend",
+            "x": 32,
+            "y": 52,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_source",
+                "cx": 160,
+                "cy": 338,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              },
+              {
+                "id": "step-02.2_source",
+                "cx": 160,
+                "cy": 580,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "cloud.next.events",
+            "x": 412,
+            "y": 52,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-01_target",
+                "cx": 160,
+                "cy": 338,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-02.1_source",
+                "cx": 160,
+                "cy": 487,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "amazon.sqs",
+            "x": 828,
+            "y": 52,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-02.1_target",
+                "cx": 160,
+                "cy": 487,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          },
+          {
+            "id": "cloud.ui.supportPanel",
+            "x": 1244,
+            "y": 52,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-02.3_source",
+                "cx": 160,
+                "cy": 693,
+                "height": 40,
+                "type": "source",
+                "position": "right"
+              }
+            ]
+          },
+          {
+            "id": "amazon.rds.aurora",
+            "x": 1660,
+            "y": 52,
+            "width": 320,
+            "height": 180,
+            "ports": [
+              {
+                "id": "step-02.2_target",
+                "cx": 160,
+                "cy": 580,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              },
+              {
+                "id": "step-02.3_target",
+                "cx": 160,
+                "cy": 693,
+                "height": 24,
+                "type": "target",
+                "position": "left"
+              }
+            ]
+          }
+        ],
+        "compounds": [
+          {
+            "depth": 0,
+            "x": 0,
+            "y": 0,
+            "width": 764,
+            "height": 745,
+            "id": "cloud.next",
+            "origin": "cloud.next"
+          },
+          {
+            "depth": 0,
+            "x": 796,
+            "y": 0,
+            "width": 384,
+            "height": 632,
+            "id": "amazon-1",
+            "origin": "amazon"
+          },
+          {
+            "depth": 0,
+            "x": 1628,
+            "y": 0,
+            "width": 384,
+            "height": 858,
+            "id": "amazon-2",
+            "origin": "amazon"
+          },
+          {
+            "depth": 0,
+            "x": 1212,
+            "y": 0,
+            "width": 384,
+            "height": 858,
+            "id": "cloud.ui",
+            "origin": "cloud.ui"
+          }
+        ],
+        "steps": [
+          {
+            "id": "step-01",
+            "sourceHandle": "step-01_source",
+            "targetHandle": "step-01_target",
+            "labelBBox": {
+              "width": 87,
+              "height": 27
+            }
+          },
+          {
+            "id": "step-02.1",
+            "sourceHandle": "step-02.1_source",
+            "targetHandle": "step-02.1_target",
+            "labelBBox": {
+              "width": 154,
+              "height": 27
+            }
+          },
+          {
+            "id": "step-02.2",
+            "sourceHandle": "step-02.2_source",
+            "targetHandle": "step-02.2_target",
+            "labelBBox": {
+              "width": 126,
+              "height": 47
+            }
+          },
+          {
+            "id": "step-02.3",
+            "sourceHandle": "step-02.3_source",
+            "targetHandle": "step-02.3_target",
+            "labelBBox": {
+              "width": 237,
+              "height": 47
+            }
+          }
+        ],
+        "parallelAreas": [
+          {
+            "parallelPrefix": "step-02.",
+            "x": 162,
+            "y": 483,
+            "width": 1688,
+            "height": 359
+          }
+        ],
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 2012,
+          "height": 858
+        }
+      },
+      "bounds": {
+        "x": 8,
+        "y": -35,
+        "width": 1165,
+        "height": 1011
+      },
+      "nodes": [
+        {
+          "id": "cloud.next",
+          "parent": null,
+          "level": 0,
+          "children": [
+            "cloud.next.backend",
+            "cloud.next.events"
+          ],
+          "inEdges": [],
+          "outEdges": [
+            "step-02.1",
+            "step-02.2"
+          ],
+          "title": "Cloud Next",
+          "modelRef": "cloud.next",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 40,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Cloud Next is the next version of our cloud systems"
+          },
+          "tags": [],
+          "kind": "container",
+          "depth": 1,
+          "navigateTo": "cloud_next",
+          "x": 8,
+          "y": -35,
+          "width": 736,
+          "height": 664,
+          "labelBBox": {
+            "x": 6,
+            "y": 0,
+            "width": 77,
+            "height": 15
+          }
+        },
+        {
+          "id": "cloud.next.backend",
+          "parent": "cloud.next",
+          "level": 1,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "step-01",
+            "step-02.2"
+          ],
+          "title": "Backend V2",
+          "modelRef": "cloud.next.backend",
+          "shape": "rectangle",
+          "color": "primary",
+          "icon": "tech:nestjs",
+          "style": {
+            "opacity": 15,
+            "size": "md",
+            "multiple": true
+          },
+          "description": {
+            "txt": "The next version of backend"
+          },
+          "tags": [
+            "api"
+          ],
+          "notation": "Application",
+          "kind": "app",
+          "navigateTo": "backend",
+          "x": 383,
+          "y": 20,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 50,
+            "y": 64,
+            "width": 251,
+            "height": 46
+          }
+        },
+        {
+          "id": "cloud.next.events",
+          "parent": "cloud.next",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "step-01"
+          ],
+          "outEdges": [
+            "step-02.1"
+          ],
+          "title": "Events Manager",
+          "modelRef": "cloud.next.events",
+          "shape": "rectangle",
+          "color": "primary",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "tags": [],
+          "kind": "component",
+          "x": 48,
+          "y": 409,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 85,
+            "y": 75,
+            "width": 150,
+            "height": 24
+          }
+        },
+        {
+          "id": "amazon",
+          "parent": null,
+          "level": 0,
+          "children": [
+            "amazon.sqs",
+            "amazon.rds.aurora"
+          ],
+          "inEdges": [
+            "step-02.1",
+            "step-02.2",
+            "step-02.3"
+          ],
+          "outEdges": [],
+          "title": "Amazon",
+          "modelRef": "amazon",
+          "shape": "rectangle",
+          "color": "amber",
+          "icon": "tech:amazon-web-services",
+          "style": {
+            "opacity": 40,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Cloud and managed services provider"
+          },
+          "tags": [],
+          "notation": "External System",
+          "kind": "externalSystem",
+          "depth": 1,
+          "navigateTo": "amazon",
+          "x": 8,
+          "y": 695,
+          "width": 830,
+          "height": 281,
+          "labelBBox": {
+            "x": 6,
+            "y": 0,
+            "width": 53,
+            "height": 15
+          }
+        },
+        {
+          "id": "amazon.sqs",
+          "parent": "amazon",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "step-02.1"
+          ],
+          "outEdges": [],
+          "title": "SQS",
+          "modelRef": "amazon.sqs",
+          "shape": "rectangle",
+          "color": "primary",
+          "icon": "aws:simple-queue-service",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Simple Queue Service"
+          },
+          "tags": [],
+          "kind": "container",
+          "navigateTo": "amazon_sqs",
+          "x": 48,
+          "y": 756,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 70,
+            "y": 64,
+            "width": 210,
+            "height": 47
+          }
+        },
+        {
+          "id": "cloud.ui",
+          "parent": null,
+          "level": 0,
+          "children": [
+            "cloud.ui.supportPanel"
+          ],
+          "inEdges": [],
+          "outEdges": [
+            "step-02.3"
+          ],
+          "title": "Frontends",
+          "modelRef": "cloud.ui",
+          "shape": "browser",
+          "color": "primary",
+          "style": {
+            "opacity": 40,
+            "size": "md"
+          },
+          "description": {
+            "txt": "All the frontend applications\nof Cloud System"
+          },
+          "tags": [],
+          "kind": "container",
+          "depth": 1,
+          "navigateTo": "cloud_ui",
+          "x": 789,
+          "y": 355,
+          "width": 384,
+          "height": 266,
+          "labelBBox": {
+            "x": 6,
+            "y": 1,
+            "width": 74,
+            "height": 15
+          }
+        },
+        {
+          "id": "cloud.ui.supportPanel",
+          "parent": "cloud.ui",
+          "level": 1,
+          "children": [],
+          "inEdges": [],
+          "outEdges": [
+            "step-02.3"
+          ],
+          "title": "Support Panel",
+          "modelRef": "cloud.ui.supportPanel",
+          "shape": "rectangle",
+          "color": "primary",
+          "icon": "tech:astro",
+          "style": {
+            "opacity": 15,
+            "size": "md",
+            "multiple": true
+          },
+          "description": {
+            "txt": "Retoool Application"
+          },
+          "tags": [],
+          "notation": "Application",
+          "kind": "app",
+          "navigateTo": "cloud_ui_supportPanel",
+          "x": 821,
+          "y": 409,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 80,
+            "y": 64,
+            "width": 190,
+            "height": 47
+          }
+        },
+        {
+          "id": "amazon.rds.aurora",
+          "parent": "amazon",
+          "level": 1,
+          "children": [],
+          "inEdges": [
+            "step-02.2",
+            "step-02.3"
+          ],
+          "outEdges": [],
+          "title": "Aurora",
+          "modelRef": "amazon.rds.aurora",
+          "shape": "storage",
+          "color": "secondary",
+          "icon": "tech:mysql",
+          "style": {
+            "opacity": 50,
+            "size": "md"
+          },
+          "description": {
+            "txt": "Aurora RDS"
+          },
+          "tags": [
+            "db"
+          ],
+          "kind": "component",
+          "x": 478,
+          "y": 756,
+          "width": 320,
+          "height": 180,
+          "labelBBox": {
+            "x": 104,
+            "y": 64,
+            "width": 142,
+            "height": 47
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "step-01",
+          "source": "cloud.next.backend",
+          "target": "cloud.next.events",
+          "label": "triggers",
+          "dotpos": "e,208,408.86 208,249.11 208,295.02 208,351.23 208,398.58",
+          "points": [
+            [
+              208,
+              249
+            ],
+            [
+              208,
+              295
+            ],
+            [
+              208,
+              351
+            ],
+            [
+              208,
+              399
+            ]
+          ],
+          "labelBBox": {
+            "x": 262,
+            "y": 280.5,
+            "width": 71,
+            "height": 19
+          },
+          "parent": "cloud.next",
+          "relations": [
+            "tjd6lh"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@0",
+          "notes": {
+            "txt": "- Backend triggers EventManager\n- These calls enriched with data before publishing"
+          },
+          "controlPoints": [
+            {
+              "x": 208,
+              "y": 323
+            }
+          ]
+        },
+        {
+          "id": "step-02.1",
+          "source": "cloud.next.events",
+          "target": "amazon.sqs",
+          "label": "publishes events",
+          "dotpos": "e,208,756.09 208,588.66 208,636.69 208,696.13 208,745.68",
+          "points": [
+            [
+              208,
+              589
+            ],
+            [
+              208,
+              637
+            ],
+            [
+              208,
+              696
+            ],
+            [
+              208,
+              746
+            ]
+          ],
+          "labelBBox": {
+            "x": 208,
+            "y": 667.5,
+            "width": 138,
+            "height": 19
+          },
+          "parent": null,
+          "relations": [
+            "13t2tod",
+            "1kvdqv3",
+            "1tl8shp"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@1/steps@0"
+        },
+        {
+          "id": "step-02.2",
+          "source": "cloud.next.backend",
+          "target": "amazon.rds.aurora",
+          "label": "reads/writes",
+          "dotpos": "e,611.27,755.13 323.81,249.37 358.8,280.18 395.26,316.73 423,355.25 511.07,477.51 573.87,641.55 608.06,745.28",
+          "points": [
+            [
+              324,
+              249
+            ],
+            [
+              359,
+              280
+            ],
+            [
+              395,
+              317
+            ],
+            [
+              423,
+              355
+            ],
+            [
+              511,
+              478
+            ],
+            [
+              574,
+              642
+            ],
+            [
+              608,
+              745
+            ]
+          ],
+          "labelBBox": {
+            "x": 473.5,
+            "y": 465,
+            "width": 110,
+            "height": 19
+          },
+          "parent": null,
+          "relations": [
+            "14uyrh3"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@1/steps@1",
+          "navigateTo": "cloud-to-amazon",
+          "controlPoints": [
+            {
+              "x": 376,
+              "y": 299
+            },
+            {
+              "x": 536,
+              "y": 558
+            }
+          ]
+        },
+        {
+          "id": "step-02.3",
+          "source": "cloud.ui.supportPanel",
+          "target": "amazon.rds.aurora",
+          "label": "reads users from the database",
+          "dotpos": "e,727.22,755.19 892.67,588.66 844.24,637.41 784.13,697.91 734.47,747.9",
+          "points": [
+            [
+              893,
+              589
+            ],
+            [
+              844,
+              637
+            ],
+            [
+              784,
+              698
+            ],
+            [
+              734,
+              748
+            ]
+          ],
+          "labelBBox": {
+            "x": 813.5,
+            "y": 668.5,
+            "width": 221,
+            "height": 19
+          },
+          "parent": null,
+          "relations": [
+            "1h2p6gr"
+          ],
+          "color": "gray",
+          "line": "dashed",
+          "head": "normal",
+          "tags": [],
+          "astPath": "/steps@1/steps@2",
+          "navigateTo": "cloud-to-amazon"
+        }
+      ],
+      "_layout": "manual"
+    }
+  }
+}
