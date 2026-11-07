@@ -26,7 +26,7 @@ On a clean checkout with `rustup` and Node installed, `./mvnw` builds the viewpo
 
 ## Decision Prerequisites
 
-- **The LikeC4 sample (gates P3).** The sample is the JSON that `likec4 export json` writes for the MIT example `cloud-system` of `github.com/likec4/likec4`. Run 0229 of wave 034 installed `likec4@1.60.0` with `--ignore-scripts` and cloned the repository at its tag without trouble; only `likec4 export json` was refused by the session's permission system. Before launching, the author either allows that one command for the run, or runs it once in a scratch folder (below) and says where the JSON is. If neither, the run of P3 stops at its first task with the reason, as the plan of run 0229 says, and invents nothing; P1 and P2 are not blocked.
+- **The LikeC4 sample (gates P3).** The sample is the JSON that `likec4 export json` writes for the MIT example `cloud-system` of `github.com/likec4/likec4`. Run 0229 of wave 034 installed `likec4@1.60.0` with `--ignore-scripts` and cloned the repository at its tag without trouble; only `likec4 export json` was refused by the session's permission system. Before launching, the author either allows that one command for the run, or runs it once in a scratch folder (below) and says where the JSON is. If neither, the run of P3 stops at its first task with the reason, as the plan of run 0229 says, and invents nothing; P1 and P2 are not blocked. With `run-management` 3.3.0 or later, a run that is then `cancelled` and that no live run depends on does not block the closing of the wave (nothing depends on W-3), so the wave closes with P1 and P2 and #134 stays open; a `superseded` run would still block.
 
 ```bash
 mkdir -p /tmp/likec4-sample && cd /tmp/likec4-sample
@@ -194,11 +194,11 @@ Only W-2 depends on W-1 (the page build writes `viewpoint_kernel.js` from the `.
 - **Reproducibility across machines.** The gate compares the built `.wasm` and the bundles with the committed bytes on one machine; the three native runners and a contributor's laptop are covered by the pinned toolchain and the remapped paths, which `embed.sh --check` has proved in CI so far. A byte that differs on macOS stops W-1.
 - **The page opened from a disk.** The author uses `standalone.html` from `file://` and the files beside it are classic scripts; W-2 must not make the folder of the build differ from today's (the gate runs the disk test on it).
 - **Past the tag.** The tests that compare with `git show archicode-X:…` have no page to compare with after W-2 for the tags cut after it; their baseline is an open question, settled in W-2's design.
-- **The sample of W-3.** See Decision Prerequisites: the run stops at its first task without it, and the wave then ends with P1 and P2 merged and W-3 `blocked`.
+- **The sample of W-3.** See Decision Prerequisites: the run stops at its first task without it. The author then cancels W-3 (not `superseded`): the wave closes with P1 and P2 merged, the gate of P3 is not required, and #134 stays open with the sample as its one open step. The workflow is generated with `run-management` 3.3.0 or later (a failed verification of a run is no longer read as verified).
 - **Cost.** Wave 033 (two runs) used about 92 agents and 6.9 million tokens; three runs of the default profile, two of them wide, may use about 10 million. This is what the author is asked to approve.
 
 ## Completion Criteria
 
-- The gates of P1, P2 and P3 hold.
-- #134 and #207 are closed by the wave's pull request; #24 is closed or retitled by the author (see Non-Goals).
+- The gates of P1, P2 and P3 hold; or, when W-3 is cancelled for want of the sample, the gates of P1 and P2 hold, W-3 is `cancelled` in the manifest and the gate of P3 is not evaluated.
+- #134 (unless W-3 was cancelled: then it stays open) and #207 are closed by the wave's pull request; #24 is closed or retitled by the author (see Non-Goals).
 - `./mvnw verify -DskipITs=false`, `npm run test:unit`, `npm run format:check` and `npm run lint` pass; the Native job and the three browser jobs of the pull request pass.
