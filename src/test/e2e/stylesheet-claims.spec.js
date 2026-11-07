@@ -205,16 +205,24 @@ test('the story player opened on a phone is not wider than the window and keeps 
   const player = page.getByRole('dialog', { name: 'From the shop to the new shop' });
   await expect(player).toBeVisible();
 
+  // the player draws its scene once the kernel and the layout have loaded, and the box of a locator is null for an instant on a loaded
+  // machine: wait for the box, never read it once
+  const boxOf = async (locator) => {
+    let box = null;
+    await expect
+      .poll(async () => (box = await locator.boundingBox()) !== null, { message: 'the box is drawn' })
+      .toBe(true);
+    return box;
+  };
   const shell = player;
-  const box = await shell.boundingBox();
+  const box = await boxOf(shell);
   expect(box.width, 'not wider than the window').toBeLessThanOrEqual(360);
   expect(box.height, 'not taller than the window').toBeLessThanOrEqual(640);
   expect(await page.evaluate(() => document.documentElement.scrollWidth), 'no sideways scroll').toBeLessThanOrEqual(
     360
   );
   for (const part of ['.player-bar', '[data-player-step-menu]', '.player-words']) {
-    const inside = await player.locator(part).first().boundingBox();
-    expect(inside, `${part} is drawn`).not.toBeNull();
+    const inside = await boxOf(player.locator(part).first());
     expect(inside.x, `${part} starts inside the window`).toBeGreaterThanOrEqual(0);
     expect(inside.x + inside.width, `${part} ends inside the window`).toBeLessThanOrEqual(360 + 0.5);
   }
