@@ -66,7 +66,7 @@ jobs:
 
   Java:
     # `./mvnw verify`: the Java tests, the integration tests of the jar are not in it (skipITs), the coverage floors and the
-    # manual (asciidoctor, which draws with graphviz)
+    # manual (asciidoctor, which draws its diagrams with PlantUML and graphviz, and the step "Check the manual has its diagrams")
     needs: Changes
     if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.java == 'true' }}
     runs-on: "ubuntu-latest"
@@ -96,6 +96,21 @@ jobs:
           ./mvnw verify \
             --batch-mode \
             --update-snapshots
+      - name: "Check the manual has its diagrams"
+        # the build of the manual exits 0 when a diagram fails: the page then holds the text `Failed to generate image` (a block
+        # that cannot be drawn) or no picture at all (the PlantUML dependency missing). The page holds a picture per
+        # `[plantuml` block of the source, at least.
+        run: |
+          page=target/generated-docs/index.html
+          test -f "$page" || { echo "::error::$page is missing"; exit 1; }
+          blocks=$(grep -c '^\[plantuml' src/doc/README.adoc || true)
+          images=$(grep -c '<img src="[^"]*\.png"' "$page" || true)
+          failed=$(grep -c 'Failed to generate image' "$page" || true)
+          echo "plantuml blocks: $blocks, images: $images, failed: $failed"
+          if [ "$failed" -ne 0 ] || [ "$images" -lt "$blocks" ]; then
+            echo "::error::the manual lost a diagram ($blocks blocks, $images images, $failed failed)"
+            exit 1
+          fi
       - name: "Keep the Java coverage report"
         # the report `./mvnw verify` writes (and checks: the floors are in the pom), HTML, jacoco.csv and jacoco.xml; kept
         # when a floor fails too, which is when it is read. Actions, the run, Artifacts. 7 days.
