@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 035
-status: proposed
+status: planned
 date: 2026-11-07
 related:
   - docs/wav/wav-034-diagrams-assets-likec4-matrix-page/wav-034-diagrams-assets-likec4-matrix-page.md
@@ -15,7 +15,7 @@ related:
 Wave 034 is merged. Three issues of `tmorin/archicode` carry the label `ready`:
 
 - #207, retitled to the road that remains after wave 034: the editor's generated files are still committed (the kernel `viewpoint_kernel.wasm`, the page `standalone.html`, the bundles and script under `assets/`, the two samples). The author's decisions of 2026-11-06 (in the ticket): Node in the Java build is acceptable, Maven orchestrating the Rust build is acceptable, so no generated file has to stay committed in the end; the order is about the risk and the size of each step. Two runs, in this order: the kernel built by Maven (W-3 of the ticket), then the page and its files built by Maven (W-4 of the ticket, which now also has to write `viewpoint_kernel.js` from the built `.wasm`).
-- #134, the LikeC4 importer, `ready` since the Structurizr importer was merged. Wave 034 designed it (run 0229: reader, mapper, service, the output side shared with the Structurizr importer) and stopped at its first task, which generates the sample with the vendor tool once: the session's permission system refused `likec4 export json`. No code was kept; the design is the starting point.
+- #134, the LikeC4 importer, `ready` since the Structurizr importer was merged. Wave 034 designed it (run 0229: reader, mapper, service, the output side shared with the Structurizr importer) and stopped at its first task, which generates the sample with the vendor tool once: the session's permission system refused `likec4 export json`. No code was kept; the design is the starting point. The sample has since been generated with the author's agreement and is in `src/test/resources/likec4/`.
 - #24, the matrix of N plateaus: the file (wave 033) and the page (wave 034) are delivered. What the ticket still lists (relationships, a transient row, all-against-baseline, the time of `compare` in the browser) has no decision of the author, so it is not `ready` in substance: the label is stale. Not in this wave (see Non-Goals of the plan).
 
 The registers do not cover this: `docs/` has no `bkg` or `ana` register. The sources are the three issues.
@@ -28,9 +28,9 @@ The registers do not cover this: `docs/` has no `bkg` or `ana` register. The sou
 
 ## Options & Recommendation
 
-1. **Three runs in three phases, one at a time: kernel by Maven, page by Maven, then the importer** (recommended). The kernel first: it is the smaller change and the page's build needs its output. The page next, with the data the kernel run gives (time of the Rust build in every job). The importer last: it is independent, it writes tests that read the editor's page and the harness, which the page run moves, and it is the only run that waits on an input from outside (the sample), so a stall there leaves the build road merged.
+1. **Three runs in three phases, one at a time: kernel by Maven, page by Maven, then the importer** (recommended). The kernel first: it is the smaller change and the page's build needs its output. The page next, with the data the kernel run gives (time of the Rust build in every job). The importer last: it is independent, it writes tests that read the editor's page and the harness, which the page run moves, and it is the smallest change, so the two wide runs land first.
 2. **Both Maven builds in one run.** Rejected: the kernel run changes the Rust toolchain in every job and the three native targets; the page run changes what the jar, the website and ten-odd readers of the page read. Two failures with different causes, and their exit evidence is distinct.
-3. **Importer first.** Rejected: it stops at once if the sample cannot be generated, and the gate of its phase would then hold the build road behind it.
+3. **Importer first.** Rejected: its tests read the page and the harness that the page run moves, so they would be rewritten right after; the build road changes more of the repository and is better landed while the rest is quiet.
 4. **Keep committing the page and uncommit only the kernel.** Rejected as an end state (the author's decision is that nothing generated stays committed), accepted as the state between W-1 and W-2.
 5. **Include the rest of #24.** Rejected: nothing is decided; a run would invent scope.
 

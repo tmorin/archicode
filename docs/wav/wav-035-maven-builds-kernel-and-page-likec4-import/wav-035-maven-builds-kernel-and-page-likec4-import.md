@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 035
-status: proposed
+status: planned
 date: 2026-11-07
 related:
   - docs/wav/wav-035-maven-builds-kernel-and-page-likec4-import/wbc-035-maven-builds-kernel-and-page-likec4-import.md
@@ -26,14 +26,7 @@ On a clean checkout with `rustup` and Node installed, `./mvnw` builds the viewpo
 
 ## Decision Prerequisites
 
-- **The LikeC4 sample (gates P3).** The sample is the JSON that `likec4 export json` writes for the MIT example `cloud-system` of `github.com/likec4/likec4`. Run 0229 of wave 034 installed `likec4@1.60.0` with `--ignore-scripts` and cloned the repository at its tag without trouble; only `likec4 export json` was refused by the session's permission system. Before launching, the author either allows that one command for the run, or runs it once in a scratch folder (below) and says where the JSON is. If neither, the run of P3 stops at its first task with the reason, as the plan of run 0229 says, and invents nothing; P1 and P2 are not blocked. With `run-management` 3.3.0 or later, a run that is then `cancelled` and that no live run depends on does not block the closing of the wave (nothing depends on W-3), so the wave closes with P1 and P2 and #134 stays open; a `superseded` run would still block.
-
-```bash
-mkdir -p /tmp/likec4-sample && cd /tmp/likec4-sample
-npm install --ignore-scripts likec4@1.60.0
-git clone --depth 1 --branch v1.60.0 https://github.com/likec4/likec4
-npx likec4 export json --skip-layout --project cloud-system -o cloud-system.json likec4/examples/cloud-system
-```
+None open. The LikeC4 sample, which wave 034's run 0229 could not generate, is made: commit `331f1d5` adds `src/test/resources/likec4/` (`cloud-system.json`, the MIT `LICENSE` and `PROVENANCE.md`), the output of `likec4@1.60.0` on `examples/cloud-system` of `github.com/likec4/likec4` at v1.60.0, generated on 2026-11-07 with the author's agreement and cut to 3 of its 19 views (the only change, written in `PROVENANCE.md`). The run of P3 uses it as it is: it does not run the vendor tool, does not regenerate the file and does not edit it.
 
 ## Open questions
 
@@ -50,7 +43,7 @@ Each has a proposed default, to confirm; none blocks the start.
 wave_manifest:
   wave: 035
   slug: maven-builds-kernel-and-page-likec4-import
-  status: proposed
+  status: planned
   sources:
     - '#207'
     - '#134'
@@ -80,7 +73,7 @@ wave_manifest:
       name: The LikeC4 importer
       gate:
         criteria:
-          - '`src/test/resources/likec4/` holds a JSON file, the MIT licence text and a provenance text that names `github.com/likec4/likec4`, the version of the tool, the command run and a 40-hex commit SHA (the folder does not exist on the starting repository); the JSON has no `views` the importer does not read, and the file is the vendor tool''s output, not written by hand'
+          - 'the sample is the one of commit `331f1d5` and the wave has not touched it: `git diff 331f1d5 HEAD --stat -- src/test/resources/likec4` prints nothing, and `src/test/resources/likec4/PROVENANCE.md` names `github.com/likec4/likec4`, the version of the tool, the command run and a 40-hex commit SHA'
           - 'on the packaged application (`java -jar target/quarkus-app/quarkus-run.jar`), `import likec4 <the sample> --output <an empty folder>` exits 0 and prints one `warning:` line for each dropped part the sample holds, with `--map kind=kind` for each kind it names; `query graph` on the output prints as many elements as the sample''s `elements` minus the number the report says were dropped'
           - 'a `.c4` input, a non-empty output folder, and the sample with a kind that has no target and no `--map` are each one `error:` line, exit 1, no stack trace (the last names the kinds to map); `--map kind=kind` for each named kind then exits 0'
           - 'a test of `src/test/java/io/morin/archicode/it` (`LikeC4ImportIT` or the name the run gives) runs the import on the packaged application, a test loads the output with the command line and another in the editor''s node suite, and `grep -c LikeC4 src/main/resources/META-INF/native-image/io.morin.archicode/archicode/reflect-config.json` prints at least 1 (0 on the starting repository)'
@@ -174,7 +167,7 @@ wave_manifest:
 
 | # | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|------|------------|-------|-------|---------------|
-| W-3 | `likec4-json-import` | — | `archicode import likec4 <model.json> --output <folder> [--map kind=kind]... [--project id]` | the starting point is the design of run 0229 (`docs/wav/wav-034-…/run/run-0229-likec4-json-import/`): a reader, a mapper and a service in `importer/`, a command `ImportLikeC4Command` in `ImportGroup`; the output side and the id rule that the Structurizr importer already holds are moved out of its classes; the sample generated once with the vendor tool and committed with its licence and provenance; goldens, one `*IT`, one editor test, `reflect-config.json`, the manual and the model of ArchiCode | gates 1 to 6 of P3 |
+| W-3 | `likec4-json-import` | — | `archicode import likec4 <model.json> --output <folder> [--map kind=kind]... [--project id]` | the starting point is the design of run 0229 (`docs/wav/wav-034-…/run/run-0229-likec4-json-import/`): a reader, a mapper and a service in `importer/`, a command `ImportLikeC4Command` in `ImportGroup`; the output side and the id rule that the Structurizr importer already holds are moved out of its classes; the sample already in `src/test/resources/likec4/` (not regenerated, not edited); goldens, one `*IT`, one editor test, `reflect-config.json`, the manual and the model of ArchiCode | gates 1 to 6 of P3 |
 
 **Gate:** the six criteria of P3 in the manifest.
 
@@ -184,7 +177,7 @@ wave_manifest:
 P1  W-1 --> P2  W-2 --> P3  W-3
 ```
 
-Only W-2 depends on W-1 (the page build writes `viewpoint_kernel.js` from the `.wasm` that W-1 builds). W-3 depends on neither; it comes last because it is the only run that waits on an input from outside, and because its tests read the page and the harness that W-2 moves.
+Only W-2 depends on W-1 (the page build writes `viewpoint_kernel.js` from the `.wasm` that W-1 builds). W-3 depends on neither; it comes last because its tests read the page and the harness that W-2 moves.
 
 ## Risks
 
@@ -194,11 +187,11 @@ Only W-2 depends on W-1 (the page build writes `viewpoint_kernel.js` from the `.
 - **Reproducibility across machines.** The gate compares the built `.wasm` and the bundles with the committed bytes on one machine; the three native runners and a contributor's laptop are covered by the pinned toolchain and the remapped paths, which `embed.sh --check` has proved in CI so far. A byte that differs on macOS stops W-1.
 - **The page opened from a disk.** The author uses `standalone.html` from `file://` and the files beside it are classic scripts; W-2 must not make the folder of the build differ from today's (the gate runs the disk test on it).
 - **Past the tag.** The tests that compare with `git show archicode-X:…` have no page to compare with after W-2 for the tags cut after it; their baseline is an open question, settled in W-2's design.
-- **The sample of W-3.** See Decision Prerequisites: the run stops at its first task without it. The author then cancels W-3 (not `superseded`): the wave closes with P1 and P2 merged, the gate of P3 is not required, and #134 stays open with the sample as its one open step. The workflow is generated with `run-management` 3.3.0 or later (a failed verification of a run is no longer read as verified).
+- **The sample of W-3 is in the repository.** The run no longer waits on an input from outside. If the design finds the sample unfit (a kind or a part the importer needs is missing from the 3 views kept, or the JSON does not hold what the design reads), the run stops with the reason and does not edit the file or invent another: the author decides, and a cancelled W-3 (not `superseded`) lets the wave close with P1 and P2. The workflow is generated with `run-management` 3.3.0 or later (a failed verification of a run is no longer read as verified).
 - **Cost.** Wave 033 (two runs) used about 92 agents and 6.9 million tokens; three runs of the default profile, two of them wide, may use about 10 million. This is what the author is asked to approve.
 
 ## Completion Criteria
 
-- The gates of P1, P2 and P3 hold; or, when W-3 is cancelled for want of the sample, the gates of P1 and P2 hold, W-3 is `cancelled` in the manifest and the gate of P3 is not evaluated.
+- The gates of P1, P2 and P3 hold; or, when W-3 is cancelled, the gates of P1 and P2 hold, W-3 is `cancelled` in the manifest and the gate of P3 is not evaluated.
 - #134 (unless W-3 was cancelled: then it stays open) and #207 are closed by the wave's pull request; #24 is closed or retitled by the author (see Non-Goals).
 - `./mvnw verify -DskipITs=false`, `npm run test:unit`, `npm run format:check` and `npm run lint` pass; the Native job and the three browser jobs of the pull request pass.
