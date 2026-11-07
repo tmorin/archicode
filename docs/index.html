@@ -852,80 +852,20 @@ chmod +x archicode-&lt;version&gt;-macos-arm64
 <div class="paragraph">
 <p>The view <code>EcommercePlatform_overview.puml</code> is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the <code>EcommercePlatform</code> element is involved.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #1 - The overview of the ecommerce platform</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform-overview
-title Solution - EcommercePlatform - Overview
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform &lt;&lt;solution&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-EcommercePlatform
-[solution]
-]
-rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-PaymentGateway
-[system]
-]
-rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-SocialIdentityProvider
-[system]
-]
-person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-User
-[person]
-]
-EcommercePlatform --&gt; PaymentGateway
-EcommercePlatform --&gt; SocialIdentityProvider
-User --&gt; EcommercePlatform
-@enduml</pre>
+<img src="EcommercePlatform_overview.png" alt="EcommercePlatform overview" width="357" height="353">
 </div>
+<div class="title">Figure 1. Step #1 - The overview of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>The view <code>PaymentGateway-overview.puml</code> is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the <code>PaymentGateway</code> element is involved.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #1 - The overview of the payment gateway</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml PaymentGateway-overview
-title System - PaymentGateway - Overview
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform &lt;&lt;solution&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-EcommercePlatform
-[solution]
-]
-rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-PaymentGateway
-[system]
-]
-EcommercePlatform --&gt; PaymentGateway
-@enduml</pre>
+<img src="PaymentGateway_overview.png" alt="PaymentGateway overview" width="329" height="214">
 </div>
+<div class="title">Figure 2. Step #1 - The overview of the payment gateway</div>
 </div>
 <div class="paragraph">
 <p>The concept is similar for the others generated views.</p>
@@ -1162,169 +1102,29 @@ EcommercePlatform --&gt; PaymentGateway
 <div class="paragraph">
 <p>The view <code>EcommercePlatform-detailed.puml</code> is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships where the children of the <code>EcommercePlatform</code> element are involved.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #2 - The detailed of the ecommerce platform</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform-detailed
-title Solution - EcommercePlatform - Detailed View
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ContentManagement
-[system]
-]
-rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-OrderProcessing
-[system]
-]
-rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ProductCatalog
-[system]
-]
-rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserInterface
-[system]
-]
-rectangle EcommercePlatform.UserManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserManagement
-[system]
-]
-}
-rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-PaymentGateway
-[system]
-]
-rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-SocialIdentityProvider
-[system]
-]
-person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-User
-[person]
-]
-EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.OrderProcessing --&gt; PaymentGateway
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement
-EcommercePlatform.UserManagement --&gt; SocialIdentityProvider
-User --&gt; EcommercePlatform.UserInterface
-@enduml</pre>
+<img src="EcommercePlatform_detailed.png" alt="EcommercePlatform detailed" width="953" height="488">
 </div>
+<div class="title">Figure 3. Step #2 - The detailed of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>The view <code>EcommercePlatform.UserInterface-overview.puml</code> is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships of the <code>UserInterface</code> element.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #2 - The overview of the user interface</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform_UserInterface-overview
-title System - UserInterface - Overview
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ContentManagement
-[system]
-]
-rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-OrderProcessing
-[system]
-]
-rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ProductCatalog
-[system]
-]
-rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserInterface
-[system]
-]
-rectangle EcommercePlatform.UserManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserManagement
-[system]
-]
-}
-person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-User
-[person]
-]
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement
-User --&gt; EcommercePlatform.UserInterface
-@enduml</pre>
+<img src="EcommercePlatform.UserInterface_overview.png" alt="EcommercePlatform" width="719" height="376">
 </div>
+<div class="title">Figure 4. Step #2 - The overview of the user interface</div>
 </div>
 <div class="paragraph">
 <p>The view <code>EcommercePlatform-overview.puml</code> is still available but the drawn relationships are now synthetic ones.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #2 - The overview of the ecommerce platform with synthetic relationships</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform-overview
-title Solution - EcommercePlatform - Overview
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform &lt;&lt;solution&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-EcommercePlatform
-[solution]
-]
-rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-PaymentGateway
-[system]
-]
-rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-SocialIdentityProvider
-[system]
-]
-person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-User
-[person]
-]
-EcommercePlatform --&gt; PaymentGateway : uses
-EcommercePlatform --&gt; SocialIdentityProvider : uses
-User --&gt; EcommercePlatform : uses
-@enduml</pre>
+<img src="EcommercePlatform_overview_synthetic.png" alt="EcommercePlatform overview synthetic" width="357" height="387">
 </div>
+<div class="title">Figure 5. Step #2 - The overview of the ecommerce platform with synthetic relationships</div>
 </div>
 <div class="paragraph">
 <p>The second step focused on the composition of systems within the e-commerce platform and the relationships between them.</p>
@@ -1544,134 +1344,20 @@ User --&gt; EcommercePlatform : uses
 <div class="paragraph">
 <p>The view <code>EcommercePlatform-deep.puml</code> is built upon the "Deep" viewpoint and focus on the Ingress and Egress relationships involving the descendants of the <code>EcommercePlatform</code> element.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #3 - The deepness of the ecommerce platform</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform-deep
-title Solution - EcommercePlatform - Deep View
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ContentManagement
-[system]
-]
-rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-OrderProcessing
-[system]
-]
-rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ProductCatalog
-[system]
-]
-rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserInterface
-[system]
-]
-rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-IdentityAndAccessManagement
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileDatabase
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileService
-[container]
-]
-}
-}
-rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-PaymentGateway
-[system]
-]
-rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-SocialIdentityProvider
-[system]
-]
-person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-User
-[person]
-]
-EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.OrderProcessing --&gt; PaymentGateway
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
-EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
-User --&gt; EcommercePlatform.UserInterface
-@enduml</pre>
+<img src="EcommercePlatform_deep.png" alt="EcommercePlatform deep" width="898" height="571">
 </div>
+<div class="title">Figure 6. Step #3 - The deepness of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>The view <code>EcommercePlatform.UserManagement-detailed</code> is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships involving the children of the <code>UserManagement</code> element.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #3 - The detailed of the User Management</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform_UserManagement-detailed
-title System - UserManagement - Detailed View
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserInterface
-[system]
-]
-rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-IdentityAndAccessManagement
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileDatabase
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileService
-[container]
-]
-}
-}
-rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-SocialIdentityProvider
-[system]
-]
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
-EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
-@enduml</pre>
+<img src="EcommercePlatform.UserManagement_detailed.png" alt="EcommercePlatform" width="635" height="477">
 </div>
+<div class="title">Figure 7. Step #3 - The detailed of the User Management</div>
 </div>
 <div class="paragraph">
 <p>The third step focused on the composition of containers within the "User Management" system, the establishment of relationships between them as well as the refinement of existing relationships.</p>
@@ -1916,81 +1602,11 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
 <div class="paragraph">
 <p>This PlantUML diagram represents the deep view of the ecommerce platform in its initial state. At this stage, all elements and relationships are visible, offering a comprehensive, albeit complex, view of the entire system.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #1 - The deep view of the ecommerce platform</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform-deep
-title Solution - EcommercePlatform - Deep View
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ContentManagement
-[system]
-]
-rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-OrderProcessing
-[system]
-]
-rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ProductCatalog
-[system]
-]
-rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserInterface
-[system]
-]
-rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-IdentityAndAccessManagement
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileDatabase
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileService
-[container]
-]
-}
-}
-rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-PaymentGateway
-[system]
-]
-rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-SocialIdentityProvider
-[system]
-]
-person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-User
-[person]
-]
-EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.OrderProcessing --&gt; PaymentGateway
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
-EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
-User --&gt; EcommercePlatform.UserInterface
-@enduml</pre>
+<img src="EcommercePlatform_deep_initial.png" alt="EcommercePlatform deep initial" width="898" height="571">
 </div>
+<div class="title">Figure 8. Step #1 - The deep view of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>At the end of this step, we have a fully initialized workspace with the ecommerce platform model. The view is complete but also complex and overwhelming; facets, in the steps that follow, refine it.</p>
@@ -2077,85 +1693,11 @@ User --&gt; EcommercePlatform.UserInterface
 <div class="paragraph">
 <p>With the inclusion of authorization relationships, the PlantUML diagram unveils a more detailed view of the ecommerce platform. The <em>oidc</em> relationships are distinctly highlighted, offering insights into the integration of the authorization concern.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #2 - The deep view of the ecommerce platform</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform-deep
-title Solution - EcommercePlatform - Deep View
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ContentManagement
-[system]
-]
-rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-OrderProcessing
-[system]
-]
-rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ProductCatalog
-[system]
-]
-rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserInterface
-[system]
-]
-rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-IdentityAndAccessManagement
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileDatabase
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileService
-[container]
-]
-}
-}
-rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-PaymentGateway
-[system]
-]
-rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-SocialIdentityProvider
-[system]
-]
-person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-User
-[person]
-]
-EcommercePlatform.ContentManagement --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
-EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
-EcommercePlatform.OrderProcessing --&gt; PaymentGateway
-EcommercePlatform.ProductCatalog --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
-EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
-EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
-User --&gt; EcommercePlatform.UserInterface
-@enduml</pre>
+<img src="EcommercePlatform_deep_authorization.png" alt="EcommercePlatform deep authorization" width="698" height="955">
 </div>
+<div class="title">Figure 9. Step #2 - The deep view of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>By the end of Step #2, the authorization concern is part of the ecommerce platform model. The <em>oidc</em> relationships are now visible, which makes the view more detailed but also more complex. This is why the following steps use the facet feature of Archicode to refine and focus the views.</p>
@@ -2249,55 +1791,11 @@ User --&gt; EcommercePlatform.UserInterface
 <div class="paragraph">
 <p>The transformation is visualized in this updated PlantUML diagram. It presents a view where the clutter is minimized, and the spotlight is on the <em>odic</em> relationships, offering a clear perspective of the authorization dynamics within the ecommerce platform.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #3 - The <em>oidc</em> deep view of the ecommerce platform</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform-deep
-title Solution - EcommercePlatform - Deep View
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ContentManagement
-[system]
-]
-rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-OrderProcessing
-[system]
-]
-rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ProductCatalog
-[system]
-]
-rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-IdentityAndAccessManagement
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileService
-[container]
-]
-}
-}
-EcommercePlatform.ContentManagement --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
-EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
-EcommercePlatform.ProductCatalog --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
-EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
-@enduml</pre>
+<img src="EcommercePlatform_deep_facet.png" alt="EcommercePlatform deep facet" width="836" height="381">
 </div>
+<div class="title">Figure 10. Step #3 - The <em>oidc</em> deep view of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>Concluding Step 3, the <em>oidc</em> facet is integrated: it turns a broad, complex view into a focused visualization of the authorization concern.</p>
@@ -2396,81 +1894,11 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
 <div class="paragraph">
 <p>This updated PlantUML diagram illustrates the ecommerce platform’s architecture with the <em>main</em> facet applied. It’s a visual representation that offers insights into the primary elements and relationships, free from the specific OIDC authorization elements.</p>
 </div>
-<div class="listingblock">
-<div class="title">Step #4 - The <em>main</em> deep view of the ecommerce platform</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml EcommercePlatform-deep
-title Solution - EcommercePlatform - Deep View
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ContentManagement
-[system]
-]
-rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-OrderProcessing
-[system]
-]
-rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-ProductCatalog
-[system]
-]
-rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserInterface
-[system]
-]
-rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-IdentityAndAccessManagement
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileDatabase
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-UserProfileService
-[container]
-]
-}
-}
-rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-PaymentGateway
-[system]
-]
-rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-SocialIdentityProvider
-[system]
-]
-person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-User
-[person]
-]
-EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.OrderProcessing --&gt; PaymentGateway
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
-EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
-EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
-User --&gt; EcommercePlatform.UserInterface
-@enduml</pre>
+<img src="EcommercePlatform_deep_main.png" alt="EcommercePlatform deep main" width="898" height="571">
 </div>
+<div class="title">Figure 11. Step #4 - The <em>main</em> deep view of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>By the closure of Step 4, we have not only successfully defined but also effectively applied the <em>main</em> facet. It reveals a balanced view, where the specific authorization elements are excluded, ensuring that the primary architectural elements and relationships of the ecommerce platform are the focal point. It’s a testament to the adaptability and precision that the facet feature introduces to Archicode, affirming its role in enhancing the visualization and management of complex architectural designs.</p>
@@ -2832,291 +2260,11 @@ plantuml</pre>
 <div class="paragraph">
 <p>(The <code>ls</code> shows what a clean folder shows; a folder that already had <code>manifests</code> or <code>views-baseline</code> still has them: they are not removed.) <code>views-to-be</code> holds the views of the plateau, as for any workspace. <code>views-to-be-vs-baseline</code> holds the views of the comparison, and <code>gap.md</code> and <code>gap.json</code>, the table of changes of step 5 in a file that a pull request can carry (with the cascade, the key <code>cascade</code> of the JSON). <code>archicode views generate --only-changes</code> draws, in <code>views-to-be-vs-baseline</code> only, what changed and the context faded: the views of <code>views-to-be</code> and the table stay as they are. Every box and every link of these views that changed says its state with a mark and a line style, and the views that have a change have a legend. The overview of the container <code>shop.web</code>:</p>
 </div>
-<div class="listingblock">
-<div class="title">The overview of <code>shop.web</code> in <code>views-to-be-vs-baseline</code></div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml shop_web-overview
-title Container - Web site - Overview
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-person customer &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-Customer
-[person]
-]
-rectangle shop as "&lt;U+00B1&gt; Shop\n[system]" &lt;&lt;contains-changes&gt;&gt; &lt;&lt;composite&gt;&gt; {
-rectangle shop.catalog &lt;&lt;changed&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+007E&gt; Catalog
-[container]
-The books that are on sale.
-]
-rectangle shop.mailer &lt;&lt;removed&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+2212&gt; --Mailer--
-[container]
-]
-rectangle shop.payments &lt;&lt;new&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-+ Payments
-[container]
-]
-rectangle shop.web &lt;&lt;changed&gt;&gt; &lt;&lt;React&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+007E&gt; Web site
-[container: React]
-The front of the shop.
-]
-}
-customer --&gt; shop.web : orders on
-shop.web -[dotted,thickness=2,#E69F00]-&gt; shop.catalog : **&lt;U+007E&gt;** browses
-shop.web -[dashed,#7F7F7F]-&gt; shop.mailer : **&lt;U+2212&gt;** sends mails with
-shop.web -[thickness=3,#009E73]-&gt; shop.payments : **+** pays with
-legend right
-**To be** compared with **As is**
-|= Mark |= Box |= Link |
-| **+** | new: thick solid outline | new: thick solid line |
-| **&lt;U+007E&gt;** | changed: dotted outline | changed: dotted line |
-| **&lt;U+2212&gt;** | removed: long dashes, narrow gaps, grey outline, struck title | removed: dashed grey line |
-| **&lt;U+00B1&gt;** | something inside changed: thin dashed outline | |
-endlegend
-&lt;style&gt;
-.changed {
-actor {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-card {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-database {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-node {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-person {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-rectangle {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-actor {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-card {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-database {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-node {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-person {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-rectangle {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-actor {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-card {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-database {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-node {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-person {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-rectangle {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-actor {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-card {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-database {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-node {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-person {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-rectangle {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-@enduml</pre>
+<img src="plateaus_shop_web_overview.png" alt="plateaus shop web overview" width="706" height="617">
 </div>
+<div class="title">Figure 12. The overview of <code>shop.web</code> in <code>views-to-be-vs-baseline</code></div>
 </div>
 <div class="paragraph">
 <p><code>shop.web</code> and <code>shop.catalog</code> are changed (dotted outline, <code>~</code>), <code>shop.payments</code> is new (thick outline, <code>`), `shop.mailer` is removed (dashed, struck title, `−`), and the system `shop`, which did not change by itself, _contains changes_ (`±`). The links say it the same way: ` pays with</code> is new, <code>− sends mails with</code> is removed, and the label of <code>shop.web</code> to <code>shop.catalog</code> changed, from <code>reads</code> to <code>browses</code>.</p>
@@ -3124,577 +2272,20 @@ FontColor: #7F7F7F
 <div class="paragraph">
 <p>The detailed view of the system <code>shop</code> draws what was split and merged. The titles say where the boxes came from, <code>(from shop.orders)</code> and <code>(from shop.invoices, shop.receipts)</code>, and the legend has one line for each of the two states, with dashes that tell them from the others. <code>shop.ratings</code> is new and <code>shop.reviews</code> removed: the candidate is not drawn.</p>
 </div>
-<div class="listingblock">
-<div class="title">The detailed view of <code>shop</code> in <code>views-to-be-vs-baseline</code></div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml shop-detailed
-title System - Shop - Detailed View
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-person customer &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-Customer
-[person]
-]
-rectangle shop as "&lt;U+00B1&gt; Shop\n[system]" &lt;&lt;contains-changes&gt;&gt; &lt;&lt;composite&gt;&gt; {
-rectangle shop.billing &lt;&lt;merged&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+2295&gt; Billing (from shop.invoices, shop.receipts)
-[container]
-Writes the invoice and sends the receipt.
-]
-rectangle shop.cart &lt;&lt;split&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+22D4&gt; Cart (from shop.orders)
-[container]
-Keeps the basket of a customer.
-]
-rectangle shop.catalog &lt;&lt;changed&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+007E&gt; Catalog
-[container]
-The books that are on sale.
-]
-rectangle shop.checkout &lt;&lt;split&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+22D4&gt; Checkout (from shop.orders)
-[container]
-Turns a basket into an order.
-]
-rectangle shop.mailer &lt;&lt;removed&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+2212&gt; --Mailer--
-[container]
-]
-rectangle shop.payments &lt;&lt;new&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-+ Payments
-[container]
-]
-rectangle shop.ratings &lt;&lt;new&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-+ Ratings
-[container]
-Readers rate the books they have bought.
-]
-rectangle shop.reviews &lt;&lt;removed&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+2212&gt; --Reviews--
-[container]
-Readers rate the books they bought.
-]
-rectangle shop.web &lt;&lt;changed&gt;&gt; &lt;&lt;React&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+007E&gt; Web site
-[container: React]
-The front of the shop.
-]
-}
-customer --&gt; shop.web : orders on
-shop.web -[dotted,thickness=2,#E69F00]-&gt; shop.catalog : **&lt;U+007E&gt;** browses
-shop.web -[dashed,#7F7F7F]-&gt; shop.mailer : **&lt;U+2212&gt;** sends mails with
-shop.web -[thickness=3,#009E73]-&gt; shop.payments : **+** pays with
-legend right
-**To be** compared with **As is**
-|= Mark |= Box |= Link |
-| **+** | new: thick solid outline | new: thick solid line |
-| **&lt;U+007E&gt;** | changed: dotted outline | changed: dotted line |
-| **&lt;U+2212&gt;** | removed: long dashes, narrow gaps, grey outline, struck title | removed: dashed grey line |
-| **&lt;U+00B1&gt;** | something inside changed: thin dashed outline | |
-| **&lt;U+22D4&gt;** | split, one of several that replace one element: medium dashes | |
-| **&lt;U+2295&gt;** | merged, replaces several elements: short dashes, far apart | |
-endlegend
-&lt;style&gt;
-.changed {
-actor {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-card {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-database {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-node {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-person {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.changed {
-rectangle {
-LineColor: #E69F00
-LineStyle: 2
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-actor {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-card {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-database {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-node {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-person {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-rectangle {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.merged {
-actor {
-LineColor: #56B4E9
-LineStyle: 3-9
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.merged {
-card {
-LineColor: #56B4E9
-LineStyle: 3-9
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.merged {
-database {
-LineColor: #56B4E9
-LineStyle: 3-9
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.merged {
-node {
-LineColor: #56B4E9
-LineStyle: 3-9
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.merged {
-person {
-LineColor: #56B4E9
-LineStyle: 3-9
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.merged {
-rectangle {
-LineColor: #56B4E9
-LineStyle: 3-9
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-actor {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-card {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-database {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-node {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-person {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.new {
-rectangle {
-LineColor: #009E73
-LineStyle: 0
-LineThickness: 3
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-actor {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-card {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-database {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-node {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-person {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.removed {
-rectangle {
-BackgroundColor: #EEEEEE
-LineColor: #7F7F7F
-LineStyle: 16-3
-LineThickness: 2
-FontColor: #7F7F7F
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.split {
-actor {
-LineColor: #CC79A7
-LineStyle: 8
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.split {
-card {
-LineColor: #CC79A7
-LineStyle: 8
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.split {
-database {
-LineColor: #CC79A7
-LineStyle: 8
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.split {
-node {
-LineColor: #CC79A7
-LineStyle: 8
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.split {
-person {
-LineColor: #CC79A7
-LineStyle: 8
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.split {
-rectangle {
-LineColor: #CC79A7
-LineStyle: 8
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-@enduml</pre>
+<img src="plateaus_shop_detailed.png" alt="plateaus shop detailed" width="1026" height="698">
 </div>
+<div class="title">Figure 13. The detailed view of <code>shop</code> in <code>views-to-be-vs-baseline</code></div>
 </div>
 <div class="paragraph">
 <p>The inventory is drawn where it is now, in the warehouse, with <code>→</code> and <code>(from shop.inventory)</code>. The view of its child <code>levels</code> shows the container and the component that moved together, each with the reference it came from.</p>
 </div>
-<div class="listingblock">
-<div class="title">The overview of <code>levels</code> in <code>views-to-be-vs-baseline</code></div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml warehouse_inventory_levels-overview
-title Component - Levels - Overview
-skinparam defaultTextAlignment center
-skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
-skinparam wrapWidth 200
-skinparam maxMessageSize 150
-hide stereotype
-&lt;style&gt;
-.composite {
-BackgroundColor: transparent
-LineColor: darkgray
-LineStyle: 5
-FontStyle: normal
-}
-&lt;/style&gt;
-rectangle warehouse as "&lt;U+00B1&gt; Warehouse\n[system]" &lt;&lt;contains-changes&gt;&gt; &lt;&lt;composite&gt;&gt; {
-rectangle warehouse.inventory as "&lt;U+2192&gt; Inventory (from shop.inventory)\n[container]" &lt;&lt;moved&gt;&gt; &lt;&lt;composite&gt;&gt; {
-rectangle warehouse.inventory.levels &lt;&lt;moved&gt;&gt; &lt;&lt;component&gt;&gt; &lt;&lt;atomic&gt;&gt; [
-&lt;U+2192&gt; Levels (from shop.inventory.levels)
-[component]
-The count of each book.
-]
-}
-}
-legend right
-**To be** compared with **As is**
-|= Mark |= Box |= Link |
-| **+** | new: thick solid outline | new: thick solid line |
-| **&lt;U+007E&gt;** | changed: dotted outline | changed: dotted line |
-| **&lt;U+2212&gt;** | removed: long dashes, narrow gaps, grey outline, struck title | removed: dashed grey line |
-| **&lt;U+00B1&gt;** | something inside changed: thin dashed outline | |
-| **&lt;U+2192&gt;** | moved or renamed, replaces one element: long dashes, wide gaps | |
-endlegend
-&lt;style&gt;
-.contains-changes {
-actor {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-card {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-database {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-node {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-person {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.contains-changes {
-rectangle {
-LineColor: #5B7C99
-LineStyle: 4
-LineThickness: 1
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.moved {
-actor {
-LineColor: #0072B2
-LineStyle: 12
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.moved {
-card {
-LineColor: #0072B2
-LineStyle: 12
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.moved {
-database {
-LineColor: #0072B2
-LineStyle: 12
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.moved {
-node {
-LineColor: #0072B2
-LineStyle: 12
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.moved {
-person {
-LineColor: #0072B2
-LineStyle: 12
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-&lt;style&gt;
-.moved {
-rectangle {
-LineColor: #0072B2
-LineStyle: 12
-LineThickness: 2
-}
-}
-&lt;/style&gt;
-@enduml</pre>
+<img src="plateaus_levels_overview.png" alt="plateaus levels overview" width="751" height="443">
 </div>
+<div class="title">Figure 14. The overview of <code>levels</code> in <code>views-to-be-vs-baseline</code></div>
 </div>
 <div class="paragraph">
 <p><strong>Step 8. Look at it in the editor.</strong> <code>archicode editor serve</code> opens the folder in your browser (see <a href="#serve-the-editor">Serve the editor</a>).</p>
@@ -3944,6 +2535,14 @@ archicode views generate -w my-architecture/.archicode.yaml</pre>
 <div class="listingblock">
 <div class="content">
 <pre>archicode query graph | jq '.relationships[] | select(.relationship.destination=="PaymentGateway") | .source'</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To ask what a change to one element touches, use <code>query impact</code> (see <a href="#query-impact">Query impact</a>). It lists the elements that point at <code>PaymentGateway</code>, with their distance, in one call:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>archicode query impact PaymentGateway</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -4459,26 +3058,11 @@ manifests/
 </li>
 </ul>
 </div>
-<div class="listingblock">
-<div class="title">Application Layer Composition</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml
-hide empty members
-rectangle Workspace
-rectangle ApplicationLayer as "Application Layer"
-rectangle Solution
-rectangle System
-rectangle Container
-rectangle Component
-Workspace *--&gt; "1" ApplicationLayer
-ApplicationLayer *--&gt; "*" Solution
-ApplicationLayer *--&gt; "*" System
-Solution *--&gt; "*" System
-System *--&gt; "*" Container
-Container *--&gt; "*" Component
-@enduml</pre>
+<img src="application_layer_composition.png" alt="application layer composition" width="162" height="529">
 </div>
+<div class="title">Figure 15. Application Layer Composition</div>
 </div>
 <div class="paragraph">
 <p>This hierarchical structure lets you systematically model and articulate the relationships and dependencies between Solutions, Systems, Containers, and Components within your architectural design.</p>
@@ -4604,22 +3188,11 @@ Container *--&gt; "*" Component
 </li>
 </ul>
 </div>
-<div class="listingblock">
-<div class="title">Technology Layer Composition</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml
-hide empty members
-rectangle Workspace
-rectangle TechnologyLayer as "Technology Layer"
-rectangle Environment
-rectangle Node
-Workspace *--&gt; "1" TechnologyLayer
-TechnologyLayer *--&gt; "*" Environment
-Environment *--&gt; "*" Node
-Node *--&gt; "*" Node
-@enduml</pre>
+<img src="technology_layer_composition.png" alt="technology layer composition" width="153" height="342">
 </div>
+<div class="title">Figure 16. Technology Layer Composition</div>
 </div>
 <div class="paragraph">
 <p>Within this framework, you gain the ability to systematically depict and elucidate the complex interactions, dependencies, and relationships that exist among Environments, Nodes, and Sub-Nodes within your technological architecture.</p>
@@ -4735,18 +3308,11 @@ Node *--&gt; "*" Node
 </li>
 </ul>
 </div>
-<div class="listingblock">
-<div class="title">Relationship Composition</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml
-hide empty members
-rectangle Element
-rectangle Relationship
-Element *--&gt; "*" Relationship
-Relationship o--&gt; "1" Element
-@enduml</pre>
+<img src="relationship_composition.png" alt="relationship composition" width="117" height="144">
 </div>
+<div class="title">Figure 17. Relationship Composition</div>
 </div>
 </div>
 <div class="sect2">
@@ -4783,21 +3349,11 @@ Relationship o--&gt; "1" Element
 </li>
 </ul>
 </div>
-<div class="listingblock">
-<div class="title">Viewpoints and Views Composition</div>
+<div class="imageblock">
 <div class="content">
-<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
-@startuml
-hide empty members
-rectangle Workspace
-rectangle View
-rectangle Viewpoint
-rectangle Layer
-Workspace *--&gt; "*" View
-View o--&gt; "1" Viewpoint
-View o--&gt; "1" Layer
-@enduml</pre>
+<img src="viewpoint_views_composition.png" alt="viewpoint views composition" width="189" height="240">
 </div>
+<div class="title">Figure 18. Viewpoints and Views Composition</div>
 </div>
 </div>
 <div class="sect3">
@@ -5391,7 +3947,7 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <p>The published page remembers, in the browser, every folder it opened, with the name its workspace gives itself (see <a href="#editor-workspace-name">Name of the workspace</a>). When the page opens again, it opens the last folder directly if the browser still lets it read it; otherwise it asks for a click (<strong>Reopen</strong>), because a browser only gives that permission back on a click. <strong>Close folder</strong>, at the top right, closes the folder and shows the list of the remembered folders: the closed one stays in it, and the next visit does not open it by itself. When no folder is open, the list shows each folder by the name of its workspace, with the name of the folder below it when they differ, most recent first: a click on one opens it, <strong>Remove from the list</strong> makes the browser forget it, and nothing is deleted on disk. Under each folder, the list says what a click will meet, as the browser answers without asking anything: <em>Opens without asking</em>, <em>Will ask for permission</em> (the browser shows its prompt), <em>Blocked by the browser</em>, or <em>Could not be reached</em> / <em>Could not be checked</em> (the folder may have been moved or deleted). A folder picked again is not added twice, even by two tabs at the same moment: the browser then holds two records for it for an instant, and the editor merges them into one, keeping the name of its workspace and its place in the list. A folder that cannot be opened (the permission refused, the folder moved or deleted) stays in the list, which says why, until it is removed. Served by <code>archicode editor serve</code>, the editor has one folder, the one of the server: there is no list and no <strong>Close folder</strong>.</p>
 </div>
 <div class="paragraph">
-<p>The editor loads <code>elkjs</code> (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.</p>
+<p>The editor loads <code>elkjs</code> (the diagram layout), CodeMirror (the file editor) and the kernel (the WebAssembly that draws the diagrams, <code>viewpoint_kernel.wasm</code>, carried by the script <code>viewpoint_kernel.js</code>) from scripts served beside the page, in an <code>assets</code> folder, so it needs no network. The editor served by <code>archicode editor serve</code> and the one published next to the manual both serve that folder. A copy of the page with its <code>assets</code> folder beside it also works opened from a <code>file://</code> address (the scripts are plain <code>&lt;script&gt;</code> files, which a page opened from a disk may load); the page alone, without the folder, falls back to a plain text area for the YAML and to the plain list for the layout, and a diagram shows an error naming the kernel script.</p>
 </div>
 <div class="paragraph">
 <p>In <strong>Settings</strong>, the paths of the manifests are one per line, and a path that ends in <code>/**</code> is read with the folders below it (see <a href="#manifests-folders">Manifests in folders</a>); a new element, view or story is written in the folder of the first path. The editor served by <code>archicode editor serve</code> does not list the hidden entries of a folder at all, <code>.archicode.yaml</code> of the folder itself excepted (it is served at the root only, not in a sub-folder), so a path that names a hidden folder reads nothing there, and does not list a link to a file that points out of the folder, which the command line reads. A browser that lets the page read a folder gives no way to tell a link from a folder: the page stops at a folder that is one it is inside of, but reads a link to another folder, which the command line does not.</p>
@@ -6026,6 +4582,12 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <p>The name of a plateau draws it, as a choice in the list <strong>Plateau</strong> of the band does. <strong>Changes</strong> draws the plateau and compares it with the plateau it overrides in one step, and the <strong>Changes</strong> panel opens on the right with the same lists as on the other pages; a click on one of its rows opens the element in <strong>Elements</strong>, since this page draws none (<strong>Next change</strong> and <strong>Previous change</strong> show the change they are at under the buttons, see <a href="#editor-changes-panel">The Changes panel</a>).</p>
 </div>
 <div class="paragraph">
+<p><strong>Reading a path.</strong> <strong>Read the path</strong> (on every entry but the root) draws, under the list, a table of the path from the root to that plateau: a row is one element followed through <code>replaces</code>, a column is one plateau, and the last column, <em>Span</em>, is the root compared with the end of the path. A cell says what the element is there (new, changed, removed, moved, split or merged). The rows with no change are folded, and <strong>Changes only</strong> unfolds them; the table is the one <code>archicode plateau matrix</code> writes (see <a href="#plateau-matrix">Read what a path of plateaus changes, element by element</a>). A click on a cell with a change draws the plateau of its column compared with the plateau on its left (the root and the end of the path for the Span), as <strong>Changes</strong> does for one pair, and selects the element in the <strong>Changes</strong> panel. <strong>Close reading</strong> removes the table. The button is off for a plateau that cannot be drawn, and there is no table in a workspace with one plateau.</p>
+</div>
+<div class="paragraph">
+<p>The address carries the reading: <code>matrix=&lt;plateau&gt;</code> names the end of the path and <code>rows=all</code> says the folded rows are unfolded, both on the page Plateaus only and after <code>plateau=</code>. A plateau that is not in the tree or is the root drops the key, and <code>rows=all</code> without <code>matrix=</code> is dropped; the page writes the address back without it.</p>
+</div>
+<div class="paragraph">
 <p><strong>Writing a plateau.</strong> <strong>New plateau after this</strong> (on an entry) and <strong>New plateau</strong> (above the list, for the plateau drawn, with <em>writing in: &lt;plateau&gt;</em>) make a plateau that overrides it; <strong>Edit</strong> (<strong>Edit plateau</strong> beside <strong>New plateau</strong>) changes its name, horizon or parent. The manifest is written as <a href="#editor-writing">Writing in a plateau</a> says.</p>
 </div>
 <div id="editor-plateau-delete" class="paragraph">
@@ -6290,6 +4852,14 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 <td class="tableblock halign-left valign-top"><p class="tableblock">the hidden elements of a Map, a list of references</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>matrix=</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the plateau at the end of the path read on the page Plateaus (the root has none)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rows=all</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the unfolded rows of that reading, with <code>matrix=</code> only</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pin=</code>, <code>rel=</code>, <code>hl=</code>, <code>facet=</code>, <code>hide-unlinked</code>, <code>applications=0</code>, <code>relationships=0</code>, the names shown, <code>frame=fit</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">as before</p></td>
 </tr>
@@ -6497,7 +5067,7 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 <p><code>views</code>: Manage the views of the workspace (see <a href="#generate-views">Generate views</a>).</p>
 </li>
 <li>
-<p><code>query</code>: Query the ArchiCode data model (see Query views and Query graph below).</p>
+<p><code>query</code>: Query the ArchiCode data model (see <a href="#query-views">Query views</a>, <a href="#query-graph">Query graph</a> and <a href="#query-impact">Query impact</a>).</p>
 </li>
 <li>
 <p><code>editor</code>: Manage the local manifest editor server (see <a href="#serve-the-editor">Serve the editor</a>).</p>
@@ -6516,6 +5086,9 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 </li>
 <li>
 <p><code>init</code>: Write a small workspace (.archicode.yaml, a person, a system with a container, a relationship and a view) that loads and is drawn (see <a href="#init">Start a workspace</a>).</p>
+</li>
+<li>
+<p><code>import</code>: Import a model written for another tool into an ArchiCode workspace (see <a href="#import-structurizr">Import a Structurizr workspace</a>).</p>
 </li>
 </ul>
 </div>
@@ -6581,6 +5154,30 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 </div>
 <div class="paragraph">
 <p><code>init</code> never overwrites. A folder that already holds <code>.archicode.yaml</code>, or one of the three manifests, is one line on the error output, for instance <code>error: the folder <code>my-architecture</code> already holds <code>.archicode.yaml</code>: init writes nothing over a workspace</code>, with the code 1 and nothing written. Edit the files, add manifests, and see <a href="#manifest-kinds">[manifest-kinds]</a> for the kinds you can write.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="import-structurizr">Import a Structurizr workspace</h3>
+<div class="listingblock">
+<div class="title">Import a Structurizr workspace - The command line</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode import structurizr workspace.json --output my-architecture</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>archicode import structurizr &lt;workspace.json&gt; --output &lt;folder&gt;</code> reads the JSON export of a Structurizr workspace and writes a new ArchiCode workspace. It loads no workspace (<code>-w</code> is not read). <code>--output</code> is required, and the folder must be absent or empty; an absent folder, and its absent parents, are created.</p>
+</div>
+<div class="paragraph">
+<p><strong>What it reads.</strong> The people, the software systems, the containers and the components of <code>model</code>, and the relationships they hold. Every other key is ignored.</p>
+</div>
+<div class="paragraph">
+<p><strong>What it writes.</strong> <code>.archicode.yaml</code> (a name, and <code>manifests.paths</code> set to <code>manifests/**</code>) and one manifest for each element, in <code>manifests/</code>, named by its reference: a person, a system, and a container or a component whose <code>header.parent</code> is the element that holds it. The id of an element is its name, in lower case, with each run of characters other than letters, digits, <code><em></code> and <code>-</code> turned into one <code></em></code>; a name with no letter or digit takes <code>&lt;kind&gt;_&lt;Structurizr id&gt;</code>; elements that share a parent and an id get the suffix <code>_2</code>, <code>_3</code>, and so on, in the order of the export. The Structurizr id is kept in the tag <code>structurizr.id</code> and the <code>group</code> in the tag <code>group</code>; the technology and the tags of the element, other than the defaults of Structurizr, become qualifiers. A relationship is written on its source, with the description as its label and the technology as a qualifier. A relationship that Structurizr derived from another (it has a <code>linkedRelationshipId</code>) is not written, since ArchiCode derives such links itself. When it is done the command prints <code>imported &lt;n&gt; elements and &lt;m&gt; relationships into &lt;folder&gt;</code>; the result loads with <code>archicode query graph</code> and opens in the editor.</p>
+</div>
+<div class="paragraph">
+<p><strong>What it drops.</strong> Views, deployment nodes, styles, documentation and properties are not carried. Each part present is one <code>warning:</code> line with its count, and so is each relationship whose end is not an imported element, each derived relationship that was skipped and each id that was rewritten (the element, its Structurizr id and the id written). A dropped part is not an error: the exit code is 0, and the warnings tell what to write again.</p>
+</div>
+<div class="paragraph">
+<p><strong>The refusals.</strong> Each is one line on the error output, starts with <code>error: `, exits with the code 1 and writes nothing: an input that does not exist, that is a folder or that is not JSON; a file that ends in `.dsl</code> (export it to JSON first); a JSON with no <code>model</code>; an element with no name; an output folder that is not empty, or that is a file. The files are written in a folder next to the output and moved into place at the end, so that a failed write leaves no half of a workspace.</p>
 </div>
 </div>
 <div class="sect2">
@@ -6801,7 +5398,7 @@ A test (<code>DeterministicGenerationTest</code>) generates a workspace twice, w
 </div>
 </div>
 <div class="sect2">
-<h3 id="_query_views">Query views</h3>
+<h3 id="query-views">Query views</h3>
 <div class="listingblock">
 <div class="title">Query Views - The command line</div>
 <div class="content">
@@ -6872,13 +5469,26 @@ A test (<code>DeterministicGenerationTest</code>) generates a workspace twice, w
 <p>Sorted Output: the views come sorted, by identifier and then by layer (application before technology), in every output format and before the JSON Path query is applied, so that <code>$.[0]</code> is always the same view. Two runs, on the same machine or not, and two builds of the same version give the same output byte for byte, which lets you diff it or keep it in git. Before 0.14.0 the order of the views was not defined and changed from one build to another; the set of views did not. The order of your scripts' results changes once, when you upgrade; if a script relies on the position of a view, select it by its <code>id</code> instead.</p>
 </li>
 <li>
+<p>Saved or derived: every entry ends with the key <code>saved</code>, <code>true</code> for a view the workspace saves in a manifest and <code>false</code> for a view the tool derives (the built-in view of each element). The key is in every output format and is there before the JSON Path query is applied, so a query can select on it. When a saved view and a derived one are alike, the saved one comes first.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">Query Views - Only the saved views</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode query views -q '$.[?(@.saved==true)]'</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
 <p>TOML Output: a TOML document is a table, so <code>-f toml</code> writes the list of views under the key <code>views</code>, as <code>views = [{ id = '&#8230;&#8203;', &#8230;&#8203; }, &#8230;&#8203;]</code>; a JSON Path query that selects one view writes that view as a table, and one that selects anything else (a list of identifiers, say) is written under <code>views</code> too. Before 0.14.0 the list was written as an assignment without a key, which no TOML parser reads. The TOML output changes once, when you upgrade; the YAML, JSON and custom outputs did not change.</p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_query_graph">Query graph</h3>
+<h3 id="query-graph">Query graph</h3>
 <div class="listingblock">
 <div class="title">Query Graph - The command line</div>
 <div class="content">
@@ -6900,7 +5510,64 @@ A relationship whose destination does not exist is an error, as it is for the vi
 <li>
 <p>Sorted Output: the elements come by layer (application, then technology) and, in a layer, by reference; the relationships come by the reference of their source in the same order and, for one source, as the author wrote them. Two runs and two builds of the same version give the same output byte for byte, which lets you diff it or keep it in git. Before 0.14.0 the elements came in the hash order of their references: the same for one workspace and one JDK, but not a promised one. The order of the output changes once, when you upgrade; the elements and the relationships did not change.</p>
 </li>
+<li>
+<p>Deployments: when a node of the technology layer hosts applications, the output ends with the key <code>deployments</code>, a list of <code>{"node":"&lt;reference of the node&gt;","application":"&lt;reference as the node wrote it&gt;"}</code>, one entry for each pair the author wrote. The entries come by the reference of the node and, for one node, as the author wrote the applications. A workspace in which no node hosts an application has no <code>deployments</code> key. An entry copies the reference of the application and does not check it: a hosted application that does not exist is an error only in a workspace with plateaus, as before. <code>archicode query graph | jq '.deployments[] | select(.node=="github.actions")'</code> lists what a node hosts.</p>
+</li>
 </ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="query-impact">Query impact</h3>
+<div class="listingblock">
+<div class="title">Query Impact - The command line</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode query impact --help</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Query Impact - What touches the kernel of ArchiCode, one hop away</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode query impact archicode.kernel --depth 1 -w docs/architecture/.archicode.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The command answers "what does a change to this element touch?" in one call, from the same graph as <code>query graph</code>. It takes the reference of one element, prints one line of JSON on the standard output and exits with the code 0. On the model of ArchiCode (the folder <code>docs/architecture</code> of a clone of the repository) the call above prints:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{"start":"archicode.kernel","direction":"in","depth":1,"reached":[{"reference":"archicode.commandline.viewpoint","distance":1,"via":{"source":"archicode.commandline.viewpoint","destination":"archicode.kernel.engine.compute","qualifiers":["calls"],"label":"draws with"}},{"reference":"archicode.commandline.workspace","distance":1,"via":{"source":"archicode.commandline.workspace","destination":"archicode.kernel.engine.patches","qualifiers":["calls"],"label":"applies the patches of a layer"}},{"reference":"archicode.contracts.couplings.kernel_wasm","distance":1,"via":{"source":"archicode.contracts.couplings.kernel_wasm","destination":"archicode.kernel.engine","qualifiers":["generated from"],"label":"is generated from"}},{"reference":"archicode.editor.application","distance":1,"via":{"source":"archicode.editor.application","destination":"archicode.kernel.engine.patches","qualifiers":["calls"],"label":"loads the kernel before the patches"}},{"reference":"archicode.editor.model","distance":1,"via":{"source":"archicode.editor.model","destination":"archicode.kernel.engine.compute","qualifiers":["calls"],"label":"calls the kernel"}},{"reference":"archicode.editor.presentation","distance":1,"via":{"source":"archicode.editor.presentation","destination":"archicode.kernel.engine.compute","qualifiers":["calls"],"label":"draws with"}}]}</pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Answer: <code>start</code> is the reference asked, <code>direction</code> and <code>depth</code> are what was asked (<code>depth</code> is <code>null</code> when there is no bound), and <code>reached</code> lists the elements touched. An entry has the <code>reference</code> of the element, its <code>distance</code> in hops from the start and <code>via</code>, the first coupling that reached it: for a relationship the <code>source</code>, the <code>destination</code>, the <code>qualifiers</code> and the <code>label</code> as the author wrote them, for a deployment <code>deployment: true</code> in place of the qualifiers and the label.</p>
+</li>
+<li>
+<p>Direction: <code>--direction in</code> (the default) follows the couplings backwards and lists the elements that point at the start, which are the ones a change to it can break; <code>out</code> lists what the start points at; <code>both</code> follows the two.</p>
+</li>
+<li>
+<p>Depth: <code>--depth &lt;n&gt;</code> stops after <code>n</code> hops; <code>n</code> is 1 or more, and a smaller value is one <code>error:</code> line (exit 1). Without it the walk goes as far as the couplings go.</p>
+</li>
+<li>
+<p>Qualifiers: <code>--qualifier &lt;qualifier&gt;</code>, repeatable, keeps the relationships that carry any of the qualifiers named. It filters relationships only; a deployment is not filtered by it.</p>
+</li>
+<li>
+<p>Through: <code>--through relationships</code> (the default) follows the relationships. <code>--through deployments</code> follows an application on the node that hosts it (see <a href="#query-graph">Query graph</a>), and <code>--through relationships --through deployments</code> follows both. A node that hosts an application is the source of the coupling, so with <code>--direction out</code> an environment&#8217;s node reaches its applications and with <code>in</code> an application reaches its nodes.</p>
+</li>
+<li>
+<p>Descendants: an element covers its descendants, so a coupling that ends on a descendant touches the element. A reached element is named once, at its shortest distance. The start and its descendants are never listed.</p>
+</li>
+<li>
+<p>Sorted Output: the entries come by distance and then by reference, so two runs and two builds of the same version give the same output byte for byte.</p>
+</li>
+<li>
+<p>Errors: a reference that is no element of the graph is one <code>error:</code> line on the error output (exit 1), like a workspace that does not load. Like <code>query graph</code>, the command takes <code>--plateau &lt;id&gt;</code> (see <a href="#plateau-choose">[plateau-choose]</a>).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>archicode query impact archicode.kernel | jq -r '.reached[].reference'</code> lists the elements a change to the kernel can break.</p>
 </div>
 </div>
 <div class="sect2">
@@ -7247,6 +5914,36 @@ error: the fold of `a` into `b` would change how the plateau `b` compares with `
 </div>
 </div>
 <div class="sect2">
+<h3 id="plateau-matrix">Read what a path of plateaus changes, element by element</h3>
+<div class="listingblock">
+<div class="title">The matrix of a path of plateaus - The command line</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode plateau matrix baseline inhouse marketplace   # the plateaus, oldest first
+archicode plateau matrix --plateau marketplace          # the chain from baseline to marketplace
+archicode plateau matrix baseline inhouse marketplace -f markdown
+archicode plateau matrix baseline inhouse marketplace -o views</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>archicode plateau matrix [PLATEAU_ID&#8230;&#8203;]</code> answers "what happens to this element along the way" for a whole path at once, where <code>archicode diff</code> compares one pair. A row is one element followed through <code>replaces</code> (a move, a split or a merge keeps its row), a column is one plateau, and a cell says what the element is there: <code>absent</code>, <code>present</code>, <code>new</code>, <code>changed</code>, <code>removed</code>, <code>moved</code>, <code>split</code> or <code>merged</code>, with the references it replaces and what differs. A row with no change anywhere is left out, and the table says how many were left out.</p>
+</div>
+<div class="paragraph">
+<p><strong>The columns.</strong> Either the plateau ids, oldest first, each one a plateau that overrides the one before it (a plateau may be skipped: <code>baseline marketplace</code> compares the two as <code>diff</code> does), or none, and then the chain from <code>baseline</code> to <code>--plateau</code> (default: <code>settings.current</code>, else the last plateau when the plateaus form one line). <code>--plateau</code> together with ids is one <code>error:</code> line, and so is a path of fewer than two plateaus, a plateau named twice or out of order, an unknown plateau, and two plateaus that are alternatives (siblings, as <code>inhouse</code> and <code>saas</code> of the layered Brightcart): they are not a history, so no cell compares them.</p>
+</div>
+<div class="paragraph">
+<p><strong>The Span.</strong> From three plateaus, the last column, <code>SPAN</code>, is one comparison of the first plateau with the last, made by the same code as <code>archicode diff --plateau &lt;last&gt; --against &lt;first&gt;</code>. It is not the sum of the cells: an element moved in two steps is one move in the Span, and an element that is new and then removed is left empty there. With two plateaus the Span is the cell, and is not drawn twice.</p>
+</div>
+<div class="paragraph">
+<p><strong>The output.</strong> Without <code>--output</code> the table is printed in <code>--format</code> (<code>text</code>, the default, <code>markdown</code> or <code>json</code>). With <code>--output</code> the command writes <code>matrix.md</code> and <code>matrix.json</code> (the same text as <code>-f markdown</code> and <code>-f json</code>) in the folder <code>&lt;PATH&gt;-matrix-&lt;first&gt;-to-&lt;last&gt;</code>, next to the workspace file, and prints <code>wrote &lt;folder&gt;</code>. Without a value, <code>PATH</code> is the folder of the views of the settings (<code>views</code>), so the folder is <code>views-matrix-baseline-to-marketplace</code>; with one, it is relative to the folder of the workspace file, or absolute. <code>--format</code> with <code>--output</code> is one <code>error:</code> line. Put the plateau ids before <code>--output</code>, since the option may take a value. A folder that exists is written over, file by file; nothing else in it is touched.</p>
+</div>
+<div class="paragraph">
+<p><strong>Keep the folder in the family of the views.</strong> A folder that begins with the views folder and a dash is left out when the manifests are found below a <code>/<strong></code> path, and <code>matrix.json</code> is then not read as a manifest. With <code>-o</code> outside that family (<code>-o reports</code> below <code>manifests/</strong></code>, for instance), <code>matrix.json</code> is read as a manifest on the next load. Choose a <code>PATH</code> that begins with the views folder, or a folder outside <code>manifests.paths</code>.</p>
+</div>
+<div class="paragraph">
+<p>The exit code is 0, a difference is not an error, and there is no <code>--fail-on</code>. The warnings of the comparisons go to the error output.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_generate_json_schemas">Generate JSON Schemas</h3>
 <div class="listingblock">
 <div class="title">JSON Schemas - The command line</div>
@@ -7303,7 +6000,7 @@ error: the fold of `a` into `b` would change how the plateau `b` compares with `
 <div class="sect2">
 <h3 id="command-reference">Every command and option</h3>
 <div class="paragraph">
-<p>Each listing below is the usage of one command, in the text the program prints for <code>--help</code>, with <code>archicode</code> for its name.
+<p>Each listing below is the usage of one command, in the text the program prints for <code>--help</code>.
 The first is <code>archicode</code> itself, then each command in the order of its group; a command that holds others comes before them.</p>
 </div>
 <div class="listingblock">
@@ -7322,6 +6019,7 @@ Commands:
   editor   Manage the local manifest editor server.
   plateau  Manage the plateaus of the workspace.
   stories  Manage the stories of the workspace.
+  import   Import a model written for another tool into an ArchiCode workspace.
   diff     Compare a plateau with another one: the elements and the
              relationships that are new, changed or removed, and what changed
              in each, as a table.
@@ -7407,7 +6105,10 @@ Commands:
   schemas  Get JSON schemas related to the ArchiCode data model.
   views    List and filter the views of the workspace.
   graph    Print the resolved element/relationship graph of the workspace as
-             JSON.</pre>
+             JSON.
+  impact   Print what a change to an element touches, as one line of JSON: the
+             elements reached, their distance in hops and the first coupling
+             that reached them.</pre>
 </div>
 </div>
 <div class="listingblock">
@@ -7452,6 +6153,44 @@ Print the resolved element/relationship graph of the workspace as JSON.
                                a header or a Plateau manifest). Default:
                                settings.current, else the last plateau when
                                they form one line.
+  -w, --workspace=&lt;workspace file&gt;
+                             The workspace file.</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">archicode query impact</div>
+<div class="content">
+<pre>Usage: archicode query impact [-h] [--depth=&lt;n&gt;] [--direction=&lt;in|out|both&gt;]
+                              [--plateau=PLATEAU_ID] [-w=&lt;workspace file&gt;]
+                              [--qualifier=&lt;qualifier&gt;]...
+                              [--through=&lt;relationships|deployments&gt;]...
+                              &lt;reference&gt;
+Print what a change to an element touches, as one line of JSON: the elements
+reached, their distance in hops and the first coupling that reached them.
+An element covers its descendants: a reached element is named once, at its
+shortest distance, and the start and its descendants are left out. A reference
+that is no element, or a depth below 1, is one error line.
+      &lt;reference&gt;            The reference of the element a change is made to,
+                               as `archicode query graph` lists them.
+      --depth=&lt;n&gt;            The number of hops at most, 1 or more. Default: no
+                               bound.
+      --direction=&lt;in|out|both&gt;
+                             Which way the couplings are followed: in (the
+                               elements that point at it), out (the elements it
+                               points at) or both. Default: IN.
+  -h, --help                 Display this help message.
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+      --qualifier=&lt;qualifier&gt;
+                             Follow only the relationships that carry this
+                               qualifier; repeatable, any of them. It filters
+                               relationships only.
+      --through=&lt;relationships|deployments&gt;
+                             The couplings followed, repeatable: relationships
+                               or deployments (an application on its node).
+                               Default: relationships.
   -w, --workspace=&lt;workspace file&gt;
                              The workspace file.</pre>
 </div>
@@ -7504,12 +6243,17 @@ Manage the plateaus of the workspace.
   -w, --workspace=&lt;workspace file&gt;
                The workspace file.
 Commands:
-  list  List the plateaus of the workspace, in the order of the tree: baseline,
-          then what overrides it, each plateau followed by what overrides it.
-  fold  Fold a plateau into the plateau above it: the files are rewritten or
-          deleted, the patches merged and the replaces composed, then the
-          plateaus that remain are read before and after on a temporary copy
-          and the folder is written only if they read the same.</pre>
+  list    List the plateaus of the workspace, in the order of the tree:
+            baseline, then what overrides it, each plateau followed by what
+            overrides it.
+  fold    Fold a plateau into the plateau above it: the files are rewritten or
+            deleted, the patches merged and the replaces composed, then the
+            plateaus that remain are read before and after on a temporary copy
+            and the folder is written only if they read the same.
+  matrix  Write the matrix of a path of plateaus: a row per element lineage
+            (followed through `replaces`), a column per plateau, and from three
+            plateaus a SPAN column that is one comparison of the first plateau
+            with the last. A row without a change is left out and counted.</pre>
 </div>
 </div>
 <div class="listingblock">
@@ -7542,6 +6286,44 @@ be folded is one error line and the folder is not changed.
   -h, --help      Display this help message.
   -w, --workspace=&lt;workspace file&gt;
                   The workspace file.</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">archicode plateau matrix</div>
+<div class="content">
+<pre>Usage: archicode plateau matrix [-h] [-o[=PATH]] [-f=FORMAT]
+                                [--plateau=PLATEAU_ID] [-w=&lt;workspace file&gt;]
+                                [PLATEAU_ID...]
+Write the matrix of a path of plateaus: a row per element lineage (followed
+through `replaces`), a column per plateau, and from three plateaus a SPAN
+column that is one comparison of the first plateau with the last. A row without
+a change is left out and counted.
+The path is the plateau ids, oldest first, each one a plateau that overrides
+the one before it (a plateau may be skipped), or the chain from `baseline` to
+--plateau (default: settings.current, else the last plateau when the plateaus
+form one line). Two plateaus that are alternatives (siblings) are not a path:
+that is one error.
+The table is printed in --format. With --output the command writes matrix.md
+and matrix.json in the folder PATH-matrix-&lt;first&gt;-to-&lt;last&gt; (default PATH: the
+views folder of the settings) and prints its name; put the plateau ids before
+--output.
+      [PLATEAU_ID...]        The plateaus of the path, oldest first. Without
+                               them, the path is the chain from baseline to
+                               --plateau.
+  -f, --format=FORMAT        The format of the table: text, markdown or json
+                               (default: text). Not with --output.
+  -h, --help                 Display this help message.
+  -o, --output[=PATH]        Write matrix.md and matrix.json in
+                               PATH-matrix-&lt;first&gt;-to-&lt;last&gt;, instead of
+                               printing the table: PATH is relative to the
+                               folder of the workspace file, or absolute
+                               (default: the views folder of the settings).
+      --plateau=PLATEAU_ID   The plateau to read, by its id (a plateau: key of
+                               a header or a Plateau manifest). Default:
+                               settings.current, else the last plateau when
+                               they form one line.
+  -w, --workspace=&lt;workspace file&gt;
+                             The workspace file.</pre>
 </div>
 </div>
 <div class="listingblock">
@@ -7585,6 +6367,38 @@ the plateau of a step lacks is a warning and the step is skipped.
                                is drawn.
   -w, --workspace=&lt;workspace file&gt;
                              The workspace file.</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">archicode import</div>
+<div class="content">
+<pre>Usage: archicode import [-h] [-w=&lt;workspace file&gt;] [COMMAND]
+Import a model written for another tool into an ArchiCode workspace.
+  -h, --help   Display this help message.
+  -w, --workspace=&lt;workspace file&gt;
+               The workspace file.
+Commands:
+  structurizr  Import the JSON export of a Structurizr workspace (people,
+                 software systems, containers, components and their
+                 relationships) into a new ArchiCode workspace.</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">archicode import structurizr</div>
+<div class="content">
+<pre>Usage: archicode import structurizr [-h] -o=&lt;folder&gt; [-w=&lt;workspace file&gt;]
+                                    &lt;workspace.json&gt;
+Import the JSON export of a Structurizr workspace (people, software systems,
+containers, components and their relationships) into a new ArchiCode workspace.
+Views, deployment, styles, documentation and properties are not imported: each
+is said as a warning. The folder must be absent or empty; a file that is not a
+JSON export, or a folder that is not empty, is one error line and nothing is
+written.
+      &lt;workspace.json&gt;    The JSON export to read.
+  -h, --help              Display this help message.
+  -o, --output=&lt;folder&gt;   The folder to write the workspace in: absent or empty.
+  -w, --workspace=&lt;workspace file&gt;
+                          The workspace file.</pre>
 </div>
 </div>
 <div class="listingblock">
@@ -9164,6 +7978,40 @@ to-be     baseline  manifest plateaus/to-be/plateau.to-be.yaml        To be  202
 </li>
 </ol>
 </div>
+<div id="upgrade-0-24" class="paragraph">
+<p><strong>What changes for a reader who knows 0.24.0.</strong> These are the changes after the release 0.24.0; they are in the release 0.25.0. Nothing breaks. Three commands are new, <code>archicode query impact</code>, <code>archicode import structurizr</code> and <code>archicode plateau matrix</code>, two outputs grow: <code>archicode query views</code> prints one more key, <code>saved</code>, last on every entry, and <code>archicode query graph</code> prints one more key, <code>deployments</code>, last, when a node hosts an application, and every <code>--help</code> now starts with <code>Usage: archicode</code>. The editor page is lighter and works with no network, and the manual on the website draws its diagrams. A workspace that loaded in 0.24.0 loads in 0.25.0, every other command prints what it printed, and <code>query graph</code> on a workspace in which no node hosts an application, writes what 0.24.0 wrote for it.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong><code>query views</code> says whether a view is saved</strong> (Changed, see <a href="#query-views">Query views</a>). Every entry ends with <code>saved: true</code> for a view of the workspace and <code>saved: false</code> for a view the tool derives. A script that read a whole entry now sees this key; a script that reads a field by name is not affected. <code>-q '$.[?(@.saved==true)]'</code> keeps the saved views.</p>
+</li>
+<li>
+<p><strong><code>query graph</code> says what each node hosts</strong> (Changed, see <a href="#query-graph">Query graph</a>). The output ends with <code>deployments</code>, a list of <code>node</code> and <code>application</code> pairs, when the workspace has a deployment. A script that read a whole <code>query graph</code> output now sees one more key; the elements and the relationships did not change, and a script that reads <code>elements</code> or <code>relationships</code> by key is not affected.</p>
+</li>
+<li>
+<p><strong><code>query impact</code> says what a change touches</strong> (New, see <a href="#query-impact">Query impact</a>). <code>archicode query impact &lt;reference&gt;</code> prints the elements that point at an element, or that it points at, with their distance and the first coupling that reached them; <code>--direction</code>, <code>--depth</code>, <code>--qualifier</code> and <code>--through</code> choose the walk. It adds a command and changes no output of another.</p>
+</li>
+<li>
+<p><strong>Every <code>--help</code> starts with <code>Usage: archicode</code></strong> (Fixed, see <a href="#command-reference">Every command and option</a>). The usage of the top command and of each subcommand named the main class where the name of the program belongs; the listing of the manual is now what the program prints.</p>
+</li>
+<li>
+<p><strong>A Structurizr workspace can be imported</strong> (New, see <a href="#import-structurizr">Import a Structurizr workspace</a>). <code>archicode import structurizr &lt;workspace.json&gt; --output &lt;empty folder&gt;</code> reads the JSON export of a Structurizr workspace (people, systems, containers, components and their relationships) and writes a workspace; what it leaves out (views, deployment, styles, properties) is listed as warnings, and a <code>.dsl</code> file or a folder that is not empty is one <code>error:</code> line.</p>
+</li>
+<li>
+<p><strong>A path of plateaus has a table</strong> (New, see <a href="#plateau-matrix">Read what a path of plateaus changes, element by element</a>). <code>archicode plateau matrix &lt;plateau&gt;&#8230;&#8203;</code> writes a row per element followed through <code>replaces</code> and a column per plateau, and from three plateaus a <em>Span</em> column that is the first compared with the last.</p>
+</li>
+<li>
+<p><strong>The page Plateaus reads a path in the same table</strong> (New, see <a href="#editor-plateaus">The Plateaus page</a>). <strong>Read the path</strong> draws the table under the list of plateaus, a click on a cell draws the pair, and the address keeps the path (<code>matrix=</code>, <code>rows=</code>).</p>
+</li>
+<li>
+<p><strong>The editor needs no network, and works opened from a disk</strong> (Changed, see <a href="#editor-browser-workspace">A workspace kept in the browser</a>). CodeMirror, the diagram layout and the kernel are three scripts beside the page, in an <code>assets</code> folder that <code>archicode editor serve</code>, the website and the jar serve, instead of files loaded from a public server; the page is 1.1 MB smaller. A copy of the page with its <code>assets</code> folder opened from a <code>file://</code> address works too.</p>
+</li>
+<li>
+<p><strong>The manual on the website draws its diagrams</strong> (Fixed). The 18 diagrams of the manual were not drawn on the website, each block said <code>Could not load PlantUML</code>; the build now fails when one is not drawn.</p>
+</li>
+</ol>
+</div>
 <div id="upgrade-0-23" class="paragraph">
 <p><strong>What changes for a reader who knows 0.23.0.</strong> These are the changes after the release 0.23.0; they are in the release 0.24.0. Nothing breaks: the controls of a diagram move into a toolbar of five groups, and the manual is sorted by the kind of reading it is. A workspace that loaded in 0.23.0 loads in 0.24.0 and the command line writes the same files for it; no command and no option changes.</p>
 </div>
@@ -9462,7 +8310,7 @@ to-be     baseline  manifest plateaus/to-be/plateau.to-be.yaml        To be  202
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-11-02 09:33:05 UTC
+Last updated 2026-11-07 17:16:14 UTC
 </div>
 </div>
 </body>

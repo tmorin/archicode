@@ -15,7 +15,7 @@ content:
   relationships:
     - destination: "archicode.commandline"
       label: "asks the graph of"
-      qualifiers: ["query graph"]
+      qualifiers: ["query graph", "query impact"]
 --- # file: manifests/archicode.yaml
 header:
   kind: "archicode.morin.io/solution"
@@ -54,6 +54,9 @@ content:
             - destination: "archicode.commandline.manifest"
               label: "imports the package"
               qualifiers: ["imports"]
+            - destination: "archicode.commandline.importer"
+              label: "imports the package"
+              qualifiers: ["imports"]
           elements:
             - kind: "component"
               id: "editor_serve"
@@ -64,6 +67,12 @@ content:
               relationships:
                 - destination: "archicode.editor.page"
                   label: "serves the page"
+                  qualifiers: ["serves"]
+                - destination: "archicode.contracts.couplings.editor_assets"
+                  label: "serves the assets"
+                  qualifiers: ["serves"]
+                - destination: "archicode.contracts.couplings.kernel_wasm"
+                  label: "serves the kernel"
                   qualifiers: ["serves"]
             - kind: "component"
               id: "guide"
@@ -76,6 +85,16 @@ content:
                   label: "reads"
                   qualifiers: ["reads"]
             - kind: "component"
+              id: "import_structurizr"
+              name: "Import structurizr"
+              description: "The archicode import structurizr command."
+              tags:
+                path: "src/main/java/io/morin/archicode/cli/ImportGroup.java, src/main/java/io/morin/archicode/cli/ImportStructurizrCommand.java"
+              relationships:
+                - destination: "archicode.commandline.importer"
+                  label: "calls the import service"
+                  qualifiers: ["calls"]
+            - kind: "component"
               id: "init"
               name: "Init"
               description: "The archicode init command."
@@ -85,6 +104,22 @@ content:
                 - destination: "archicode.contracts.couplings.manifest_schema"
                   label: "reads"
                   qualifiers: ["reads"]
+            - kind: "component"
+              id: "plateau_matrix"
+              name: "Plateau matrix"
+              description: "The archicode plateau matrix command: one table of the changes across N plateaus."
+              tags:
+                path: "src/main/java/io/morin/archicode/cli/PlateauMatrixCommand.java, src/main/java/io/morin/archicode/cli/MatrixPath.java"
+              relationships:
+                - destination: "archicode.commandline.viewpoint"
+                  label: "compares the plateaus"
+                  qualifiers: ["calls"]
+                - destination: "archicode.commandline.workspace"
+                  label: "loads the workspace"
+                  qualifiers: ["calls"]
+                - destination: "archicode.commandline.rendering"
+                  label: "renders the matrix"
+                  qualifiers: ["calls"]
         - kind: "container"
           id: "workspace"
           name: "Workspace"
@@ -121,6 +156,16 @@ content:
               label: "imports the package"
               qualifiers: ["imports"]
         - kind: "container"
+          id: "importer"
+          name: "Importer"
+          description: "Reads the JSON export of a Structurizr workspace and writes an ArchiCode workspace folder (package importer)."
+          tags:
+            path: "src/main/java/io/morin/archicode/importer"
+          relationships:
+            - destination: "archicode.commandline.manifest"
+              label: "imports the package"
+              qualifiers: ["imports"]
+        - kind: "container"
           id: "resource"
           name: "Resource"
           description: "Elements, views, stories and plateaus (package resource)."
@@ -154,7 +199,7 @@ content:
         - kind: "container"
           id: "rendering"
           name: "Rendering"
-          description: "PlantUML output and the gap tables (package rendering)."
+          description: "PlantUML output, the gap tables and the plateau matrix (package rendering)."
           tags:
             path: "src/main/java/io/morin/archicode/rendering"
           relationships:
@@ -345,6 +390,12 @@ content:
             - destination: "archicode.editor.composition"
               label: "is generated from the layers"
               qualifiers: ["generated from"]
+            - destination: "archicode.contracts.couplings.editor_assets"
+              label: "loads CodeMirror and ELK from"
+              qualifiers: ["reads"]
+            - destination: "archicode.contracts.couplings.kernel_wasm"
+              label: "loads the kernel from"
+              qualifiers: ["reads"]
     - kind: "system"
       id: "contracts"
       name: "Contracts"
@@ -353,14 +404,14 @@ content:
         - kind: "container"
           id: "couplings"
           name: "Couplings"
-          description: "The five couplings that must change together."
+          description: "The six couplings that must change together."
           elements:
             - kind: "component"
               id: "kernel_wasm"
               name: "Kernel WebAssembly"
               description: "The committed WebAssembly both tools run."
               tags:
-                path: "src/main/wasm/viewpoint_kernel.wasm"
+                path: "src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm"
               relationships:
                 - destination: "archicode.kernel.engine"
                   label: "is generated from"
@@ -398,6 +449,12 @@ content:
                 - destination: "archicode.commandline.manifest"
                   label: "is generated from"
                   qualifiers: ["generated from"]
+            - kind: "component"
+              id: "editor_assets"
+              name: "Editor assets"
+              description: "CodeMirror and ELK, bundled by editor:build and served beside the page."
+              tags:
+                path: "src/main/resources/editor-webapp/assets, src/main/editor/bundles"
             - kind: "component"
               id: "goldens"
               name: "Goldens"
@@ -499,7 +556,7 @@ header:
 content:
   id: "contracts"
   name: "What couples the tools"
-  description: "The five couplings that must change together."
+  description: "The six couplings that must change together."
   viewpoint: "map"
   properties:
     pinned:
@@ -507,6 +564,7 @@ content:
       - "archicode.contracts.couplings.shared_cases"
       - "archicode.contracts.couplings.read_schema"
       - "archicode.contracts.couplings.manifest_schema"
+      - "archicode.contracts.couplings.editor_assets"
       - "archicode.contracts.couplings.goldens"
     opened: ["archicode.contracts.couplings"]
 --- # file: manifests/views/view.deployment.yaml
