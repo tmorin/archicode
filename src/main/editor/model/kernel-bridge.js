@@ -75,14 +75,32 @@ const ELK_RETRY_AFTER_MS = 30000;
 let elkFailedAt = 0;
 
 /**
- * ELK (layered layout with nested boxes), lazily from a CDN — null when it cannot be loaded (offline). A failure is
+ * The address of an asset that sits beside the page, read from the <meta name="archicode-asset:NAME"> that the build
+ * writes; null when there is no document, no such meta, an empty content or an address that cannot be read.
+ */
+function assetAddress(name) {
+  try {
+    if (typeof document === 'undefined' || !document || typeof document.querySelector !== 'function') return null;
+    const meta = document.querySelector('meta[name="archicode-asset:' + name + '"]');
+    const content = meta ? meta.getAttribute('content') : null;
+    if (!content) return null;
+    return new URL(content, document.baseURI).href;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * ELK (layered layout with nested boxes), lazily from the asset elk.js beside the page — null when it cannot be loaded (offline). A failure is
  * not remembered for good (it may have been a moment without network): a later render tries again, at most once per
  * ELK_RETRY_AFTER_MS.
  */
 function loadElk() {
   if (!elkPromise) {
     if (elkFailedAt && Date.now() - elkFailedAt < ELK_RETRY_AFTER_MS) return Promise.resolve(null);
-    elkPromise = import('https://esm.sh/elkjs@0.9.3/lib/elk.bundled.js')
+    const address = assetAddress('elk.js');
+    // no address is a failure like any other: the same warning, the same wait before the next try
+    elkPromise = (address === null ? Promise.reject(new Error('the page names no elk.js asset')) : import(address))
       .then((mod) => new mod.default())
       .catch((e) => {
         console.warn('ELK failed to load — the diagram falls back to a plain list.', e);

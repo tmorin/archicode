@@ -82,6 +82,8 @@ test('the check fails on a copy where a YAML part names a function of a part tha
   try {
     fs.cpSync(path.join(REPO, 'src/main/editor'), path.join(root, 'src/main/editor'), { recursive: true });
     fs.cpSync(path.join(REPO, 'src/main/wasm'), path.join(root, 'src/main/wasm'), { recursive: true });
+    const assets = 'src/main/resources/editor-webapp/assets'; // the page's <meta> lines read the committed assets
+    fs.cpSync(path.join(REPO, assets), path.join(root, assets), { recursive: true });
     const { mapOf, assemble } = await import(BUILD);
     const { analyse } = await import(CHECK);
     const layers = JSON.parse(fs.readFileSync(path.join(root, 'src/main/editor/layers.json'), 'utf8'));

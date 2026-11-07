@@ -21,7 +21,7 @@ The manual is `src/doc/README.adoc`. The ArchiCode model of ArchiCode is in `doc
 ## Rules that cross every area
 
 - The command line and the editor read the same files and say the same sentences. The cases they share are JSON files under `src/test/javascript/viewpoint-kernel/` (and `src/test/resources/`), each read by a Java test and a node test: a change to a rule is a change to the cases file.
-- `src/main/resources/editor-webapp/standalone.html` is generated. Edit `src/main/editor` and run `npm run editor:build`; a command that does not go through an npm `pre` script reads the committed page as it is.
+- `src/main/resources/editor-webapp/standalone.html` and the folder `assets/` beside it (CodeMirror and ELK, bundled from `src/main/editor/bundles`) are generated. Edit `src/main/editor` and run `npm run editor:build` (it needs `npm ci`); a command that does not go through an npm `pre` script reads the committed page as it is.
 - The kernel's WebAssembly (`src/main/wasm/viewpoint_kernel.wasm`) is committed and Maven needs no Rust.
 - `scripts/byte-identity.sh` compares what the program writes with the jar of an earlier tag: an output that changes on purpose needs a declared exception.
 

@@ -434,7 +434,7 @@ jobs:
           path: target/generated-docs
       - name: "Assemble website"
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        # The presentation page at the root with robots.txt, sitemap.xml and llms.txt beside it, the manual at /docs/ and the editor at /editor/. The presentation page and
+        # The presentation page at the root with robots.txt, sitemap.xml and llms.txt beside it, the manual at /docs/ and the editor at /editor/, with its samples/ and assets/ folders. The presentation page and
         # the editor are those of the tag, stamped with its release (copies: the files of the repository keep "dev").
         # Only the latest release is published, as the manual is.
         run: |
@@ -460,6 +460,13 @@ jobs:
           cmp src/main/resources/editor-webapp/samples/brightcart.yaml target/site/editor/samples/brightcart.yaml
           test -f target/site/editor/samples/archicode.yaml
           cmp src/main/resources/editor-webapp/samples/archicode.yaml target/site/editor/samples/archicode.yaml
+          mkdir -p target/site/editor/assets
+          cp -r src/main/resources/editor-webapp/assets/. target/site/editor/assets/
+          for asset in src/main/resources/editor-webapp/assets/*; do
+            name="$(basename "${asset}")"
+            test -f "target/site/editor/assets/${name}"
+            cmp "${asset}" "target/site/editor/assets/${name}"
+          done
           grep -q "content=\"${version}\"" target/site/index.html
           grep -q "content=\"${version}\"" target/site/editor/index.html
           test -f target/site/docs/index.html

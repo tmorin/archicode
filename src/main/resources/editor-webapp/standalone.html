@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- Which ArchiCode this page belongs to: "dev" here, the release in the copies that are published and served. -->
 <meta name="archicode-version" content="dev">
+<meta name="archicode-asset:codemirror.js" content="./assets/codemirror.js?v=0e750295">
+<meta name="archicode-asset:elk.js" content="./assets/elk.js?v=46d0cb21">
 <title>ArchiCode Editor</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6e5c'/%3E%3Cpath d='M9 22l7-12 7 12z' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
 <!-- The theme chosen in Settings, applied before the first paint so the page does not flash (the page script applies it again). Same key and values as the page script. -->
@@ -4334,36 +4336,24 @@ video {
 <div id="story-player" class="story-player" hidden></div>
 
 <!--
-  CodeMirror, for the raw-YAML file editor (form UX review follow-up — "un
-  éditeur YAML en lieu et place du textarea"). Loaded from esm.sh rather
-  than jsdelivr's "+esm" endpoint: jsdelivr bundles each package's own copy
-  of its shared @codemirror/state and @codemirror/view dependencies, which
-  crashes CodeMirror with "multiple instances... breaking instanceof
-  checks" the moment both codemirror and @codemirror/lang-yaml are loaded
-  together — confirmed live in a browser before writing this. esm.sh
-  dedupes shared dependencies across separate imports and does not have
-  that problem.
-  The module does not hold up the app's first render (a refresh reopens the
-  remembered folder from IndexedDB well before esm.sh answers), so it fires
-  "codemirror-ready" once loaded and the app re-renders any fallback
-  textarea it already showed — see the listener next to the bootstrap.
-  window.CM stays undefined (never thrown) on any failure here — offline,
-  CDN unreachable, a future esm.sh outage — and renderFileViewHtml/
-  mountFileEditorIfNeeded both already feature-detect it, falling back to
-  the plain <textarea> this file used before, with zero loss of function.
+  CodeMirror, for the raw-YAML file editor, is the asset codemirror.js beside this page (see the <meta> lines in the
+  head). It does not hold up the first render: it fires "codemirror-ready" once loaded and the app re-renders any
+  fallback textarea. window.CM stays undefined (never thrown) when the asset is missing or fails, and the editor
+  falls back to the plain <textarea>.
 -->
 <script type="module">
 try {
-  const cm = await import('https://esm.sh/codemirror@6.0.1');
-  const yamlMod = await import('https://esm.sh/@codemirror/lang-yaml@6.1.1');
-  const jsonMod = await import('https://esm.sh/@codemirror/lang-json@6.0.1');
-  window.CM = { EditorView: cm.EditorView, basicSetup: cm.basicSetup, yaml: yamlMod.yaml, json: jsonMod.json };
+  // the address of the asset beside the page, from the <meta> the build writes; none: window.CM stays undefined
+  const meta = document.querySelector('meta[name="archicode-asset:codemirror.js"]');
+  const content = meta ? meta.getAttribute('content') : null;
+  if (!content) throw new Error('the page names no codemirror.js asset');
+  const cm = await import(new URL(content, document.baseURI).href);
+  window.CM = { EditorView: cm.EditorView, basicSetup: cm.basicSetup, yaml: cm.yaml, json: cm.json };
   // the colors of the code in the dark scheme (the default highlighting is written for a light page): a plain extra,
   // the editor works without it
   try {
-    const language = await import('https://esm.sh/@codemirror/language@6');
-    const lezer = await import('https://esm.sh/@lezer/highlight@1');
-    const t = lezer.tags;
+    const language = cm;
+    const t = cm.tags;
     window.CM.darkHighlight = language.syntaxHighlighting(
       language.HighlightStyle.define([
         { tag: [t.propertyName, t.definition(t.propertyName)], color: '#9cdcfe' },
@@ -26602,14 +26592,32 @@ const ELK_RETRY_AFTER_MS = 30000;
 let elkFailedAt = 0;
 
 /**
- * ELK (layered layout with nested boxes), lazily from a CDN — null when it cannot be loaded (offline). A failure is
+ * The address of an asset that sits beside the page, read from the <meta name="archicode-asset:NAME"> that the build
+ * writes; null when there is no document, no such meta, an empty content or an address that cannot be read.
+ */
+function assetAddress(name) {
+  try {
+    if (typeof document === 'undefined' || !document || typeof document.querySelector !== 'function') return null;
+    const meta = document.querySelector('meta[name="archicode-asset:' + name + '"]');
+    const content = meta ? meta.getAttribute('content') : null;
+    if (!content) return null;
+    return new URL(content, document.baseURI).href;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * ELK (layered layout with nested boxes), lazily from the asset elk.js beside the page — null when it cannot be loaded (offline). A failure is
  * not remembered for good (it may have been a moment without network): a later render tries again, at most once per
  * ELK_RETRY_AFTER_MS.
  */
 function loadElk() {
   if (!elkPromise) {
     if (elkFailedAt && Date.now() - elkFailedAt < ELK_RETRY_AFTER_MS) return Promise.resolve(null);
-    elkPromise = import('https://esm.sh/elkjs@0.9.3/lib/elk.bundled.js')
+    const address = assetAddress('elk.js');
+    // no address is a failure like any other: the same warning, the same wait before the next try
+    elkPromise = (address === null ? Promise.reject(new Error('the page names no elk.js asset')) : import(address))
       .then((mod) => new mod.default())
       .catch((e) => {
         console.warn('ELK failed to load — the diagram falls back to a plain list.', e);

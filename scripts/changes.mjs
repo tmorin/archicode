@@ -48,6 +48,13 @@ export const RULES = [
     reason: 'the workflow and the map itself'
   },
   {
+    id: 'R-07a',
+    patterns: ['src/main/resources/editor-webapp/assets/**'],
+    jobs: [J, P, E],
+    reason:
+      'the assets are served beside the page (the jar, the e2e suite) and checked by node tests; the Kernel job reads the .wasm and the kernel block of the page, which an asset does not touch; before R-07'
+  },
+  {
     id: 'R-07',
     patterns: ['src/main/rust/**', 'src/main/wasm/**', 'src/main/editor/**', 'src/main/resources/**'],
     jobs: [J, P, K, E],

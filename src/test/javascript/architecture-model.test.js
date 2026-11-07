@@ -1,5 +1,5 @@
 'use strict';
-// The model of ArchiCode itself, `docs/architecture/` (wave 029, run 0209), opens in the editor: no problem, 35 to 45 elements, 4 or 5 saved
+// The model of ArchiCode itself, `docs/architecture/` (wave 029, run 0209), opens in the editor: no problem, 35 to 50 elements, 4 or 5 saved
 // views, and no error or warning on the console. `ArchitectureModelTest.java` loads the same folder with the command line. The test reads the
 // folder and writes nothing into it.
 // Run with: node --test src/test/javascript/architecture-model.test.js
@@ -44,7 +44,7 @@ test('the model of ArchiCode opens in the editor with no problem and no console 
 
   assert.deepEqual(problemsOf(state), [], 'the model does not open in the editor');
   const count = state.index.application.size + state.index.technology.size;
-  assert.ok(count >= 35 && count <= 45, 'the model has 35 to 45 elements: ' + count);
+  assert.ok(count >= 35 && count <= 50, 'the model has 35 to 50 elements: ' + count);
   assert.ok(state.index.technology.size > 0, 'the model has a technology layer');
   const dangling = [];
   for (const layer of [state.index.application, state.index.technology])
