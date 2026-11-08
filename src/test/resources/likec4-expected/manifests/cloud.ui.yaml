@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "cloud"
+content:
+  id: "ui"
+  name: "Frontends"
+  description: "All the frontend applications\nof Cloud System"
+  tags:
+    likec4.id: "cloud.ui"
+    likec4.kind: "container"

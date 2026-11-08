@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "amazon.sqs"
+content:
+  id: "queue2"
+  name: "Enriched Data"
+  description: "Filtered and preprocessed data\nReady for further processing"
+  qualifiers:
+    - "Simple Queue Service"
+  tags:
+    likec4.id: "amazon.sqs.queue2"
+    likec4.kind: "queue"

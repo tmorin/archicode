@@ -52,7 +52,7 @@ class StructurizrMapperTest {
     }
 
     private static List<String> paths(Mapped mapped) {
-        return mapped.manifests().stream().map(StructurizrMapper.Planned::path).toList();
+        return mapped.manifests().stream().map(Planned::path).toList();
     }
 
     @Test

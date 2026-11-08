@@ -5,7 +5,7 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "import",
     description = "Import a model written for another tool into an ArchiCode workspace.",
-    subcommands = { ImportStructurizrCommand.class }
+    subcommands = { ImportStructurizrCommand.class, ImportLikeC4Command.class }
 )
 public class ImportGroup {
 

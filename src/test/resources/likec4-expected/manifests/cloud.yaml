@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "cloud"
+  name: "Cloud System"
+  description: "Our SaaS platfrom that allows\ncustomers to interact with\nthe latest\
+    \ technologies"
+  tags:
+    likec4.id: "cloud"
+    likec4.kind: "system"

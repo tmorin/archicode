@@ -1,0 +1,22 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "amazon.lambdas"
+content:
+  id: "fn_enrich"
+  name: "Enrichment"
+  description: "Enriches raw data\nby adding additional information"
+  qualifiers:
+    - "Lambda"
+  tags:
+    likec4.id: "amazon.lambdas.fn_enrich"
+    likec4.kind: "lambda"
+  relationships:
+    - destination: "amazon.sqs.queue1"
+      label: "reads raw data"
+      tags:
+        likec4.id: "omqe0d"
+    - destination: "amazon.sqs.queue2"
+      label: "writes enriched data"
+      tags:
+        likec4.id: "ngweq5"

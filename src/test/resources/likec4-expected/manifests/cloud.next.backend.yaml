@@ -1,0 +1,21 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "cloud.next"
+content:
+  id: "backend"
+  name: "Backend V2"
+  description: "The next version of backend"
+  qualifiers:
+    - "Nestjs"
+    - "api"
+  tags:
+    likec4.id: "cloud.next.backend"
+    likec4.kind: "app"
+  relationships:
+    - destination: "cloud.next.events"
+      label: "triggers"
+      qualifiers:
+        - "REST"
+      tags:
+        likec4.id: "1wckwm9"

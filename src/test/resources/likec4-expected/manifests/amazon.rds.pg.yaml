@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "amazon.rds"
+content:
+  id: "pg"
+  name: "PostgreSQL"
+  qualifiers:
+    - "Postgresql"
+    - "db"
+  tags:
+    likec4.id: "amazon.rds.pg"
+    likec4.kind: "component"

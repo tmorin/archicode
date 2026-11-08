@@ -43,6 +43,12 @@ class HelpIT {
     }
 
     @Test
+    void helpOfTheLikeC4ImportCommandStartsWithItsPath(QuarkusMainLauncher launcher) {
+        val result = succeeded(launcher.launch("import", "likec4", "--help"));
+        assertTrue(firstLine(payload(result)).startsWith("Usage: archicode import likec4"), () -> said(result));
+    }
+
+    @Test
     void helpOfThePlateauMatrixCommandStartsWithItsPath(QuarkusMainLauncher launcher) {
         val result = succeeded(launcher.launch("plateau", "matrix", "--help"));
         assertTrue(firstLine(payload(result)).startsWith("Usage: archicode plateau matrix"), () -> said(result));

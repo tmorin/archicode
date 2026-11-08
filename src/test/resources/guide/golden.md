@@ -216,6 +216,10 @@ Every command takes `-h`/`--help` and `-w`/`--workspace=<workspace file>` (defau
   - `--allowed-host=name`: A host name, besides localhost, 127.0.0.1 and [::1], that a request may be addressed to.
 - `archicode guide`: Print the guide to ArchiCode for an agent that has only this program.
 - `archicode import`: Import a model written for another tool into an ArchiCode workspace.
+- `archicode import likec4` `<model.json>`: Import the JSON export of a LikeC4 model (elements, their kinds and their relationships) into a new ArchiCode workspace.
+  - `-o, --output=folder`: The folder to write the workspace in: absent or empty.
+  - `--map=kind>=<kind`: Map a LikeC4 kind to person, system, container or component.
+  - `--project=id`: The project to read when the file holds several.
 - `archicode import structurizr` `<workspace.json>`: Import the JSON export of a Structurizr workspace (people, software systems, containers, components and their relationships) into a new ArchiCode workspace.
   - `-o, --output=folder`: The folder to write the workspace in: absent or empty.
 - `archicode init` `<folder>`: Write a small workspace (.archicode.yaml, a person, a system with a container, a relationship and a view) that loads and is drawn.

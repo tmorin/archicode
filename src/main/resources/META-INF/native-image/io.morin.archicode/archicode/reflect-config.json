@@ -36,6 +36,195 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.cli.ImportLikeC4Command",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.ImportIds",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.ImportIds$Assigned",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.ImportSupport",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4ImportService",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4ImportService$Imported",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Mapper",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Mapper$1",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Mapper$Mapped",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Mapper$Node",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Mapper$Placed",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Mapper$Walk",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Model",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Model$Dropped",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Model$Element",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Model$Link",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.LikeC4Reader",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.Planned",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.WorkspaceFile",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.WorkspaceFile$Manifests",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.importer.WorkspaceFile$Settings",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.workspace.Impact$Result",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -3619,42 +3808,6 @@
   },
   {
     "name": "io.morin.archicode.importer.StructurizrMapper$Placed",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.importer.StructurizrMapper$Planned",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.importer.StructurizrMapper$WorkspaceFile",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.importer.StructurizrMapper$WorkspaceFile$Manifests",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.importer.StructurizrMapper$WorkspaceFile$Settings",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,

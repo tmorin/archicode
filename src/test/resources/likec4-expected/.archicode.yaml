@@ -1,0 +1,5 @@
+settings:
+  name: "Cloud System"
+  manifests:
+    paths:
+      - "manifests/**"

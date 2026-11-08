@@ -12,11 +12,9 @@ import io.morin.archicode.manifest.Manifest;
 import io.morin.archicode.manifest.ManifestKind;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import lombok.val;
 
@@ -48,36 +46,6 @@ public final class StructurizrMapper {
     private static final JsonNodeFactory JSON = JsonNodeFactory.instance;
 
     private StructurizrMapper() {}
-
-    /**
-     * A manifest and the path, relative to the workspace folder, where it is written.
-     *
-     * @param path     {@code manifests/<reference>.yaml}
-     * @param manifest the manifest
-     */
-    public record Planned(String path, Manifest manifest) {}
-
-    /**
-     * The content of {@code .archicode.yaml}: the part of the settings the import writes.
-     *
-     * @param settings the settings
-     */
-    public record WorkspaceFile(Settings settings) {
-        /**
-         * The settings.
-         *
-         * @param name      the name of the workspace
-         * @param manifests where the manifests are
-         */
-        public record Settings(String name, Manifests manifests) {}
-
-        /**
-         * The folders of the manifests.
-         *
-         * @param paths the paths, relative to the workspace file
-         */
-        public record Manifests(List<String> paths) {}
-    }
 
     /**
      * What the mapping gives.
@@ -232,8 +200,6 @@ public final class StructurizrMapper {
     private static void place(String parent, List<Item> siblings, List<Placed> placed, List<String> rewrites) {
         val bases = new ArrayList<String>();
         val rewritten = new ArrayList<Boolean>();
-        // every id a sibling asks for is taken before a suffix is chosen, so a suffix never shadows a sibling
-        val taken = new HashSet<String>();
         for (val sibling : siblings) {
             if (sibling.name() == null || sibling.name().isBlank()) {
                 throw new ArchiCodeException(
@@ -242,30 +208,20 @@ public final class StructurizrMapper {
                     sibling.sid()
                 );
             }
-            var base = slug(sibling.name());
-            var changed = replacesCharacter(sibling.name());
-            if (!hasAlphanumeric(base)) {
-                base = slug(sibling.kind().getSubTypeName() + "_" + sibling.sid());
+            var base = ImportIds.slug(sibling.name());
+            var changed = ImportIds.rewritesCharacter(sibling.name(), false);
+            if (!ImportIds.hasAlphanumeric(base)) {
+                base = ImportIds.slug(sibling.kind().getSubTypeName() + "_" + sibling.sid());
                 changed = true;
             }
             bases.add(base);
             rewritten.add(changed);
-            taken.add(base);
         }
-        val used = new HashSet<String>();
+        val assigned = ImportIds.assign(bases, rewritten);
         for (var i = 0; i < siblings.size(); i++) {
             val sibling = siblings.get(i);
-            var id = bases.get(i);
-            var changed = rewritten.get(i);
-            if (!used.add(id)) {
-                var suffix = 2;
-                while (taken.contains(id + "_" + suffix) || used.contains(id + "_" + suffix)) {
-                    suffix++;
-                }
-                id = id + "_" + suffix;
-                used.add(id);
-                changed = true;
-            }
+            val id = assigned.ids().get(i);
+            val changed = assigned.rewritten().get(i);
             val reference = parent == null ? id : parent + "." + id;
             placed.add(new Placed(sibling, parent, reference, id));
             if (changed) {
@@ -281,55 +237,6 @@ public final class StructurizrMapper {
             }
             place(reference, sibling.children(), placed, rewrites);
         }
-    }
-
-    /** The name lowercased, each run of characters outside {@code [a-z0-9_-]} one {@code _}, trimmed of {@code _}. */
-    private static String slug(String text) {
-        val lower = text.toLowerCase(Locale.ROOT);
-        val out = new StringBuilder();
-        var inRun = false;
-        for (var i = 0; i < lower.length(); i++) {
-            val c = lower.charAt(i);
-            if (isIdCharacter(c)) {
-                out.append(c);
-                inRun = false;
-            } else if (!inRun) {
-                out.append('_');
-                inRun = true;
-            }
-        }
-        var start = 0;
-        var end = out.length();
-        while (start < end && out.charAt(start) == '_') {
-            start++;
-        }
-        while (end > start && out.charAt(end - 1) == '_') {
-            end--;
-        }
-        return out.substring(start, end);
-    }
-
-    private static boolean isIdCharacter(char c) {
-        return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
-    }
-
-    /** True when a character other than an ASCII letter, a digit, {@code _}, {@code -} or a space is replaced. */
-    private static boolean replacesCharacter(String name) {
-        for (val c : name.toLowerCase(Locale.ROOT).toCharArray()) {
-            if (!isIdCharacter(c) && c != ' ') {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean hasAlphanumeric(String id) {
-        for (val c : id.toCharArray()) {
-            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static Manifest manifest(Placed placed, List<ObjectNode> relationships) {

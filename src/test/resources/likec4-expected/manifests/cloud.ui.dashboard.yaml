@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "cloud.ui"
+content:
+  id: "dashboard"
+  name: "Customer Dashboard"
+  description: "Nextjs application, hosted on Vercel"
+  tags:
+    likec4.id: "cloud.ui.dashboard"
+    likec4.kind: "app"

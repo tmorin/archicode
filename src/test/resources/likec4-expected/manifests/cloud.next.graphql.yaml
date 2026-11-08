@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "cloud.next"
+content:
+  id: "graphql"
+  name: "GraphQL"
+  description: "GraphQL API for the backend\nUses Apollo Server"
+  qualifiers:
+    - "Graphql"
+    - "api"
+    - "next"
+  tags:
+    likec4.id: "cloud.next.graphql"
+    likec4.kind: "component"
