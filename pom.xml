@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.morin.archicode</groupId>
     <artifactId>archicode</artifactId>
-    <version>0.26.0-SNAPSHOT</version>
+    <version>0.26.0</version>
     <name>ArchiCode</name>
     <description>Streamline architectural design and visualization with an as-code approach.</description>
     <url>https://github.com/tmorin/archicode</url>
@@ -24,7 +24,7 @@
         <connection>scm:git:git@github.com:tmorin/archicode.git</connection>
         <developerConnection>scm:git:git@github.com:tmorin/archicode.git</developerConnection>
         <url>https://github.com/tmorin/archicode</url>
-        <tag>HEAD</tag>
+        <tag>archicode-0.26.0</tag>
     </scm>
     <ciManagement>
         <system>GitHub Actions</system>
@@ -181,16 +181,16 @@
                         </goals>
                         <configuration>
                             <target>
-                                <property environment="env"/>
-                                <property name="kernel.missing-rustup" value="rustup is not installed: the viewpoint kernel is built from its Rust, install rustup from https://rustup.rs (Maven runs src/main/rust/viewpoint-kernel/embed.sh)"/>
+                                <property environment="env" />
+                                <property name="kernel.missing-rustup" value="rustup is not installed: the viewpoint kernel is built from its Rust, install rustup from https://rustup.rs (Maven runs src/main/rust/viewpoint-kernel/embed.sh)" />
                                 <condition property="rustup.found">
-                                    <available file="rustup" filepath="${env.PATH}"/>
+                                    <available file="rustup" filepath="${env.PATH}" />
                                 </condition>
-                                <fail unless="rustup.found" message="${kernel.missing-rustup}"/>
+                                <fail unless="rustup.found" message="${kernel.missing-rustup}" />
                                 <exec executable="bash" failonerror="true">
-                                    <arg value="${project.basedir}/src/main/rust/viewpoint-kernel/embed.sh"/>
-                                    <arg value="--out"/>
-                                    <arg value="${project.build.directory}/kernel/viewpoint_kernel.wasm"/>
+                                    <arg value="${project.basedir}/src/main/rust/viewpoint-kernel/embed.sh" />
+                                    <arg value="--out" />
+                                    <arg value="${project.build.directory}/kernel/viewpoint_kernel.wasm" />
                                 </exec>
                             </target>
                         </configuration>
@@ -205,25 +205,25 @@
                         </goals>
                         <configuration>
                             <target>
-                                <property environment="env"/>
-                                <property name="page.missing-node" value="Node.js is not installed: the editor page is built with node and npm, install Node.js 22 from https://nodejs.org (Maven runs npm ci, scripts/build-editor.mjs and scripts/build-sample.mjs)"/>
+                                <property environment="env" />
+                                <property name="page.missing-node" value="Node.js is not installed: the editor page is built with node and npm, install Node.js 22 from https://nodejs.org (Maven runs npm ci, scripts/build-editor.mjs and scripts/build-sample.mjs)" />
                                 <condition property="node.found">
                                     <and>
-                                        <available file="node" filepath="${env.PATH}"/>
-                                        <available file="npm" filepath="${env.PATH}"/>
+                                        <available file="node" filepath="${env.PATH}" />
+                                        <available file="npm" filepath="${env.PATH}" />
                                     </and>
                                 </condition>
-                                <fail unless="node.found" message="${page.missing-node}"/>
+                                <fail unless="node.found" message="${page.missing-node}" />
                                 <exec executable="npm" dir="${project.basedir}" failonerror="true">
-                                    <arg value="ci"/>
-                                    <arg value="--no-audit"/>
-                                    <arg value="--no-fund"/>
+                                    <arg value="ci" />
+                                    <arg value="--no-audit" />
+                                    <arg value="--no-fund" />
                                 </exec>
                                 <exec executable="node" dir="${project.basedir}" failonerror="true">
-                                    <arg value="scripts/build-editor.mjs"/>
+                                    <arg value="scripts/build-editor.mjs" />
                                 </exec>
                                 <exec executable="node" dir="${project.basedir}" failonerror="true">
-                                    <arg value="scripts/build-sample.mjs"/>
+                                    <arg value="scripts/build-sample.mjs" />
                                 </exec>
                             </target>
                         </configuration>
