@@ -95,6 +95,16 @@ content:
                   label: "calls the import service"
                   qualifiers: ["calls"]
             - kind: "component"
+              id: "import_likec4"
+              name: "Import likec4"
+              description: "The archicode import likec4 command."
+              tags:
+                path: "src/main/java/io/morin/archicode/cli/ImportGroup.java, src/main/java/io/morin/archicode/cli/ImportLikeC4Command.java"
+              relationships:
+                - destination: "archicode.commandline.importer"
+                  label: "calls the import service"
+                  qualifiers: ["calls"]
+            - kind: "component"
               id: "init"
               name: "Init"
               description: "The archicode init command."
@@ -158,7 +168,7 @@ content:
         - kind: "container"
           id: "importer"
           name: "Importer"
-          description: "Reads the JSON export of a Structurizr workspace and writes an ArchiCode workspace folder (package importer)."
+          description: "Reads the JSON export of a Structurizr workspace or of a LikeC4 model and writes an ArchiCode workspace folder; holds both importers (package importer)."
           tags:
             path: "src/main/java/io/morin/archicode/importer"
           relationships:
@@ -383,9 +393,9 @@ content:
         - kind: "container"
           id: "page"
           name: "Page"
-          description: "The generated standalone page."
+          description: "The standalone page, assembled by scripts/build-editor.mjs into target/editor-webapp"
           tags:
-            path: "src/main/resources/editor-webapp/standalone.html"
+            path: "src/main/editor/page.html"
           relationships:
             - destination: "archicode.editor.composition"
               label: "is generated from the layers"
@@ -409,9 +419,9 @@ content:
             - kind: "component"
               id: "kernel_wasm"
               name: "Kernel WebAssembly"
-              description: "The committed WebAssembly both tools run."
+              description: "The WebAssembly both tools run, built from the Rust by Maven (embed.sh)."
               tags:
-                path: "src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm"
+                path: "src/main/rust/viewpoint-kernel/embed.sh"
               relationships:
                 - destination: "archicode.kernel.engine"
                   label: "is generated from"
@@ -454,7 +464,7 @@ content:
               name: "Editor assets"
               description: "CodeMirror and ELK, bundled by editor:build and served beside the page."
               tags:
-                path: "src/main/resources/editor-webapp/assets, src/main/editor/bundles"
+                path: "src/main/editor/assets.json, src/main/editor/bundles"
             - kind: "component"
               id: "goldens"
               name: "Goldens"
