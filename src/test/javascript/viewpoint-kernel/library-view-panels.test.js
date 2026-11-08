@@ -5,11 +5,10 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const { run, plain, NONE, startPage, addView, openView, click, boxesOf, linksOf } = require('./library-page');
+const { readPage } = require('./editor-files');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 
 const pick = (page) => plain(run(page.sandbox, 'libraryPick.selection'));
 

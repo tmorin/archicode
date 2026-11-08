@@ -9,19 +9,17 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
+const { readPage } = require('./editor-files');
+const { readKernelWasm } = require('./kernel-wasm');
 
-const HTML = path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html');
 const FIXTURE = path.resolve(__dirname, '../../resources/plateau-state-hints');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 async function loadEmbeddedKernel() {
-  const bytes = fs.readFileSync(
-    path.join(__dirname, '../../../main/resources/editor-webapp/assets/viewpoint_kernel.wasm')
-  );
+  const bytes = readKernelWasm();
   const { instance } = await WebAssembly.instantiate(bytes, {});
   const x = instance.exports;
   return (name, input) => {
@@ -156,7 +154,7 @@ test('the key is not a free-form field of compute: a facet does not see it, and 
 });
 
 test('the page keeps no copy of the rule: it reads the key of the union (the tree, the hints about hand-written states)', async () => {
-  const source = fs.readFileSync(HTML, 'utf8');
+  const source = readPage();
   assert.doesNotMatch(source, /referencesAboveChanges|computedStateOf/);
   const { sandbox } = await open();
   const state = sandbox.comparisonState();

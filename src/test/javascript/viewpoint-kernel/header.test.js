@@ -6,14 +6,13 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const vm = require('node:vm');
 const { openFixture } = require('./harness');
 const { loadStylesheet, rulesOf, styleOf, declarationsOf } = require('./stylesheet');
+const { readPage } = require('./editor-files');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 
 // ---- helpers: markup ----
 

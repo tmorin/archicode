@@ -120,10 +120,11 @@ java -jar target/quarkus-app/quarkus-run.jar \
 
 ## Editor sources
 
-The editor page `src/main/resources/editor-webapp/standalone.html` is generated: do not edit it. Edit the parts in
+The editor page `standalone.html`, its `assets/` and its `samples/` are built into `target/editor-webapp` by `./mvnw` and by
+`npm run editor:build` (Node and rustup needed), and are not in git: do not look for them under `src`. Edit the parts in
 `src/main/editor/` (six layer folders, `core` to `composition`, in the order of `layers.json`), then run
-`npm run editor:build` and commit the page with the parts. `npm run format` formats the parts,
-`npm run editor:check` checks the page is the assembly of the parts and the layer rules. `CLAUDE.md` tells the rest.
+`npm run editor:build`. `npm run format` formats the parts,
+`npm run editor:check` checks the parts assemble and the layer rules. `CLAUDE.md` tells the rest.
 
 ## Maintenance
 

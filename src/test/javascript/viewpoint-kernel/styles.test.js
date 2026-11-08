@@ -6,14 +6,13 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const vm = require('node:vm');
 const { openFixture } = require('./harness');
 const reader = require('./stylesheet');
+const { readPage } = require('./editor-files');
 const { loadStylesheet, rulesOf, declarationsOf } = reader;
 
-const PAGE = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const PAGE = readPage();
 const sheet = loadStylesheet(PAGE);
 /** The stylesheet that the export carries (a string made by the script), read like the one of the page. */
 const exportSheet = (css) => loadStylesheet('<style>' + css + '</style>');

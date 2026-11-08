@@ -22,18 +22,16 @@
 //
 // Every failure is one line on the error output and exit 1 (exit 2 for --cut on another page).
 
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as acorn from 'acorn';
 import * as eslintScope from 'eslint-scope';
-import { assemble, mapOf } from './build-editor.mjs';
+import { assemble, assembleRevision, mapOf } from './build-editor.mjs';
 
 const EDITOR_DIR = 'src/main/editor';
 const UNSORTED = 'unsorted';
-const PAGE_PATH = 'src/main/resources/editor-webapp/standalone.html';
 
 class EditorCheckError extends Error {
   constructor(message, code = 1) {
@@ -551,18 +549,8 @@ export function statementProblems(base, next, rev = 'the base', describeLine = (
 
 function statementsLines(root, rev) {
   if (rev.startsWith('-')) fail(`\`${rev}\` is not a revision`);
-  let base;
-  try {
-    base = execFileSync('git', ['show', `${rev}:${PAGE_PATH}`], {
-      cwd: root,
-      encoding: 'utf8',
-      maxBuffer: 1 << 28,
-      stdio: ['ignore', 'pipe', 'ignore']
-    });
-  } catch {
-    return fail(`cannot read ${PAGE_PATH} at \`${rev}\` (unknown revision or no such file)`);
-  }
-  const { text, origins } = assemble(root);
+  const { text: base } = assembleRevision(root, rev);
+  const { text, origins } = assemble(root, { placeholders: true });
   const describeLine = (line) =>
     origins[line - 1] ? `, produced by ${origins[line - 1].file}:${origins[line - 1].line}` : '';
   const problems = statementProblems(base, text, rev, describeLine);

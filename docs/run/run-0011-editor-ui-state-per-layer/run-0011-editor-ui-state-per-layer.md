@@ -12,7 +12,7 @@ Profile: `single-document` (scope settled by a named defect, no design fork wort
 ## Scope and done criteria
 
 An application element and a technology element can share a reference (the solution `hub` and the environment `hub`).
-The standalone editor (`src/main/resources/editor-webapp/standalone.html`) kept three pieces of UI state keyed by the
+The standalone editor (the page `standalone.html`) kept three pieces of UI state keyed by the
 reference alone — `AppState.expanded`, `AppState.dirtyReferences` and `navActiveRef` — so the two elements shared them.
 Done when:
 

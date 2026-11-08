@@ -10,15 +10,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const fs = require('node:fs');
-const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, openFixture } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { inPlateau, layeredFiles, openLayered, compareWith, bandOf } = require('./layered-folders');
 const { loadStylesheet, rulesOf, declarationsOf } = require('./stylesheet');
+const { readPage } = require('./editor-files');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 const sheet = loadStylesheet(HTML);
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));

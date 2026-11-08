@@ -14,8 +14,9 @@ const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { layeredFiles, chooseOnBand, bandOf } = require('./layered-folders');
+const { readPage } = require('./editor-files');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
 const LAYERED = path.join(BRIGHTCART, 'layered');
 const COMPARISONS = new Map(

@@ -38,8 +38,9 @@ export const RULES = [
   {
     id: 'R-05',
     patterns: ['docs/architecture/**', 'docs/fixtures/**'],
-    jobs: [J, P],
-    reason: 'the model and the fixtures are read by Java tests, the sample check and node tests'
+    jobs: [J, P, E],
+    reason:
+      'the model and the fixtures are read by Java tests and node tests; the model is bundled into the sample of the page, so into the jar E2E runs'
   },
   {
     id: 'R-06',
@@ -48,24 +49,11 @@ export const RULES = [
     reason: 'the workflow and the map itself'
   },
   {
-    id: 'R-07a0',
-    patterns: ['src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm'],
-    jobs: [J, P, K, E],
-    reason: 'the kernel the CLI translates and the build writes the page script from; embed.sh --check compares it'
-  },
-  {
-    id: 'R-07a',
-    patterns: ['src/main/resources/editor-webapp/assets/**'],
-    jobs: [J, P, E],
-    reason:
-      'the assets are served beside the page (the jar, the e2e suite) and checked by node tests; the Kernel job reads the .wasm (rule R-07a0), which the other assets do not touch; after R-07a0'
-  },
-  {
     id: 'R-07',
     patterns: ['src/main/rust/**', 'src/main/editor/**', 'src/main/resources/**'],
     jobs: [J, P, K, E],
     reason:
-      'the Rust is the kernel of the jar and the page; embed.sh --check compares the committed file and the hash in the page'
+      'the Rust is built into the kernel of the jar and the page and tested by the Kernel job, so all four jobs read it'
   },
   {
     id: 'R-08',
@@ -116,7 +104,12 @@ export const RULES = [
     jobs: [P, E],
     reason: 'lint and format (Page), the suite (E2E)'
   },
-  { id: 'R-16', patterns: ['package.json', 'package-lock.json'], jobs: [P, E], reason: 'npm ci in both' },
+  {
+    id: 'R-16',
+    patterns: ['package.json', 'package-lock.json'],
+    jobs: [J, P, E],
+    reason: 'npm ci in Page and E2E, and in the Maven build of the page (Java, and the jar E2E runs)'
+  },
   {
     id: 'R-17a',
     patterns: ['src/test/javascript/viewpoint-kernel/toolbar-controls.json'],
@@ -129,6 +122,16 @@ export const RULES = [
     jobs: [J, P, K],
     reason: 'shared cases: Java and the node tests read them; Rust reads three by include_str!'
   },
+  {
+    id: 'R-17b',
+    patterns: [
+      'src/test/javascript/viewpoint-kernel/harness.js',
+      'src/test/javascript/viewpoint-kernel/editor-files.js'
+    ],
+    jobs: [J, P, E],
+    reason:
+      'the Maven build runs them to make the samples of the page (Java, and the jar E2E runs); the node suite (Page)'
+  },
   { id: 'R-18', patterns: ['src/test/javascript/**'], jobs: [P], reason: 'the node suite' },
   {
     id: 'R-19',
@@ -139,9 +142,9 @@ export const RULES = [
   {
     id: 'R-20',
     patterns: ['scripts/**'],
-    jobs: [J, P, K],
+    jobs: [J, P, E],
     reason:
-      'build-editor.mjs is run by embed.sh --check (Kernel); a tags.path of the model names a script (Java); node suite and lint (Page)'
+      'build-editor.mjs and build-sample.mjs are run by the Maven build (Java, and the jar E2E runs) and by the node suite and the lint (Page); a tags.path of the model can name a script (Java)'
   },
   {
     id: 'R-21',

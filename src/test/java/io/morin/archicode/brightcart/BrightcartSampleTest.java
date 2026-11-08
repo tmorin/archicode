@@ -3,6 +3,7 @@ package io.morin.archicode.brightcart;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.morin.archicode.EditorFiles;
 import io.morin.archicode.cli.ErrorOutput;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -29,7 +30,7 @@ import picocli.CommandLine;
 @QuarkusTest
 class BrightcartSampleTest {
 
-    static final Path SAMPLE = Path.of("src/main/resources/editor-webapp/samples/brightcart.yaml");
+    static final Path SAMPLE = EditorFiles.SAMPLES.resolve("brightcart.yaml");
     static final String SEPARATOR = "--- # file: ";
     static final String NO_FINAL_NEWLINE = " # no final newline";
 
@@ -68,7 +69,7 @@ class BrightcartSampleTest {
 
     @SneakyThrows
     private static Map<String, String> sample() {
-        return split(Files.readString(SAMPLE, StandardCharsets.UTF_8));
+        return split(EditorFiles.text(SAMPLE));
     }
 
     @SneakyThrows

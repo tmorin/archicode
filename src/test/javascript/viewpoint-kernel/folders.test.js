@@ -12,6 +12,7 @@ const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
 const { FIXTURE, createApp, fakeIndexedDB, makeDirHandle, waitFor } = require('./harness');
+const { readPage } = require('./editor-files');
 
 const DB = 'archicode-standalone-editor';
 const MANIFEST = 'header:\n  kind: archicode.morin.io/system\ncontent:\n  id: s1\n  name: S1\n';
@@ -1095,9 +1096,7 @@ test('the fake runs two readwrite transactions one after the other, as a browser
 });
 
 test('the CSS of the list uses the variables of the theme, and keeps a long list inside the card', () => {
-  const css = fs
-    .readFileSync(path.join(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-    .match(/<style>([\s\S]*?)<\/style>/)[1];
+  const css = readPage().match(/<style>([\s\S]*?)<\/style>/)[1];
   const rules = css.split('\n').filter((l) => /\.landing-folder|\.landing-notice/.test(l));
   assert.ok(rules.length >= 8);
   for (const rule of rules) assert.doesNotMatch(rule, /#[0-9a-f]{3,6}\b|rgb\(/i, 'no fixed colour: ' + rule.trim());

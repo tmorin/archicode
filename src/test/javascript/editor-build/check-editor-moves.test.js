@@ -1,6 +1,6 @@
 'use strict';
 // Tests of scripts/check-editor-moves.sh (wave 024, run 0183, step 5.3a): each case is a small temporary git repository
-// with a page assembled from parts; the script under test is the one of the repository, run in that repository.
+// whose commits hold the sources of a page and no page; the script under test is the one of the repository, run in that repository.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +11,6 @@ const path = require('node:path');
 
 const REPO = path.resolve(__dirname, '../../../..');
 const SCRIPT = path.join(REPO, 'scripts/check-editor-moves.sh');
-const BUILD = path.join(REPO, 'scripts/build-editor.mjs');
 
 const SKELETON = '<!DOCTYPE html>\n<script>\n<!--@parts-->\n</script>\n</html>\n';
 const LAYERS = ['core', 'model', 'persistence', 'application', 'presentation', 'composition'];
@@ -32,7 +31,7 @@ function git(root, ...args) {
   }).trim();
 }
 
-/** Replaces the sources with `parts` ({ file, text }), rebuilds the page and commits with `subject`. */
+/** Replaces the sources with `parts` ({ file, text }), commits (no page is built or committed) with `subject`. */
 function commit(root, subject, parts, { skeleton = SKELETON } = {}) {
   fs.rmSync(path.join(root, 'src/main/editor'), { recursive: true, force: true });
   write(root, 'src/main/editor/page.html', skeleton);
@@ -42,13 +41,12 @@ function commit(root, subject, parts, { skeleton = SKELETON } = {}) {
     JSON.stringify({ layers: LAYERS, parts: parts.map(({ file }) => ({ file, layer: file.split('/')[0] })) })
   );
   for (const { file, text } of parts) write(root, `src/main/editor/${file}`, text);
-  execFileSync(process.execPath, [BUILD, '--root', root], { stdio: 'ignore' });
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', subject);
   return git(root, 'rev-parse', 'HEAD');
 }
 
-/** A repository whose first commit holds the page of one part with both functions. */
+/** A repository whose first commit holds the sources of one part with both functions. */
 function repository() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'check-moves-'));
   git(root, 'init', '-q');
@@ -85,7 +83,7 @@ test('a move commit that edits a byte fails and is named', () => {
   assert.equal(result.code, 1);
   assert.match(result.err, new RegExp(`^error: the commit ${head.slice(0, 7)}`));
   assert.match(result.err, /refactor: move the functions to their layers/);
-  assert.match(result.err, /not the page of/);
+  assert.match(result.err, /not the assembly of/);
   assert.equal(git(root, 'worktree', 'list').split('\n').length, 1, 'the worktree is removed');
 });
 

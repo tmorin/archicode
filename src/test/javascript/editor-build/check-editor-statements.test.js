@@ -1,6 +1,6 @@
 'use strict';
 // Tests of scripts/check-editor.mjs --statements and of the load-order check (wave 024, run 0183, step 5.2b): each case
-// is a small page in a temporary git repository, committed as the page of a revision, then rebuilt from other parts.
+// is a small set of sources in a temporary git repository, committed as a revision, then replaced by other parts.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +11,6 @@ const path = require('node:path');
 
 const REPO = path.resolve(__dirname, '../../../..');
 const SCRIPT = path.join(REPO, 'scripts/check-editor.mjs');
-const BUILD = path.join(REPO, 'scripts/build-editor.mjs');
 const loadModule = () => import(SCRIPT);
 
 const SKELETON =
@@ -36,7 +35,7 @@ function setSources(root, parts, skeleton = SKELETON) {
   for (const { file, text } of parts) write(root, `src/main/editor/${file}`, text);
 }
 
-/** A git repository whose HEAD has the page assembled from `before`; the sources are then set to `after`. */
+/** A git repository whose HEAD has the sources `before` (no page is committed); the sources are then set to `after`. */
 function scenario(before, after, { skeletonBefore = SKELETON, skeletonAfter = SKELETON } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'check-statements-'));
   const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'ignore' });
@@ -44,7 +43,6 @@ function scenario(before, after, { skeletonBefore = SKELETON, skeletonAfter = SK
   git('config', 'user.email', 'test@example.com');
   git('config', 'user.name', 'Test');
   setSources(root, before, skeletonBefore);
-  execFileSync(process.execPath, [BUILD, '--root', root], { stdio: 'ignore' });
   git('add', '-A');
   git('commit', '-q', '-m', 'base');
   setSources(root, after, skeletonAfter);
@@ -225,7 +223,7 @@ test('an unknown revision, or an option for a revision, is one sentence', () => 
   const root = scenario(parts, parts);
   const unknown = statements(root, 'nowhere');
   assert.equal(unknown.code, 1);
-  assert.match(unknown.err, /^cannot read src\/main\/resources\/editor-webapp\/standalone\.html at `nowhere`/);
+  assert.match(unknown.err, /^cannot read src\/main\/editor at `nowhere`/);
   assert.match(statements(root, '--stat').err, /^`--stat` is not a revision/);
 });
 

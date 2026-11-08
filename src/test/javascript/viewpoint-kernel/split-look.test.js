@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
+const { readPage } = require('./editor-files');
 
 const CHANGE_MARKS = fs.readFileSync(
   path.resolve(__dirname, '../../../main/java/io/morin/archicode/rendering/plantuml/ChangeMarks.java'),
@@ -54,10 +55,7 @@ test('no other state has the pair of `split`, in either tool, and no line of the
   for (const state of Object.keys(look))
     if (state !== 'split') assert.notEqual(look[state]['--st-dash'], look.split['--st-dash'], 'the editor: ' + state);
   // the lines of the page that are not a state (a grouped link, a dangling one, the edges of a change) draw other patterns: the CSS is read for any dash array equal to the pair
-  const html = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
-    'utf8'
-  );
+  const html = readPage();
   assert.ok(!/stroke-dasharray:\s*8[ ,]8\b/.test(html), 'no other line of the page is drawn with 8 8');
 });
 
@@ -65,10 +63,7 @@ test('both keys say the same of `split`: medium dashes', () => {
   assert.match(CHANGE_MARKS, /split, one of several that replace one element: medium dashes/);
   const sandbox = createApp();
   assert.equal(plain(vm.runInContext('CHANGE_WORDS', sandbox)).split.box, 'medium dashes');
-  const html = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
-    'utf8'
-  );
+  const html = readPage();
   assert.match(html, /split: 'medium dashes: one of several that replace one'/);
   assert.doesNotMatch(html, /dash-dot/);
 });

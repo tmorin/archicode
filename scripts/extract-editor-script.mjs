@@ -3,7 +3,7 @@
 //
 // The editor is one HTML file whose JavaScript is inline (a script file of its own is #161), so ESLint cannot read it
 // where it stands. This script copies each executable inline <script> block of
-// src/main/resources/editor-webapp/standalone.html into its own file under target/eslint-editor/ (git-ignored, with
+// target/editor-webapp/standalone.html into its own file under target/eslint-editor/ (git-ignored, with
 // target/), named after the block:
 //
 //   theme-boot.js    <script id="theme-boot">    a classic script
@@ -22,7 +22,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const html = resolve(process.argv[2] ?? join(root, 'src/main/resources/editor-webapp/standalone.html'));
+const html = resolve(process.argv[2] ?? join(root, 'target/editor-webapp/standalone.html'));
 const out = resolve(process.argv[3] ?? join(root, 'target/eslint-editor'));
 
 const text = readFileSync(html, 'utf8');

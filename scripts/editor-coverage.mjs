@@ -2,7 +2,7 @@
 // How much of the editor page's script the node suite runs, by area, and a floor that cannot go down
 // (wave 023, run 0173, W-10, Q6). Run it with `npm run test:coverage`.
 //
-// The editor is one inline script of about 22,000 lines in src/main/resources/editor-webapp/standalone.html. The unit and
+// The editor is one inline script of about 22,000 lines in target/editor-webapp/standalone.html. The unit and
 // integration suite (`npm run test:unit`, `node --test`) runs it in Node, in a `vm` context: the harness
 // (src/test/javascript/viewpoint-kernel/harness.js) runs the script of the page under the file name
 // `standalone.html-script.js`, and a page that is not the one of the repository (a released one, ARCHICODE_EDITOR_HTML)
@@ -48,7 +48,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const HTML = join(root, 'src/main/resources/editor-webapp/standalone.html');
+const HTML = join(root, 'target/editor-webapp/standalone.html');
 const OUT = join(root, 'target/editor-coverage');
 const SCRIPT_URL = 'standalone.html-script.js'; // the name harness.js gives the script of the page of the repository
 const SUITE = 'src/test/javascript/**/*.test.js';
@@ -424,7 +424,7 @@ if (merged.scripts === 0)
 const result = measure(page, isCode, merged, areaOfLine);
 
 const report = {
-  script: 'src/main/resources/editor-webapp/standalone.html (the first <script>, lines are lines of the HTML)',
+  script: 'target/editor-webapp/standalone.html (the first <script>, lines are lines of the HTML)',
   processesThatRanThePage: merged.scripts,
   total: { ...result.total, ...figuresReadable(result.total) },
   areas: Object.fromEntries(AREAS.map((a) => [a, { ...result.areas[a], ...figuresReadable(result.areas[a]) }])),

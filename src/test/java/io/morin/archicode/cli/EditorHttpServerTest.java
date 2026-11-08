@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.morin.archicode.EditorFiles;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.ByteArrayInputStream;
@@ -447,7 +448,7 @@ class EditorHttpServerTest {
         }
     }
 
-    private static final Path SAMPLE = Path.of("src/main/resources/editor-webapp/samples/brightcart.yaml");
+    private static final Path SAMPLE = EditorFiles.SAMPLES.resolve("brightcart.yaml");
 
     @SneakyThrows
     private HttpResponse<byte[]> sample(String path, String token) {
@@ -466,7 +467,7 @@ class EditorHttpServerTest {
     void servesTheSampleWithTheTokenHeader() {
         val response = sample("/samples/brightcart.yaml", running.token());
         assertEquals(200, response.statusCode());
-        assertArrayEquals(Files.readAllBytes(SAMPLE), response.body(), "the bytes of the resource, as committed");
+        assertArrayEquals(EditorFiles.bytes(SAMPLE), response.body(), "the bytes of the resource, as built");
         assertEquals("text/yaml; charset=utf-8", response.headers().firstValue("Content-Type").orElse(""));
         assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
         assertEquals("nosniff", response.headers().firstValue("X-Content-Type-Options").orElse(""));
@@ -479,9 +480,9 @@ class EditorHttpServerTest {
         val response = sample("/samples/archicode.yaml", running.token());
         assertEquals(200, response.statusCode());
         assertArrayEquals(
-            Files.readAllBytes(Path.of("src/main/resources/editor-webapp/samples/archicode.yaml")),
+            EditorFiles.bytes(EditorFiles.SAMPLES.resolve("archicode.yaml")),
             response.body(),
-            "the bytes of the resource, as committed"
+            "the bytes of the resource, as built"
         );
         assertEquals(
             403,
@@ -496,7 +497,7 @@ class EditorHttpServerTest {
         val cookie = "Cookie: " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
         val raw = rawGet("/samples/brightcart.yaml", "127.0.0.1", cookie);
         assertEquals(200, status(raw));
-        assertEquals(Files.readString(SAMPLE, StandardCharsets.UTF_8), bodyOf(raw));
+        assertEquals(EditorFiles.text(SAMPLE), bodyOf(raw));
         assertFalse(raw.toLowerCase(Locale.ROOT).contains("set-cookie"), "the cookie is not set again");
     }
 
@@ -592,9 +593,9 @@ class EditorHttpServerTest {
         );
     }
 
-    private static final Path CODEMIRROR = Path.of("src/main/resources/editor-webapp/assets/codemirror.js");
-    private static final Path ELK = Path.of("src/main/resources/editor-webapp/assets/elk.js");
-    private static final Path KERNEL = Path.of("src/main/resources/editor-webapp/assets/viewpoint_kernel.js");
+    private static final Path CODEMIRROR = EditorFiles.ASSETS.resolve("codemirror.js");
+    private static final Path ELK = EditorFiles.ASSETS.resolve("elk.js");
+    private static final Path KERNEL = EditorFiles.ASSETS.resolve("viewpoint_kernel.js");
 
     @SneakyThrows
     @Test
@@ -618,7 +619,7 @@ class EditorHttpServerTest {
         for (val entry : files.entrySet()) {
             val response = sample(entry.getKey(), running.token());
             assertEquals(200, response.statusCode(), entry.getKey());
-            assertArrayEquals(Files.readAllBytes(entry.getValue()), response.body(), "the bytes, as committed");
+            assertArrayEquals(EditorFiles.bytes(entry.getValue()), response.body(), "the bytes, as built");
             assertEquals(types.get(entry.getKey()), response.headers().firstValue("Content-Type").orElse(""));
             assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
             assertEquals("nosniff", response.headers().firstValue("X-Content-Type-Options").orElse(""));

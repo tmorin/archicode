@@ -70,6 +70,7 @@
   },
   "pathOnly": [
     "src/main/java/io/morin/archicode/cli/EditorHttpServer.java",
+    "src/test/java/io/morin/archicode/EditorFiles.java",
     "src/test/java/io/morin/archicode/NativeReflectionConfigTest.java",
     "src/test/java/io/morin/archicode/cli/EditorHttpServerTest.java"
   ]

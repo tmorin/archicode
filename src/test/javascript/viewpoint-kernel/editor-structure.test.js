@@ -14,6 +14,7 @@ const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { click } = require('./library-page');
 const { loadStylesheet } = require('./stylesheet');
+const { readPage } = require('./editor-files');
 
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
 const LAYERED = path.join(BRIGHTCART, 'layered');
@@ -1111,9 +1112,7 @@ test('Settings has no plateau section for a layered or a plateau-less workspace'
 // ---- the layout ----
 
 test('the bar of the pages and the Plateaus page hold the width: they wrap, and the helper for the third row of the shell exists', async () => {
-  const sheet = loadStylesheet(
-    fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8')
-  );
+  const sheet = loadStylesheet(readPage());
   const narrow = ['@media (max-width: 40rem)'];
   assert.equal(sheet.decl('.page-tabs', 'flex-wrap'), 'wrap');
   assert.equal(sheet.decl('.page-tabs', 'min-width'), '0');
@@ -1253,10 +1252,7 @@ test('the Plateaus page loads the kernel its Changes panel waits for, and writes
   }
   assert.equal(run(sandbox, '__refreshes'), 1, 'the panel is written once, when the kernel is there');
   // and every drawing asks (the harness does not draw the page: the call is read in the function that does)
-  const html = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
-    'utf8'
-  );
+  const html = readPage();
   const render = html.slice(html.indexOf('\nfunction render() {'));
   assert.ok(
     render.indexOf('mountDiagramIfNeeded();\n  settlePlateausPanel();') > 0 &&

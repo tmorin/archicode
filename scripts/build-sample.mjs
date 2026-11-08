@@ -1,10 +1,9 @@
-// Builds the samples of the hosted editor: the bundle (one YAML text) of a folder, written to src/main/resources/editor-webapp/samples/<id>.yaml.
+// Builds the samples of the hosted editor: the bundle (one YAML text) of a folder, written to target/editor-webapp/samples/<id>.yaml.
 // Two samples: Brightcart (the folder src/test/resources/brightcart/layered) and ArchiCode (the model of ArchiCode, docs/architecture; wave 029).
 // A bundle is made by the page's own codec (`bundleWorkspaceFiles`), the page's script run in Node through the harness of the unit suite, so the
 // codec that writes a sample is the one that reads it (run 0193, DEC-1).
 //   node scripts/build-sample.mjs                writes the samples, only those whose bytes differ
-//   node scripts/build-sample.mjs --check        writes nothing; exit 0 when each committed sample is the bundle, else exit 1 and one line
-//   node scripts/build-sample.mjs --root <dir>   another tree with the same layout (a copy: the fixtures, the samples and the page)
+//   node scripts/build-sample.mjs --root <dir>   another tree with the same layout (a copy: the fixtures and the built page)
 //   node scripts/build-sample.mjs --only <id>    one sample (`brightcart` or `archicode`)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,15 +14,14 @@ const REPOSITORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.
 const SAMPLES = {
   brightcart: {
     fixture: 'src/test/resources/brightcart/layered',
-    sample: 'src/main/resources/editor-webapp/samples/brightcart.yaml'
+    sample: 'target/editor-webapp/samples/brightcart.yaml'
   },
   archicode: {
     fixture: 'docs/architecture',
-    sample: 'src/main/resources/editor-webapp/samples/archicode.yaml'
+    sample: 'target/editor-webapp/samples/archicode.yaml'
   }
 };
-const PAGE = 'src/main/resources/editor-webapp/standalone.html';
-const REBUILD = 'run `npm run sample:build`';
+const PAGE = 'target/editor-webapp/standalone.html';
 
 /** Every file of the folder, recursively, with `/` paths, sorted, as { path, bytes }. */
 function filesOf(folder, relative = '', found = []) {
@@ -42,7 +40,9 @@ export function buildSample(root, id = 'brightcart') {
   const { fixture: FIXTURE } = SAMPLES[id];
   const require = createRequire(import.meta.url);
   const { createApp } = require(path.join(REPOSITORY, 'src/test/javascript/viewpoint-kernel/harness.js'));
-  const page = fs.readFileSync(path.join(root, PAGE), 'utf8');
+  const pageFile = path.join(root, PAGE);
+  if (!fs.existsSync(pageFile)) throw new Error('the editor page is missing: ' + PAGE + ' (run npm run editor:build)');
+  const page = fs.readFileSync(pageFile, 'utf8');
   const files = filesOf(path.join(root, FIXTURE));
   const bundle = createApp({ html: page }).bundleWorkspaceFiles(files);
   if (bundle.skipped.length > 0) {
@@ -60,38 +60,19 @@ export function buildSample(root, id = 'brightcart') {
   return bundle.text;
 }
 
-/** The first line (1-based) where the two texts differ, or 0 when they are the same. */
-function firstDifferentLine(a, b) {
-  const x = a.split('\n');
-  const y = b.split('\n');
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    if (x[i] !== y[i]) return i + 1;
-  }
-  return 0;
-}
-
 function main(argv) {
-  const check = argv.includes('--check');
   const at = argv.indexOf('--root');
   const root = at >= 0 ? path.resolve(argv[at + 1] || '.') : REPOSITORY;
   const only = argv.indexOf('--only');
   const ids = only >= 0 ? [argv[only + 1]] : Object.keys(SAMPLES);
   for (const id of ids) {
     if (!Object.prototype.hasOwnProperty.call(SAMPLES, id)) throw new Error('there is no sample ' + id);
-    const { fixture, sample } = SAMPLES[id];
+    const { sample } = SAMPLES[id];
     const target = path.join(root, sample);
     const text = buildSample(root, id);
     const bytes = Buffer.from(text, 'utf8');
     const committed = fs.existsSync(target) ? fs.readFileSync(target) : null;
     const same = committed !== null && committed.equals(bytes);
-    if (check) {
-      if (same) continue;
-      if (committed === null) throw new Error(sample + ' is missing: ' + REBUILD);
-      const line = firstDifferentLine(committed.toString('utf8'), text);
-      throw new Error(
-        sample + ' is not the bundle of ' + fixture + ' (first difference at line ' + line + '): ' + REBUILD
-      );
-    }
     if (same) continue;
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, bytes);

@@ -3,13 +3,12 @@
 // half as wide. The markup and the CSS text are tested, not pixels. Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { layeredFiles } = require('./layered-folders');
+const { readPage } = require('./editor-files');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
 const CHAIN = 12;
 const OPTION = /<option value="(?:plateau:)?(?:baseline|step\d+)"[^>]*>(\u2003*)[^<]*<\/option>/g;

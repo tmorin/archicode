@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import io.morin.archicode.EditorFiles;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.application.Application;
@@ -36,7 +37,6 @@ import io.morin.archicode.resource.workspace.Formatters;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.resource.workspace.Styles;
 import io.morin.archicode.resource.workspace.Workspace;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,7 +61,7 @@ import org.junit.jupiter.api.Test;
  */
 class EditorReadSchemaTest {
 
-    private static final Path PAGE = Path.of("src/main/resources/editor-webapp/standalone.html");
+    private static final Path PAGE = EditorFiles.PAGE;
 
     private static final ObjectMapper MAPPER = new MapperFactory().create(MapperFormat.YAML);
 
@@ -120,7 +120,7 @@ class EditorReadSchemaTest {
 
     @SneakyThrows
     private static JsonNode schema() {
-        val page = Files.readString(PAGE);
+        val page = EditorFiles.text(PAGE);
         val begin = page.indexOf("// READ_SCHEMA begin");
         val end = page.indexOf("// READ_SCHEMA end");
         assertTrue(begin > 0 && end > begin, "the page marks its table");

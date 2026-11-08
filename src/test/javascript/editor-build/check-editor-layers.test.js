@@ -171,12 +171,13 @@ test('--layers passes on the repository', () => {
   assert.ok(Number(pairs[1]) <= 99, `${pairs[1]} upward pairs, above the ratchet`);
 });
 
-test('the layers.json of the repository has ratchet.max 99 and java-names.json lists the three path-only files', () => {
+test('the layers.json of the repository has ratchet.max 99 and java-names.json lists the four path-only files', () => {
   const layers = JSON.parse(fs.readFileSync(path.join(REPO, 'src/main/editor/layers.json'), 'utf8'));
   assert.equal(layers.ratchet.max, 99);
   const java = JSON.parse(fs.readFileSync(path.join(REPO, 'src/main/editor/java-names.json'), 'utf8'));
   assert.equal(Object.keys(java.names).length, 21);
   assert.deepEqual(java.pathOnly.map((f) => path.basename(f)).sort(), [
+    'EditorFiles.java',
     'EditorHttpServer.java',
     'EditorHttpServerTest.java',
     'NativeReflectionConfigTest.java'

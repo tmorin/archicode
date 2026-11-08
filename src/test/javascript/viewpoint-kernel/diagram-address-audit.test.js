@@ -7,11 +7,10 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const { REPO, BRIGHTCART, run, openWorkspace } = require('../map-links-support');
+const { BRIGHTCART, run, openWorkspace } = require('../map-links-support');
+const { readPage } = require('./editor-files');
 
-const HTML = fs.readFileSync(path.join(REPO, 'src/main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 
 /** The functions whose text names the inputs of the drawing: the key of the cache, the recipes, the kernel input and the readers of the page state they call. */
 const READERS = [

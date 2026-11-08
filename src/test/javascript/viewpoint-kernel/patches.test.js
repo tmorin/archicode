@@ -10,13 +10,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const REPO = path.resolve(__dirname, '../../../..');
-const WASM = path.join(REPO, 'src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm');
+const { readKernelWasm } = require('./kernel-wasm');
 const CASES = JSON.parse(fs.readFileSync(path.join(__dirname, 'patch-cases.json'), 'utf8'));
 
 /** The module of the file beside the page, instantiated as the page does. */
 async function loadEmbeddedKernel() {
-  const bytes = fs.readFileSync(WASM);
+  const bytes = readKernelWasm();
   const { instance } = await WebAssembly.instantiate(bytes, {});
   const x = instance.exports;
   const call = (name, input) => {
