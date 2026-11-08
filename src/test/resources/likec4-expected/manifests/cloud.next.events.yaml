@@ -1,0 +1,27 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "cloud.next"
+content:
+  id: "events"
+  name: "Events Manager"
+  tags:
+    likec4.id: "cloud.next.events"
+    likec4.kind: "component"
+  relationships:
+    - destination: "amazon.sqs"
+      label: "publishes events"
+      tags:
+        likec4.id: "1ql35tl"
+    - destination: "amazon.sqs.queue1"
+      label: "publishes events"
+      qualifiers:
+        - "JSON"
+      tags:
+        likec4.id: "vfgn5n"
+    - destination: "amazon.sqs.queue2"
+      label: "publishes events"
+      qualifiers:
+        - "proto"
+      tags:
+        likec4.id: "145bos9"

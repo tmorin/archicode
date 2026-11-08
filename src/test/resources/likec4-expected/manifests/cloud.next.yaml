@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "cloud"
+content:
+  id: "next"
+  name: "Cloud Next"
+  description: "Cloud Next is the next version of our cloud systems"
+  tags:
+    likec4.id: "cloud.next"
+    likec4.kind: "container"

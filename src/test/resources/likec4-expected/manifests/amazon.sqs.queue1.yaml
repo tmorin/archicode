@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "amazon.sqs"
+content:
+  id: "queue1"
+  name: "Raw Data"
+  description: "Queue with raw data"
+  qualifiers:
+    - "Simple Queue Service"
+  tags:
+    likec4.id: "amazon.sqs.queue1"
+    likec4.kind: "queue"

@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "amazon"
+content:
+  id: "rds"
+  name: "RDS"
+  description: "Relational Database Service"
+  qualifiers:
+    - "Rds"
+  tags:
+    likec4.id: "amazon.rds"
+    likec4.kind: "container"

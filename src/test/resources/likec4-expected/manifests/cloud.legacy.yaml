@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "cloud"
+content:
+  id: "legacy"
+  name: "Cloud Legacy"
+  description: "The legacy version of our SaaS\nMVP as was presented to the first\
+    \ customers"
+  tags:
+    likec4.id: "cloud.legacy"
+    likec4.kind: "container"

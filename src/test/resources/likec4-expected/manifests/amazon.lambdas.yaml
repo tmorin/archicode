@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "amazon"
+content:
+  id: "lambdas"
+  name: "Lambdas"
+  description: "Serverless compute"
+  qualifiers:
+    - "deprecated"
+    - "api"
+    - "db"
+  tags:
+    likec4.id: "amazon.lambdas"
+    likec4.kind: "container"

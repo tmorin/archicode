@@ -1,0 +1,27 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "customer"
+  name: "Cloud System Customer"
+  description: "Long description\n\n## Markdown\n\n```\nCode block\n```\n\n- List\
+    \ item\n- List item\n- List item\n\n## Table\n\n| Column 1 | Column 2 | Column\
+    \ 3 |\n| -------- | -------- | -------- |\n| Row 1    | Row 1    | Row 1    |\n\
+    | Row 2    | Row 2    | Row 2    |\n| Row 3    | Row 3    | Row 3    |"
+  tags:
+    likec4.id: "customer"
+    likec4.kind: "actor"
+  relationships:
+    - destination: "cloud.ui.dashboard"
+      label: "opens in the browser vit HTTPS"
+      tags:
+        likec4.id: "k267jb"
+    - destination: "cloud.ui.mobile"
+      label: "opens on a mobile device"
+      tags:
+        likec4.id: "27wqxs"
+    - destination: "cloud"
+      label: "uses and pays"
+      tags:
+        likec4.id: "1y1xzld"
+        likec4.kind: "uses"

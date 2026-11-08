@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "amazon"
+  name: "Amazon"
+  description: "Cloud and managed services provider"
+  qualifiers:
+    - "Amazon Web Services"
+  tags:
+    likec4.id: "amazon"
+    likec4.kind: "externalSystem"

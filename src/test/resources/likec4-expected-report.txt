@@ -1,0 +1,17 @@
+warning: views: 3 dropped
+warning: deployment elements: 49 dropped
+warning: deployment relationships: 6 dropped
+warning: styles: 27 dropped
+warning: metadata: 5 dropped
+warning: links: 2 dropped
+warning: navigateTo: 6 dropped
+warning: notation: 16 dropped
+warning: manual layouts: 3 dropped
+warning: relationships to elements that are not imported: 14 dropped
+warning: dropped elements: 6
+warning: element cloud.legacy.backend.services (kind component, mapped to component) dropped: a component (cloud.legacy.backend) cannot hold a component
+warning: element cloud.next.graphql.myAccount (kind gqlQuery, mapped to component) dropped: a component (cloud.next.graphql) cannot hold a component
+warning: element cloud.next.graphql.updateAccount (kind gqlMutation, mapped to component) dropped: a component (cloud.next.graphql) cannot hold a component
+warning: element cloud.supportUser (kind actor, mapped to person) dropped: a system (cloud) cannot hold a person
+warning: element amazon.rds.aurora.tblUsers (kind table, mapped to component) dropped: a component (amazon.rds.aurora) cannot hold a component
+warning: element amazon.rds.pg.tblUsers (kind table, mapped to component) dropped: a component (amazon.rds.pg) cannot hold a component

@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "cloud.legacy"
+content:
+  id: "backend"
+  name: "Legacy Backend"
+  description: "The legacy version of backend"
+  tags:
+    likec4.id: "cloud.legacy.backend"
+    likec4.kind: "app"

@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "cloud.ui"
+content:
+  id: "mobile"
+  name: "Customer Mobile App"
+  description: "Native iOS Application\nwritten in Swift"
+  qualifiers:
+    - "Swift"
+  tags:
+    likec4.id: "cloud.ui.mobile"
+    likec4.kind: "mobileApp"
