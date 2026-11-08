@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 035
-status: planned
+status: completed
 date: 2026-11-07
 related:
   - docs/wav/wav-035-maven-builds-kernel-and-page-likec4-import/wbc-035-maven-builds-kernel-and-page-likec4-import.md
@@ -43,7 +43,7 @@ Each has a proposed default, to confirm; none blocks the start.
 wave_manifest:
   wave: 035
   slug: maven-builds-kernel-and-page-likec4-import
-  status: planned
+  status: completed
   sources:
     - '#207'
     - '#134'
@@ -84,7 +84,7 @@ wave_manifest:
       slug: kernel-built-by-maven
       phase: P1
       depends_on: []
-      run: null
+      run: 0231
       delegation: hard_judgment
       delegation_reason: 'changes the build of the released jar and of the three native binaries (the other two targets are proved only by a tag run)'
       likely_paths:
@@ -108,7 +108,7 @@ wave_manifest:
       slug: editor-page-built-by-maven
       phase: P2
       depends_on: [W-1]
-      run: null
+      run: 0232
       delegation: hard_judgment
       delegation_reason: 'changes the files the live hosted editor serves and what the jar holds (the website step is proved only by a tag run)'
       likely_paths:
@@ -131,7 +131,7 @@ wave_manifest:
       slug: likec4-json-import
       phase: P3
       depends_on: []
-      run: null
+      run: 0233
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/importer/**'
@@ -181,7 +181,7 @@ Only W-2 depends on W-1 (the page build writes `viewpoint_kernel.js` from the `.
 
 ## Risks
 
-- **Overlaps, all with the verdict `serialize`; launch with `--max-parallel-runs 1`.** W-1 and W-2 share `pom.xml`, `ci-build.yaml`, the build scripts, the harness and the `CLAUDE.md` files; W-2 and W-3 share `src/test/**`, `src/doc/README.adoc` and `docs/architecture/**` with its generated sample.
+- **Overlaps; the runs execute one after another.** W-1 and W-2 share `pom.xml`, `ci-build.yaml`, the build scripts, the harness and the `CLAUDE.md` files; W-2 and W-3 share `src/test/**`, `src/doc/README.adoc` and `docs/architecture/**` with its generated sample.
 - **The native binaries and the website are proved only by a tag run.** W-1 puts Rust in the jobs of three native targets (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`) and W-2 changes what `Assemble website` copies; a pull request runs one native target and no website step, so the hand-off says what is unproved until a tag. Both runs are `hard_judgment` for that reason.
 - **Time and cache.** A Rust build in every job that builds the jar adds minutes; W-1 reports the time of each job before and after and caches `~/.cargo` and `target`.
 - **Reproducibility across machines.** The gate compares the built `.wasm` and the bundles with the committed bytes on one machine; the three native runners and a contributor's laptop are covered by the pinned toolchain and the remapped paths, which `embed.sh --check` has proved in CI so far. A byte that differs on macOS stops W-1.

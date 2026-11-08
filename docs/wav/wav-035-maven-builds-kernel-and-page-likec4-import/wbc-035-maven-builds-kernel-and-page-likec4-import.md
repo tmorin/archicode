@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 035
-status: planned
+status: completed
 date: 2026-11-07
 related:
   - docs/wav/wav-034-diagrams-assets-likec4-matrix-page/wav-034-diagrams-assets-likec4-matrix-page.md
