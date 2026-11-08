@@ -11,6 +11,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
+const { readPage } = require('./editor-files');
 
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart/layered');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
@@ -268,11 +269,7 @@ test('#81: the first render of the 82-element marketplace through journey, compa
 });
 
 test('#81: the page asks for the entry and builds no kernel input per element: the source says so', () => {
-  const fs = require('node:fs');
-  const HTML = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
-    'utf8'
-  );
+  const HTML = readPage();
   const quiet = HTML.slice(
     HTML.indexOf('function quietReferencesThroughFacet('),
     HTML.indexOf('async function markTreeThroughFacet')

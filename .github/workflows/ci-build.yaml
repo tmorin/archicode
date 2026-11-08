@@ -89,6 +89,22 @@ jobs:
           java-version: "25"
           distribution: "temurin"
           cache: maven
+      - name: "Set up Node.js"
+        # the Maven build below runs npm ci and the build of the page (node and npm on the PATH)
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: "Cache the Rust toolchain"
+        # the compiler of rust-toolchain.toml and the crates of Cargo.lock, which the first cargo command of the build of the kernel installs (rustup is on the runner); the Maven build below builds the kernel into target/kernel
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.rustup/toolchains
+            ~/.rustup/update-hashes
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('src/main/rust/viewpoint-kernel/rust-toolchain.toml', 'src/main/rust/viewpoint-kernel/Cargo.lock') }}
       - name: "Build artifacts"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -136,7 +152,8 @@ jobs:
 
   Page:
     # The editor page and the scripts: Prettier, ESLint, the node unit suite with the coverage of the editor script, and the
-    # time budget of the kernel. Needs Node.js only (the kernel is the committed file in editor-webapp/assets/, which the tests read).
+    # time budget of the kernel. Needs Node.js and rustup (on the runner): the kernel is built into target/kernel by the
+    # scripts that read it (embed.sh), with the toolchain of rust-toolchain.toml, cached by the step below.
     needs: Changes
     if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.page == 'true' }}
     runs-on: "ubuntu-latest"
@@ -155,16 +172,21 @@ jobs:
       - name: "Install the Node.js dependencies"
         # package-lock.json is committed: the same Prettier on every run
         run: npm ci
-      - name: "Check the editor page is the assembly of its parts"
-        # Before any hook of npm can rewrite the page: standalone.html must equal what scripts/build-editor.mjs assembles
-        # from src/main/editor, and the names, the load order and the ratchet of scripts/check-editor.mjs must hold.
+      - name: "Cache the Rust toolchain"
+        # the compiler of rust-toolchain.toml and the crates of Cargo.lock, which the first cargo command of the build of the kernel installs (rustup is on the runner); the scripts that read target/kernel build it, so this is before the first of them
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.rustup/toolchains
+            ~/.rustup/update-hashes
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('src/main/rust/viewpoint-kernel/rust-toolchain.toml', 'src/main/rust/viewpoint-kernel/Cargo.lock') }}
+      - name: "Check the editor sources assemble"
+        # Before any hook of npm can rewrite the page: the sources in src/main/editor must assemble (scripts/build-editor.mjs
+        # --check), and the names, the load order and the ratchet of scripts/check-editor.mjs must hold.
         # Run `npm run editor:build` to write the page, `npm run editor:check` to see this check
         run: npm run editor:check
-      - name: "Check the samples are the bundles of their folders"
-        # The hosted editor's samples, src/main/resources/editor-webapp/samples/brightcart.yaml and archicode.yaml, are the bundles of
-        # src/test/resources/brightcart/layered and of docs/architecture (the model of ArchiCode) made by the page's own codec;
-        # they must be what `npm run sample:build` writes
-        run: npm run sample:check
       - name: "Check the move commits"
         # A commit `refactor: move ...` must leave the assembled page byte for byte what its parent's was, a commit
         # `refactor: relocate ...` its declarations and comments; the other commits are not looked at. Pull request only.
@@ -206,9 +228,10 @@ jobs:
         run: npm run test:timing
 
   Kernel:
-    # The viewpoint kernel (Rust compiled to WebAssembly): tests, format, lint, line coverage, and the check that the
-    # committed .wasm is the one the sources build. Needs rustup (on the runner), nothing else: rustup installs
-    # the toolchain, the components and the wasm target of rust-toolchain.toml at the first cargo command.
+    # The viewpoint kernel (Rust compiled to WebAssembly): tests, format, lint and line coverage. It compares no built
+    # file with one in git: the WebAssembly is not committed, Maven and the scripts of the page build it. Needs rustup (on
+    # the runner), nothing else: rustup installs the toolchain, the components and the wasm target of rust-toolchain.toml
+    # at the first cargo command, and this job does not cache them (the jobs that build the jar or the page do).
     needs: Changes
     if: ${{ github.event_name != 'workflow_dispatch' && needs.Changes.outputs.kernel == 'true' }}
     runs-on: "ubuntu-latest"
@@ -236,16 +259,13 @@ jobs:
           cd src/main/rust/viewpoint-kernel
           cargo llvm-cov --ignore-filename-regex '_tests\.rs$' --fail-under-lines 90 \
             || { echo "::error::the line coverage of the viewpoint kernel is below 90 % (the table above says where)"; exit 1; }
-      - name: "Check the committed WebAssembly is the one the Rust builds"
-        # the same build as embed.sh, into a scratch directory, with the compiler of rust-toolchain.toml: a change to the
-        # Rust whose .wasm was not rebuilt into editor-webapp/assets/, or whose hash in standalone.html is stale, fails
-        run: src/main/rust/viewpoint-kernel/embed.sh --check
 
   E2E:
     # The end-to-end suite: a real browser against `archicode editor serve` on the packaged application. It builds its own
     # jar (`./mvnw package` without the tests and the manual: about a minute) instead of waiting for the one `Java` builds,
     # which would put this job after Java's five minutes; its own Maven cache, apart from Java's (a cache of what a build
-    # without tests needs must not take the place of the one `verify` needs).
+    # without tests needs must not take the place of the one `verify` needs). The build also compiles the kernel (Rust to
+    # WebAssembly, into target/kernel), so it has the cache of the Rust toolchain too.
     # One job per browser (the projects of playwright.config.js), each with one worker and no retry as before: the time of
     # the suite is that of the slowest browser plus the set-up, not the sum of the three (about 16 minutes of tests: Firefox
     # 7, Chromium 6, WebKit 3). The result of the job E2E that `Build` reads is the aggregate of the three: `success` only
@@ -281,6 +301,16 @@ jobs:
       - name: "Install the Node.js dependencies"
         # package-lock.json is committed: the same Playwright on every run
         run: npm ci
+      - name: "Cache the Rust toolchain"
+        # the compiler of rust-toolchain.toml and the crates of Cargo.lock, which the first cargo command of the build of the kernel installs (rustup is on the runner); Maven builds the kernel into target/kernel in the build below
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.rustup/toolchains
+            ~/.rustup/update-hashes
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('src/main/rust/viewpoint-kernel/rust-toolchain.toml', 'src/main/rust/viewpoint-kernel/Cargo.lock') }}
       - name: "Build the packaged application"
         # target/quarkus-app/quarkus-run.jar, what `editor serve` runs: the tests are not run (Java runs them), the manual is
         # not drawn (it is not in the jar), the same jar as `./mvnw verify` makes
@@ -394,6 +424,24 @@ jobs:
           java-version: "25"
           distribution: "temurin"
           cache: maven
+      - name: "Set up Node.js"
+        # Maven runs npm ci and the build of the page in the steps below (node and npm on the PATH). No `if`: the steps that
+        # need it run for a tag, the deploy steps only for a release commit. No `cache`: on a pull request the job has no
+        # checkout, and the npm cache needs package-lock.json
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "22"
+      - name: "Cache the Rust toolchain"
+        # the compiler of rust-toolchain.toml and the crates of Cargo.lock, which the first cargo command of the build of the kernel installs (rustup is on the runner)
+        if: ${{ env.PUBLISHES == 'true' }}
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.rustup/toolchains
+            ~/.rustup/update-hashes
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('src/main/rust/viewpoint-kernel/rust-toolchain.toml', 'src/main/rust/viewpoint-kernel/Cargo.lock') }}
       - name: "Publish snapshot artifacts"
         # `-Dmaven.test.skip` leaves no test classes, and PMD reads the tests with the classes of the build to resolve their types: without
         # them it reports a finding that `verify` (job Java) does not, so the two publishing builds skip it; Java has run it on the same sources
@@ -432,6 +480,13 @@ jobs:
         with:
           name: manual
           path: target/generated-docs
+      - name: "Build the editor page and the samples"
+        # makes target/editor-webapp, which the step below copies: the `deploy` of a release commit has made it, a tag that is not
+        # a release commit has not, and the phase leaves what is up to date. No manual (it comes from the artifact above).
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: ./mvnw --batch-mode process-resources -Dplugin.asciidoctor.skip=true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: "Assemble website"
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         # The presentation page at the root with robots.txt, sitemap.xml and llms.txt beside it, the manual at /docs/ and the editor at /editor/, with its samples/ and assets/ folders. The presentation page and
@@ -453,16 +508,16 @@ jobs:
           cp src/site/llms.txt target/site/llms.txt
           test -f target/site/llms.txt
           cmp src/site/llms.txt target/site/llms.txt
-          sed "${stamp}" src/main/resources/editor-webapp/standalone.html > target/site/editor/index.html
+          sed "${stamp}" target/editor-webapp/standalone.html > target/site/editor/index.html
           mkdir -p target/site/editor/samples
-          cp -r src/main/resources/editor-webapp/samples/. target/site/editor/samples/
+          cp -r target/editor-webapp/samples/. target/site/editor/samples/
           test -f target/site/editor/samples/brightcart.yaml
-          cmp src/main/resources/editor-webapp/samples/brightcart.yaml target/site/editor/samples/brightcart.yaml
+          cmp target/editor-webapp/samples/brightcart.yaml target/site/editor/samples/brightcart.yaml
           test -f target/site/editor/samples/archicode.yaml
-          cmp src/main/resources/editor-webapp/samples/archicode.yaml target/site/editor/samples/archicode.yaml
+          cmp target/editor-webapp/samples/archicode.yaml target/site/editor/samples/archicode.yaml
           mkdir -p target/site/editor/assets
-          cp -r src/main/resources/editor-webapp/assets/. target/site/editor/assets/
-          for asset in src/main/resources/editor-webapp/assets/*; do
+          cp -r target/editor-webapp/assets/. target/site/editor/assets/
+          for asset in target/editor-webapp/assets/*; do
             name="$(basename "${asset}")"
             test -f "target/site/editor/assets/${name}"
             cmp "${asset}" "target/site/editor/assets/${name}"
@@ -558,6 +613,22 @@ jobs:
           java-version: "25"
           distribution: "mandrel"
           cache: maven
+      - name: "Set up Node.js"
+        # Maven runs npm ci and the build of the page in the step below, on every target
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: "Cache the Rust toolchain"
+        # the compiler of rust-toolchain.toml and the crates of Cargo.lock, which the first cargo command of the build of the kernel installs (rustup is on the runner)
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.rustup/toolchains
+            ~/.rustup/update-hashes
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('src/main/rust/viewpoint-kernel/rust-toolchain.toml', 'src/main/rust/viewpoint-kernel/Cargo.lock') }}
       - name: "Build the native image and run the integration tests against it"
         # `-Dnative` (the `native` profile of pom.xml) builds the image, skips the unit tests (Java runs them) and runs
         # Failsafe, whose `*IT` classes (src/test/java/io/morin/archicode/it) start the native runner as a process on the

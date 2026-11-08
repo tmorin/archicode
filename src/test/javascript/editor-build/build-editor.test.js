@@ -10,7 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const SCRIPT = path.resolve(__dirname, '../../../../scripts/build-editor.mjs');
-const PAGE = 'src/main/resources/editor-webapp/standalone.html';
+const PAGE = 'target/editor-webapp/standalone.html';
 const SKELETON = [
   '<!DOCTYPE html>',
   '<script id="theme-boot">',
@@ -127,32 +127,7 @@ test('--where names the part and the line in it, or the skeleton', () => {
   refused(root, /--where needs a line between 1 and 10/, '--where', '99');
 });
 
-test('--check passes on the assembly and fails on one changed byte with the sentence', () => {
-  const root = makeTree();
-  run(root);
-  assert.equal(run(root, '--check').code, 0);
-  const page = path.join(root, PAGE);
-  fs.writeFileSync(page, fs.readFileSync(page, 'utf8').replace('const b = 2;', 'const b = 3;'));
-  refused(
-    root,
-    /standalone\.html is generated: edit src\/main\/editor and run `npm run editor:build`.*line 7.*unsorted\/b\.js:1/,
-    '--check'
-  );
-});
-
-test('--check fails when the page is missing', () => {
-  refused(makeTree(), /standalone\.html is generated/, '--check');
-});
-
-test('--check does not write', () => {
-  const root = makeTree();
-  run(root, '--check');
-  assert.equal(fs.existsSync(path.join(root, PAGE)), false);
-});
-
-test('--check-identical compares with the page of a revision, byte for byte', () => {
-  const root = makeTree();
-  run(root);
+function commit(root) {
   const git = (...args) =>
     assert.equal(
       spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: root }).status,
@@ -162,10 +137,78 @@ test('--check-identical compares with the page of a revision, byte for byte', ()
   git('init', '-q');
   git('add', '-A');
   git('commit', '-q', '-m', 'one');
-  assert.equal(run(root, '--check-identical', 'HEAD').code, 0);
+}
+
+test('--check passes on a tree where nothing is built, writes nothing, and ignores a page on disk', () => {
+  const root = makeTree();
+  const result = run(root, '--check');
+  assert.equal(result.code, 0, result.err);
+  assert.match(result.out, /the sources of the editor assemble \(\d+ lines\)/);
+  assert.equal(fs.existsSync(path.join(root, 'target')), false, '--check writes nothing');
+  write(root, PAGE, 'hand edit\n');
+  assert.equal(run(root, '--check').code, 0, 'the page is not read');
+  assert.equal(fs.readFileSync(path.join(root, PAGE), 'utf8'), 'hand edit\n');
+});
+
+test('--check fails with one line when the sources do not assemble, and never says the page is generated', () => {
+  const root = makeTree();
+  write(root, 'src/main/editor/unsorted/c.js', 'const c = 1;\n');
+  refused(root, /^error: the part `unsorted\/c\.js` is in src\/main\/editor but not in layers\.json/, '--check');
+  assert.doesNotMatch(run(root, '--check').err, /is generated/);
+});
+
+test('the build writes under target/editor-webapp and nothing under src/main/resources', () => {
+  const root = makeTree();
+  assert.equal(run(root).code, 0);
+  assert.equal(fs.existsSync(path.join(root, PAGE)), true);
+  assert.equal(fs.existsSync(path.join(root, 'src/main/resources')), false);
+});
+
+test('assemble without strict gives the placeholder hash 00000000 for an asset that is not built, strict refuses', async () => {
+  const root = makeEncodedTree();
+  const { assemble, mapOf } = await import(SCRIPT);
+  const loose = assemble(root);
+  assert.ok(loose.text.includes('<meta name="archicode-asset:lib.js" content="./assets/lib.js?v=00000000">'));
+  assert.ok(loose.text.includes('<meta name="archicode-asset:kernel.js" content="./assets/kernel.js?v=00000000">'));
+  assert.equal(mapOf(root).lines, loose.origins.length);
+  assert.throws(
+    () => assemble(root, { strict: true }),
+    /the asset lib\.js is missing: target\/editor-webapp\/assets\/lib\.js/
+  );
+  assert.equal(fs.existsSync(path.join(root, 'target/editor-webapp')), false);
+});
+
+test('--check-identical compares the assembly of the revision sources with the tree, and needs no page in the revision', () => {
+  const root = makeTree();
+  commit(root);
+  assert.equal(fs.existsSync(path.join(root, PAGE)), false, 'nothing is built');
+  const result = run(root, '--check-identical', 'HEAD');
+  assert.equal(result.code, 0, result.err);
+  assert.match(result.out, /^the assembly is the assembly of HEAD, byte for byte$/m);
   write(root, 'src/main/editor/core/a.js', 'const a = 9;\n');
-  refused(root, /not the page of `HEAD`.*line 6.*core\/a\.js:1/, '--check-identical', 'HEAD');
-  refused(root, /cannot read .* at `nope`/, '--check-identical', 'nope');
+  refused(root, /not the assembly of `HEAD`.*line 6.*core\/a\.js:1/, '--check-identical', 'HEAD');
+  assert.equal(fs.existsSync(path.join(root, 'target')), false, 'nothing is written');
+});
+
+test('--check-identical ignores the built assets of the tree: both sides use the placeholder hash', () => {
+  const root = makeAssetTree();
+  commit(root);
+  assert.equal(run(root).code, 0);
+  assert.equal(run(root, '--check-identical', 'HEAD').code, 0);
+});
+
+test('--check-identical on an unknown revision, or a revision with no editor sources, is one line', () => {
+  const root = makeTree();
+  commit(root);
+  refused(
+    root,
+    /^error: cannot read src\/main\/editor at `nope` \(unknown revision or no such folder\)/,
+    '--check-identical',
+    'nope'
+  );
+  fs.rmSync(path.join(root, 'src/main/editor'), { recursive: true });
+  spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qam', 'two'], { cwd: root });
+  refused(root, /cannot read src\/main\/editor at `HEAD`/, '--check-identical', 'HEAD');
 });
 
 test('refuses an unknown directive', () => {
@@ -263,7 +306,7 @@ test('refuses an unknown option and a missing value', () => {
 // ---- assets: assets.json, <!--@assets-->, the esbuild step, the notice file and --check ----
 
 const { createHash } = require('node:crypto');
-const ASSETS = 'src/main/resources/editor-webapp/assets';
+const ASSETS = 'target/editor-webapp/assets';
 const ASSET_SKELETON = SKELETON.replace('<!DOCTYPE html>', '<!DOCTYPE html>\n<!--@assets-->');
 
 function makeAssetTree() {
@@ -327,22 +370,13 @@ test('a second build writes nothing: the files keep their modification time', ()
   for (const file of [...files, path.join(root, PAGE)]) assert.equal(fs.statSync(file).mtimeMs, old.getTime(), file);
 });
 
-test('--check passes on a built tree, writes nothing, and names an edited asset or notice file', () => {
+test('--check on a tree with assets writes nothing, needs no build, and ignores an edited asset', () => {
   const root = makeAssetTree();
-  assert.equal(run(root, '--check').code, 1, 'nothing is built yet');
-  assert.equal(fs.existsSync(path.join(root, ASSETS)), false, '--check does not write');
+  assert.equal(run(root, '--check').code, 0, 'nothing is built yet');
+  assert.equal(fs.existsSync(path.join(root, 'target')), false, '--check does not write');
   run(root);
+  fs.appendFileSync(path.join(root, ASSETS, 'lib.js'), '//\n');
   assert.equal(run(root, '--check').code, 0);
-  const asset = path.join(root, ASSETS, 'lib.js');
-  fs.appendFileSync(asset, '//\n');
-  refused(
-    root,
-    /^error: editor-webapp\/assets\/lib\.js is generated: edit src\/main\/editor and run `npm run editor:build`\n$/,
-    '--check'
-  );
-  run(root);
-  fs.appendFileSync(path.join(root, ASSETS, 'THIRD-PARTY-NOTICES.txt'), 'x\n');
-  refused(root, /editor-webapp\/assets\/THIRD-PARTY-NOTICES\.txt is generated: edit src\/main\/editor/, '--check');
 });
 
 test('a page with @assets and no assets.json is an error, and so is assets.json with no @assets', () => {
@@ -354,7 +388,7 @@ test('a page with @assets and no assets.json is an error, and so is assets.json 
   refused(noDirective, /assets\.json is there but page\.html has no `<!--@assets-->` line/);
 });
 
-test('--where, --map and --check-identical need no esbuild: a copy of the script with no node_modules runs them', () => {
+test('--where, --map, --check and --check-identical need no esbuild: a copy of the script with no node_modules runs them', () => {
   const root = makeAssetTree();
   run(root);
   const lone = fs.mkdtempSync(path.join(os.tmpdir(), 'build-editor-script-'));
@@ -370,10 +404,10 @@ test('--where, --map and --check-identical need no esbuild: a copy of the script
   git('add', '-A');
   git('commit', '-q', '-m', 'one');
   assert.equal(go('--check-identical', 'HEAD').status, 0, go('--check-identical', 'HEAD').stderr);
+  assert.equal(go('--check').status, 0, 'the check needs no esbuild either');
   const built = go();
   assert.equal(built.status, 1);
   assert.equal(built.stderr, 'error: esbuild is not installed: run npm ci\n');
-  assert.equal(go('--check').stderr, 'error: esbuild is not installed: run npm ci\n');
 });
 
 test('an entry that does not resolve is one error line naming the asset and the entry', () => {
@@ -401,7 +435,7 @@ function makeEncodedTree(
     `${editor}/assets.json`,
     JSON.stringify({ assets: [{ name: 'lib.js', entry: 'bundles/lib.mjs', global: 'Lib' }], encoded })
   );
-  if (present) write(root, `${ASSETS}/kernel.wasm`, WASM);
+  if (present) write(root, 'target/kernel/kernel.wasm', WASM);
   return root;
 }
 
@@ -423,7 +457,7 @@ test('an encoded file is a script that sets the base64 of its source on its glob
     `/* kernel.js: kernel.wasm as base64, by scripts/build-editor.mjs */\nglobalThis.KernelBytes = '${WASM.toString('base64')}';\n`
   );
   assert.ok(
-    fs.readFileSync(path.join(root, ASSETS, 'kernel.wasm')).equals(WASM),
+    fs.readFileSync(path.join(root, 'target/kernel/kernel.wasm')).equals(WASM),
     'the build does not touch the source'
   );
   const page = fs.readFileSync(path.join(root, PAGE), 'utf8');
@@ -436,7 +470,10 @@ test('an encoded file is a script that sets the base64 of its source on its glob
 
 test('an encoded file whose source does not exist is one line', () => {
   const root = makeEncodedTree(undefined, { present: false });
-  refused(root, /^error: the file `kernel\.wasm` of `kernel\.js` is missing/);
+  refused(
+    root,
+    /^error: the file `kernel\.wasm` of `kernel\.js` is missing: target\/kernel\/kernel\.wasm \(run npm run kernel:build\)/
+  );
 });
 
 test('a name listed twice, or an entry with no global, is refused', () => {
@@ -457,3 +494,35 @@ test('--where and --map work on a tree with encoded files', () => {
   assert.equal(run(root, '--where', '1').code, 0);
   assert.equal(run(root, '--map').code, 0);
 });
+
+// ---- the released tag: the build reproduces, byte for byte, the page that the tag committed ----
+
+const TAG = 'archicode-0.25.0';
+const REPO = path.resolve(__dirname, '../../../..');
+const tagThere = spawnSync('git', ['rev-parse', '--verify', '-q', `${TAG}^{commit}`], { cwd: REPO }).status === 0;
+// the folder the tag committed its page, assets and samples in (a path of the history, not of this tree)
+const OLD = ['src', 'main', 'resources', 'editor-webapp'].join('/');
+
+test(
+  `the strict assembly of the sources of ${TAG} with its committed assets is its committed page, byte for byte`,
+  { skip: !tagThere && `the tag ${TAG} is not in this clone (git fetch --tags)` },
+  async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'build-editor-tag-'));
+    try {
+      const archive = spawnSync('git', ['archive', '--format=tar', TAG, 'src/main/editor', OLD], {
+        cwd: REPO,
+        maxBuffer: 1 << 28
+      });
+      assert.equal(archive.status, 0);
+      assert.equal(spawnSync('tar', ['-x', '-C', root], { input: archive.stdout }).status, 0);
+      fs.mkdirSync(path.join(root, 'target'), { recursive: true });
+      fs.cpSync(path.join(root, OLD, 'assets'), path.join(root, ASSETS), { recursive: true });
+      const { assemble } = await import(SCRIPT);
+      const page = Buffer.from(assemble(root, { strict: true }).text, 'utf8');
+      const committed = spawnSync('git', ['show', `${TAG}:${OLD}/standalone.html`], { cwd: REPO, maxBuffer: 1 << 28 });
+      assert.ok(page.equals(committed.stdout), 'the page is not the committed page of the tag');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+);

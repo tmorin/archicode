@@ -21,3 +21,6 @@ node_modules
 
 # The views that `views generate` writes beside the model of ArchiCode itself (docs/architecture); the saved views are manifests and are tracked.
 /docs/architecture/views*/
+
+# The editor page, its assets and its samples are built by Maven (target/editor-webapp); an old checkout may have left the folder here.
+/src/main/resources/editor-webapp/

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.morin.archicode.EditorFiles;
 import io.morin.archicode.doc.GuideBlocks;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -234,7 +235,7 @@ class GuideViewPropertiesTest {
     @Test
     @SneakyThrows
     void everyKeyTheEditorWritesIsInTheGuide() {
-        val page = Files.readString(Path.of("src/main/resources/editor-webapp/standalone.html"));
+        val page = EditorFiles.text(EditorFiles.PAGE);
         val keys = new java.util.TreeSet<String>();
         for (val name : List.of("VIEW_PROPERTY_ORDER", "MAP_PARTS", "DIAGRAM_SHOW_NAMES")) {
             val matcher = Pattern.compile("const " + name + " = \\[([^\\]]*)\\]").matcher(page);

@@ -6,13 +6,12 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const { openFixture } = require('./harness');
 const vm = require('node:vm');
+const { readPage } = require('./editor-files');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 const NONE = { kind: 'none', key: null, mode: 'view' };
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const linkSelection = (from, to, extra) =>

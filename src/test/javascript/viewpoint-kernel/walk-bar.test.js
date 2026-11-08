@@ -10,6 +10,7 @@ const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { compareWith } = require('./layered-folders');
+const { readPage } = require('./editor-files');
 
 const HARBOUR = path.resolve(__dirname, '../../resources/replaces-large-pair');
 
@@ -102,7 +103,7 @@ test('REQ-4: a list with no change renders no walk bar', async () => {
 // functions (`renderPlateausPerspectiveHtml`, `renderMapPerspectiveHtml`, `renderElementsPerspectiveHtml`, `renderLibraryPerspectiveHtml`), as `changes-shortcut.test.js` reads them: the harness has no layout engine.
 
 const LAYERED = path.resolve(__dirname, '../../resources/brightcart/layered');
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 

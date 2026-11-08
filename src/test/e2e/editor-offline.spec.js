@@ -107,7 +107,7 @@ test('the hosted-style page: the sample is drawn and CodeMirror mounts with ever
 test('the page opened from a disk (file://) loads its kernel, ELK and CodeMirror from the files beside it', async ({
   page
 }) => {
-  const url = pathToFileURL(path.join(ROOT, 'src/main/resources/editor-webapp/standalone.html')).href;
+  const url = pathToFileURL(path.join(ROOT, 'target/editor-webapp/standalone.html')).href;
   await page.goto(url);
   await expect
     .poll(() => page.evaluate(() => typeof window.CM), { message: 'CodeMirror, a script beside the page' })

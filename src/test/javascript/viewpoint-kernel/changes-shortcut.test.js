@@ -7,16 +7,16 @@
 // Everything here is invented (the Brightcart is a made-up shop). Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 const { compareWith } = require('./layered-folders');
+const { readPage } = require('./editor-files');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
 const LAYERED = path.resolve(__dirname, '../../resources/brightcart/layered');
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 
 /** The Brightcart, opened, with `drawn` drawn and compared with `against` on the band; `page` is the page on screen. */
 async function openBrightcart(drawn, against, page) {

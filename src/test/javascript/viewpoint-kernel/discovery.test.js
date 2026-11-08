@@ -10,6 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { readPage } = require('./editor-files');
 
 const DOCUMENT = JSON.parse(fs.readFileSync(path.join(__dirname, 'discovery-cases.json'), 'utf8'));
 const KIND = 'archicode.morin.io/system';
@@ -299,7 +300,7 @@ test('a file created in the editor takes the place it has after a reload: the or
     ['manifests/B.yaml', 'manifests/a.yaml', 'manifests/app.x.yaml'],
     'a locale would put B after a and app.x'
   );
-  const source = fs.readFileSync(path.join(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+  const source = readPage();
   assert.doesNotMatch(
     source,
     /relPath\.localeCompare/,

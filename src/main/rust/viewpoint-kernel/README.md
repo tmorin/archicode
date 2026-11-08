@@ -38,27 +38,26 @@ It is written once and runs in both places that draw views, so they cannot disag
 
 | Where | How |
 |---|---|
-| The CLI (`views generate`) | `src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm` is translated to JVM bytecode when Maven builds the project (Chicory's compiler plugin), then called through `ViewpointKernel` / `KernelViewpointFactory`. Works in a native image. |
-| The standalone editor | the same bytes, as the script `assets/viewpoint_kernel.js` that `scripts/build-editor.mjs` writes (the base64 of the file) and the page loads with a `<script>` beside it (the `?v=` hash is a `<meta>` of `standalone.html`); the page decodes and instantiates them. A script, not a fetch of the `.wasm`, so that a page opened from a disk loads it. |
+| The CLI (`views generate`) | the kernel that `embed.sh` builds into `target/kernel/viewpoint_kernel.wasm` (the jar holds it as `editor-webapp/assets/viewpoint_kernel.wasm`) is translated to JVM bytecode when Maven builds the project (Chicory's compiler plugin), then called through `ViewpointKernel` / `KernelViewpointFactory`. Works in a native image. |
+| The standalone editor | the same bytes, as the script `assets/viewpoint_kernel.js` that `scripts/build-editor.mjs` writes into `target/editor-webapp` (the base64 of the file) and the page loads with a `<script>` beside it (the `?v=` hash is a `<meta>` of `standalone.html`); the page decodes and instantiates them. A script, not a fetch of the `.wasm`, so that a page opened from a disk loads it. |
 
-Maven does not need Rust: the `.wasm` is committed. Rust is only needed to change the kernel.
+Maven and the npm scripts that read the kernel need rustup: `embed.sh` builds it (rustup installs the compiler of `rust-toolchain.toml` by itself).
 
 ## Changing it
 
 ```bash
 (cd src/main/rust/viewpoint-kernel && cargo test)         # rustup installs the compiler of rust-toolchain.toml
-src/main/rust/viewpoint-kernel/embed.sh                   # rebuilds the .wasm and reassembles standalone.html (its hash)
+src/main/rust/viewpoint-kernel/embed.sh                   # builds target/kernel/viewpoint_kernel.wasm (--out FILE for another file)
 node --test "src/test/javascript/**/*.test.js"            # the kernel vs. the views the CLI generated
-./mvnw test                                               # the CLI vs. the same committed views
+./mvnw test                                               # the CLI vs. the same views in git
 ```
 
-`embed.sh` writes the build to `src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm`, which the CLI and the
-editor both use, then runs `scripts/build-editor.mjs`, which writes the file's hash in `standalone.html`. Commit both.
+`embed.sh` builds with `cargo build --locked` into `target/kernel/viewpoint_kernel.wasm` and copies the file only when
+its bytes differ. Maven and `npm run editor:build` call it; the latter then runs `scripts/build-editor.mjs`, which writes
+the script `viewpoint_kernel.js` and the hash of it in `standalone.html`, under `target/editor-webapp`. None of these files is in git.
 
 The compiler is pinned in `rust-toolchain.toml` and the paths of the machine are remapped, so the same sources give the
-same bytes everywhere: CI runs `embed.sh --check`, which rebuilds in a scratch directory and fails when the committed
-`.wasm` is not that build, or when the hash of it in `standalone.html` is not the first 8 hex of its sha256. To move to another Rust, change the channel, run `embed.sh`
-and commit the new `.wasm` with it.
+same bytes everywhere. To move to another Rust, change the channel and run `npm run editor:build`.
 
 ## The reference
 

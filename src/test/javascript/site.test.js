@@ -4,16 +4,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { readPage } = require('./viewpoint-kernel/editor-files');
 const vm = require('node:vm');
 
 const PAGE = fs.readFileSync(path.resolve(__dirname, '../../site/index.html'), 'utf8');
 const MANUAL = fs.readFileSync(path.resolve(__dirname, '../../doc/README.adoc'), 'utf8');
 
-const STAMPED = ['../../site/index.html', '../../main/resources/editor-webapp/standalone.html'];
+const STAMPED = {
+  '../../site/index.html': () => fs.readFileSync(path.resolve(__dirname, '../../site/index.html'), 'utf8'),
+  'the built editor page': readPage
+};
 
 test('the pages that the CI stamps with the release carry the stamp it replaces, once', () => {
-  for (const file of STAMPED) {
-    const text = fs.readFileSync(path.resolve(__dirname, file), 'utf8');
+  for (const [file, readText] of Object.entries(STAMPED)) {
+    const text = readText();
     assert.equal(text.split('<meta name="archicode-version" content="dev">').length - 1, 1, file);
   }
 });

@@ -6,8 +6,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const REPO = path.resolve(__dirname, '../../../..');
-const HTML = path.join(REPO, 'src/main/resources/editor-webapp/standalone.html');
-const KERNEL = path.join(REPO, 'src/main/resources/editor-webapp/assets/viewpoint_kernel.js');
+const { PAGE: HTML, ASSETS_DIR } = require('./editor-files');
+const KERNEL = path.join(ASSETS_DIR, 'viewpoint_kernel.js');
 const KERNEL_ADDRESS = 'http://editor.test/assets/viewpoint_kernel.js';
 const FIXTURE = path.join(REPO, 'src/test/resources/viewpoint-kernel/workspace');
 

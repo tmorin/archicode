@@ -5,12 +5,11 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const { run, plain, startPage, addView, openView, click, boxesOf, linksOf } = require('./library-page');
 const { createApp } = require('./harness');
+const { readPage } = require('./editor-files');
 
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 
 /** A view manifest as a person writes it, with comments. */
 const VIEW_FILE = `# the architecture review reads this one

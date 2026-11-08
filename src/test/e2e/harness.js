@@ -19,7 +19,9 @@ const ROOT = path.resolve(__dirname, '..', '..', '..');
 const JAR = process.env.ARCHICODE_E2E_JAR || path.join(ROOT, 'target', 'quarkus-app', 'quarkus-run.jar');
 const EXAMPLES = path.join(ROOT, 'src', 'doc', 'examples');
 const START_TIMEOUT_MS = 60000;
-const PAGE = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'standalone.html');
+// The page and its files are the output of `npm run editor:build`, under target/editor-webapp.
+const BUILT = path.join(ROOT, 'target', 'editor-webapp');
+const PAGE = path.join(BUILT, 'standalone.html');
 
 // The program and its leading arguments: the java of JAVA_HOME (else the one on the PATH) on the jar.
 function spawnLine() {
@@ -130,28 +132,30 @@ async function startServer(example, files = {}) {
 
 // The page as the hosted site serves it (wave 025, run 0192, DEC-11; run 0193, IMP-12): a Node `http` server on
 // 127.0.0.1 and a free port, with no JVM and so no <meta name="archicode-server">, that answers the layout of the
-// website: `GET /editor/` with the committed standalone.html and `GET /editor/samples/brightcart.yaml` with the
-// committed sample, `GET /` with the presentation page of the website (src/site/index.html, W-5 of run 0194), and 404 for everything else. A relative fetch of `samples/brightcart.yaml` from the page
+// website: `GET /editor/` with the built standalone.html and `GET /editor/samples/brightcart.yaml` with the
+// built sample, `GET /` with the presentation page of the website (src/site/index.html, W-5 of run 0194), and 404 for everything else. A relative fetch of `samples/brightcart.yaml` from the page
 // therefore reaches the file at the address it has on GitHub Pages, which is what proves the base path. Both files are
 // read at each request, so a rebuilt page or sample is what the next test gets. `requests` lists the paths asked, in
 // order. Resolves with the URL (`http://127.0.0.1:<port>/editor/`), `siteUrl` (`http://127.0.0.1:<port>/`), the list and a stop function.
-const SAMPLE = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'samples', 'brightcart.yaml');
+const SAMPLE = path.join(BUILT, 'samples', 'brightcart.yaml');
 const SITE = path.join(ROOT, 'src', 'site', 'index.html');
-const ASSETS = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'assets');
+const ASSETS = path.join(BUILT, 'assets');
 // the assets folder beside the page, at the website layout: /editor/assets/NAME for each file of the folder
 const ASSET_TYPES = new Map([
   ['.js', 'text/javascript; charset=utf-8'],
   ['.wasm', 'application/wasm']
 ]);
-const ASSET_ROUTES = fs.existsSync(ASSETS)
-  ? fs
-      .readdirSync(ASSETS)
-      .filter((name) => ASSET_TYPES.has(path.extname(name)))
-      .map((name) => [
-        `/editor/assets/${name}`,
-        { file: path.join(ASSETS, name), type: ASSET_TYPES.get(path.extname(name)) }
-      ])
-  : [];
+// a missing build must not become a 404 that the specs explain badly: the table is not made without the folder
+if (!fs.existsSync(ASSETS)) {
+  throw new Error(`${ASSETS} is missing: run \`npm run editor:build\` to build the editor page`);
+}
+const ASSET_ROUTES = fs
+  .readdirSync(ASSETS)
+  .filter((name) => ASSET_TYPES.has(path.extname(name)))
+  .map((name) => [
+    `/editor/assets/${name}`,
+    { file: path.join(ASSETS, name), type: ASSET_TYPES.get(path.extname(name)) }
+  ]);
 const HOSTED_ROUTES = new Map([
   ...ASSET_ROUTES,
   ['/', { file: SITE, type: 'text/html; charset=utf-8' }],

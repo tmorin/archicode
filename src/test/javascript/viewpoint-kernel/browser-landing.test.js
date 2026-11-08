@@ -18,6 +18,7 @@ const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, fakeIndexedDB, makeDirHandle, waitFor } = require('./harness');
+const { readPage } = require('./editor-files');
 
 const BDB = 'archicode-browser-workspaces';
 const FDB = 'archicode-standalone-editor';
@@ -643,10 +644,7 @@ test('at 360 px the rows reuse the wrapping rows of the folders and the card sta
   const sandbox = await ready(idb);
   const markup = html(sandbox);
   assert.match(markup, /<li class="landing-folder\b/, 'a row is a landing-folder');
-  const standalone = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
-    'utf8'
-  );
+  const standalone = readPage();
   const css = standalone
     .slice(standalone.indexOf('<style>'), standalone.indexOf('</style>'))
     .replace(/\/\*[\s\S]*?\*\//g, '');

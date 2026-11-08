@@ -7,12 +7,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const path = require('node:path');
 const { run } = require('./library-page');
 const { waitFor } = require('./harness');
+const { readPage } = require('./editor-files');
 const { loadStylesheet } = require('./stylesheet');
 const {
-  REPO,
   LAYERED,
   shippedFiles,
   SHIPPED,
@@ -26,7 +25,9 @@ const {
   editorOf
 } = require('./story-player-page');
 
-const PAGE = process.env.ARCHICODE_EDITOR_HTML || path.join(REPO, 'src/main/resources/editor-webapp/standalone.html'); // the page under test (a test that must fail on an older page is run with ARCHICODE_EDITOR_HTML)
+// the page under test (a test that must fail on an older page is run with ARCHICODE_EDITOR_HTML)
+const pageText = () =>
+  process.env.ARCHICODE_EDITOR_HTML ? fs.readFileSync(process.env.ARCHICODE_EDITOR_HTML, 'utf8') : readPage();
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const hashChanged = (page) => {
   for (const fn of page.sandbox.__windowListeners.hashchange || []) fn();
@@ -859,7 +860,7 @@ test('the modal survives what redraws the editor: render() leaves it alone, and 
   page.sandbox.render();
   assert.equal(page.root.innerHTML, shown, 'a redraw of the editor does not touch the modal');
   assert.match(page.sandbox.location.hash, /play=order_journey&step=0$/, 'and keeps its address');
-  const html = fs.readFileSync(PAGE, 'utf8');
+  const html = pageText();
   assert.match(
     html,
     /<div id="story-announcer"[^>]*><\/div>\s*<!--[^>]*-->\s*<div id="story-player" class="story-player" hidden><\/div>/,
@@ -889,7 +890,7 @@ test('the bar over the editing diagram has no Previous, Next, menu or Read; it k
   assert.doesNotMatch(bar, /story-restore/, 'the screen is the step');
   page.sandbox.drawPlateau('marketplace');
   assert.match(page.sandbox.renderStoryBarHtml(), /data-action="story-restore"/, '"Back to this step" still applies');
-  const html = fs.readFileSync(PAGE, 'utf8');
+  const html = pageText();
   assert.equal(
     (html.match(/readingMode|read=1|renderReadingShellHtml|quietDiagramForReading/g) || []).length,
     0,
@@ -902,7 +903,7 @@ test('the bar over the editing diagram has no Previous, Next, menu or Read; it k
 });
 
 test('the page of the player: a title for the dialog, no horizontal scroll rules left out, a layout that never grows past the window', () => {
-  const sheet = loadStylesheet(fs.readFileSync(PAGE, 'utf8'));
+  const sheet = loadStylesheet(pageText());
   assert.equal(sheet.decl('.story-player', 'position'), 'fixed');
   assert.equal(sheet.decl('.story-player', 'inset'), '0');
   // the layout never growing past the window at 360 px is read in src/test/e2e/stylesheet-claims.spec.js

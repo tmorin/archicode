@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { FIXTURE, openFixture } = require('./harness');
+const { readPage, ASSETS_DIR } = require('./editor-files');
 
 const SHAPES =
   'rectangle|person|database|node|card|actor|queue|cloud|component|folder|frame|package|storage|artifact|collections|stack|boundary|control|entity|file|hexagon|label|usecase|interface';
@@ -312,14 +313,10 @@ test('the facets that filter on tags, qualifiers and labels keep what a plain re
 });
 
 test('the page names the kernel file that the CLI runs, by the hash of its bytes', () => {
-  const root = path.join(FIXTURE, '../../../../main/resources/editor-webapp');
-  const html = fs.readFileSync(path.join(root, 'standalone.html'), 'utf8');
-  const file = fs.readFileSync(path.join(root, 'assets/viewpoint_kernel.js'));
+  const html = readPage();
+  const file = fs.readFileSync(path.join(ASSETS_DIR, 'viewpoint_kernel.js'));
   const hash = require('node:crypto').createHash('sha256').update(file).digest('hex').slice(0, 8);
-  assert.ok(
-    html.includes('archicode-asset:viewpoint_kernel.js') && html.includes(hash),
-    'run src/main/rust/viewpoint-kernel/embed.sh'
-  );
+  assert.ok(html.includes('archicode-asset:viewpoint_kernel.js') && html.includes(hash), 'run npm run editor:build');
 });
 
 test('the map, pinned on one element with nothing open, draws the overview the CLI generates; with everything open, its deep links', async () => {

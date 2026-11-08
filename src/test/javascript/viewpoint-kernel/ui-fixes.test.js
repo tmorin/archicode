@@ -8,9 +8,10 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, openFixture } = require('./harness');
 const { loadStylesheet, rulesOf, styleOf } = require('./stylesheet');
+const { readPage } = require('./editor-files');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 const sheet = loadStylesheet(HTML);
 
 /** A layout shaped like ELK's answer, without ELK (see diagram.test.js). */

@@ -8,10 +8,11 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createApp } = require('./harness');
+const { SAMPLES_DIR } = require('./editor-files');
 
 const REPO = path.resolve(__dirname, '..', '..', '..', '..');
 const MODEL = path.join(REPO, 'docs/architecture');
-const SAMPLE = path.join(REPO, 'src/main/resources/editor-webapp/samples/archicode.yaml');
+const SAMPLE = path.join(SAMPLES_DIR, 'archicode.yaml');
 
 const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 

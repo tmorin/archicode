@@ -5,6 +5,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { PAGE: EDITOR_PAGE, readPage } = require('../viewpoint-kernel/editor-files');
 
 const ROOT = path.resolve(__dirname, '../../../..');
 const SHAPES = {
@@ -52,10 +53,8 @@ function filesUnder(dir) {
 }
 
 test('the sources of the editor and the generated page import nothing remote', () => {
-  const files = [
-    ...filesUnder(path.join(ROOT, 'src/main/editor')),
-    path.join(ROOT, 'src/main/resources/editor-webapp/standalone.html')
-  ];
+  readPage();
+  const files = [...filesUnder(path.join(ROOT, 'src/main/editor')), EDITOR_PAGE];
   assert.ok(files.length > 10, `read ${files.length} files`);
   const found = [];
   for (const file of files) {
@@ -71,9 +70,10 @@ test('the sources of the editor and the generated page import nothing remote', (
 // A page opened from a disk (file://) may load a classic script but may not import a module or fetch a file: the assets beside the
 // page are scripts that set a global, and nothing in the page may go back to `import(`. The bundles are built output, not read.
 test('the sources of the editor and the page import no module at all (a page opened from a disk could not load it)', () => {
+  readPage();
   const files = [
     ...filesUnder(path.join(ROOT, 'src/main/editor')).filter((file) => !file.includes(`${path.sep}bundles${path.sep}`)),
-    path.join(ROOT, 'src/main/resources/editor-webapp/standalone.html')
+    EDITOR_PAGE
   ];
   const found = [];
   for (const file of files) {

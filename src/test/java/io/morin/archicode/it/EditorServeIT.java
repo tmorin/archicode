@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import io.morin.archicode.EditorFiles;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -103,10 +104,10 @@ class EditorServeIT {
             assertEquals(403, refused.statusCode(), "the page is not served without the token");
 
             // the sample of the hosted editor is a resource of the jar and of the native image, served with the proof
-            val sample = Files.readString(Path.of("src/main/resources/editor-webapp/samples/brightcart.yaml"));
+            val sample = EditorFiles.text(EditorFiles.SAMPLES.resolve("brightcart.yaml"));
             val served = get(client, base + "samples/brightcart.yaml", address.group(2));
             assertEquals(200, served.statusCode(), () -> "the sample: " + served.body());
-            assertEquals(sample, served.body(), "the bytes of the committed sample");
+            assertEquals(sample, served.body(), "the bytes of the built sample");
             assertEquals(
                 "text/yaml; charset=utf-8",
                 served.headers().firstValue("Content-Type").orElse(""),
@@ -117,7 +118,7 @@ class EditorServeIT {
 
             // the two libraries and the kernel of the page are resources of the jar and of the native image, served with the same proof
             for (val name : new String[] { "codemirror.js", "elk.js", "viewpoint_kernel.js" }) {
-                val file = Path.of("src/main/resources/editor-webapp/assets/" + name);
+                val file = EditorFiles.ASSETS.resolve(name);
                 val asset = client.send(
                     HttpRequest.newBuilder(URI.create(base + "assets/" + name))
                         .header("X-ArchiCode-Token", address.group(2))
@@ -126,7 +127,7 @@ class EditorServeIT {
                     HttpResponse.BodyHandlers.ofByteArray()
                 );
                 assertEquals(200, asset.statusCode(), () -> "the asset " + name);
-                assertArrayEquals(Files.readAllBytes(file), asset.body(), "the bytes of the committed " + name);
+                assertArrayEquals(EditorFiles.bytes(file), asset.body(), "the bytes of the built " + name);
                 assertEquals(
                     "text/javascript; charset=utf-8",
                     asset.headers().firstValue("Content-Type").orElse(""),

@@ -6,11 +6,10 @@
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 const { createApp } = require('./viewpoint-kernel/harness');
+const { readPage } = require('./viewpoint-kernel/editor-files');
 const {
-  REPO,
   BOOKSHOP,
   BRIGHTCART,
   entry,
@@ -23,7 +22,7 @@ const {
   linkPairsOf
 } = require('./map-links-support');
 
-const HTML = fs.readFileSync(path.join(REPO, 'src/main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 
 function fakeLayout(graph) {
   const place = (node, x) =>

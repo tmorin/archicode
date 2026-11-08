@@ -5,42 +5,53 @@
 //   <!--@include FILE-->   the content of FILE (relative to src/main/editor/) without its last newline
 //   <!--@parts-->          the parts of layers.json in order, each verbatim, without the last newline of the last
 //   <!--@assets-->          one <meta name="archicode-asset:NAME" content="./assets/NAME?v=8 hex"> per asset of assets.json, then per entry of its
-//                          `encoded`, the 8 hex being the start of the SHA-256 of the committed file on disk
-// is replaced; every other line is copied. The result is src/main/resources/editor-webapp/standalone.html.
+//                          `encoded`, the 8 hex being the start of the SHA-256 of the built file (00000000 when the assembly is not strict and the file is not built)
+// is replaced; every other line is copied. The result is target/editor-webapp/standalone.html.
 //
-// When src/main/editor/assets.json exists, the write mode also writes, in src/main/resources/editor-webapp/assets, each
+// When src/main/editor/assets.json exists, the write mode also writes, in target/editor-webapp/assets, each
 // file it lists and the notice file THIRD-PARTY-NOTICES.txt, each only when its bytes differ. Every one is a CLASSIC script
 // that the page adds with a <script src> (a page opened from a disk, file://, may not import a module or fetch a file, and
 // may load a script): an `assets` entry is bundled with esbuild (in memory) as an IIFE that sets the global `global`; an
-// `encoded` entry is a committed file of that folder (the kernel's .wasm, which Maven reads) written as the base64 string of
-// the global `global`. assets.json and the @assets line go together: one without the other is an error.
+// `encoded` entry is a file of target/kernel (the kernel's .wasm) written as the base64 string of the global `global`.
+// assets.json and the @assets line go together: one without the other is an error. Nothing is written under src/.
 //
 // Usage: node scripts/build-editor.mjs [--check | --check-identical <rev> | --where <line> | --map] [--root <dir>]
-//   (none)                    write the page, only when its bytes differ
-//   --check                   exit 1 when the committed page, an asset or the notice file is not what the build gives
-//   --check-identical <rev>   exit 1 when the assembly is not the page of the commit <rev>, byte for byte
+//   (none)                    write the assets, then the page, each only when its bytes differ
+//   --check                   write nothing; exit 1 when the sources of the editor do not assemble
+//   --check-identical <rev>   exit 1 when the assembly of src/main/editor of the tree is not the assembly of src/main/editor of the commit <rev>, byte for byte
 //   --where <line>            print <file>:<line in file> for a line of the page
 //   --map                     print the parts and files with their first and last line of the page, as JSON
 //   --root <dir>              work on the tree at <dir> instead of the repository
 //
-// esbuild (npm ci) is needed only to build or check the assets; --where, --map and --check-identical need nothing.
-// Every failure is one line on the error output and exit 1.
+// esbuild (npm ci) and the kernel are needed only to write the build; the other modes assemble the sources without
+// them (the hash of an asset is then 00000000). Every failure is one line on the error output and exit 1.
 
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const PAGE_PATH = 'src/main/resources/editor-webapp/standalone.html';
-const ASSETS_DIR = 'src/main/resources/editor-webapp/assets';
+const PAGE_PATH = 'target/editor-webapp/standalone.html';
+const ASSETS_DIR = 'target/editor-webapp/assets';
+const KERNEL_DIR = 'target/kernel';
 const EDITOR_DIR = 'src/main/editor';
 const NOTICES = 'THIRD-PARTY-NOTICES.txt';
 // fixed here so that a change of esbuild's defaults does not move the bytes
 const TARGETS = ['chrome111', 'firefox121', 'safari16.2'];
 const LAYER_FOLDERS = ['core', 'model', 'persistence', 'application', 'presentation', 'composition', 'unsorted'];
 const DIRECTIVE = /^<!--@([A-Za-z]+)(?: (.+))?-->$/;
-const STALE = 'standalone.html is generated: edit src/main/editor and run `npm run editor:build`';
+const PLACEHOLDER_HASH = '00000000';
 
 class EditorBuildError extends Error {}
 
@@ -114,8 +125,10 @@ function linesOf(text) {
 
 /**
  * Assembles the page of the tree at `root`. Returns { text, origins, partFiles }: `origins[i]` is { file, line } of line i + 1.
+ * With `strict` an asset that is not built is an error; otherwise its hash is 00000000, and with `placeholders` so is the
+ * hash of every asset, built or not, so that the result does not depend on a build.
  */
-export function assemble(root) {
+export function assemble(root, { strict = false, placeholders = false } = {}) {
   const editorDir = join(root, EDITOR_DIR);
   const skeleton = readText(join(editorDir, 'page.html'), 'page.html');
   if (!skeleton.endsWith('\n')) fail('page.html does not end with a newline');
@@ -151,8 +164,11 @@ export function assemble(root) {
       assetsDirective = true;
       for (const asset of [...assets, ...assets.encoded]) {
         const file = join(root, ASSETS_DIR, asset.name);
-        if (!existsSync(file)) fail(`the asset ${asset.name} is missing: ${ASSETS_DIR}/${asset.name}`);
-        const hash = createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 8);
+        if (strict && !existsSync(file)) fail(`the asset ${asset.name} is missing: ${ASSETS_DIR}/${asset.name}`);
+        const hash =
+          placeholders || !existsSync(file)
+            ? PLACEHOLDER_HASH
+            : createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 8);
         push(
           `<meta name="archicode-asset:${asset.name}" content="./assets/${asset.name}?v=${hash}">`,
           'page.html',
@@ -287,9 +303,11 @@ export async function buildAssets(root) {
     metafiles.push(result.metafile);
   }
   for (const item of assets.encoded) {
-    const source = join(root, ASSETS_DIR, item.from);
+    const source = join(root, KERNEL_DIR, item.from);
     if (!existsSync(source))
-      fail(`the file \`${item.from}\` of \`${item.name}\` is missing: ${ASSETS_DIR}/${item.from}`);
+      fail(
+        `the file \`${item.from}\` of \`${item.name}\` is missing: ${KERNEL_DIR}/${item.from} (run npm run kernel:build)`
+      );
     const text =
       `/* ${item.name}: ${item.from} as base64, by scripts/build-editor.mjs */\n` +
       `globalThis.${item.global} = '${readFileSync(source).toString('base64')}';\n`;
@@ -297,14 +315,6 @@ export async function buildAssets(root) {
   }
   files.push({ name: NOTICES, bytes: Buffer.from(noticesOf(root, metafiles), 'utf8') });
   return files;
-}
-
-/** The built assets whose committed file is missing or different. */
-function staleAssets(root, built) {
-  return built.filter(({ name, bytes }) => {
-    const file = join(root, ASSETS_DIR, name);
-    return !existsSync(file) || !readFileSync(file).equals(bytes);
-  });
 }
 
 function groups(origins, keyOf) {
@@ -343,11 +353,6 @@ function firstDifference(expected, actual) {
   return 0;
 }
 
-function sentenceOf(base, built, origins) {
-  const line = firstDifference(built, base);
-  return `${STALE} (first difference at line ${line} of the page, produced by ${describe(origins, line)})`;
-}
-
 function parse(argv) {
   const options = { root: resolve(dirname(fileURLToPath(import.meta.url)), '..'), mode: 'build' };
   for (let i = 0; i < argv.length; i++) {
@@ -363,63 +368,71 @@ function parse(argv) {
   return options;
 }
 
+/** The assembly, without a build, of src/main/editor of the commit `rev` of the repository that holds `root`. */
+export function assembleRevision(root, rev) {
+  const folder = mkdtempSync(join(tmpdir(), 'build-editor-rev-'));
+  try {
+    const archive = spawnSync('git', ['archive', '--format=tar', rev, '--', EDITOR_DIR], {
+      cwd: root,
+      maxBuffer: 1 << 28,
+      stdio: ['ignore', 'pipe', 'ignore']
+    });
+    const unpacked = archive.status === 0 && spawnSync('tar', ['-x', '-C', folder], { input: archive.stdout });
+    if (!unpacked || unpacked.status !== 0) {
+      return fail(`cannot read ${EDITOR_DIR} at \`${rev}\` (unknown revision or no such folder)`);
+    }
+    return assemble(folder, { placeholders: true });
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
+}
+
 async function run(argv) {
   const options = parse(argv);
-  const pagePath = join(options.root, PAGE_PATH);
-  if (options.mode === 'build' || options.mode === 'check') {
-    const stale = staleAssets(options.root, await buildAssets(options.root));
-    if (options.mode === 'check' && stale.length > 0) {
-      fail(`editor-webapp/assets/${stale[0].name} is generated: edit src/main/editor and run \`npm run editor:build\``);
-    }
-    for (const { name, bytes } of stale) {
-      mkdirSync(join(options.root, ASSETS_DIR), { recursive: true });
-      writeFileSync(join(options.root, ASSETS_DIR, name), bytes);
-    }
-  }
-  const { text, origins, partFiles } = assemble(options.root);
-  const committed = existsSync(pagePath) ? readFileSync(pagePath, 'utf8') : null;
   switch (options.mode) {
-    case 'check':
-      if (committed === null) fail(`${STALE} (the page is missing)`);
-      if (committed !== text) fail(sentenceOf(committed, text, origins));
-      console.log(`standalone.html is the assembly of src/main/editor (${origins.length} lines)`);
+    case 'check': {
+      const { origins } = assemble(options.root);
+      console.log(`the sources of the editor assemble (${origins.length} lines)`);
       break;
+    }
     case 'identical': {
-      let base;
-      try {
-        base = execFileSync('git', ['show', `${options.rev}:${PAGE_PATH}`], {
-          cwd: options.root,
-          encoding: 'utf8',
-          maxBuffer: 1 << 28,
-          stdio: ['ignore', 'pipe', 'ignore']
-        });
-      } catch {
-        return fail(`cannot read ${PAGE_PATH} at \`${options.rev}\` (unknown revision or no such file)`);
-      }
-      if (base !== text) {
-        const line = firstDifference(base, text);
+      const base = assembleRevision(options.root, options.rev);
+      const { text, origins } = assemble(options.root, { placeholders: true });
+      if (base.text !== text) {
+        const line = firstDifference(base.text, text);
         fail(
-          `the assembly is not the page of \`${options.rev}\`: first difference at line ${line}, produced by ${describe(origins, line)}`
+          `the assembly is not the assembly of \`${options.rev}\`: first difference at line ${line}, produced by ${describe(origins, line)}`
         );
       }
-      console.log(`the assembly is the page of ${options.rev}, byte for byte`);
+      console.log(`the assembly is the assembly of ${options.rev}, byte for byte`);
       break;
     }
-    case 'where':
+    case 'where': {
+      const { origins } = assemble(options.root);
       if (!Number.isInteger(options.line) || options.line < 1 || options.line > origins.length) {
         fail(`--where needs a line between 1 and ${origins.length}`);
       }
       console.log(describe(origins, options.line));
       break;
+    }
     case 'map':
       console.log(JSON.stringify(mapOf(options.root), null, 2));
       break;
-    default:
-      if (committed !== text) {
+    default: {
+      for (const { name, bytes } of await buildAssets(options.root)) {
+        const file = join(options.root, ASSETS_DIR, name);
+        if (existsSync(file) && readFileSync(file).equals(bytes)) continue;
+        mkdirSync(dirname(file), { recursive: true });
+        writeFileSync(file, bytes);
+      }
+      const { text, partFiles } = assemble(options.root, { strict: true });
+      const pagePath = join(options.root, PAGE_PATH);
+      if (!existsSync(pagePath) || readFileSync(pagePath, 'utf8') !== text) {
         mkdirSync(dirname(pagePath), { recursive: true });
         writeFileSync(pagePath, text);
       }
       console.log(`${partFiles.length} parts, ${Buffer.byteLength(text)} bytes`);
+    }
   }
 }
 

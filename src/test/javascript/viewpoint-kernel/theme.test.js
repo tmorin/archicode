@@ -4,14 +4,13 @@
 // and the rules of the stylesheet.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const vm = require('node:vm');
 const { FIXTURE, createApp, makeDirHandle } = require('./harness');
 const { loadStylesheet } = require('./stylesheet');
+const { readPage } = require('./editor-files');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 const sheet = loadStylesheet(HTML);
 const KEY = 'archicode-standalone-editor:theme';
 

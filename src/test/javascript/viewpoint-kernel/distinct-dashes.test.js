@@ -8,12 +8,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
+const { readPage } = require('./editor-files');
 
 const CHANGE_MARKS = fs.readFileSync(
   path.resolve(__dirname, '../../../main/java/io/morin/archicode/rendering/plantuml/ChangeMarks.java'),
   'utf8'
 );
-const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const HTML = readPage();
 const MANUAL = fs.readFileSync(path.resolve(__dirname, '../../../doc/README.adoc'), 'utf8');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 

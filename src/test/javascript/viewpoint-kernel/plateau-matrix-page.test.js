@@ -158,26 +158,39 @@ test('a path of two plateaus has no Span column, and the matrix of the root alon
   assert.doesNotMatch(page, /data-plateau="baseline"[^>]*>Read the path/);
 });
 
-test('with no path chosen the list of the plateaus is the one of the released page, and the button is the only addition', async () => {
-  const released = execFileSync('git', ['show', 'HEAD:src/main/resources/editor-webapp/standalone.html'], {
+// The page of a released tag, whose list of the plateaus is the reference.
+const TAG = 'archicode-0.25.0';
+let released = null;
+try {
+  released = execFileSync('git', ['show', TAG + ':src/main/resources/editor-webapp/standalone.html'], {
     cwd: ROOT,
     maxBuffer: 1 << 28,
-    encoding: 'utf8'
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore']
   });
-  const now = await openLayered();
-  const before = await openIn(LAYERED_FILES, { html: released });
-  const strip = (html) =>
-    html.replace(/<button type="button" data-action="matrix-open"[^>]*>Read the path<\/button>/g, '');
-  const page = now.sandbox.renderPlateausPageHtml();
-  assert.match(page, /data-action="matrix-open" data-plateau="inhouse" aria-pressed="false"/);
-  assert.doesNotMatch(page, /data-action="matrix-open" data-plateau="baseline"/, 'the root has no path');
-  assert.doesNotMatch(page, /matrix-block/);
-  assert.equal(strip(page), strip(before.sandbox.renderPlateausPageHtml()));
-  // the same after a plateau is drawn
-  now.sandbox.drawPlateau('saas');
-  before.sandbox.drawPlateau('saas');
-  assert.equal(strip(now.sandbox.renderPlateausPageHtml()), strip(before.sandbox.renderPlateausPageHtml()));
-});
+} catch (e) {
+  released = null; // no tag in this clone
+}
+
+test(
+  'with no path chosen the list of the plateaus is the one of the released page, and the button is the only addition',
+  { skip: released === null ? 'the tag ' + TAG + ' is not in this clone' : false },
+  async () => {
+    const now = await openLayered();
+    const before = await openIn(LAYERED_FILES, { html: released });
+    const strip = (html) =>
+      html.replace(/<button type="button" data-action="matrix-open"[^>]*>Read the path<\/button>/g, '');
+    const page = now.sandbox.renderPlateausPageHtml();
+    assert.match(page, /data-action="matrix-open" data-plateau="inhouse" aria-pressed="false"/);
+    assert.doesNotMatch(page, /data-action="matrix-open" data-plateau="baseline"/, 'the root has no path');
+    assert.doesNotMatch(page, /matrix-block/);
+    assert.equal(strip(page), strip(before.sandbox.renderPlateausPageHtml()));
+    // the same after a plateau is drawn
+    now.sandbox.drawPlateau('saas');
+    before.sandbox.drawPlateau('saas');
+    assert.equal(strip(now.sandbox.renderPlateausPageHtml()), strip(before.sandbox.renderPlateausPageHtml()));
+  }
+);
 
 test('the button of the chosen plateau is pressed, openPlateauMatrix toggles it and closePlateauMatrix closes the reading', async () => {
   const { sandbox } = await openLayered();

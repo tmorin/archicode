@@ -8,11 +8,12 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createApp } = require('./harness');
+const { SAMPLES_DIR } = require('./editor-files');
 const { run, startPage } = require('./library-page');
 
 const REPO = path.resolve(__dirname, '..', '..', '..', '..');
 const FIXTURE = path.join(REPO, 'src/test/resources/brightcart/layered');
-const SAMPLE = path.join(REPO, 'src/main/resources/editor-webapp/samples/brightcart.yaml');
+const SAMPLE = path.join(SAMPLES_DIR, 'brightcart.yaml');
 const ADDRESS = '#/timeline/applications?plateau=marketplace&compare=past&sample=brightcart';
 
 const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');

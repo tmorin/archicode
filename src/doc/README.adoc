@@ -1866,10 +1866,11 @@ ArchiCode comes with an editor to browse, edit and draw a workspace without leav
 [[editor-open]]
 === Opening the editor
 
-There are two ways to open it:
+There are three ways to open it:
 
 - *Served by the command line.* `archicode editor serve` serves the editor and opens the folder of the `.archicode.yaml` in it, with nothing to pick. It works in any browser. See <<serve-the-editor>>.
 - *From the published page.* The page published next to this documentation, at `/editor/` of the same site, works in Chrome, Edge, Brave, Opera, Firefox and Safari. With no folder to choose it keeps a workspace in the browser, and it still lets you pick a folder where the browser has the File System Access API (Chrome, Edge, Brave and Opera). To try it without a workspace of your own, open link:../editor/#/timeline/applications?plateau=marketplace&compare=past&sample=brightcart[the editor on the Brightcart sample]. See <<editor-browser-workspace>>.
+- *From a build of the sources.* Without the editor server or the website, `./mvnw package` or `npm run editor:build` (Node.js and rustup needed) makes the page as the file `target/editor-webapp/standalone.html`, with its `assets` and `samples` folders beside it. Open that file in a browser from the disk, or serve the folder `target/editor-webapp` with any static file server. None of these files is in the repository.
 
 The folder to open is the one that holds the workspace file, `.archicode.yaml`. You pick the folder, not the file, so the hidden name is no obstacle in the dialog of the browser. A folder that has a `workspace.yaml` and no `.archicode.yaml` is not opened: the editor gives the reason beside the folder, with the sentence the command line prints (see <<upgrade-0-17>>).
 
@@ -2458,7 +2459,7 @@ ArchiCode runs as `archicode <command>`; the usage of every command, with all it
 - `diff`: Compare a plateau with another one: the elements and the relationships that are new, changed or removed, and what changed in each, as a table (see <<diff>>).
 - `guide`: Print the guide to ArchiCode for an agent that has only this program (see <<guide>>).
 - `init`: Write a small workspace (.archicode.yaml, a person, a system with a container, a relationship and a view) that loads and is drawn (see <<init>>).
-- `import`: Import a model written for another tool into an ArchiCode workspace (see <<import-structurizr>>).
+- `import`: Import a model written for another tool into an ArchiCode workspace (see <<import-structurizr>> and <<import-likec4>>).
 
 [[version]]
 === Print the version
@@ -2524,6 +2525,28 @@ archicode import structurizr workspace.json --output my-architecture
 *What it drops.* Views, deployment nodes, styles, documentation and properties are not carried. Each part present is one `warning:` line with its count, and so is each relationship whose end is not an imported element, each derived relationship that was skipped and each id that was rewritten (the element, its Structurizr id and the id written). A dropped part is not an error: the exit code is 0, and the warnings tell what to write again.
 
 *The refusals.* Each is one line on the error output, starts with `error: `, exits with the code 1 and writes nothing: an input that does not exist, that is a folder or that is not JSON; a file that ends in `.dsl` (export it to JSON first); a JSON with no `model`; an element with no name; an output folder that is not empty, or that is a file. The files are written in a folder next to the output and moved into place at the end, so that a failed write leaves no half of a workspace.
+
+[[import-likec4]]
+=== Import a LikeC4 model
+
+.Export a LikeC4 model to JSON, then import it - The command line
+[source,shell]
+----
+likec4 export json --skip-layout --project cloud-system -o cloud-system.json examples/cloud-system
+archicode import likec4 cloud-system.json --output my-architecture --map app=container --map lambda=component
+----
+
+`archicode import likec4 <model.json> --output <folder>` reads the JSON export of a LikeC4 model and writes a new ArchiCode workspace. It loads no workspace (`-w` is not read). `--output` is required, and the folder must be absent or empty; an absent folder, and its absent parents, are created. The export is made with the LikeC4 tool, as the first line above does (the sample the tests read was made with that command, see its `PROVENANCE.md` in `src/test/resources/likec4`); the command reads that JSON only. When the file holds several projects, `--project <id>` chooses the one to read.
+
+*What it reads.* The elements and the relations of the model, the title of the project and, for the report, the other parts of the export. Every other key is ignored. The tree is the one the dotted ids of LikeC4 make: `cloud.next.graphql` is held by `cloud.next`.
+
+*The kinds.* `actor` is a person, and `system`, `container` and `component` are themselves. Each other kind of the model needs `--map <kind>=<person|system|container|component>` (repeatable); a model with a kind that has no target is one `error:` line that names all of them, so that one run tells everything to map. A `--map` that is not `<kind>=<kind>`, that names an ArchiCode kind that does not exist, that names a kind twice, or that names a kind that no element of the model has is an error too.
+
+*What it writes.* `.archicode.yaml` (the title of the project as its name, else its id, else the name of the file, and `manifests.paths` set to `manifests/**`) and one manifest for each element, in `manifests/`, named by its reference, with `header.parent` set to the element that holds it. The id of an element is the last segment of its LikeC4 id, in lower case, with each run of characters other than letters, digits, `_` and `-` turned into one `_`; a segment with no letter or digit takes `<kind>_<n>`, `n` being its position among its siblings; siblings that share an id get the suffix `_2`, `_3`, and so on, in the order of the export. The full LikeC4 id is kept in the tag `likec4.id` and the LikeC4 kind in the tag `likec4.kind`; the technology and the tags of the element become qualifiers. A relationship is written on its source, with its title as its label, its technology and its tags as qualifiers, and the tags `likec4.id` and `likec4.kind`. When it is done the command prints `imported <n> elements and <m> relationships into <folder>`; the result loads with `archicode query graph` and opens in the editor.
+
+*What it drops.* Views, deployment elements and relations, styles, metadata, links, `navigateTo`, notation, globals, imports, diffs and manual layouts are not carried. Each part present is one `warning:` line with its count, and so is each relationship that is flagged bidirectional (it is written in one direction), each relationship whose end is not an imported element, and each id that was rewritten (the element, its LikeC4 id and the id written). The nesting of ArchiCode does not hold every pair: a person cannot be held by a system, and a component cannot hold a component. An element that the nesting cannot hold is not written, with everything under it, and its relationships go with it: the warnings give the count (`warning: dropped elements: <n>`) and then one line for each, with its LikeC4 id, its kind, the kind it was mapped to and the reason. A dropped part is not an error: the exit code is 0, and the warnings tell what to write again or to map otherwise.
+
+*The refusals.* Each is one line on the error output, starts with `error: `, exits with the code 1 and writes nothing: an input that does not exist, that is a folder or that is not JSON; a file that ends in `.c4` or `.likec4` (export it to JSON first); a JSON that is not an export of a model, with no elements, or whose element has no kind or has no parent in the file; a file of several projects when `--project` is not given or names none of them; a kind to map, as above; an output folder that is not empty, or that is a file. The files are written in a folder next to the output and moved into place at the end, so that a failed write leaves no half of a workspace.
 
 [[errors-and-warnings]]
 === Errors, warnings and exit codes
@@ -3458,6 +3481,8 @@ Commands:
   structurizr  Import the JSON export of a Structurizr workspace (people,
                  software systems, containers, components and their
                  relationships) into a new ArchiCode workspace.
+  likec4       Import the JSON export of a LikeC4 model (elements, their kinds
+                 and their relationships) into a new ArchiCode workspace.
 ----
 
 .archicode import structurizr
@@ -3475,6 +3500,29 @@ written.
   -o, --output=<folder>   The folder to write the workspace in: absent or empty.
   -w, --workspace=<workspace file>
                           The workspace file.
+----
+
+.archicode import likec4
+----
+Usage: archicode import likec4 [-h] -o=<folder> [--project=<id>] [-w=<workspace
+                               file>] [--map=<kind>=<kind>]... <model.json>
+Import the JSON export of a LikeC4 model (elements, their kinds and their
+relationships) into a new ArchiCode workspace.
+The actor, system, container and component kinds are mapped by default; each
+other kind needs --map <kind>=<person|system|container|component>. Views,
+deployment, styles and metadata are not imported: each is said as a warning.
+The folder must be absent or empty; a LikeC4 source file, a file that is not a
+JSON export, or a folder that is not empty, is one error line and nothing is
+written.
+      <model.json>          The JSON export to read.
+  -h, --help                Display this help message.
+      --map=<kind>=<kind>   Map a LikeC4 kind to person, system, container or
+                              component. Repeatable.
+  -o, --output=<folder>     The folder to write the workspace in: absent or
+                              empty.
+      --project=<id>        The project to read when the file holds several.
+  -w, --workspace=<workspace file>
+                            The workspace file.
 ----
 
 .archicode diff

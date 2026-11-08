@@ -142,11 +142,99 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <!-- the page, its assets and its samples in the jar are the ones of target/editor-webapp, and the kernel's .wasm the one
+                         of target/kernel: an ignored copy left here by an earlier checkout is never packaged -->
+                    <exclude>editor-webapp/**</exclude>
+                </excludes>
+            </resource>
+            <resource>
+                <!-- the viewpoint kernel built at initialize, under the path it has always had in the jar -->
+                <directory>${project.build.directory}/kernel</directory>
+                <targetPath>editor-webapp/assets</targetPath>
+                <includes>
+                    <include>viewpoint_kernel.wasm</include>
+                </includes>
+            </resource>
+            <resource>
+                <!-- the editor page, its assets and its samples built at generate-resources (scripts/build-editor.mjs and scripts/build-sample.mjs) -->
+                <directory>${project.build.directory}/editor-webapp</directory>
+                <targetPath>editor-webapp</targetPath>
+            </resource>
+        </resources>
         <plugins>
+            <plugin>
+                <!-- Builds the viewpoint kernel (Rust) to WebAssembly into target/kernel before anything reads it. The Ant
+                     target fails with one line when rustup is missing (the property holds the sentence); embed.sh is the
+                     one place of the cargo flags. -->
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>kernel</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <property environment="env"/>
+                                <property name="kernel.missing-rustup" value="rustup is not installed: the viewpoint kernel is built from its Rust, install rustup from https://rustup.rs (Maven runs src/main/rust/viewpoint-kernel/embed.sh)"/>
+                                <condition property="rustup.found">
+                                    <available file="rustup" filepath="${env.PATH}"/>
+                                </condition>
+                                <fail unless="rustup.found" message="${kernel.missing-rustup}"/>
+                                <exec executable="bash" failonerror="true">
+                                    <arg value="${project.basedir}/src/main/rust/viewpoint-kernel/embed.sh"/>
+                                    <arg value="--out"/>
+                                    <arg value="${project.build.directory}/kernel/viewpoint_kernel.wasm"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <!-- Builds the editor page and the samples into target/editor-webapp: npm ci, then the two scripts. Ant's exec has no
+                             "unless", so npm ci runs on every build. Each execution has its own target, hence the environment is loaded again. -->
+                        <id>page</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <property environment="env"/>
+                                <property name="page.missing-node" value="Node.js is not installed: the editor page is built with node and npm, install Node.js 22 from https://nodejs.org (Maven runs npm ci, scripts/build-editor.mjs and scripts/build-sample.mjs)"/>
+                                <condition property="node.found">
+                                    <and>
+                                        <available file="node" filepath="${env.PATH}"/>
+                                        <available file="npm" filepath="${env.PATH}"/>
+                                    </and>
+                                </condition>
+                                <fail unless="node.found" message="${page.missing-node}"/>
+                                <exec executable="npm" dir="${project.basedir}" failonerror="true">
+                                    <arg value="ci"/>
+                                    <arg value="--no-audit"/>
+                                    <arg value="--no-fund"/>
+                                </exec>
+                                <exec executable="node" dir="${project.basedir}" failonerror="true">
+                                    <arg value="scripts/build-editor.mjs"/>
+                                </exec>
+                                <exec executable="node" dir="${project.basedir}" failonerror="true">
+                                    <arg value="scripts/build-sample.mjs"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <!-- Translates the viewpoint kernel (Rust, compiled to WebAssembly) to JVM bytecode: no interpreter
                      and no code generation at run time, and it works in a native image.
-                     The .wasm is built by src/main/rust/viewpoint-kernel/embed.sh. -->
+                     The .wasm is built from the Rust of src/main/rust/viewpoint-kernel into target/kernel by embed.sh, which the
+                     antrun execution "kernel" runs at initialize; nothing of it is committed. -->
                 <groupId>com.dylibso.chicory</groupId>
                 <artifactId>chicory-compiler-maven-plugin</artifactId>
                 <version>${chicory.version}</version>
@@ -158,7 +246,7 @@
                         </goals>
                         <configuration>
                             <name>io.morin.archicode.viewpoint.kernel.ViewpointKernelModule</name>
-                            <wasmFile>${project.basedir}/src/main/resources/editor-webapp/assets/viewpoint_kernel.wasm</wasmFile>
+                            <wasmFile>${project.build.directory}/kernel/viewpoint_kernel.wasm</wasmFile>
                         </configuration>
                     </execution>
                 </executions>

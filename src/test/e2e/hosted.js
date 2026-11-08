@@ -8,7 +8,7 @@ const path = require('node:path');
 const { expect, openPage } = require('./fixtures');
 const { ROOT } = require('./harness');
 
-const SAMPLE_FILE = path.join(ROOT, 'src', 'main', 'resources', 'editor-webapp', 'samples', 'brightcart.yaml');
+const SAMPLE_FILE = path.join(ROOT, 'target', 'editor-webapp', 'samples', 'brightcart.yaml');
 const SAMPLE_ADDRESS = '#/timeline/applications?plateau=marketplace&compare=past&sample=brightcart';
 const NEW_DESCRIPTION = 'The web shop of the retailer, edited by the e2e suite.';
 

@@ -1,7 +1,6 @@
 # Prettier formats Java, the JavaScript tests and the sources of the editor page (src/main/editor: npm run format, npm run format:check).
 # The editor page itself is generated from those sources by scripts/build-editor.mjs (npm run editor:build): it is the
 # output, so it is not formatted; the sources are.
-src/main/resources/editor-webapp/standalone.html
 src/site/
 # generated or vendored
 node_modules/

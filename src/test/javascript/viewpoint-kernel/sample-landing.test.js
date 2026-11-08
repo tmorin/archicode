@@ -25,6 +25,7 @@ const vm = require('node:vm');
 const os = require('node:os');
 const { createApp, fakeIndexedDB, makeDirHandle, waitFor } = require('./harness');
 const { TOKEN, fakeServer } = require('./served-fake');
+const { readPage, SAMPLES_DIR } = require('./editor-files');
 
 const BDB = 'archicode-browser-workspaces';
 const SYSTEM = (id, name) =>
@@ -38,7 +39,7 @@ const SHOP_FILES = {
   '.archicode.yaml': '# A workspace.\nsettings:\n  name: Shop\n',
   'manifests/app.s1.yaml': SYSTEM('s1', 'S1')
 };
-const SAMPLE_PATH = path.resolve(__dirname, '../../../main/resources/editor-webapp/samples/brightcart.yaml');
+const SAMPLE_PATH = path.join(SAMPLES_DIR, 'brightcart.yaml');
 const ADDRESS = '#/timeline/applications?plateau=marketplace&compare=past&sample=brightcart';
 const MARKUP_NAME = '<img src=x onerror=alert(1)>';
 const QUOTE_NAME = 'x" autofocus onfocus="alert(1)';
@@ -789,10 +790,7 @@ test('a settings.name with markup in an imported file is text on the card and in
 // ---- 360 px ----
 
 test('at 360 px the menu is bounded by the window, the card’s buttons wrap and no new rule is wider than the window', () => {
-  const standalone = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
-    'utf8'
-  );
+  const standalone = readPage();
   const css = standalone
     .slice(standalone.indexOf('<style>'), standalone.indexOf('</style>'))
     .replace(/\/\*[\s\S]*?\*\//g, '');

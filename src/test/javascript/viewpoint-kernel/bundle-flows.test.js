@@ -28,6 +28,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, fakeIndexedDB } = require('./harness');
+const { SAMPLES_DIR } = require('./editor-files');
 
 const BDB = 'archicode-browser-workspaces';
 const SYSTEM = (id, name) =>
@@ -515,10 +516,7 @@ test('export, delete, import gives every file back byte for byte, with a byte-or
 });
 
 test('export, delete, import gives the sample back byte for byte', async () => {
-  const text = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/samples/brightcart.yaml'),
-    'utf8'
-  );
+  const text = fs.readFileSync(path.join(SAMPLES_DIR, 'brightcart.yaml'), 'utf8');
   const unbundled = codec.unbundleWorkspaceFiles(text);
   assert.equal(unbundled.problems.length, 0);
   const files = {};

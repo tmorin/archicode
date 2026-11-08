@@ -18,7 +18,7 @@ const CUT = path.join(
 );
 const loadModule = () => import(SCRIPT);
 
-const PAGE_PATH = 'src/main/resources/editor-webapp/standalone.html';
+const PAGE_PATH = 'target/editor-webapp/standalone.html';
 const SKELETON = '<!DOCTYPE html>\n<script>\n<!--@parts-->\n</script>\n</html>\n';
 
 function write(root, file, content) {

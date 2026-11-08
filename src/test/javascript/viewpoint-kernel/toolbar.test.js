@@ -11,12 +11,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { run, plain, startPage, click, addView, openView } = require('./library-page');
+const { readPage } = require('./editor-files');
 
 const LAYERED = path.resolve(__dirname, '../../resources/brightcart/layered');
 const TABLE = JSON.parse(fs.readFileSync(path.join(__dirname, 'toolbar-controls.json'), 'utf8'));
 const GROUPS = TABLE.groupOrder;
 const SURFACES = Object.keys(TABLE.surfaces);
-const PAGE = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
+const PAGE = readPage();
 
 /** The controls of a surface in the table, flat: `{ id, key, group }`. */
 const tableControls = (surface) =>

@@ -8,6 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const { openFixture } = require('./harness');
+const { readPage } = require('./editor-files');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -237,12 +238,7 @@ test('the maximum width is a constant between 200 and 240 px, and the line heigh
   const max = run(sandbox, 'DIAGRAM_LABEL_MAX_WIDTH');
   assert.ok(max >= 200 && max <= 240, String(max));
   assert.equal(run(sandbox, 'DIAGRAM_LABEL_LINE_HEIGHT'), 13);
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const html = fs.readFileSync(
-    path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'),
-    'utf8'
-  );
+  const html = readPage();
   const page = /\.dg-label \{([^}]*)\}/.exec(html)[1];
   assert.match(page, /font-size: 11px/);
   sandbox.getComputedStyle = () => ({ getPropertyValue: () => '#123456' });

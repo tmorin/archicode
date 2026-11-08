@@ -13,11 +13,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createApp } = require('./harness');
+const { readPage } = require('./editor-files');
 const { memFolder } = require('./mem-folder');
 const { run, startPage } = require('./library-page');
 
 const REPO = path.resolve(__dirname, '../../../..');
-const PAGE = path.join(REPO, 'src/main/resources/editor-webapp/standalone.html');
 const LAYERED = path.join(REPO, 'src/test/resources/brightcart/layered');
 const DOMAIN_PLATEAUS = path.join(REPO, 'src/doc/examples/domain_plateaus');
 
@@ -457,7 +457,9 @@ test("a workspace with no plateau has one drawing: the scene of a step is the ed
 // ---- the reading mode is gone, the announcer is kept ----
 
 test('the wave 020 reading mode is gone from the page', () => {
-  const html = fs.readFileSync(process.env.ARCHICODE_EDITOR_HTML || PAGE, 'utf8');
+  const html = process.env.ARCHICODE_EDITOR_HTML
+    ? fs.readFileSync(process.env.ARCHICODE_EDITOR_HTML, 'utf8')
+    : readPage();
   const count = (pattern) => (html.match(pattern) || []).length;
   assert.equal(
     count(/readingMode|read=1|renderReadingShellHtml|quietDiagramForReading/g),
@@ -483,7 +485,7 @@ test('the wave 020 reading mode is gone from the page', () => {
 });
 
 test('the announcer is kept for the player: a live region outside #app that render() does not replace, said once per change', () => {
-  const html = fs.readFileSync(PAGE, 'utf8');
+  const html = readPage();
   assert.match(
     html,
     /<div id="app"><\/div>\s*<!--[^>]*-->\s*<div id="story-announcer" class="story-announcer" role="status" aria-live="polite"><\/div>/,
